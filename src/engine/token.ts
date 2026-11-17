@@ -140,6 +140,14 @@ export function tokenLayout(bar: TokenBar, setLeft: number, boxBottom: number, f
   };
 }
 
+/**
+ * Caixa de P/R a proteger do apagador. Emblemas e fichas sem P/R (Tesouro) não têm a caixa:
+ * o canto de baixo também é texto em inglês e precisa ser apagado.
+ */
+export function tokenPtBox(layout: Pick<TokenLayout, "pt">, pt: string | null | undefined): Rect | null {
+  return pt === null ? null : layout.pt;
+}
+
 /** Partes do nome em versalete: maiúsculas grandes, o resto em maiúsculas menores. */
 export function smallCaps(name: string): { text: string; big: boolean }[] {
   const out: { text: string; big: boolean }[] = [];

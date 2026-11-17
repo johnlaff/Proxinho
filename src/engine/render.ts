@@ -14,7 +14,7 @@ import { lamaInpaint } from "./lama";
 import { isTallPlaneswalker, planeswalkerRows, PW, rowRects, splitAbilities } from "./planeswalker";
 import { preloadSymbols } from "./symbols";
 import { SYMBOL_EM, chunkWidth, fitRows, fitText, type LayoutResult, type Measurer } from "./text";
-import { findPlaque2003, findTokenBar, findTokenBoxBottom, smallCaps, TOKEN, tokenLayout, type Plaque } from "./token";
+import { findPlaque2003, findTokenBar, findTokenBoxBottom, smallCaps, TOKEN, tokenLayout, tokenPtBox, type Plaque } from "./token";
 import { printImage, type PrintRecord, type PtFace } from "./types";
 
 export interface RenderOptions {
@@ -348,7 +348,8 @@ async function renderToken(p: {
   const setLeft = findSetSymbolLeft(data, Math.round((bar.y0 + 6) * fy), Math.round((bar.y1 - 6) * fy)) / fx;
   const layout = tokenLayout(bar, setLeft, findTokenBoxBottom(data, bar), p.frame);
   const text = face.text_pt ?? "";
-  const protect = [toImg(layout.pt)];
+  const ptBox = tokenPtBox(layout, face.pt);
+  const protect = ptBox ? [toImg(ptBox)] : [];
   // o nome das fichas de 2003 é dourado: escreve o português na cor das letras apagadas
   if (plaque) paintPlaque(data, plaque);
   const [titleInk, typeInk, boxInk] = eraseRegions(
@@ -387,8 +388,8 @@ async function renderToken(p: {
     const box = layout.box.text;
     const symbols = await preloadSymbols(text);
     const m = measurer(ctx, k);
-    const under = box.y1 - layout.pt.y0;
-    const notch = under > 0 ? { width: box.x1 - layout.pt.x0 + 6, height: under } : undefined;
+    const under = ptBox ? box.y1 - ptBox.y0 : 0;
+    const notch = ptBox && under > 0 ? { width: box.x1 - ptBox.x0 + 6, height: under } : undefined;
     const res = fitText(text, null, box.x1 - box.x0, box.y1 - box.y0, m, 34, 15, notch);
     // uma linha só ("Vínculo com a vida") fica centralizada, como nas fichas impressas
     drawLayout(ctx, res, box, k, boxInk, symbols, m, res.lines.length === 1);

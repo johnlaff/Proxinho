@@ -52,4 +52,5 @@ Sem download de navegador? `PW_CHROMIUM_PATH=/caminho/do/chrome pnpm test:e2e`.
 - Fichas têm nomes iguais a cartas ("Adorned Pouncer" eternizado) e cartas de apoio com `layout: token` ("Copy", "The Monarch"): o Arena só casa fichas com `isToken`, e só entra ficha cujo tipo começa por "Token ".
 - Nas fichas de duas faces a face de trás tem id `<id>#1` no banco: use `printImage`, nunca `scryfallImage(print.id)`.
 - Emblemas não existem no Arena de papel: o texto vem das aspas do planeswalker ("emblema com \"…\""); nunca traduza.
+- Emblemas e fichas sem P/R não têm a caixa de P/R: proteger o canto deixava o fim do texto em inglês aparecendo (`tokenPtBox`).
 - O .wasm do ONNX (28 MiB) não cabe nos assets do Cloudflare: o Vite não pode copiá-lo (plugin em `vite.config.ts`); ele vai em partes por `scripts/modelo.mjs`.

@@ -16,7 +16,7 @@ O Arena não tem os emblemas de papel (os emblemas dele são outros, só do digi
 
 - liga a carta ao emblema pelo `all_parts` do Scryfall (o emblema aparece como `combo_piece`, reconhecido pelo tipo "Emblem");
 - tira o trecho entre aspas do texto oficial em PT do planeswalker (Arena ou impressão). Se houver mais de um emblema na mesma face, não escolhe: fica sem PT;
-- quando são duas habilidades ("…" e "…"), põe uma por linha; o ponto final, que no PT fica fora das aspas, volta para o fim da frase;
+- quando são duas habilidades ("…" e "…"), põe uma por linha; o ponto final, que no PT fica fora das aspas, volta para o fim da frase (menos quando a frase já fecha com aspas simples, como no emblema da Arlinn);
 - na faixa do nome vai o nome em PT do planeswalker (como no emblema impresso, que traz o nome dele); o tipo é "Emblema" ou "Emblema — Chandra" (o subtipo vem do tipo em PT do planeswalker);
 - na lista e na busca o emblema aparece como "Emblema — Chandra, Chama da Rebeldia".
 
@@ -29,6 +29,8 @@ Cada face é uma ficha que já existe sozinha (o Vampiro 1/1 com vínculo com a 
 ### Moldura de 2003
 
 A barra de tipo e a caixa são iguais às de 2015, e a busca pelos dois fios funciona sem mudança. Muda o nome: uma placa escura de pontas arredondadas, com a largura do nome em inglês, letras douradas em serifa. O motor (`findPlaque2003`) acha a placa andando do centro para os lados enquanto a cor de fundo dela aparece entre as letras, repinta o miolo linha a linha com essa cor e escreve o nome em PT em versalete, na cor média das letras douradas, com a MPlantin em negrito. A caixa de P/R é um pouco mais à esquerda.
+
+Emblemas e fichas sem P/R (Tesouro, Sangue) não têm a caixa de P/R, então o canto de baixo da caixa de texto é apagado como o resto (`tokenPtBox`); protegê-lo deixava o fim do texto em inglês aparecendo ali.
 
 Também entram na moldura de 2015 as fichas lendárias, de encantamento, neve, invertidas e com arte estendida (o lugar do texto é o mesmo).
 

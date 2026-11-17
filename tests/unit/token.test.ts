@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findPlaque2003, findTokenBar, findTokenBoxBottom, smallCaps, tokenLayout } from "../../src/engine/token";
+import { findPlaque2003, findTokenBar, findTokenBoxBottom, smallCaps, tokenLayout, tokenPtBox } from "../../src/engine/token";
 import { printImage } from "../../src/engine/types";
 
 /** Ficha falsa 745 × 1040: arte com ruído, barra clara entre dois fios escuros e caixa clara. */
@@ -120,5 +120,15 @@ describe("printImage", () => {
     expect(printImage({ id: "05934d59-7e98-4fff-8ccb-70cd1a61c6fd" }, "small")).toBe(
       "https://cards.scryfall.io/small/front/0/5/05934d59-7e98-4fff-8ccb-70cd1a61c6fd.jpg",
     );
+  });
+});
+
+describe("caixa de P/R das fichas", () => {
+  const layout = tokenLayout({ y0: 520, y1: 578 }, 640, 958);
+  it("protege a caixa quando a ficha tem P/R", () => {
+    expect(tokenPtBox(layout, "2/2")).toEqual(layout.pt);
+  });
+  it("não protege nada em emblemas e fichas sem P/R, para apagar o canto em inglês", () => {
+    expect(tokenPtBox(layout, null)).toBeNull();
   });
 });

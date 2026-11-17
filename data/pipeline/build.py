@@ -566,7 +566,7 @@ def emblem_face(t: dict, cards: dict[str, dict], print_oracle: dict[str, str]) -
             sub = (f.get("type_pt") or "").partition(" — ")[2]
             # emblema com duas habilidades: "…" e "…" vira uma por linha; o ponto final fica fora das aspas no PT
             lines = [x.strip() for x in re.split(r'[”"] e [“"]', found[0])]
-            text_pt = "\n".join(x if x[-1:] in '.!?"”' else f"{x}." for x in lines)
+            text_pt = "\n".join(x if x[-1:] in '.!?"”’' else f"{x}." for x in lines)
             return {
                 "source": src.get("source"),
                 "name_en": t["name"],
