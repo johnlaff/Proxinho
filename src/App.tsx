@@ -12,8 +12,8 @@ import { buildOrder, countOutcomes, totalCards, type Choice, type Entry, type Mi
 import { CardDrawer } from "./components/CardDrawer";
 import { OrderPanel, type Tab } from "./components/OrderPanel";
 import { OUTCOME_LABEL } from "./app/labels";
-import { ProofSheets } from "./components/ProofSheets";
-import { ColorBar, CropCorners, RegMark } from "./components/RegMark";
+import { BlankSlots, ProofSheets, Sheet, Slot } from "./components/ProofSheets";
+import { RegMark } from "./components/RegMark";
 import { mergeLines, parseDecklist } from "./lib/decklist";
 import type { Paper, PrintMode } from "./lib/pdf";
 
@@ -53,6 +53,7 @@ function save(key: string, value: string) {
 }
 
 const PAPER_LABEL: Record<Paper, string> = { a4: "A4", letter: "Carta" };
+const MODE_LABEL: Record<PrintMode, string> = { sleeve: "na frente da carta", full: "carta inteira" };
 const sheetsFor = (n: number) => Math.ceil(n / 9);
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString("pt-BR")} ${n === 1 ? one : many}`;
 
@@ -74,6 +75,12 @@ export default function App() {
   const total = totalCards(entries);
   const counts = useMemo(() => countOutcomes(entries), [entries]);
   const openEntry = entries.find((e) => e.key === openKey) ?? null;
+  const slug = [
+    PAPER_LABEL[settings.paper],
+    MODE_LABEL[settings.mode],
+    settings.quality === "alta" ? "480 dpi" : "300 dpi",
+    "imprimir em 100%",
+  ].join(" · ");
 
   /** Resolve linhas na API e junta (ou substitui) o pedido. */
   const resolveLines = useCallback(async (lines: OrderLine[], mode: "replace" | "append") => {
@@ -261,7 +268,7 @@ export default function App() {
                     </li>
                   ))}
               </ul>
-              <p className="hint">Toque numa carta da folha para trocar a arte ou a quantidade.</p>
+              <p className="hint">Toque ou clique numa carta da folha para trocar a arte ou a quantidade.</p>
             </section>
 
             <fieldset className="finish">
@@ -343,11 +350,7 @@ export default function App() {
               </button>
             </div>
           )}
-          {total > 0 ? (
-            <ProofSheets entries={entries} paperLabel={PAPER_LABEL[settings.paper]} onOpen={setOpenKey} />
-          ) : (
-            <EmptySheet busy={busy} />
-          )}
+          {total > 0 ? <ProofSheets entries={entries} slug={slug} onOpen={setOpenKey} /> : <EmptySheet busy={busy} slug={slug} />}
         </section>
       </main>
 
@@ -400,27 +403,46 @@ function Segmented<T extends string>({
   );
 }
 
-function EmptySheet({ busy }: { busy: boolean }) {
+const EXAMPLE_NAMES = ["Sol Ring", "Llanowar Elves", "Lightning Bolt"];
+
+/** Folha vazia com três cartas de exemplo já em português: a prova do que o site faz. */
+function EmptySheet({ busy, slug }: { busy: boolean; slug: string }) {
+  const [examples, setExamples] = useState<Entry[]>([]);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    resolveNames(EXAMPLE_NAMES, ctrl.signal)
+      .then((res) =>
+        setExamples(
+          buildOrder(
+            EXAMPLE_NAMES.map((name) => ({ quantity: 1, name, section: "main" })),
+            res,
+          ).entries,
+        ),
+      )
+      .catch(() => undefined); // sem exemplos, a folha fica só com os espaços vazios
+    return () => ctrl.abort();
+  }, []);
   return (
     <div className="sheets">
-      <section className="sheet sheet--empty" aria-label="Folha de exemplo vazia">
-        <header className="sheet-head">
-          <ColorBar />
-          <span className="sheet-label">Folha 1 · A4 · 9 cartas</span>
-        </header>
-        <ol className="sheet-grid" aria-hidden="true">
-          {Array.from({ length: 9 }, (_, i) => (
-            <li key={i} className="slot slot--blank">
-              <div className="slot-card">
-                <CropCorners />
-              </div>
+      <Sheet
+        label="Folha 1 · 9 cartas"
+        slug={slug}
+        ariaLabel="Folha de exemplo"
+        intro={
+          <p className="sheet-empty-msg">
+            {busy ? "Procurando as cartas…" : "Suas cartas aparecem aqui, já em português, na ordem em que vão sair da impressora."}
+          </p>
+        }
+      >
+        <ol className="sheet-grid">
+          {examples.map((e) => (
+            <li key={e.key}>
+              <Slot entry={e} example />
             </li>
           ))}
+          <BlankSlots count={9 - examples.length} />
         </ol>
-        <p className="sheet-empty-msg">
-          {busy ? "Procurando as cartas…" : "Suas cartas aparecem aqui, já em português, na ordem em que vão sair da impressora."}
-        </p>
-      </section>
+      </Sheet>
     </div>
   );
 }

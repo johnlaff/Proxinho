@@ -280,11 +280,28 @@ export function findSetSymbolLeft(img: ImageData, y0: number, y1: number): numbe
     if (dark > 2) cols.push(x);
   }
   if (!cols.length) return Math.round(img.width * 0.85);
-  // o bloco mais à direita, separado por lacunas de mais de 12 px
-  let start = cols[cols.length - 1];
+  // o bloco mais à direita, separado por lacunas (medidas na escala de 745 px)
+  const k = img.width / 745;
+  const end = cols[cols.length - 1];
+  let start = end;
   for (let i = cols.length - 1; i > 0; i--) {
-    if (cols[i] - cols[i - 1] > 12) break;
+    if (cols[i] - cols[i - 1] > Math.max(3, 8 * k)) break;
     start = cols[i - 1];
+  }
+  // Um símbolo de coleção não passa de ~60 px. Se o bloco é mais largo, ele
+  // grudou no fim da linha de tipo em inglês (ex.: "Survivor"): corta na maior
+  // lacuna perto da direita, para o texto ser apagado e o símbolo preservado.
+  if (end - start > 60 * k) {
+    let best = -1;
+    let cut = start;
+    for (let i = cols.length - 1; i > 0 && cols[i] >= end - 75 * k; i--) {
+      const gap = cols[i] - cols[i - 1];
+      if (gap > 1 && gap > best) {
+        best = gap;
+        cut = cols[i];
+      }
+    }
+    start = best > 0 ? cut : Math.round(end - 60 * k);
   }
   return start;
 }

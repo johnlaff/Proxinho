@@ -110,7 +110,13 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
             {face?.type_pt && translatable && <p className="drawer-type">{face.type_pt}</p>}
             <button type="button" className="btn btn--quiet btn--small" aria-pressed={trueSize} onClick={() => onTrueSize(!trueSize)}>
               <Ruler size={16} aria-hidden="true" />
-              {trueSize ? "Voltar ao tamanho da prévia" : "Ver no tamanho real (63 × 88 mm)"}
+              {trueSize ? (
+                <span>Voltar ao tamanho da prévia</span>
+              ) : (
+                <span>
+                  Ver no tamanho real <span className="nowrap">(63 × 88 mm)</span>
+                </span>
+              )}
             </button>
             {trueSize && <p className="hint">O tamanho na tela depende do seu monitor; no PDF ele é exato.</p>}
           </div>

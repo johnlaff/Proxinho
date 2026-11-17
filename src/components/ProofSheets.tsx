@@ -1,47 +1,101 @@
 /**
  * A "prova": as folhas exatamente na ordem em que vão sair da impressora,
- * 9 cartas por folha, com marcas de corte e uma legenda técnica embaixo de
- * cada carta. Tocar numa carta abre a gaveta para trocar a arte.
+ * 9 cartas por folha, com marcas de corte, marcas de registro, régua de 5 cm
+ * e uma legenda técnica embaixo de cada carta. Tocar numa carta abre a
+ * gaveta para trocar a arte.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { displayName, outcomeOf, renderKey, selectedPrint, toSheets, type Entry } from "../app/model";
 import { previewUrl } from "../app/preview";
-import { ColorBar, CropCorners } from "./RegMark";
+import { ColorBar, CropCorners, RegMark } from "./RegMark";
 import { OutcomeTag } from "./OutcomeTag";
 
-export function ProofSheets({ entries, paperLabel, onOpen }: { entries: Entry[]; paperLabel: string; onOpen: (key: string) => void }) {
+export function ProofSheets({ entries, slug, onOpen }: { entries: Entry[]; slug: string; onOpen: (key: string) => void }) {
   const sheets = toSheets(entries);
   return (
     <div className="sheets">
       {sheets.map((slots, si) => (
-        <section className="sheet" key={si} aria-label={`Folha ${si + 1} de ${sheets.length}`}>
-          <header className="sheet-head">
-            <ColorBar />
-            <span className="sheet-label">
-              Folha {si + 1}/{sheets.length} · {paperLabel}
-            </span>
-          </header>
+        <Sheet key={si} label={`Folha ${si + 1}/${sheets.length}`} slug={slug} ariaLabel={`Folha ${si + 1} de ${sheets.length}`}>
           <ol className="sheet-grid">
             {slots.map((entry, i) => (
               <li key={`${entry.key}-${i}`}>
                 <Slot entry={entry} onOpen={onOpen} />
               </li>
             ))}
-            {Array.from({ length: 9 - slots.length }, (_, i) => (
-              <li key={`vazio-${i}`} className="slot slot--blank" aria-hidden="true">
-                <div className="slot-card">
-                  <CropCorners />
-                </div>
-              </li>
-            ))}
+            <BlankSlots count={9 - slots.length} />
           </ol>
-        </section>
+        </Sheet>
       ))}
     </div>
   );
 }
 
-function Slot({ entry, onOpen }: { entry: Entry; onOpen: (key: string) => void }) {
+/** Uma folha de prova: tira de cor, marcas de registro, régua e linha de rodapé. */
+export function Sheet({
+  label,
+  slug,
+  ariaLabel,
+  children,
+  intro,
+}: {
+  label: string;
+  slug: string;
+  ariaLabel: string;
+  children: ReactNode;
+  intro?: ReactNode;
+}) {
+  return (
+    <section className="sheet" aria-label={ariaLabel}>
+      <RegMark size={14} className="sheet-reg sheet-reg--top" />
+      <RegMark size={14} className="sheet-reg sheet-reg--left" />
+      <RegMark size={14} className="sheet-reg sheet-reg--right" />
+      <RegMark size={14} className="sheet-reg sheet-reg--bottom" />
+      <header className="sheet-head">
+        <ColorBar />
+        <span className="sheet-label">{label}</span>
+      </header>
+      {intro}
+      {children}
+      <footer className="sheet-foot">
+        <span className="ruler" aria-hidden="true">
+          <span className="ruler-ticks" />
+          <span className="ruler-label">5 cm</span>
+        </span>
+        <span className="sheet-label">{slug}</span>
+      </footer>
+    </section>
+  );
+}
+
+export function BlankSlots({ count }: { count: number }) {
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <li key={`vazio-${i}`} className="slot slot--blank" aria-hidden="true">
+          <div className="slot-card">
+            <CropCorners />
+          </div>
+        </li>
+      ))}
+    </>
+  );
+}
+
+const SOURCE_CAPTION = { arena: "Arena", impresso: "imp. PT" } as const;
+
+/** Legenda técnica: coleção e número · origem do texto · artista. */
+function captionOf(entry: Entry): { set: string; source: string; artist: string } {
+  const outcome = outcomeOf(entry);
+  if (entry.choice.kind === "pt") {
+    const pt = entry.card.pt_print;
+    return { set: pt ? `${pt.set.toUpperCase()} ${pt.number}` : "", source: "imagem PT", artist: "" };
+  }
+  const p = selectedPrint(entry);
+  const source = outcome === "reescrita" && entry.card.source ? SOURCE_CAPTION[entry.card.source] : "em inglês";
+  return { set: p ? `${p.set_code.toUpperCase()} ${p.number}` : "", source, artist: p?.artist ?? "" };
+}
+
+export function Slot({ entry, onOpen, example = false }: { entry: Entry; onOpen?: (key: string) => void; example?: boolean }) {
   const key = renderKey(entry);
   const [state, setState] = useState<{ key: string; url?: string; error?: string }>({ key });
   const [attempt, setAttempt] = useState(0);
@@ -61,37 +115,54 @@ function Slot({ entry, onOpen }: { entry: Entry; onOpen: (key: string) => void }
   }, [key, attempt]);
 
   const outcome = outcomeOf(entry);
-  const print = selectedPrint(entry);
   const name = displayName(entry.card);
-  const caption =
-    entry.choice.kind === "pt"
-      ? `${entry.card.pt_print?.set.toUpperCase()} ${entry.card.pt_print?.number}`
-      : print
-        ? `${print.set_code.toUpperCase()} ${print.number}`
-        : "";
+  const cap = captionOf(entry);
+
+  const body = (
+    <>
+      <div className="slot-card">
+        {current.url ? (
+          <img
+            key={current.url}
+            className="slot-img"
+            src={current.url}
+            alt={example ? `Exemplo: ${name} em português` : ""}
+            draggable={false}
+          />
+        ) : current.error ? (
+          <span className="slot-msg slot-msg--error">
+            {example ? "Exemplo indisponível agora." : "Não carregou. Toque para tentar de novo."}
+          </span>
+        ) : (
+          <span className="slot-msg">{name}</span>
+        )}
+        <CropCorners />
+        {outcome !== "reescrita" && <OutcomeTag outcome={outcome} />}
+        {example && <span className="tag tag--exemplo">Exemplo</span>}
+      </div>
+      <span className="slot-caption">
+        <span className="slot-caption-set">{cap.set}</span>
+        <span className="slot-caption-src">{cap.source}</span>
+        {cap.artist && <span className="slot-caption-artist">{cap.artist}</span>}
+      </span>
+    </>
+  );
+
+  if (example) return <div className="slot slot--example">{body}</div>;
 
   return (
     <button
       type="button"
       className="slot"
       data-outcome={outcome}
-      onClick={() => (current.error ? setAttempt((a) => a + 1) : onOpen(entry.key))}
-      aria-label={current.error ? `${name}: a imagem não carregou. Tentar de novo.` : `${name}, ${caption}. Trocar arte ou quantidade.`}
+      onClick={() => (current.error ? setAttempt((a) => a + 1) : onOpen?.(entry.key))}
+      aria-label={
+        current.error
+          ? `${name}: a imagem não carregou. Tentar de novo.`
+          : `${name}, ${cap.set}, texto: ${cap.source}. Trocar arte ou quantidade.`
+      }
     >
-      <div className="slot-card">
-        {current.url ? (
-          <img key={current.url} className="slot-img" src={current.url} alt="" draggable={false} />
-        ) : current.error ? (
-          <span className="slot-msg slot-msg--error">Não carregou. Toque para tentar de novo.</span>
-        ) : (
-          <span className="slot-msg">{name}</span>
-        )}
-        <CropCorners />
-        {outcome !== "reescrita" && <OutcomeTag outcome={outcome} />}
-      </div>
-      <span className="slot-caption">
-        <span className="slot-caption-set">{caption}</span>
-      </span>
+      {body}
     </button>
   );
 }

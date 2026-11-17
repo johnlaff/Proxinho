@@ -8,25 +8,25 @@
 :root {
   color-scheme: light;
   /* tintas de processo */
-  --c: #00a3e0;
-  --m: #d6006f;
-  --y: #ffe000;
+  --c: #0086c9;
+  --m: #c2186b;
+  --y: #ffd400;
   --k: #111418;
   /* papel */
-  --paper: #e9edf1;
-  --paper-2: #dde3e9;
+  --paper: #f4f6f8;
+  --paper-2: #e4e9ee;
   --sheet: #ffffff;
   /* texto */
   --ink: #111418;
   --ink-2: #3a4450;
   --ink-3: #56616d;
   /* papéis funcionais */
-  --cyan-ink: #00679e; /* ciano escuro: botões e links (contraste AA com branco) */
+  --cyan-ink: #005b8a; /* ciano escuro: botões e links (contraste AA com branco) */
   --cyan-wash: #e2f3fb;
-  --magenta-ink: #b0005b;
+  --magenta-ink: #c2186b;
   --magenta-wash: #fbe6f0;
   --rule: #c5ced7;
-  --slot: #e4e8ec;
+  --slot: #e6eaee;
   --focus: #111418;
 
   --font: "Archivo Variable", "Archivo", system-ui, sans-serif;
@@ -335,7 +335,7 @@ a:hover {
   color: #fff;
 }
 .btn--primary:hover:not(:disabled) {
-  background: #00507b;
+  background: #00466b;
 }
 .btn--quiet {
   background: transparent;
@@ -784,14 +784,15 @@ button.slot:focus-visible .slot-card {
 @keyframes registro {
   from {
     opacity: 0.35;
-    filter: drop-shadow(-6px 0 0 rgb(0 163 224 / 0.85)) drop-shadow(6px 0 0 rgb(214 0 111 / 0.75)) drop-shadow(0 5px 0 rgb(255 224 0 / 0.9));
+    filter: drop-shadow(-6px 0 0 rgb(0 134 201 / 0.85)) drop-shadow(6px 0 0 rgb(194 24 107 / 0.75))
+      drop-shadow(0 5px 0 rgb(255 212 0 / 0.9));
   }
   60% {
     opacity: 1;
   }
   to {
     opacity: 1;
-    filter: drop-shadow(0 0 0 rgb(0 163 224 / 0)) drop-shadow(0 0 0 rgb(214 0 111 / 0)) drop-shadow(0 0 0 rgb(255 224 0 / 0));
+    filter: drop-shadow(0 0 0 rgb(0 134 201 / 0)) drop-shadow(0 0 0 rgb(194 24 107 / 0)) drop-shadow(0 0 0 rgb(255 212 0 / 0));
   }
 }
 .slot-msg {
@@ -1168,4 +1169,106 @@ button.slot:focus-visible .slot-card {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ---------- folha: registro, régua, rodapé, legendas ---------- */
+.sheet {
+  position: relative;
+}
+.sheet-reg {
+  position: absolute;
+  color: var(--ink-3);
+  opacity: 0.8;
+}
+.sheet-reg--top {
+  top: 6px;
+  left: calc(50% - 7px);
+}
+.sheet-reg--bottom {
+  bottom: 6px;
+  left: calc(50% - 7px);
+}
+.sheet-reg--left {
+  left: 6px;
+  top: calc(50% - 7px);
+}
+.sheet-reg--right {
+  right: 6px;
+  top: calc(50% - 7px);
+}
+.sheet-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: clamp(16px, 3.4%, 28px);
+}
+.sheet-foot .sheet-label {
+  text-align: right;
+}
+/* 5 cm numa folha de 21 cm: 23,8% da largura, na mesma escala da prévia */
+.ruler {
+  display: grid;
+  gap: 2px;
+  flex: none;
+  width: 23.8%;
+}
+.ruler-ticks {
+  height: 8px;
+  border: 1px solid var(--ink-3);
+  border-top: 0;
+  background: repeating-linear-gradient(90deg, var(--ink-3) 0 1px, transparent 1px 10%) bottom / 100% 4px no-repeat;
+}
+.ruler-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-stretch: 70%;
+  color: var(--ink-3);
+}
+.slot-caption {
+  justify-content: flex-start;
+  gap: 0;
+  font-stretch: 62%;
+}
+.slot-caption > span + span::before {
+  content: " · ";
+  white-space: pre;
+}
+.slot-caption-set {
+  color: var(--ink);
+}
+.slot-caption-artist {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slot--example {
+  cursor: default;
+}
+.slot-card .tag--exemplo {
+  position: absolute;
+  top: auto;
+  right: auto;
+  left: -4px;
+  bottom: 9%;
+  background: var(--y);
+  color: var(--k);
+  font-size: clamp(0.625rem, 1.2vw, 0.75rem);
+  box-shadow: 0 1px 3px rgb(17 20 24 / 0.3);
+}
+.sheet-empty-msg {
+  margin: 0 0 clamp(14px, 3%, 22px);
+  text-align: left;
+  max-width: none;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.drawer-facts .btn--small {
+  align-items: flex-start;
+  text-align: left;
+}
+.drawer-facts .btn--small svg {
+  margin-top: 0.2em;
+  flex: none;
 }
