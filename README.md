@@ -63,7 +63,7 @@ Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 | Camada | Tecnologia | Por quê |
 |---|---|---|
 | Interface | React 19, Vite 8, TypeScript 7 (strict) | Padrão de mercado, build rápido |
-| Motor da carta | Canvas 2D, SVG de símbolos, fontes OFL (Eczar, Splentinex) | Roda no navegador, sem servidor de imagem |
+| Motor da carta | Canvas 2D, SVG de símbolos, Beleren e MPlantin (com reserva OFL: Eczar, Splentinex) | Roda no navegador, sem servidor de imagem |
 | PDF | pdf-lib, carregado sob demanda | Medidas exatas em milímetros |
 | API | Cloudflare Worker + D1 (SQLite) + Cache API | Um deploy só, custo zero no plano atual |
 | Dados | Python (só biblioteca padrão) no GitHub Actions | Atualização diária sem servidor |
@@ -107,7 +107,7 @@ O projeto foi feito por um agente de IA trabalhando de forma autônoma, seguindo
 
 - A reescrita cobre a moldura moderna (2015+) de cartas normais. Planeswalkers, sagas, duas faces e molduras especiais usam a imagem oficial em português quando existe; senão saem em inglês com aviso.
 - Cartas sem tradução oficial saem em inglês. Não usamos tradução automática.
-- Por padrão o texto usa fontes livres parecidas com as originais. Quem tem a Beleren e a MPlantin pode escolher os arquivos no site; eles ficam só no navegador.
+- O texto usa as fontes das cartas reais (Beleren e MPlantin), servidas pelo Worker a partir do KV, fora deste repositório. Num clone sem esses arquivos, o site cai sozinho para fontes livres parecidas (Eczar e Splentinex). Também dá para escolher outros arquivos de fonte no site; eles ficam só no navegador.
 
 ## Aviso legal
 
@@ -117,6 +117,6 @@ Imagens das cartas: [Scryfall](https://scryfall.com). Textos do Arena: arquivos 
 
 ## Licença
 
-Código sob a [licença MIT](LICENSE). Fontes das cartas sob a SIL Open Font License (ver `public/fonts/cartas/`). Símbolos de mana: ver `public/symbols/`.
+Código sob a [licença MIT](LICENSE). Fontes livres de reserva sob a SIL Open Font License (ver `public/fonts/cartas/`); a Beleren e a MPlantin não fazem parte do repositório. Símbolos de mana: ver `public/symbols/`.
 
 Feito por [@johnlaff](https://github.com/johnlaff).

@@ -24,3 +24,14 @@ Partir do PNG oficial da impressão escolhida (745 × 1040 px, ~300 dpi, CORS li
 ## Atualização (17/11/2026): fontes das cartas reais
 
 As fontes originais (Beleren e MPlantin) são comerciais e não vêm com o site. A pessoa que tem os arquivos pode escolhê-los em "Acabamento → Fontes das cartas": eles ficam no IndexedDB do navegador, são registrados como `FontFace` locais e nunca são enviados. A Splentinex desenha letras menores que a MPlantin no mesmo corpo, então o texto com fontes livres usa um fator de 1,06 para chegar ao tamanho visual das cartas reais (conferido lado a lado com a Cultivar LCC 235).
+
+## Atualização (17/11/2026, tarde): fontes oficiais como padrão
+
+O site é de uso privado (o mantenedor e amigos), e o mantenedor forneceu os arquivos da Beleren Bold e da MPlantin. Agora elas são o padrão para todos:
+
+- Os arquivos ficam num namespace do Cloudflare KV (`FONTES`), fora do repositório público, e o Worker os serve em `/api/fontes/<nome>.ttf` com cache de 7 dias. Em desenvolvimento, `pnpm fonts:local` copia os arquivos de `.fontes-oficiais/` (ignorada pelo git) para o KV local.
+- Ordem de escolha no navegador: fontes da própria pessoa, depois as oficiais, depois as livres (se as oficiais não carregarem, por exemplo num clone do repositório sem os arquivos).
+- Não há arquivo da MPlantin Italic. O itálico (lembretes e flavor) usa a Splentinex Italic, releitura da mesma Plantin, registrada na família oficial com `size-adjust: 106%`.
+- A Beleren tem maiúsculas menores que a Eczar no mesmo corpo: nome e tipo usam fator 1,08 e recuo de 3 px, conferidos com a Cultivar (LCC 235 em PT e TRC 460 em inglês, maiúsculas com 27 px numa carta de 1040 px).
+
+Consequência: qualquer pessoa que abra o site consegue baixar os arquivos das fontes. Se o site for aberto ao público, isso precisa ser revisto (voltar às fontes livres ou fechar o acesso).

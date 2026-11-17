@@ -19,5 +19,8 @@
       "migrations_dir": "migrations",
     },
   ],
+  // Fontes das cartas reais (Beleren e MPlantin). Os arquivos ficam só aqui,
+  // fora do repositório público; ver docs/adr/0001-motor-da-carta-no-navegador.md.
+  "kv_namespaces": [{ "binding": "FONTES", "id": "45bd871710cf4290a73b902f3b54a6d8" }],
   "routes": [{ "pattern": "proxinho.johnlaff.com", "custom_domain": true }],
 }

@@ -1,16 +1,21 @@
 /**
- * Fontes usadas para escrever nas cartas.
+ * Fontes usadas para escrever nas cartas, em três níveis:
  *
- * Padrão: fontes livres (SIL OFL 1.1), distribuídas com o site.
- * - Eczar SemiBold (Rosetta Type): nome e linha de tipo.
- * - Splentinex (Daniel Benjamin Miller): texto das regras, inspirada na Plantin.
+ * 1. As fontes que a pessoa escolheu no próprio navegador (`applyCustomFonts`).
+ * 2. As fontes das cartas reais, Beleren Bold e MPlantin, servidas pelo
+ *    próprio site em /api/fontes/. Os arquivos ficam no Cloudflare KV, fora do
+ *    repositório público (ver ADR 0001).
+ * 3. Fontes livres (SIL OFL 1.1) que vêm com o site, usadas se as oficiais
+ *    não carregarem: Eczar SemiBold no nome e Splentinex no texto.
  *
- * As fontes das cartas reais (Beleren e MPlantin) pertencem a terceiros e não
- * são distribuídas. Quem tem os arquivos pode usá-los: eles são carregados só
- * no navegador da pessoa (`applyCustomFonts`) e nunca saem dele.
+ * Não existe arquivo da MPlantin Italic, então o itálico (lembretes e flavor)
+ * usa a Splentinex Italic, uma releitura da mesma Plantin, ajustada ao tamanho
+ * da MPlantin com `size-adjust`.
  */
 export const TITLE_FONT = "ProxinhoTitulo";
 export const BODY_FONT = "ProxinhoTexto";
+const OFFICIAL_TITLE = "ProxinhoTituloOficial";
+const OFFICIAL_BODY = "ProxinhoTextoOficial";
 const CUSTOM_TITLE = "ProxinhoTituloPessoal";
 const CUSTOM_BODY = "ProxinhoTextoPessoal";
 
@@ -20,6 +25,13 @@ const CUSTOM_BODY = "ProxinhoTextoPessoal";
  */
 const FREE_BODY_SCALE = 1.06;
 
+/**
+ * A Beleren tem a altura das maiúsculas menor que a Eczar no mesmo corpo; as
+ * medidas da moldura foram feitas com a Eczar. Conferido com Cultivar (LCC 235
+ * em PT e TRC 460 em inglês): maiúsculas com 27 px numa carta de 1040 px.
+ */
+const OFFICIAL_TITLE_SCALE = 1.08;
+
 export interface CustomFontFiles {
   title?: ArrayBuffer | null;
   body?: ArrayBuffer | null;
@@ -27,43 +39,69 @@ export interface CustomFontFiles {
 }
 
 let loading: Promise<void> | null = null;
+let official = { title: false, body: false };
 let custom: { title: boolean; body: boolean; italic: boolean } = { title: false, body: false, italic: false };
 let customFaces: FontFace[] = [];
 let version = 0;
 
-export function loadCardFonts(base = "/fonts/cartas/"): Promise<void> {
+export function loadCardFonts(base = "/fonts/cartas/", officialBase = "/api/fontes/"): Promise<void> {
   if (!loading) {
-    const faces = [
+    const free = [
       new FontFace(TITLE_FONT, `url(${base}Eczar-SemiBold.woff2)`, { weight: "600" }),
       new FontFace(BODY_FONT, `url(${base}Splentinex-Regular.otf)`, { style: "normal" }),
       new FontFace(BODY_FONT, `url(${base}Splentinex-Italic.otf)`, { style: "italic" }),
     ];
-    loading = Promise.all(faces.map((f) => f.load())).then((loaded) => {
-      for (const f of loaded) document.fonts.add(f);
+    const title = new FontFace(OFFICIAL_TITLE, `url(${officialBase}beleren-bold.ttf)`, { weight: "700" });
+    const body = [
+      new FontFace(OFFICIAL_BODY, `url(${officialBase}mplantin.ttf)`, { style: "normal", weight: "400" }),
+      // `sizeAdjust` existe nos navegadores, mas ainda não nos tipos do TypeScript
+      new FontFace(OFFICIAL_BODY, `url(${base}Splentinex-Italic.otf)`, {
+        style: "italic",
+        weight: "400",
+        sizeAdjust: `${FREE_BODY_SCALE * 100}%`,
+      } as FontFaceDescriptors),
+    ];
+    const add = (f: FontFace) => (document.fonts.add(f), true);
+    loading = Promise.all([
+      Promise.all(free.map((f) => f.load())).then((loaded) => loaded.forEach(add)),
+      // as oficiais são opcionais: se faltarem (dev sem os arquivos), ficam as livres
+      title.load().then(add, () => false),
+      Promise.all(body.map((f) => f.load())).then(
+        (loaded) => loaded.every(add),
+        () => false,
+      ),
+    ]).then(([, t, b]) => {
+      official = { title: t, body: b };
     });
   }
   return loading;
 }
 
 /** Família CSS para o nome e o tipo (com o peso já incluído). */
-export function titleFont(): { family: string; weight: string } {
-  return custom.title ? { family: CUSTOM_TITLE, weight: "400" } : { family: TITLE_FONT, weight: "600" };
+export function titleFont(): { family: string; weight: string; scale: number; dx: number } {
+  // dx: a Beleren tem mais respiro à esquerda; o recuo alinha a primeira letra à da carta real
+  if (custom.title) return { family: CUSTOM_TITLE, weight: "400", scale: OFFICIAL_TITLE_SCALE, dx: -3 };
+  if (official.title) return { family: OFFICIAL_TITLE, weight: "700", scale: OFFICIAL_TITLE_SCALE, dx: -3 };
+  return { family: TITLE_FONT, weight: "600", scale: 1, dx: 0 };
 }
 
 /** Família CSS e fator de escala para o texto das regras. */
 export function bodyFont(): { family: string; scale: number } {
   // sem o arquivo itálico, o navegador inclina a fonte normal (itálico sintético)
   if (custom.body) return { family: CUSTOM_BODY, scale: 1 };
+  if (official.body) return { family: OFFICIAL_BODY, scale: 1 };
   return { family: BODY_FONT, scale: FREE_BODY_SCALE };
+}
+
+/** Quais fontes estão desenhando as cartas agora. */
+export function activeFonts(): "pessoais" | "oficiais" | "livres" {
+  if (custom.title || custom.body) return "pessoais";
+  return official.title && official.body ? "oficiais" : "livres";
 }
 
 /** Muda sempre que as fontes mudam: entra na chave do cache das prévias. */
 export function fontsVersion(): number {
   return version;
-}
-
-export function usingCustomFonts(): boolean {
-  return custom.title || custom.body;
 }
 
 /**
@@ -89,7 +127,7 @@ export async function applyCustomFonts(files: CustomFontFiles): Promise<void> {
   version++;
 }
 
-/** Volta para as fontes livres. */
+/** Volta para as fontes padrão do site. */
 export function clearCustomFonts(): void {
   for (const f of customFaces) document.fonts.delete(f);
   customFaces = [];

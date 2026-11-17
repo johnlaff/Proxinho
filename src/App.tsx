@@ -79,7 +79,7 @@ export default function App() {
         await applyCustomFonts(toFiles(saved));
         setFonts(saved);
       } catch {
-        /* arquivo salvo corrompido: segue com as fontes livres */
+        /* arquivo salvo corrompido: segue com as fontes padrão */
       }
     });
   }, []);

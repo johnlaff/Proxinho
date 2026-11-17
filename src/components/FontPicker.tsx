@@ -1,12 +1,12 @@
 /**
- * "Fontes das cartas": por padrão, fontes livres parecidas com as originais.
- * Quem tem a Beleren e a MPlantin pode escolher os arquivos; eles ficam só
- * neste navegador.
+ * "Fontes das cartas": por padrão, as fontes das cartas reais (Beleren e
+ * MPlantin), servidas pelo site. Quem quiser outras pode escolher os arquivos;
+ * eles ficam só neste navegador.
  */
 import { Upload } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { clearStoredFonts, saveStoredFonts, type StoredFonts } from "../app/userFonts";
-import { clearCustomFonts, applyCustomFonts } from "../engine/fonts";
+import { activeFonts, applyCustomFonts, clearCustomFonts, loadCardFonts } from "../engine/fonts";
 
 type Slot = "title" | "body" | "bodyItalic";
 
@@ -21,6 +21,17 @@ export function FontPicker({ stored, onChange }: { stored: StoredFonts | null; o
   const [open, setOpen] = useState(Boolean(stored));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [defaults, setDefaults] = useState<"oficiais" | "livres" | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadCardFonts().then(
+      () => alive && setDefaults(activeFonts() === "livres" ? "livres" : "oficiais"),
+      () => alive && setDefaults("livres"),
+    );
+    return () => {
+      alive = false;
+    };
+  }, []);
   const current: StoredFonts = stored ?? { title: null, body: null, bodyItalic: null, names: {} };
 
   async function pick(slot: Slot, file: File | undefined) {
@@ -53,17 +64,18 @@ export function FontPicker({ stored, onChange }: { stored: StoredFonts | null; o
       <p className="hint fonts-status">
         {stored
           ? `Usando as suas fontes${stored.names.title ? ` (${[stored.names.title, stored.names.body].filter(Boolean).join(", ")})` : ""}.`
-          : "Usando fontes livres parecidas com as originais (Eczar e Splentinex)."}
+          : defaults === "livres"
+            ? "As fontes das cartas reais não carregaram; usando fontes livres parecidas (Eczar e Splentinex)."
+            : "Usando as fontes das cartas reais: Beleren no nome e no tipo, MPlantin no texto."}
       </p>
       {!open ? (
         <button type="button" className="btn btn--quiet btn--small" onClick={() => setOpen(true)}>
-          Usar as fontes das cartas reais que eu tenho
+          Usar outros arquivos de fonte
         </button>
       ) : (
         <div className="fonts-panel">
           <p className="hint">
-            As fontes das cartas reais são pagas e não podem vir com o site. Se você tem os arquivos, escolha abaixo. Eles ficam só neste
-            navegador e nunca são enviados.
+            Escolha os arquivos que quiser usar no lugar das fontes padrão. Eles ficam só neste navegador e nunca são enviados.
           </p>
           {SLOTS.map((s) => (
             <div key={s.id} className="font-row">
@@ -92,7 +104,7 @@ export function FontPicker({ stored, onChange }: { stored: StoredFonts | null; o
           )}
           {stored && (
             <button type="button" className="link-btn" onClick={() => void reset()}>
-              Voltar às fontes livres
+              Voltar às fontes padrão
             </button>
           )}
         </div>

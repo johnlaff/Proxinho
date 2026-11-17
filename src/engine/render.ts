@@ -74,8 +74,8 @@ function measurer(ctx: CanvasRenderingContext2D, k: number): Measurer {
 
 /** Escreve uma linha (nome ou tipo) e comprime na horizontal se não couber. */
 function drawLine(ctx: CanvasRenderingContext2D, text: string, x: number, centerY: number, maxWidth: number, size: number, k: number) {
-  let s = size;
   const t = titleFont();
+  let s = size * t.scale;
   ctx.font = `${t.weight} ${s * k}px ${t.family}`;
   let w = ctx.measureText(text).width / k;
   // primeiro comprime até 82%; se ainda não couber, reduz o corpo
@@ -88,7 +88,7 @@ function drawLine(ctx: CanvasRenderingContext2D, text: string, x: number, center
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#0b0b0b";
-  ctx.translate(x * k, (centerY + s * 0.06) * k);
+  ctx.translate((x + t.dx) * k, (centerY + s * 0.06) * k);
   ctx.scale(sx, 1);
   ctx.fillText(text, 0, 0);
   ctx.restore();

@@ -37,7 +37,7 @@ export async function loadStoredFonts(): Promise<StoredFonts | null> {
   try {
     return ((await run("readonly", (s) => s.get(KEY))) as StoredFonts | undefined) ?? null;
   } catch {
-    return null; // modo anônimo ou armazenamento bloqueado: segue com as fontes livres
+    return null; // modo anônimo ou armazenamento bloqueado: segue com as fontes padrão
   }
 }
 

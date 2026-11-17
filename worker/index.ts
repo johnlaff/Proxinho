@@ -12,6 +12,24 @@ import { importDeck, ImportError } from "./importers";
 export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
+  /** Fontes das cartas reais, guardadas fora do repositório (opcional em dev). */
+  FONTES?: KVNamespace;
+}
+
+/** Arquivos de fonte que o site serve, pelo nome público. */
+const FONT_FILES = new Set(["beleren-bold.ttf", "mplantin.ttf", "mplantin-bold.ttf"]);
+
+async function serveFont(env: Env, name: string): Promise<Response> {
+  if (!FONT_FILES.has(name) || !env.FONTES) return problem(404, "Fonte não encontrada.");
+  const data = await env.FONTES.get(name, "arrayBuffer");
+  if (!data) return problem(404, "Fonte não encontrada.");
+  return new Response(data, {
+    headers: {
+      "content-type": "font/ttf",
+      "cache-control": "public, max-age=604800",
+      "x-content-type-options": "nosniff",
+    },
+  });
 }
 
 const MAX_RESOLVE = 250;
@@ -173,6 +191,9 @@ export default {
         const res = json(deck, { headers: { "cache-control": "public, max-age=900" } });
         await cache.put(key, res.clone());
         return res;
+      }
+      if (url.pathname.startsWith("/api/fontes/") && request.method === "GET") {
+        return serveFont(env, url.pathname.slice("/api/fontes/".length));
       }
       if (url.pathname.startsWith("/api/")) return problem(404, "Rota não encontrada.");
       return env.ASSETS.fetch(request);
