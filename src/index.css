@@ -1198,10 +1198,32 @@ button.slot:focus-visible .slot-card {
 }
 .sheet-foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: clamp(16px, 3.4%, 28px);
+  gap: 8px 12px;
+  margin-top: clamp(20px, 4.4%, 36px);
+  padding-top: 8px;
+}
+.slug-part {
+  white-space: nowrap;
+}
+.slug-part + .slug-part::before {
+  content: " · ";
+  white-space: pre;
+}
+@media (max-width: 480px) {
+  .sheet-foot {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .sheet-foot .sheet-label {
+    text-align: left;
+  }
+  .ruler {
+    width: 23.8%;
+    min-width: 72px;
+  }
 }
 .sheet-foot .sheet-label {
   text-align: right;

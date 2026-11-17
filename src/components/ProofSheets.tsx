@@ -61,7 +61,13 @@ export function Sheet({
           <span className="ruler-ticks" />
           <span className="ruler-label">5 cm</span>
         </span>
-        <span className="sheet-label">{slug}</span>
+        <span className="sheet-label">
+          {slug.split(" · ").map((part) => (
+            <span key={part} className="slug-part">
+              {part}
+            </span>
+          ))}
+        </span>
       </footer>
     </section>
   );
