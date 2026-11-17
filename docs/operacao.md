@@ -33,6 +33,8 @@ pnpm exec wrangler rollback <id-da-versao>
 
 **Atualizar o modelo ou o ONNX Runtime:** mude a URL e o SHA-256 em `scripts/modelo.mjs` (ou a versão de `onnxruntime-web`); o runtime leva a versão no nome do arquivo, e um modelo novo deve ganhar nome novo, porque o cache desses arquivos é imutável.
 
+**Atualizações de dependências:** só o Dependabot (`.github/dependabot.yml`), uma vez por semana, agrupado e com 7 dias de espera. O Renovate foi recusado em 17/11/2026 para não haver dois robôs abrindo PRs das mesmas dependências. `@types/node` não recebe versão maior sozinho: sobe junto com o Node do CI (`NODE_VERSION`).
+
 **Consultar o banco:**
 ```bash
 pnpm exec wrangler d1 execute proxinho --remote --command "SELECT count(*) FROM cards"

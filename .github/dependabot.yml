@@ -17,6 +17,11 @@ updates:
         update-types: [minor, patch]
     cooldown:
       default-days: 7
+    ignore:
+      # os tipos do Node acompanham a versão que roda no CI e na Cloudflare (24);
+      # sobe junto com NODE_VERSION em .github/workflows/ci.yml, não sozinho
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
