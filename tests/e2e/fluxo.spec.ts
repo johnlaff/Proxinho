@@ -24,6 +24,15 @@ test("cola a lista, revisa as folhas, troca a arte e baixa o PDF", async ({ page
   await drawer.getByRole("button", { name: "Fechar" }).click();
   await expect(page.getByRole("heading", { name: /10 cartas, 2 folhas/ })).toBeVisible();
 
+  // a folha 2 tem 1 carta e 8 espaços vazios: todos do mesmo tamanho da carta
+  const sizes = await page
+    .locator(".sheet")
+    .nth(1)
+    .locator(".slot-card")
+    .evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+  expect(sizes).toHaveLength(9);
+  expect(new Set(sizes).size).toBe(1);
+
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     page
