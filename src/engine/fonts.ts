@@ -2,15 +2,13 @@
  * Fontes usadas para escrever nas cartas, em três níveis:
  *
  * 1. As fontes que a pessoa escolheu no próprio navegador (`applyCustomFonts`).
- * 2. As fontes das cartas reais, Beleren Bold e MPlantin, servidas pelo
+ * 2. As fontes das cartas reais, Beleren Bold e MPlantin (normal e itálica), servidas pelo
  *    próprio site em /api/fontes/. Os arquivos ficam no Cloudflare KV, fora do
  *    repositório público (ver ADR 0001).
  * 3. Fontes livres (SIL OFL 1.1) que vêm com o site, usadas se as oficiais
  *    não carregarem: Eczar SemiBold no nome e Splentinex no texto.
  *
- * Não existe arquivo da MPlantin Italic, então o itálico (lembretes e flavor)
- * usa a Splentinex Italic, uma releitura da mesma Plantin, ajustada ao tamanho
- * da MPlantin com `size-adjust`.
+ * O itálico (lembretes e flavor) usa a MPlantin Italic.
  */
 export const TITLE_FONT = "ProxinhoTitulo";
 export const BODY_FONT = "ProxinhoTexto";
@@ -54,12 +52,7 @@ export function loadCardFonts(base = "/fonts/cartas/", officialBase = "/api/font
     const title = new FontFace(OFFICIAL_TITLE, `url(${officialBase}beleren-bold.ttf)`, { weight: "700" });
     const body = [
       new FontFace(OFFICIAL_BODY, `url(${officialBase}mplantin.ttf)`, { style: "normal", weight: "400" }),
-      // `sizeAdjust` existe nos navegadores, mas ainda não nos tipos do TypeScript
-      new FontFace(OFFICIAL_BODY, `url(${base}Splentinex-Italic.otf)`, {
-        style: "italic",
-        weight: "400",
-        sizeAdjust: `${FREE_BODY_SCALE * 100}%`,
-      } as FontFaceDescriptors),
+      new FontFace(OFFICIAL_BODY, `url(${officialBase}mplantin-italic.ttf)`, { style: "italic", weight: "400" }),
     ];
     const add = (f: FontFace) => (document.fonts.add(f), true);
     loading = Promise.all([

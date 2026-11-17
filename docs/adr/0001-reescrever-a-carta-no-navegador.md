@@ -31,7 +31,7 @@ O site é de uso privado (o mantenedor e amigos), e o mantenedor forneceu os arq
 
 - Os arquivos ficam num namespace do Cloudflare KV (`FONTES`), fora do repositório público, e o Worker os serve em `/api/fontes/<nome>.ttf` com cache de 7 dias. Em desenvolvimento, `pnpm fonts:local` copia os arquivos de `.fontes-oficiais/` (ignorada pelo git) para o KV local.
 - Ordem de escolha no navegador: fontes da própria pessoa, depois as oficiais, depois as livres (se as oficiais não carregarem, por exemplo num clone do repositório sem os arquivos).
-- Não há arquivo da MPlantin Italic. O itálico (lembretes e flavor) usa a Splentinex Italic, releitura da mesma Plantin, registrada na família oficial com `size-adjust: 106%`.
+- O itálico (lembretes e flavor) usa a MPlantin Italic, enviada pelo mantenedor logo depois.
 - A Beleren tem maiúsculas menores que a Eczar no mesmo corpo: nome e tipo usam fator 1,08 e recuo de 3 px, conferidos com a Cultivar (LCC 235 em PT e TRC 460 em inglês, maiúsculas com 27 px numa carta de 1040 px).
 
 Consequência: qualquer pessoa que abra o site consegue baixar os arquivos das fontes. Se o site for aberto ao público, isso precisa ser revisto (voltar às fontes livres ou fechar o acesso).
