@@ -65,7 +65,7 @@ export function renderInput(entry: Entry, side: Side = 0) {
   const face = translate ? (entry.card.faces[side] ?? null) : null;
   const tp = entry.card.text_print;
   const sameAsText = Boolean(tp && print.set_code.toLowerCase() === tp.set.toLowerCase() && print.number === tp.number);
-  return { print, face, side, flavor: sameAsText ? (face?.flavor_pt ?? null) : null };
+  return { print, face, side, typeLine: entry.card.type_line, flavor: sameAsText ? (face?.flavor_pt ?? null) : null };
 }
 
 function toUrl(canvas: HTMLCanvasElement): Promise<string> {

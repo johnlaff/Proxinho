@@ -236,6 +236,8 @@ def load_oracle(offline: bool) -> list[dict]:
 
 UNSUPPORTED_EFFECTS = {"showcase", "etched", "inverted", "fullart", "borderless", "textless", "colorshifted", "spree", "upsidedowndfc"}
 UNSUPPORTED_TYPES = ("Planeswalker", "Saga", "Class", "Battle", "Case", "Room")
+# planeswalkers de layout normal já são reescritos (src/engine/planeswalker.ts)
+UNSUPPORTED_TYPES_NORMAL = tuple(t for t in UNSUPPORTED_TYPES if t != "Planeswalker")
 
 
 def frame_supported(card: dict) -> bool:
@@ -253,7 +255,7 @@ def frame_supported(card: dict) -> bool:
         and not card.get("full_art")
         and not card.get("textless")
         and not effects & UNSUPPORTED_EFFECTS
-        and not any(t in type_line for t in UNSUPPORTED_TYPES)
+        and not any(t in type_line for t in UNSUPPORTED_TYPES_NORMAL)
     )
 
 
@@ -339,6 +341,10 @@ def load_prints(offline: bool) -> list[dict]:
     return out
 
 
+# planeswalkers cujo texto em PT tem outro número de habilidades que o inglês
+PW_MISMATCH: set[str] = set()
+
+
 def build(offline: bool) -> list[dict]:
     CACHE.mkdir(parents=True, exist_ok=True)
     OUT.mkdir(parents=True, exist_ok=True)
@@ -366,6 +372,13 @@ def build(offline: bool) -> list[dict]:
         else:
             source, faces, text_print = None, [], None
         stats[source or "sem"] += 1
+        # planeswalker: o motor casa cada parágrafo em PT com uma faixa da carta
+        if "Planeswalker" in card.get("type_line", "") and card.get("layout") == "normal" and faces:
+            en = len([x for x in (card.get("oracle_text") or "").split("\n") if x.strip()])
+            pt_text = re.sub(r'([.”"])\s*(?=[+−–-](?:\d+|X):)', "\\1\n", faces[0].get("text_pt") or "")
+            pt = len([x for x in pt_text.split("\n") if x.strip()])
+            if en != pt:
+                PW_MISMATCH.add(oid)
 
         # Nome em português: o impresso é o que a comunidade conhece (Liga Magic).
         name_pt = None
@@ -449,6 +462,10 @@ def main() -> None:
     rows = build(args.offline)
     known = {r["oracle_id"] for r in rows}
     prints = [p for p in load_prints(args.offline) if p["oracle_id"] in known]
+    for p in prints:
+        if p["oracle_id"] in PW_MISMATCH:
+            p["supported"] = False
+    log(f"planeswalkers com habilidades que não batem (saem como estão): {len(PW_MISMATCH)}")
     write(rows, prints)
 
 

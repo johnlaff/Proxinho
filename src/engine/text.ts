@@ -236,3 +236,25 @@ export function fitText(
   }
   return attempt(null) ?? layoutAround(buildParagraphs(rules, null), min, width, height, m, notch);
 }
+
+/** Uma faixa de texto com tamanho próprio (habilidades de planeswalker). */
+export interface TextRow {
+  text: string;
+  width: number;
+  height: number;
+  notch?: Notch;
+}
+
+/**
+ * Acha o maior corpo em que todas as faixas cabem, cada uma no seu espaço.
+ * Todas usam o mesmo corpo, como nas cartas impressas.
+ */
+export function fitRows(rows: TextRow[], m: Measurer, max = 32, min = 15): LayoutResult[] {
+  const paragraphs = rows.map((r) => buildParagraphs(r.text, null));
+  const at = (size: number) => rows.map((r, i) => layoutAround(paragraphs[i], size, r.width, r.height, m, r.notch));
+  for (let size = max; size >= min; size -= 0.5) {
+    const res = at(size);
+    if (res.every((l, i) => l.height <= rows[i].height)) return res;
+  }
+  return at(min);
+}

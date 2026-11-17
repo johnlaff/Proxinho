@@ -10,3 +10,4 @@ Cada arquivo registra uma decisão de arquitetura: o contexto, o que foi decidid
 | [0004](0004-pipeline-de-dados-em-python.md) | Pipeline de dados diário em Python puro no GitHub Actions | Aceita |
 | [0005](0005-pdf-no-navegador-com-pdf-lib.md) | PDF gerado no navegador com pdf-lib, em milímetros | Aceita |
 | [0006](0006-ferramentas-de-qualidade.md) | Ferramentas: Vite, TypeScript, oxlint/oxfmt, Vitest, Playwright | Aceita |
+| [0007](0007-molduras-de-duas-faces-e-planeswalker.md) | Molduras de duas faces e de planeswalker | Aceita |

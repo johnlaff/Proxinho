@@ -71,3 +71,12 @@ test("carta de duas faces sai com frente e verso, cada um em português", async 
   await expect(page.getByRole("button", { name: /Tovolar, Flagelo da Meia-noite \(verso\)/ })).toBeVisible();
   await expect(page.locator(".slot-img")).toHaveCount(2, { timeout: 60_000 });
 });
+
+test("planeswalker sai reescrito em português", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Lista do deck").fill("1 Chandra, Torch of Defiance");
+  await page.getByRole("button", { name: "Montar folhas" }).click();
+  await expect(page.getByRole("button", { name: /Chandra, Chama da Rebeldia/ })).toBeVisible();
+  await expect(page.locator(".slot-img")).toHaveCount(1, { timeout: 60_000 });
+  await expect(page.locator(".slot .tag")).toHaveCount(0); // sem etiqueta: saiu reescrito
+});

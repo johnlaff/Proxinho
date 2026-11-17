@@ -8,10 +8,11 @@
  * copyright continuam os da carta original.
  */
 import { bodyFont, loadCardFonts, titleFont } from "./fonts";
-import { BACK_PT_NOTCH, BASE_H, BASE_W, m15Layout } from "./geometry";
+import { BACK_PT_NOTCH, BASE_H, BASE_W, costLeft, m15Layout, type Rect } from "./geometry";
 import { eraseRegions, findSetSymbolLeft, hasRightIcon } from "./erase";
+import { isTallPlaneswalker, planeswalkerRows, PW, rowRects, splitAbilities } from "./planeswalker";
 import { preloadSymbols } from "./symbols";
-import { SYMBOL_EM, fitText, type Measurer } from "./text";
+import { SYMBOL_EM, fitRows, fitText, type LayoutResult, type Measurer } from "./text";
 import { scryfallImage, type PrintRecord, type PtFace } from "./types";
 
 export interface RenderOptions {
@@ -28,6 +29,8 @@ export interface RenderOptions {
   imageVersion?: "png" | "normal";
   /** cartas de duas faces: 0 = frente, 1 = verso */
   side?: 0 | 1;
+  /** linha de tipo em inglês da carta (reconhece planeswalkers mesmo sem o tipo em PT) */
+  typeLine?: string | null;
 }
 
 /** Cor do texto escrito: preto como o das cartas, ou claro nos versos escuros. */
@@ -108,6 +111,121 @@ function drawLine(
   ctx.restore();
 }
 
+/**
+ * Planeswalker: nome, tipo e uma faixa por habilidade (ver planeswalker.ts).
+ * Devolve false quando a imagem não bate com o texto; aí a carta sai original.
+ */
+async function renderPlaneswalker(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  sctx: CanvasRenderingContext2D;
+  data: ImageData;
+  toImg: (r: Rect) => Rect;
+  face: PtFace;
+  print: PrintRecord;
+  W: number;
+  H: number;
+}): Promise<boolean> {
+  const { ctx, data, toImg, face, print } = p;
+  const paragraphs = splitAbilities(face.text_pt);
+  const rows = planeswalkerRows(data, paragraphs.length);
+  if (!rows) return false;
+  const fx = data.width / BASE_W;
+  const fy = data.height / BASE_H;
+  const tb = isTallPlaneswalker(paragraphs.length) ? PW.type.tall : PW.type.normal;
+  const setLeft = Math.min(Math.max(findSetSymbolLeft(data, Math.round((tb.y0 + 4) * fy), Math.round((tb.y1 - 4) * fy)) / fx, 560), 660);
+  const cost = costLeft(print.mana_cost);
+  const rects = rows.map(rowRects);
+  const inks = eraseRegions(
+    data,
+    [
+      { rect: toImg({ x0: 50, y0: PW.title.erase.y0, x1: cost - 6, y1: PW.title.erase.y1 }), threshold: 28 },
+      // sem o tipo em português, a linha de tipo em inglês fica
+      { rect: toImg({ x0: 50, y0: tb.y0, x1: face.type_pt ? setLeft - 6 : 50, y1: tb.y1 }), threshold: 28 },
+      ...rects.map((r) => ({ rect: toImg(r.erase), threshold: 14, colorThreshold: 34 })),
+    ],
+    [toImg(PW.loyaltyBox)],
+  );
+  p.sctx.putImageData(data, 0, 0);
+  ctx.drawImage(p.src, 0, 0, p.W, p.H);
+
+  const k = p.W / BASE_W;
+  drawLine(ctx, face.name_pt ?? face.name_en, 66, PW.title.centerY, cost - 12 - 66, 35, k, INK[inks[0]]);
+  if (face.type_pt) drawLine(ctx, face.type_pt, 66, tb.centerY, setLeft - 10 - 66, 30, k, INK[inks[1]]);
+
+  const symbols = await preloadSymbols(face.text_pt);
+  const m = measurer(ctx, k);
+  const layouts = fitRows(
+    rects.map(({ text }, i) => {
+      // a faixa de baixo desvia da caixa da lealdade inicial
+      const under = text.y1 - PW.loyaltyBox.y0;
+      return {
+        text: paragraphs[i],
+        width: text.x1 - text.x0,
+        height: text.y1 - text.y0,
+        notch: under > 0 ? { width: text.x1 - PW.loyaltyBox.x0 + 6, height: under } : undefined,
+      };
+    }),
+    m,
+  );
+  layouts.forEach((res, i) => drawLayout(ctx, res, rects[i].text, k, inks[2 + i], symbols, m));
+  return true;
+}
+
+/** Escreve um texto já diagramado, centralizado na vertical dentro de `box`. */
+function drawLayout(
+  ctx: CanvasRenderingContext2D,
+  res: LayoutResult,
+  box: Rect,
+  k: number,
+  boxInk: "dark" | "light",
+  symbols: Map<string, CanvasImageSource>,
+  m: Measurer,
+) {
+  let y = box.y0 + (box.y1 - box.y0 - res.height) / 2;
+  const space = m.text(" ", res.size, false);
+  const ink = INK[boxInk];
+  ctx.fillStyle = ink;
+  ctx.textBaseline = "alphabetic";
+  res.lines.forEach((line, i) => {
+    if (i > 0 && line.first) y += res.paragraphGap;
+    if (i === res.flavorStart && i > 0) {
+      // fio separador do texto de ambientação
+      const gy = y + res.paragraphGap * 0.7;
+      const grad = ctx.createLinearGradient(box.x0 * k, 0, box.x1 * k, 0);
+      const rule = boxInk === "light" ? "251,248,241" : "0,0,0";
+      grad.addColorStop(0, `rgba(${rule},0)`);
+      grad.addColorStop(0.12, `rgba(${rule},0.45)`);
+      grad.addColorStop(0.88, `rgba(${rule},0.45)`);
+      grad.addColorStop(1, `rgba(${rule},0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect((box.x0 + 6) * k, gy * k, (box.x1 - box.x0 - 12) * k, Math.max(1, 1.6 * k));
+      ctx.fillStyle = ink;
+      y += res.paragraphGap * 1.4;
+    }
+    const baseline = y + res.lineHeight * 0.8;
+    let x = box.x0;
+    line.chunks.forEach((chunk, ci) => {
+      if (ci > 0) x += space;
+      for (const run of chunk) {
+        if (run.kind === "symbol") {
+          const sz = res.size * SYMBOL_EM;
+          const icon = symbols.get(run.value);
+          const top = baseline - sz * 0.86;
+          if (icon) ctx.drawImage(icon, (x + res.size * 0.03) * k, top * k, sz * k, sz * k);
+          x += res.size * (SYMBOL_EM + 0.06);
+        } else {
+          const f = bodyFont();
+          ctx.font = `${run.italic ? "italic " : ""}${res.size * f.scale * k}px ${f.family}`;
+          ctx.fillText(run.value, x * k, baseline * k);
+          x += m.text(run.value, res.size, run.italic);
+        }
+      }
+    });
+    y += res.lineHeight;
+  });
+}
+
 /** Lembrete de poder/resistência do verso, em cinza, no canto da caixa de texto. */
 function drawBackPt(ctx: CanvasRenderingContext2D, pt: string, centerY: number, k: number, ink: "dark" | "light") {
   const t = titleFont();
@@ -160,6 +278,14 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const data = sctx.getImageData(0, 0, src.width, src.height);
   const fx = src.width / BASE_W;
   const fy = src.height / BASE_H;
+  const toImg = (r: Rect) => ({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
+
+  if (!print.sides && /planeswalker/i.test(face.type_pt ?? opts.typeLine ?? "")) {
+    const done = await renderPlaneswalker({ ctx, src, sctx, data, toImg, face, print, W, H });
+    if (!done) ctx.drawImage(img, 0, 0, W, H);
+    return { canvas: out, translated: done };
+  }
+
   const setLeft = findSetSymbolLeft(data, Math.round(594 * fy), Math.round(632 * fy)) / fx;
   const manaCost = sideInfo ? sideInfo.mana_cost : print.mana_cost;
   const hasPt = sideInfo ? sideInfo.has_pt : print.has_pt;
@@ -172,7 +298,6 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     indicator: sideInfo?.indicator,
     mdfcStrip: print.layout === "modal_dfc",
   });
-  const toImg = (r: { x0: number; y0: number; x1: number; y1: number }) => ({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
   const [titleInk, typeInk, boxInk] = eraseRegions(
     data,
     layout.erase.map((e) => ({ rect: toImg(e.rect), threshold: e.threshold, colorThreshold: e.colorThreshold })),
@@ -203,48 +328,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const symbols = await preloadSymbols(face.text_pt, opts.flavor);
   const m = measurer(ctx, k);
   const res = fitText(face.text_pt, opts.flavor ?? null, box.x1 - box.x0, box.y1 - box.y0, m, 34, 15, backPt ? BACK_PT_NOTCH : undefined);
-  let y = box.y0 + (box.y1 - box.y0 - res.height) / 2;
-  const space = m.text(" ", res.size, false);
-  const ink = INK[boxInk];
-  ctx.fillStyle = ink;
-  ctx.textBaseline = "alphabetic";
-  res.lines.forEach((line, i) => {
-    if (i > 0 && line.first) y += res.paragraphGap;
-    if (i === res.flavorStart && i > 0) {
-      // fio separador do texto de ambientação
-      const gy = y + res.paragraphGap * 0.7;
-      const grad = ctx.createLinearGradient(box.x0 * k, 0, box.x1 * k, 0);
-      const rule = boxInk === "light" ? "251,248,241" : "0,0,0";
-      grad.addColorStop(0, `rgba(${rule},0)`);
-      grad.addColorStop(0.12, `rgba(${rule},0.45)`);
-      grad.addColorStop(0.88, `rgba(${rule},0.45)`);
-      grad.addColorStop(1, `rgba(${rule},0)`);
-      ctx.fillStyle = grad;
-      ctx.fillRect((box.x0 + 6) * k, gy * k, (box.x1 - box.x0 - 12) * k, Math.max(1, 1.6 * k));
-      ctx.fillStyle = ink;
-      y += res.paragraphGap * 1.4;
-    }
-    const baseline = y + res.lineHeight * 0.8;
-    let x = box.x0;
-    line.chunks.forEach((chunk, ci) => {
-      if (ci > 0) x += space;
-      for (const run of chunk) {
-        if (run.kind === "symbol") {
-          const sz = res.size * SYMBOL_EM;
-          const icon = symbols.get(run.value);
-          const top = baseline - sz * 0.86;
-          if (icon) ctx.drawImage(icon, (x + res.size * 0.03) * k, top * k, sz * k, sz * k);
-          x += res.size * (SYMBOL_EM + 0.06);
-        } else {
-          const f = bodyFont();
-          ctx.font = `${run.italic ? "italic " : ""}${res.size * f.scale * k}px ${f.family}`;
-          ctx.fillText(run.value, x * k, baseline * k);
-          x += m.text(run.value, res.size, run.italic);
-        }
-      }
-    });
-    y += res.lineHeight;
-  });
+  drawLayout(ctx, res, box, k, boxInk, symbols, m);
 
   return { canvas: out, translated: true };
 }
