@@ -47,7 +47,7 @@ flowchart LR
 1. Baixa a imagem do CDN do Scryfall (CORS liberado, então o canvas pode ser lido).
 2. **Apaga** nome, tipo e caixa de texto (`erase.ts`): uma máscara marca os pixels de texto (escuros ou de cor diferente da textura; em faixas escuras, o contrário), cresce um pouco para pegar a borda suavizada e é preenchida de fora para dentro numa pirâmide de resoluções, o que reconstrói a textura da moldura. Poder/resistência, custo de mana e símbolo da coleção ficam protegidos.
    - Nos **planeswalkers** (`planeswalker.ts`) as faixas de cada habilidade são medidas na própria imagem, e a caixa translúcida é preenchida por uma rede neural de inpainting, o **LaMa** (`lama.ts`), numa worker separada (`lamaWorker.ts`): na placa de vídeo (WebGPU) quando há, na CPU (WebAssembly) quando não. A pirâmide deixaria uma mancha borrada sobre a arte; o LaMa continua a textura. Detalhes no ADR 0008.
-   - Nas **fichas** (`token.ts`) a linha de tipo muda de altura conforme o texto: o motor acha a barra pelos dois fios escuros que a emolduram e o pé da caixa pelo fio de baixo. O nome sai centralizado em versalete, e texto de uma linha só, centralizado (ADR 0009).
+   - Nas **fichas** (`token.ts`) a linha de tipo muda de altura conforme o texto: o motor acha a barra pelos dois fios escuros que a emolduram e o pé da caixa pelo fio de baixo. O nome sai centralizado em versalete, e texto de uma linha só, centralizado (ADR 0009). Emblemas usam a mesma moldura. Na moldura de 2003, a placa escura do nome é achada pela cor de fundo, repintada e recebe o nome em dourado (ADR 0010).
    - Nas **cartas de duas faces**, o motor desvia dos ícones de transformar, do indicador de cor e do lembrete de P/R do verso (ADR 0007).
 3. **Amplia** para a resolução de impressão.
 4. **Escreve** o português (`text.ts`) com a Beleren (nome e tipo) e a MPlantin (texto), servidas em `/api/fontes/` a partir do KV (`fonts.ts`; sem elas, Eczar e Splentinex): quebra em linhas com símbolos de mana em SVG, procura o maior corpo que cabe (de 34 a 15), põe lembretes em itálico e o texto de ambientação só se couber com folga.
@@ -56,7 +56,7 @@ As medidas da moldura estão em `geometry.ts`, na escala da imagem de 745 × 104
 
 ## Banco (D1)
 
-- `cards`: uma linha por carta (`oracle_id`), com nome em inglês e português, apelidos normalizados para busca (`search_en`, `search_pt`), origem do texto (`arena` ou `impresso`), faces em JSON, a impressão PT mais recente e `tokens` (JSON com as fichas que a carta cria). As fichas também são linhas de `cards`, com `layout = 'token'` e, nas faces, P/R e cores.
+- `cards`: uma linha por carta (`oracle_id`), com nome em inglês e português, apelidos normalizados para busca (`search_en`, `search_pt`), origem do texto (`arena` ou `impresso`), faces em JSON, a impressão PT mais recente e `tokens` (JSON com as fichas que a carta cria). As fichas e os emblemas também são linhas de `cards`, com `layout = 'token'` e, nas faces, P/R e cores. Cada face de uma ficha de duas faces é uma linha de `prints` da ficha equivalente; a de trás tem id `<id>#1` (`printImage` em `src/engine/types.ts`).
 - `prints`: uma linha por impressão em inglês, com coleção, número, artista, data, moldura, efeitos, a coluna `supported` calculada pelo pipeline e, nas cartas de duas faces, `sides` (JSON com custo, P/R, indicador e suporte de cada face).
 - `meta`: data da última atualização (aparece em `/api/health`).
 

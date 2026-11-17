@@ -18,7 +18,7 @@ import {
   type Side,
 } from "../app/model";
 import { previewUrl } from "../app/preview";
-import { scryfallImage } from "../engine/types";
+import { printImage, scryfallImage } from "../engine/types";
 import { OUTCOME_LABEL } from "../app/labels";
 import { OutcomeTag } from "./OutcomeTag";
 
@@ -218,7 +218,7 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
                 name={entry.key}
                 checked={selectedId === p.id}
                 onSelect={() => onChoice(entry.key, { kind: "print", printId: p.id })}
-                thumb={scryfallImage(p.id, "small")}
+                thumb={printImage(p, "small")}
                 title={p.set_name}
                 meta={[`${p.set_code.toUpperCase()} ${p.number}`, yearOf(p), p.artist].filter(Boolean).join(" · ")}
                 tag={translatable ? (p.supported ? "Sai em português" : "Sai em inglês") : "Sai em inglês"}

@@ -52,5 +52,7 @@ pnpm exec wrangler d1 execute proxinho --remote --command "SELECT count(*) FROM 
 | Planeswalker com mancha borrada na caixa de texto | O LaMa não carregou e o motor usou o preenchimento simples | Ver o console do navegador ("preenchimento por rede neural indisponível"); conferir se `/modelos/` foi publicado (o build avisa se o download falhou) |
 | Primeiro planeswalker demora | Download único do modelo (~66 MB) e, sem placa de vídeo, ~6 s por carta na CPU | Esperado; ver ADR 0008 |
 | Ficha sai em inglês com texto em PT disponível | A barra de tipo não foi achada (moldura diferente) | Ver `findTokenBar` em `src/engine/token.ts`; a ficha sai como está de propósito |
+| Ficha de 2003 sai em inglês | A placa do nome não foi achada (fundo escuro demais) | Ver `findPlaque2003` em `src/engine/token.ts` |
+| Emblema sem português | O planeswalker não tem texto em PT ou tem dois emblemas na mesma face | Esperado; ver `emblem_face` em `data/pipeline/build.py` e o ADR 0010 |
 | Ficha sem a etiqueta de português | O Arena não tem essa ficha ou o texto em inglês difere | Conferir a chave em `token_key` (`data/pipeline/build.py`) |
 | Texto com outra fonte | `/api/fontes/` sem os arquivos no KV | Recolocar com `wrangler kv key put` (acima) |

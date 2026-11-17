@@ -102,3 +102,14 @@ test("lê a seção Tokens da lista como fichas", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Seu pedido: 3 cartas, 1 folha/ })).toBeVisible();
   await expect(page.getByRole("region", { name: "Fichas que o deck cria" })).toHaveCount(0);
 });
+
+test("sugere o emblema do planeswalker, em português", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Lista do deck").fill("1 Chandra, Torch of Defiance");
+  await page.getByRole("button", { name: "Montar folhas" }).click();
+  const box = page.getByRole("region", { name: "Fichas e emblemas que o deck cria" });
+  await expect(box.getByText("Emblema — Chandra, Chama da Rebeldia")).toBeVisible();
+  await box.getByRole("button", { name: "Adicionar o emblema", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /Seu pedido: 2 cartas, 1 folha/ })).toBeVisible();
+  await expect(page.locator(".slot-img")).toHaveCount(2, { timeout: 60_000 });
+});

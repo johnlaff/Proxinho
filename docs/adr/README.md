@@ -13,3 +13,4 @@ Cada arquivo registra uma decisão de arquitetura: o contexto, o que foi decidid
 | [0007](0007-molduras-de-duas-faces-e-planeswalker.md) | Molduras de duas faces e de planeswalker | Aceita |
 | [0008](0008-preenchimento-por-rede-neural.md) | Preenchimento por rede neural nas caixas translúcidas | Aceita |
 | [0009](0009-fichas.md) | Fichas (tokens): texto do Arena e moldura achada na imagem | Aceita |
+| [0010](0010-emblemas-fichas-duplas-e-moldura-2003.md) | Emblemas, fichas de duas faces e moldura de ficha de 2003 | Aceita |

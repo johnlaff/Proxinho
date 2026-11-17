@@ -434,3 +434,26 @@ export function hasRightIcon(img: ImageData): boolean {
   // o ícone é um disco escuro com um triângulo claro (ou o contrário)
   return lo > n * 0.45 && hi > n * 0.15;
 }
+
+/**
+ * Cor média das letras marcadas na máscara (as mais contrastadas, metade das
+ * marcadas), como "rgb(r,g,b)". Serve para escrever o português na mesma cor
+ * de letras coloridas (o nome dourado das fichas antigas). `null` sem letras.
+ */
+export function averageInk(img: ImageData, m: RegionMask): string | null {
+  const { rect, mask, polarity } = m;
+  const w = rect.x1 - rect.x0;
+  const px: [number, number, number, number][] = [];
+  for (let y = rect.y0; y < rect.y1; y++)
+    for (let x = rect.x0; x < rect.x1; x++) {
+      if (!mask[(y - rect.y0) * w + x - rect.x0]) continue;
+      const i = (y * img.width + x) * 4;
+      px.push([img.data[i], img.data[i + 1], img.data[i + 2], luminance(img.data, i)]);
+    }
+  if (px.length < 20) return null;
+  // o miolo das letras: as mais claras (texto claro) ou as mais escuras (texto escuro)
+  px.sort((a, b) => (polarity === "light" ? b[3] - a[3] : a[3] - b[3]));
+  const core = px.slice(0, Math.ceil(px.length / 2));
+  const avg = (c: number) => Math.round(core.reduce((n, p) => n + p[c], 0) / core.length);
+  return `rgb(${avg(0)},${avg(1)},${avg(2)})`;
+}

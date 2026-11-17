@@ -213,11 +213,11 @@ def load_arena_tokens() -> dict[tuple, dict]:
         en_text = "".join(text(en, a.get("TextId")) or "" for a in abilities)
         pt_lines = [arena_symbols(t) for a in abilities if (t := text(br, a.get("TextId")))]
         type_pt = text(br, card.get("cardTypeTextId"))
-        if not type_pt:
+        if not type_pt or type_pt == "NONE":
             continue  # "O Monarca" e afins não são fichas de verdade
-        # algumas fichas do Arena vêm só com "Criatura" (ou "Artefato"): a palavra "Ficha" é do tipo impresso (Token).
-        # Tipos compostos ("Criatura Lendária") ficam como estão, para não inventar a ordem das palavras.
-        if "Ficha" not in type_pt and " " not in type_pt:
+        # algumas fichas do Arena vêm sem "Token" no tipo ("Creature", "Legendary Creature"). O
+        # próprio Arena escreve "Token Legendary Creature" como "Criatura Lendária Ficha": "Ficha" no fim.
+        if "Ficha" not in type_pt:
             type_pt = f"{type_pt} Ficha"
         sub = text(br, card.get("subtypeTextId"))
         out[token_key(name_en, card.get("power"), card.get("toughness"), en_text)] = {
@@ -355,22 +355,79 @@ def sides_of(card: dict) -> list[dict] | None:
     return out
 
 
+# efeitos de moldura que não mudam o lugar do texto nas fichas (só a textura)
+TOKEN_EFFECTS_OK = {"legendary", "enchantment", "inverted", "fullart", "snow"}
+
+
 def token_supported(card: dict) -> bool:
-    """Ficha na moldura de 2015 (nome no alto, caixa de texto de altura variável)."""
+    """Ficha ou emblema nas molduras de 2003 e 2015: nome no alto e linha de tipo de altura variável.
+
+    O motor acha a linha de tipo na própria imagem (src/engine/token.ts); se não achar, a ficha sai
+    como está. Arte sem bordas e fichas sem texto impresso ("textless") ficam de fora.
+    """
     return (
-        card.get("frame") == "2015"
-        and card.get("layout") == "token"
+        card.get("frame") in ({"2015"} if card.get("layout") == "emblem" else {"2003", "2015"})  # emblema de 2003 tem outro desenho
+        and card.get("layout") in {"token", "emblem", "double_faced_token"}
         and card.get("border_color") == "black"
-        and not card.get("full_art")
         and not card.get("textless")
-        and not card.get("frame_effects")
+        and set(card.get("frame_effects") or []) <= TOKEN_EFFECTS_OK
     )
 
 
-# Fichas encontradas em load_prints: {oracle_id da ficha: impressão de referência}
+# Fichas e emblemas encontrados em load_prints: {oracle_id: impressão de referência}
 TOKENS: dict[str, dict] = {}
-# Fichas que cada carta cria: {oracle_id da carta: {id da impressão da ficha}}
+# Fichas e emblemas que cada carta cria: {oracle_id da carta: {id da impressão}}
 TOKEN_PARTS: dict[str, set[str]] = {}
+# Fichas de duas faces: {id da impressão: [oracle_id da ficha de cada face]}
+DFT_FACES: dict[str, list[str]] = {}
+
+
+def is_token_type(type_line: str | None) -> bool:
+    """Fichas de verdade e emblemas; "Copy", "The Monarch", "Boss" e afins são cartas de apoio."""
+    t = type_line or ""
+    return t.startswith("Token ") or t == "Emblem" or t.startswith("Emblem — ")
+
+
+def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str | None = None) -> dict:
+    return {
+        "id": pid or c["id"],
+        "oracle_id": oid,
+        "set_code": c["set"],
+        "set_name": c["set_name"],
+        "number": c["collector_number"],
+        "released": c.get("released_at"),
+        "artist": face.get("artist") or c.get("artist"),
+        "frame": c.get("frame"),
+        "effects": ",".join(c.get("frame_effects") or []) or None,
+        "border": c.get("border_color"),
+        "layout": c.get("layout"),
+        "highres": bool(c.get("highres_image")),
+        "promo": bool(c.get("promo")),
+        "mana_cost": face.get("mana_cost") or c.get("mana_cost"),
+        "has_pt": face.get("power") is not None or c.get("power") is not None,
+        "two_sided": bool(c.get("card_faces") and not c.get("image_uris")) and c.get("layout") != "double_faced_token",
+        "supported": frame_supported(c) or token_supported(c) or bool(sides and sides[0]["supported"]),
+        "sides": sides,
+    }
+
+
+def dft_prints(dfts: list[dict]) -> list[dict]:
+    """Cada face de uma ficha de duas faces vira uma arte da ficha de uma face só equivalente.
+
+    A face de trás tem id "<id>#1": o site entende e baixa a imagem do verso (src/engine/types.ts).
+    """
+    by_key = {token_key(t["name"], t.get("power"), t.get("toughness"), t.get("oracle_text") or ""): oid for oid, t in TOKENS.items()}
+    out = []
+    for c in dfts:
+        oids = []
+        for i, f in enumerate(c.get("card_faces") or []):
+            oid = by_key.get(token_key(f.get("name", ""), f.get("power"), f.get("toughness"), f.get("oracle_text") or ""))
+            oids.append(oid)
+            if oid:
+                out.append(print_row(c, oid, f, None, c["id"] if i == 0 else f"{c['id']}#1"))
+        DFT_FACES[c["id"]] = [o for o in oids if o]
+    log(f"fichas de duas faces: {len(dfts)} | faces casadas com fichas de uma face: {len(out)}")
+    return out
 
 
 def load_prints(offline: bool) -> list[dict]:
@@ -378,6 +435,7 @@ def load_prints(offline: bool) -> list[dict]:
     meta = get_json("https://api.scryfall.com/bulk-data/default-cards")
     path = fetch(meta["jsonl_download_uri"], CACHE / "default.jsonl.gz", offline)
     out = []
+    dfts: list[dict] = []
     with gzip.open(path, "rt") as fh:
         for line in fh:
             if not line.strip():
@@ -385,44 +443,28 @@ def load_prints(offline: bool) -> list[dict]:
             c = json.loads(line)
             if c.get("lang") != "en" or c.get("digital") or c.get("oversized") or "paper" not in c.get("games", []):
                 continue
-            if c.get("layout") in {"art_series", "double_faced_token", "emblem"}:
+            if c.get("layout") == "art_series":
+                continue
+            if c.get("layout") == "double_faced_token":
+                # só as de duas fichas de verdade ("Vampire // Treasure"); as de apoio ficam de fora
+                if all(is_token_type(f.get("type_line")) for f in c.get("card_faces") or [{}]):
+                    dfts.append(c)
                 continue
             oid = c.get("oracle_id") or (c.get("card_faces") or [{}])[0].get("oracle_id")
-            if c.get("layout") == "token":
-                # "Copy", "The Monarch", "Boss" e afins são cartas de apoio, não fichas
-                if not (c.get("type_line") or "").startswith("Token "):
+            if c.get("layout") in {"token", "emblem"}:
+                if not is_token_type(c.get("type_line")):
                     continue
                 # a mais recente vira a referência de nome, tipo, texto e P/R da ficha
                 if oid and (oid not in TOKENS or (c.get("released_at") or "") > (TOKENS[oid].get("released_at") or "")):
                     TOKENS[oid] = c
             else:
                 for part in c.get("all_parts") or []:
-                    if part.get("component") == "token":
+                    # emblemas aparecem como "combo_piece", pelo tipo
+                    if part.get("component") == "token" or (part["id"] != c["id"] and part.get("type_line", "").startswith("Emblem")):
                         TOKEN_PARTS.setdefault(oid, set()).add(part["id"])
             face = (c.get("card_faces") or [c])[0]
-            sides = sides_of(c)
-            out.append(
-                {
-                    "id": c["id"],
-                    "oracle_id": oid,
-                    "set_code": c["set"],
-                    "set_name": c["set_name"],
-                    "number": c["collector_number"],
-                    "released": c.get("released_at"),
-                    "artist": c.get("artist"),
-                    "frame": c.get("frame"),
-                    "effects": ",".join(c.get("frame_effects") or []) or None,
-                    "border": c.get("border_color"),
-                    "layout": c.get("layout"),
-                    "highres": bool(c.get("highres_image")),
-                    "promo": bool(c.get("promo")),
-                    "mana_cost": face.get("mana_cost") or c.get("mana_cost"),
-                    "has_pt": face.get("power") is not None or c.get("power") is not None,
-                    "two_sided": bool(c.get("card_faces") and not c.get("image_uris")),
-                    "supported": frame_supported(c) or token_supported(c) or bool(sides and sides[0]["supported"]),
-                    "sides": sides,
-                }
-            )
+            out.append(print_row(c, oid, face, sides_of(c)))
+    out += dft_prints(dfts)
     log(f"impressões em inglês: {len(out)} ({sum(p['supported'] for p in out)} com moldura suportada)")
     return out
 
@@ -504,16 +546,54 @@ def build(offline: bool) -> list[dict]:
     return rows
 
 
-def token_rows(prints: list[dict]) -> list[dict]:
-    """Uma linha em `cards` para cada ficha, com o texto em PT do Arena quando existe."""
+EMBLEM_TEXT = re.compile(r'emblema com [“"](.+)[”"]\.?\s*$')
+
+
+def emblem_face(t: dict, cards: dict[str, dict], print_oracle: dict[str, str]) -> dict | None:
+    """Emblema em PT a partir do planeswalker (ou carta) que o cria, nunca por tradução.
+
+    O texto do emblema é o trecho entre aspas de "Você recebe um emblema com "…"" no texto
+    oficial da carta de origem; o nome na faixa é o nome dela, como no emblema impresso.
+    """
+    for part in t.get("all_parts") or []:
+        src = cards.get(print_oracle.get(part["id"], ""))
+        if not src or not src.get("name_pt"):
+            continue
+        for f in src["faces"]:
+            found = [m.group(1) for line in (f.get("text_pt") or "").split("\n") if (m := EMBLEM_TEXT.search(line))]
+            if len(found) != 1:
+                continue
+            sub = (f.get("type_pt") or "").partition(" — ")[2]
+            # emblema com duas habilidades: "…" e "…" vira uma por linha; o ponto final fica fora das aspas no PT
+            lines = [x.strip() for x in re.split(r'[”"] e [“"]', found[0])]
+            text_pt = "\n".join(x if x[-1:] in '.!?"”' else f"{x}." for x in lines)
+            return {
+                "source": src.get("source"),
+                "name_en": t["name"],
+                "name_pt": f["name_pt"],
+                "type_pt": f"Emblema — {sub}" if " — " in t.get("type_line", "") and sub else "Emblema",
+                "text_pt": text_pt,
+                "flavor_pt": None,
+                "mana_cost": None,
+            }
+    return None
+
+
+def token_rows(cards: list[dict], print_oracle: dict[str, str]) -> list[dict]:
+    """Uma linha em `cards` para cada ficha ou emblema, com o texto em PT quando existe."""
     arena = load_arena_tokens()
+    by_oid = {c["oracle_id"]: c for c in cards}
     rows = []
     matched = 0
     for oid, t in TOKENS.items():
-        a = arena.get(token_key(t["name"], t.get("power"), t.get("toughness"), t.get("oracle_text") or ""))
+        if t.get("layout") == "emblem":
+            e = emblem_face(t, by_oid, print_oracle)
+            a = {**e, "print": None} if e else None
+        else:
+            a = arena.get(token_key(t["name"], t.get("power"), t.get("toughness"), t.get("oracle_text") or ""))
         matched += bool(a)
         face = (
-            {k: v for k, v in a.items() if k != "print"}
+            {k: v for k, v in a.items() if k not in ("print", "source")}
             if a
             else {"name_en": t["name"], "name_pt": None, "type_pt": None, "text_pt": None, "flavor_pt": None, "mana_cost": None}
         )
@@ -524,10 +604,11 @@ def token_rows(prints: list[dict]) -> list[dict]:
             {
                 "oracle_id": oid,
                 "name_en": t["name"],
-                "name_pt": a["name_pt"] if a else None,
+                # emblema: "Emblema — Chandra, Tocha da Rebeldia" na lista e na busca
+                "name_pt": (f"Emblema — {a['name_pt']}" if t.get("layout") == "emblem" else a["name_pt"]) if a else None,
                 "search_en": norm(t["name"]),
-                "search_pt": norm(a["name_pt"]) if a else None,
-                "source": "arena" if a else None,
+                "search_pt": norm(f"emblema {a['name_pt']}" if t.get("layout") == "emblem" else a["name_pt"]) if a else None,
+                "source": a.get("source", "arena") if a else None,
                 "text_print": a["print"] if a else None,
                 "faces": [face],
                 "pt_print": None,
@@ -538,7 +619,8 @@ def token_rows(prints: list[dict]) -> list[dict]:
                 "tokens": None,
             }
         )
-    log(f"fichas: {len(rows)} | com texto do Arena: {matched}")
+    n_emb = sum(1 for t in TOKENS.values() if t.get("layout") == "emblem")
+    log(f"fichas e emblemas: {len(rows)} (emblemas: {n_emb}) | com texto em PT: {matched}")
     return rows
 
 
@@ -586,11 +668,17 @@ def main() -> None:
     rows = build(args.offline)
     all_prints = load_prints(args.offline)
     # fichas que cada carta cria, pelo oracle_id da ficha
-    token_oracle = {p["id"]: p["oracle_id"] for p in all_prints if p["layout"] == "token"}
-    tokens = token_rows(all_prints)
+    print_oracle = {p["id"]: p["oracle_id"] for p in all_prints}
+    token_oids = set(TOKENS)
+    tokens = token_rows(rows, print_oracle)
     for r in rows:
-        ids = sorted({token_oracle[i] for i in TOKEN_PARTS.get(r["oracle_id"], ()) if i in token_oracle})
-        r["tokens"] = ids or None
+        ids: set[str] = set()
+        for i in TOKEN_PARTS.get(r["oracle_id"], ()):
+            if i in DFT_FACES:
+                ids.update(DFT_FACES[i])  # ficha de duas faces: as duas fichas
+            elif print_oracle.get(i) in token_oids:
+                ids.add(print_oracle[i])
+        r["tokens"] = sorted(ids) or None
     rows += tokens
     known = {r["oracle_id"] for r in rows}
     prints = [p for p in all_prints if p["oracle_id"] in known]

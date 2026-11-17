@@ -5,7 +5,7 @@
 - Molduras: saga, aventura, sem borda e showcase. (Duas faces e planeswalker: feito em 17/11/2026, ver ADR 0007. Caixa dos planeswalkers sem mancha, com o LaMa: feito em 17/11/2026, ver ADR 0008.)
 - Cartas modais: traduzir a faixa do pé da carta com o resumo do outro lado (hoje continua em inglês).
 - Edição manual do texto antes de imprimir.
-- Emblemas e fichas de duas faces. (Fichas: feito em 17/11/2026, ver ADR 0009.)
+- Emblemas na moldura de 2003 e as cartas de apoio (Monarca, Iniciativa, masmorras). (Fichas, emblemas, fichas de duas faces e fichas de 2003: feito em 17/11/2026, ver ADRs 0009 e 0010.)
 - Exportar PNGs avulsos.
 - Tabela de correções de texto do Arena (ex.: Lunar Convocation) e botão "reportar tradução".
 - PWA para funcionar offline depois da primeira visita.

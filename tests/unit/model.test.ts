@@ -206,6 +206,7 @@ describe("fichas", () => {
   it("descreve P/R e cores para distinguir fichas de mesmo nome", () => {
     expect(tokenDetails(spirit)).toBe("1/1 branca e preta");
     expect(tokenDetails(card({ faces: [{ ...spirit.faces[0], pt: null, colors: "" }] }))).toBe("incolor");
+    expect(tokenDetails(card({ layout: "token", type_line: "Emblem — Chandra" }))).toBe("emblema");
   });
 
   it("somar a mesma entrada aumenta a quantidade", () => {

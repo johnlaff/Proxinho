@@ -14,8 +14,8 @@ import { lamaInpaint } from "./lama";
 import { isTallPlaneswalker, planeswalkerRows, PW, rowRects, splitAbilities } from "./planeswalker";
 import { preloadSymbols } from "./symbols";
 import { SYMBOL_EM, chunkWidth, fitRows, fitText, type LayoutResult, type Measurer } from "./text";
-import { findTokenBar, findTokenBoxBottom, smallCaps, TOKEN, tokenLayout } from "./token";
-import { scryfallImage, type PrintRecord, type PtFace } from "./types";
+import { findPlaque2003, findTokenBar, findTokenBoxBottom, smallCaps, TOKEN, tokenLayout, type Plaque } from "./token";
+import { printImage, type PrintRecord, type PtFace } from "./types";
 
 export interface RenderOptions {
   print: PrintRecord;
@@ -293,8 +293,10 @@ function drawSmallCaps(
   size: number,
   k: number,
   color: string,
+  serif = false,
 ) {
-  const t = titleFont();
+  // as fichas de 2003 usam uma serifa em negrito: a MPlantin em negrito chega perto
+  const t = serif ? { ...bodyFont(), weight: "bold", dx: 0 } : titleFont();
   const parts = smallCaps(name);
   const fontAt = (big: boolean, s: number) => `${t.weight} ${(big ? s : s * 0.8) * t.scale * k}px ${t.family}`;
   const widthAt = (s: number) =>
@@ -331,25 +333,32 @@ async function renderToken(p: {
   data: ImageData;
   toImg: (r: Rect) => Rect;
   face: PtFace;
+  frame: string | null;
   W: number;
   H: number;
 }): Promise<boolean> {
   const { ctx, data, toImg, face } = p;
   const bar = findTokenBar(data);
   if (!bar) return false;
+  // 2003: a placa do nome é repintada com a própria cor, sem o nome em inglês
+  const plaque = p.frame === "2003" ? findPlaque2003(data) : null;
+  if (p.frame === "2003" && !plaque) return false;
   const fx = data.width / BASE_W;
   const fy = data.height / BASE_H;
   const setLeft = findSetSymbolLeft(data, Math.round((bar.y0 + 6) * fy), Math.round((bar.y1 - 6) * fy)) / fx;
-  const layout = tokenLayout(bar, setLeft, findTokenBoxBottom(data, bar));
+  const layout = tokenLayout(bar, setLeft, findTokenBoxBottom(data, bar), p.frame);
   const text = face.text_pt ?? "";
+  const protect = [toImg(layout.pt)];
+  // o nome das fichas de 2003 é dourado: escreve o português na cor das letras apagadas
+  if (plaque) paintPlaque(data, plaque);
   const [titleInk, typeInk, boxInk] = eraseRegions(
     data,
     [
-      { rect: toImg(layout.title), threshold: 28 },
+      { rect: toImg(plaque ? { ...layout.title, x1: layout.title.x0 } : layout.title), threshold: 28 },
       { rect: toImg(face.type_pt ? layout.type : { ...layout.type, x1: layout.type.x0 }), threshold: 28 },
       ...(layout.box ? [{ rect: toImg(layout.box.erase), threshold: 14, colorThreshold: 34 }] : []),
     ],
-    [toImg(TOKEN.ptBox)],
+    protect,
   );
   // ficha sem caixa mas com texto em PT: não há onde escrever
   if (!layout.box && text.trim()) return false;
@@ -357,22 +366,57 @@ async function renderToken(p: {
   ctx.drawImage(p.src, 0, 0, p.W, p.H);
 
   const k = p.W / BASE_W;
-  const T = TOKEN.title;
-  drawSmallCaps(ctx, face.name_pt ?? face.name_en, T.centerY, T.x0, T.x1, T.size, k, INK[titleInk]);
+  const T = layout.name;
+  if (plaque) {
+    const pad = 22;
+    drawSmallCaps(
+      ctx,
+      face.name_pt ?? face.name_en,
+      (plaque.y0 + plaque.y1) / 2 + 1,
+      plaque.x0 + pad,
+      plaque.x1 - pad,
+      39,
+      k,
+      plaque.ink,
+      true,
+    );
+  } else drawSmallCaps(ctx, face.name_pt ?? face.name_en, T.centerY, T.x0, T.x1, T.size, k, INK[titleInk]);
   if (face.type_pt)
     drawLine(ctx, face.type_pt, TOKEN.typeX, layout.type.centerY, layout.type.x1 - 4 - TOKEN.typeX, TOKEN.typeSize, k, INK[typeInk]);
   if (layout.box && text.trim()) {
     const box = layout.box.text;
     const symbols = await preloadSymbols(text);
     const m = measurer(ctx, k);
-    const under = box.y1 - TOKEN.ptBox.y0;
-    const notch = under > 0 ? { width: box.x1 - TOKEN.ptBox.x0 + 6, height: under } : undefined;
+    const under = box.y1 - layout.pt.y0;
+    const notch = under > 0 ? { width: box.x1 - layout.pt.x0 + 6, height: under } : undefined;
     const res = fitText(text, null, box.x1 - box.x0, box.y1 - box.y0, m, 34, 15, notch);
     // uma linha só ("Vínculo com a vida") fica centralizada, como nas fichas impressas
     drawLayout(ctx, res, box, k, boxInk, symbols, m, res.lines.length === 1);
   }
   return true;
 }
+
+/** Repinta o miolo da placa do nome (fichas de 2003) com a cor de fundo de cada linha. */
+function paintPlaque(data: ImageData, pl: Plaque) {
+  const fx = data.width / BASE_W;
+  const fy = data.height / BASE_H;
+  // as pontas arredondadas e o filete dourado ficam
+  const x0 = Math.round((pl.x0 + 7) * fx);
+  const x1 = Math.round((pl.x1 - 7) * fx);
+  const y0 = Math.round(pl.y0 * fy);
+  pl.rows.forEach(([r, g, b], i) => {
+    const y = y0 + i;
+    for (let x = x0; x < x1; x++) {
+      const j = (y * data.width + x) * 4;
+      data.data[j] = r;
+      data.data[j + 1] = g;
+      data.data[j + 2] = b;
+    }
+  });
+}
+
+/** Impressões desenhadas na moldura de ficha (emblemas e cada face das fichas de duas faces também). */
+const TOKEN_LAYOUTS = new Set(["token", "emblem", "double_faced_token"]);
 
 export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const { print, face } = opts;
@@ -383,10 +427,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // melhor na imagem sem compressão JPEG, e a caixa limpa é reaproveitada no PDF.
   const pw = !print.sides && /planeswalker/i.test(face?.type_pt ?? opts.typeLine ?? "");
   const version = pw ? "png" : (opts.imageVersion ?? "png");
-  const [img] = await Promise.all([
-    opts.source ?? loadImage(scryfallImage(print.id, version, side === 1 ? "back" : "front")),
-    loadCardFonts(),
-  ]);
+  const [img] = await Promise.all([opts.source ?? loadImage(printImage(print, version, side)), loadCardFonts()]);
 
   const W = Math.round(BASE_W * scale);
   const H = Math.round(BASE_H * scale);
@@ -420,8 +461,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const fy = src.height / BASE_H;
   const toImg = (r: Rect) => ({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
 
-  if (print.layout === "token") {
-    const done = await renderToken({ ctx, src, sctx, data, toImg, face, W, H });
+  if (TOKEN_LAYOUTS.has(print.layout ?? "")) {
+    const done = await renderToken({ ctx, src, sctx, data, toImg, face, frame: print.frame, W, H });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: done };
   }

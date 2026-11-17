@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { findTokenBar, findTokenBoxBottom, smallCaps, tokenLayout } from "../../src/engine/token";
+import { findPlaque2003, findTokenBar, findTokenBoxBottom, smallCaps, tokenLayout } from "../../src/engine/token";
+import { printImage } from "../../src/engine/types";
 
 /** Ficha falsa 745 × 1040: arte com ruído, barra clara entre dois fios escuros e caixa clara. */
 function fakeToken(bar: [number, number] | null, boxBottom = 962): ImageData {
@@ -71,5 +72,53 @@ describe("smallCaps", () => {
       { text: " G", big: true },
       { text: "UERREIRO", big: false },
     ]);
+  });
+});
+
+describe("moldura de 2003", () => {
+  it("usa a caixa de P/R mais à esquerda e o nome mais estreito", () => {
+    const l = tokenLayout({ y0: 686, y1: 747 }, 655, 945, "2003");
+    expect(l.pt.x0).toBe(546);
+    expect(l.name.x1 - l.name.x0).toBeLessThan(450);
+  });
+
+  /** Fundo claro com textura, placa escura centrada (x 260–485) e letras douradas. */
+  function fakePlaque(): ImageData {
+    const width = 745;
+    const height = 1040;
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let y = 0; y < height; y++)
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        let rgb = (x + y) % 7 === 0 ? [150, 160, 140] : [190, 200, 180];
+        if (y >= 56 && y < 106 && x >= 260 && x < 485) {
+          rgb = [30, 24, 16];
+          // letras: colunas douradas de 4 px a cada 20 px, entre y 66 e 98
+          if (y >= 66 && y < 98 && x >= 280 && x < 465 && (x - 280) % 20 < 4) rgb = [215, 190, 110];
+        }
+        data.set([...rgb, 255], i);
+      }
+    return { width, height, data, colorSpace: "srgb" } as ImageData;
+  }
+
+  it("acha a placa do nome pela cor do fundo e lê a cor das letras", () => {
+    const p = findPlaque2003(fakePlaque())!;
+    expect(p.x0).toBeGreaterThan(245);
+    expect(p.x0).toBeLessThan(275);
+    expect(p.x1).toBeGreaterThan(470);
+    expect(p.x1).toBeLessThan(500);
+    expect(p.ink).toBe("rgb(215,190,110)");
+    expect(p.rows[10]).toEqual([30, 24, 16]);
+  });
+});
+
+describe("printImage", () => {
+  it("a face de trás das fichas de duas faces vem do verso", () => {
+    expect(printImage({ id: "05934d59-7e98-4fff-8ccb-70cd1a61c6fd#1" }, "png")).toBe(
+      "https://cards.scryfall.io/png/back/0/5/05934d59-7e98-4fff-8ccb-70cd1a61c6fd.png",
+    );
+    expect(printImage({ id: "05934d59-7e98-4fff-8ccb-70cd1a61c6fd" }, "small")).toBe(
+      "https://cards.scryfall.io/small/front/0/5/05934d59-7e98-4fff-8ccb-70cd1a61c6fd.jpg",
+    );
   });
 });

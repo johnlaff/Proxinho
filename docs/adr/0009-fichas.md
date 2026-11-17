@@ -29,4 +29,4 @@ Opção 2. O pipeline casa cada ficha do Scryfall (`layout: token`, a impressão
 
 - 795 fichas no banco, 541 com texto oficial em PT. Elas cobrem cerca de 82% das referências a fichas nas cartas legais em Commander; as outras saem em inglês, com a etiqueta de sempre.
 - Conferido em 24 fichas sorteadas de 20 coleções (claras, escuras, coloridas, com e sem texto): nenhuma falha de detecção.
-- Emblemas, fichas de duas faces e as molduras antigas de ficha continuam fora.
+- Emblemas, fichas de duas faces e a moldura de 2003 entraram depois, no ADR 0010.

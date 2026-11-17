@@ -63,3 +63,5 @@ Como jogador, quero imprimir as fichas que o meu deck cria, em português, junto
 - [x] A seção "Tokens"/"Fichas" da lista e a busca também adicionam fichas.
 - [x] A ficha sai com nome, tipo e texto oficiais do Arena; sem tradução, sai em inglês com a etiqueta de sempre.
 - [x] As fichas vão para o fim das folhas.
+- [x] Emblemas dos planeswalkers entram nas sugestões, com o texto oficial tirado do planeswalker (ADR 0010).
+- [x] Fichas de duas faces aparecem como artes das fichas equivalentes; fichas de 2003 saem reescritas.

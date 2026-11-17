@@ -212,7 +212,12 @@ export function displayName(card: CardRecord): string {
   return card.name_pt ?? card.name_en;
 }
 
-/** A entrada é uma ficha (token), não uma carta. */
+/** Emblema de planeswalker (entra no pedido como as fichas). */
+export function isEmblem(card: CardRecord): boolean {
+  return (card.type_line ?? "").startsWith("Emblem");
+}
+
+/** A entrada é uma ficha (token) ou emblema, não uma carta. */
 export function isToken(card: CardRecord): boolean {
   return card.layout === "token";
 }
@@ -234,6 +239,7 @@ const COLOR_NAME: Record<string, string> = { W: "branca", U: "azul", B: "preta",
 
 /** "1/1 branca e preta", "incolor": o que distingue fichas de mesmo nome. */
 export function tokenDetails(card: CardRecord): string {
+  if (isEmblem(card)) return "emblema";
   const face = frontFace(card);
   const colors = [...(face?.colors ?? "")].map((c) => COLOR_NAME[c]).filter(Boolean);
   const color = colors.length === 0 ? "incolor" : colors.length === 1 ? colors[0] : `${colors.slice(0, -1).join(", ")} e ${colors.at(-1)}`;

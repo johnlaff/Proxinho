@@ -68,6 +68,15 @@ export interface PrintSide {
   supported: boolean;
 }
 
+/**
+ * Imagem de uma impressão. Nas fichas de duas faces, cada face é uma "impressão"
+ * da sua ficha, e a de trás tem id "<id do Scryfall>#1" (ver data/pipeline/build.py).
+ */
+export function printImage(print: Pick<PrintRecord, "id">, version: "png" | "normal" | "small" | "large" = "png", side: 0 | 1 = 0): string {
+  const [id, face] = print.id.split("#");
+  return scryfallImage(id, version, side === 1 || face === "1" ? "back" : "front");
+}
+
 /** Endereço da imagem no CDN do Scryfall (o padrão de URL é público e estável). */
 export function scryfallImage(id: string, version: "png" | "normal" | "small" | "large" = "png", face: "front" | "back" = "front"): string {
   const ext = version === "png" ? "png" : "jpg";
