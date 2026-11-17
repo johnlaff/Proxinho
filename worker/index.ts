@@ -1,5 +1,185 @@
+/**
+ * API do Proxinho (Cloudflare Worker).
+ *
+ * O mesmo Worker entrega o site (arquivos estáticos do Vite) e responde em
+ * /api/*. Os dados das cartas ficam no D1, atualizados todo dia pelo pipeline.
+ * Nenhuma imagem de carta passa por aqui: o navegador baixa direto do CDN do
+ * Scryfall e monta a carta localmente.
+ */
+import { normalizeName } from "../src/lib/normalize";
+import { importDeck, ImportError } from "./importers";
+
+export interface Env {
+  DB: D1Database;
+  ASSETS: Fetcher;
+}
+
+const MAX_RESOLVE = 250;
+const MAX_PRINTS_PER_CARD = 80;
+
+function json(data: unknown, init: ResponseInit = {}): Response {
+  const headers = new Headers(init.headers);
+  headers.set("content-type", "application/json; charset=utf-8");
+  if (!headers.has("cache-control")) headers.set("cache-control", "no-store");
+  return new Response(JSON.stringify(data), { ...init, headers });
+}
+
+function problem(status: number, message: string): Response {
+  return json({ error: message }, { status });
+}
+
+interface CardRow {
+  oracle_id: string;
+  name_en: string;
+  name_pt: string | null;
+  source: string | null;
+  text_print: string | null;
+  faces: string;
+  pt_print: string | null;
+  layout: string | null;
+  type_line: string | null;
+}
+
+function parseCard(row: CardRow) {
+  return {
+    oracle_id: row.oracle_id,
+    name_en: row.name_en,
+    name_pt: row.name_pt,
+    source: row.source,
+    text_print: row.text_print ? JSON.parse(row.text_print) : null,
+    faces: JSON.parse(row.faces),
+    pt_print: row.pt_print ? JSON.parse(row.pt_print) : null,
+    layout: row.layout,
+    type_line: row.type_line,
+  };
+}
+
+interface PrintRow {
+  id: string;
+  oracle_id: string;
+  highres: number;
+  promo: number;
+  has_pt: number;
+  two_sided: number;
+  supported: number;
+  [k: string]: unknown;
+}
+
+function parsePrint(row: PrintRow) {
+  return {
+    ...row,
+    highres: !!row.highres,
+    promo: !!row.promo,
+    has_pt: !!row.has_pt,
+    two_sided: !!row.two_sided,
+    supported: !!row.supported,
+  };
+}
+
+/** Condição SQL para casar um nome exato numa coluna com apelidos "a | b". */
+const ALIAS_MATCH = (col: string) =>
+  `(${col} = ?1 OR ${col} LIKE ?1 || ' | %' OR ${col} LIKE '% | ' || ?1 OR ${col} LIKE '% | ' || ?1 || ' | %')`;
+
+async function findByName(db: D1Database, name: string): Promise<CardRow | null> {
+  const n = normalizeName(name);
+  if (!n) return null;
+  return db
+    .prepare(
+      `SELECT * FROM cards WHERE ${ALIAS_MATCH("search_en")} OR ${ALIAS_MATCH("search_pt")} ORDER BY edhrec_rank IS NULL, edhrec_rank LIMIT 1`,
+    )
+    .bind(n)
+    .first<CardRow>();
+}
+
+async function printsFor(db: D1Database, oracleIds: string[]): Promise<Map<string, ReturnType<typeof parsePrint>[]>> {
+  const out = new Map<string, ReturnType<typeof parsePrint>[]>();
+  for (let i = 0; i < oracleIds.length; i += 50) {
+    const ids = oracleIds.slice(i, i + 50);
+    const { results } = await db
+      .prepare(`SELECT * FROM prints WHERE oracle_id IN (${ids.map(() => "?").join(",")}) ORDER BY released DESC`)
+      .bind(...ids)
+      .all<PrintRow>();
+    for (const row of results) {
+      const list = out.get(row.oracle_id) ?? [];
+      if (list.length < MAX_PRINTS_PER_CARD) list.push(parsePrint(row));
+      out.set(row.oracle_id, list);
+    }
+  }
+  return out;
+}
+
+async function search(db: D1Database, q: string) {
+  const n = normalizeName(q);
+  if (n.length < 2) return [];
+  const { results } = await db
+    .prepare(
+      `SELECT oracle_id, name_en, name_pt, source, type_line FROM cards
+       WHERE search_en LIKE ?1 || '%' OR search_pt LIKE ?1 || '%' OR search_en LIKE '% | ' || ?1 || '%' OR search_pt LIKE '% | ' || ?1 || '%'
+          OR search_en LIKE '% ' || ?1 || '%' OR search_pt LIKE '% ' || ?1 || '%'
+       ORDER BY (search_en LIKE ?1 || '%' OR search_pt LIKE ?1 || '%') DESC, edhrec_rank IS NULL, edhrec_rank
+       LIMIT 8`,
+    )
+    .bind(n)
+    .all();
+  return results;
+}
+
+interface ResolveLine {
+  name: string;
+  set?: string;
+  number?: string;
+}
+
+async function resolve(db: D1Database, lines: ResolveLine[]) {
+  const unique = [...new Map(lines.map((l) => [normalizeName(l.name), l])).values()].slice(0, MAX_RESOLVE);
+  const rows = await Promise.all(unique.map((l) => findByName(db, l.name)));
+  const found = rows.filter((r): r is CardRow => r !== null);
+  const prints = await printsFor(db, [...new Set(found.map((r) => r.oracle_id))]);
+  const results = unique.map((line, i) => {
+    const row = rows[i];
+    if (!row) return { query: line.name, card: null, prints: [] };
+    return { query: line.name, card: parseCard(row), prints: prints.get(row.oracle_id) ?? [] };
+  });
+  return results;
+}
+
 export default {
-  async fetch(): Promise<Response> {
-    return new Response("ok");
+  async fetch(request, env): Promise<Response> {
+    const url = new URL(request.url);
+    try {
+      if (url.pathname === "/api/health") {
+        const meta = await env.DB.prepare("SELECT value FROM meta WHERE key = 'updated_at'").first<{ value: string }>();
+        return json({ ok: true, dataUpdatedAt: meta?.value ?? null });
+      }
+      if (url.pathname === "/api/search" && request.method === "GET") {
+        return json(
+          { results: await search(env.DB, url.searchParams.get("q") ?? "") },
+          { headers: { "cache-control": "public, max-age=3600" } },
+        );
+      }
+      if (url.pathname === "/api/resolve" && request.method === "POST") {
+        const body = (await request.json().catch(() => null)) as { lines?: ResolveLine[] } | null;
+        if (!body?.lines || !Array.isArray(body.lines)) return problem(400, "Envie { lines: [{ name }] }.");
+        const lines = body.lines.filter((l) => typeof l?.name === "string" && l.name.trim()).map((l) => ({ name: l.name.slice(0, 200) }));
+        return json({ results: await resolve(env.DB, lines) });
+      }
+      if (url.pathname === "/api/import" && request.method === "GET") {
+        const target = url.searchParams.get("url") ?? "";
+        const cache = caches.default;
+        const key = new Request(`https://proxinho.cache/import?url=${encodeURIComponent(target)}`);
+        const hit = await cache.match(key);
+        if (hit) return hit;
+        const deck = await importDeck(target);
+        const res = json(deck, { headers: { "cache-control": "public, max-age=900" } });
+        await cache.put(key, res.clone());
+        return res;
+      }
+      if (url.pathname.startsWith("/api/")) return problem(404, "Rota não encontrada.");
+      return env.ASSETS.fetch(request);
+    } catch (err) {
+      if (err instanceof ImportError) return problem(err.status, err.message);
+      console.error(err);
+      return problem(500, "Algo deu errado do nosso lado. Tente de novo em instantes.");
+    }
   },
-} satisfies ExportedHandler;
+} satisfies ExportedHandler<Env>;

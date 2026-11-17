@@ -9,15 +9,15 @@
   "observability": { "enabled": true },
   "assets": {
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*"],
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "proxinho",
       "database_id": "4dfcb764-41d3-410b-a0f1-8a0af759dd21",
-      "migrations_dir": "migrations"
-    }
+      "migrations_dir": "migrations",
+    },
   ],
-  "routes": [{ "pattern": "proxinho.johnlaff.com", "custom_domain": true }]
+  "routes": [{ "pattern": "proxinho.johnlaff.com", "custom_domain": true }],
 }
