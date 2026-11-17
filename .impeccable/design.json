@@ -1,0 +1,563 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-17T04:43:48+00:00",
+  "title": "Design System: Proxinho",
+  "extensions": {
+    "colorMeta": {
+      "process-cyan": {
+        "role": "primary",
+        "displayName": "Ciano de Processo",
+        "canonical": "#0086c9",
+        "tonalRamp": [
+          "#000c1d",
+          "#02273e",
+          "#064467",
+          "#006497",
+          "#2188c6",
+          "#64ade1",
+          "#9bd2fb",
+          "#e0f1fe"
+        ]
+      },
+      "cyan-ink": {
+        "role": "primary",
+        "displayName": "Ciano Escuro de Texto",
+        "canonical": "#005b8a",
+        "tonalRamp": [
+          "#000d1c",
+          "#00273e",
+          "#0e4465",
+          "#21638e",
+          "#4587b5",
+          "#77abd2",
+          "#a8d0ef",
+          "#e0f1ff"
+        ]
+      },
+      "cyan-ink-deep": {
+        "role": "primary",
+        "displayName": "Ciano Profundo",
+        "canonical": "#00466b",
+        "tonalRamp": [
+          "#000d19",
+          "#08273a",
+          "#1b445f",
+          "#306386",
+          "#5186ac",
+          "#7faaca",
+          "#aed0e9",
+          "#e1f1fd"
+        ]
+      },
+      "cyan-wash": {
+        "role": "primary",
+        "displayName": "Ciano Lavado",
+        "canonical": "#e2f3fb",
+        "tonalRamp": [
+          "#080c0e",
+          "#1e2529",
+          "#374246",
+          "#536066",
+          "#758389",
+          "#9ba7ac",
+          "#c3ccd1",
+          "#e9f0f3"
+        ]
+      },
+      "cyan-ink-text": {
+        "role": "primary",
+        "displayName": "Ciano Noturno",
+        "canonical": "#003b5c",
+        "tonalRamp": [
+          "#010c18",
+          "#0d2638",
+          "#21435c",
+          "#366282",
+          "#5786a8",
+          "#84aac7",
+          "#b1cfe6",
+          "#e1f1fe"
+        ]
+      },
+      "process-magenta": {
+        "role": "secondary",
+        "displayName": "Magenta de Processo",
+        "canonical": "#c2186b",
+        "tonalRamp": [
+          "#1f000a",
+          "#480023",
+          "#78003e",
+          "#a7125b",
+          "#d33f7e",
+          "#f077a2",
+          "#ffb0c9",
+          "#ffe7ee"
+        ]
+      },
+      "magenta-ink": {
+        "role": "secondary",
+        "displayName": "Magenta de Aviso",
+        "canonical": "#c2186b",
+        "tonalRamp": [
+          "#1f000a",
+          "#480023",
+          "#78003e",
+          "#a7125b",
+          "#d33f7e",
+          "#f077a2",
+          "#ffb0c9",
+          "#ffe7ee"
+        ]
+      },
+      "magenta-wash": {
+        "role": "secondary",
+        "displayName": "Magenta Lavado",
+        "canonical": "#fbe6f0",
+        "tonalRamp": [
+          "#0f090c",
+          "#2a2125",
+          "#483c42",
+          "#685860",
+          "#8c7b83",
+          "#afa0a7",
+          "#d3c7cc",
+          "#f4ecf0"
+        ]
+      },
+      "magenta-deep": {
+        "role": "secondary",
+        "displayName": "Magenta Profundo",
+        "canonical": "#7d0041",
+        "tonalRamp": [
+          "#1e000a",
+          "#430923",
+          "#6c1e3e",
+          "#98335c",
+          "#c2567e",
+          "#e084a3",
+          "#fcb2c9",
+          "#fee8ee"
+        ]
+      },
+      "process-yellow": {
+        "role": "tertiary",
+        "displayName": "Amarelo de Processo",
+        "canonical": "#ffd400",
+        "tonalRamp": [
+          "#110a00",
+          "#2d2300",
+          "#4c3f08",
+          "#6f5c07",
+          "#987e04",
+          "#c1a228",
+          "#e1ca79",
+          "#ffeeb5"
+        ]
+      },
+      "process-black": {
+        "role": "neutral",
+        "displayName": "Preto de Processo",
+        "canonical": "#111418",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#222427",
+          "#3d4043",
+          "#5a5e62",
+          "#7d8085",
+          "#a2a5a9",
+          "#c8cbce",
+          "#edeff1"
+        ]
+      },
+      "offset-paper": {
+        "role": "neutral",
+        "displayName": "Papel Offset",
+        "canonical": "#f4f6f8",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#232425",
+          "#3f4041",
+          "#5c5e5f",
+          "#7f8082",
+          "#a3a5a6",
+          "#c9cacc",
+          "#eeeeef"
+        ]
+      },
+      "paper-shade": {
+        "role": "neutral",
+        "displayName": "Papel Sombreado",
+        "canonical": "#e4e9ee",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#222426",
+          "#3d4043",
+          "#5a5e62",
+          "#7d8185",
+          "#a1a5a8",
+          "#c8cbce",
+          "#edeff1"
+        ]
+      },
+      "sheet-white": {
+        "role": "neutral",
+        "displayName": "Folha Branca",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a4a4a4",
+          "#cacaca",
+          "#eeeeee"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Tinta Preta",
+        "canonical": "#111418",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#222427",
+          "#3d4043",
+          "#5a5e62",
+          "#7d8085",
+          "#a2a5a9",
+          "#c8cbce",
+          "#edeff1"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Tinta 2",
+        "canonical": "#3a4450",
+        "tonalRamp": [
+          "#080b0f",
+          "#1f252b",
+          "#394049",
+          "#555f6a",
+          "#77818e",
+          "#9da6b0",
+          "#c4cbd4",
+          "#eaeff5"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Tinta 3",
+        "canonical": "#56616d",
+        "tonalRamp": [
+          "#080c0f",
+          "#1f252b",
+          "#394149",
+          "#555f69",
+          "#77818d",
+          "#9da6b0",
+          "#c4cbd3",
+          "#eaeff5"
+        ]
+      },
+      "placeholder": {
+        "role": "neutral",
+        "displayName": "Placeholder",
+        "canonical": "#6a7581",
+        "tonalRamp": [
+          "#080b0f",
+          "#1f252a",
+          "#394149",
+          "#555f69",
+          "#77818d",
+          "#9da6af",
+          "#c4cbd3",
+          "#eaeff5"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Filete",
+        "canonical": "#c5ced7",
+        "tonalRamp": [
+          "#090b0e",
+          "#212428",
+          "#3b4046",
+          "#575e65",
+          "#7a8189",
+          "#9fa5ac",
+          "#c6cbd0",
+          "#ebeff3"
+        ]
+      },
+      "slot": {
+        "role": "neutral",
+        "displayName": "Espaço de Carta",
+        "canonical": "#e6eaee",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#222426",
+          "#3e4042",
+          "#5b5e61",
+          "#7d8184",
+          "#a2a5a8",
+          "#c8cbcd",
+          "#edeff0"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "wordmark": {
+        "displayName": "Marca",
+        "purpose": "Só o nome Proxinho no cabeçalho, largura 118%."
+      },
+      "display": {
+        "displayName": "Display",
+        "purpose": "Título da página, largura 112%."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Títulos de seção de página e da gaveta."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Títulos de bloco (resumo, acabamento, artes)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Texto corrido e campos, 44ch a 62ch."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Rótulos de campo e grupo, condensados."
+      },
+      "tag": {
+        "displayName": "Tag",
+        "purpose": "Etiquetas de resultado (PT, EN, PT img)."
+      },
+      "caption": {
+        "displayName": "Legenda técnica",
+        "purpose": "Legenda sob cada carta, rótulo e rodapé da folha; largura 62% a 75%, tabular."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-sheet",
+        "value": "0 1px 2px rgb(17 20 24 / 0.08), 0 8px 24px -8px rgb(17 20 24 / 0.18)",
+        "purpose": "Folha de prova sobre o papel offset."
+      },
+      {
+        "name": "card-lift",
+        "value": "0 10px 20px -10px rgb(17 20 24 / 0.5)",
+        "purpose": "Hover de carta clicável na folha, com translateY(-3px)."
+      },
+      {
+        "name": "popover",
+        "value": "0 10px 28px -10px rgb(17 20 24 / 0.35)",
+        "purpose": "Lista de resultados da busca."
+      },
+      {
+        "name": "drawer",
+        "value": "-12px 0 40px -12px rgb(17 20 24 / 0.4)",
+        "purpose": "Gaveta lateral Trocar arte; fundo rgb(17 20 24 / 0.5)."
+      },
+      {
+        "name": "tag-on-card",
+        "value": "0 1px 3px rgb(17 20 24 / 0.3)",
+        "purpose": "Etiqueta presa na borda da carta."
+      },
+      {
+        "name": "focus-halo",
+        "value": "0 0 0 3px #ffd400",
+        "purpose": "Halo amarelo de foco em campos; em cartas, contorno preto de 3px mais halo amarelo de 9px."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Curva padrão de todas as entradas e levantamentos."
+      },
+      {
+        "name": "state",
+        "value": "0.15s",
+        "purpose": "Hover e foco de botões e campos; botão desce 1px ao pressionar."
+      },
+      {
+        "name": "card-lift",
+        "value": "0.2s ease-out",
+        "purpose": "Carta sobe 3px no hover."
+      },
+      {
+        "name": "registro",
+        "value": "0.7s ease-out",
+        "purpose": "Assinatura: ao montar ou trocar uma carta, sombras ciano, magenta e amarelo deslocadas se alinham sobre a imagem."
+      },
+      {
+        "name": "gaveta",
+        "value": "0.32s ease-out",
+        "purpose": "Gaveta entra deslizando 40px da direita com fade."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0.01ms",
+        "purpose": "prefers-reduced-motion zera animações e transições."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "mobile",
+        "value": "520px"
+      },
+      {
+        "name": "sheet-foot-stack",
+        "value": "480px"
+      },
+      {
+        "name": "single-column",
+        "value": "900px"
+      },
+      {
+        "name": "max-width",
+        "value": "1440px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botão principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ação principal (Montar folhas, Baixar PDF): ciano escuro com texto branco.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><path d=\"m7 10 5 5 5-5\"/><path d=\"M12 15V3\"/></svg>Baixar PDF</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 10px 20px; border: 0; border-radius: var(--radius); background: var(--cyan-ink); color: #fff; font-family: var(--font); font-size: 1rem; font-weight: 700; font-stretch: 96%; cursor: pointer; transition: background-color 0.15s, transform 0.15s var(--ease-out); } .ds-btn-primary:hover { background: #00466b; } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Botão discreto",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Ação secundária em texto ciano escuro sublinhado.",
+      "html": "<button class=\"ds-btn-quiet\">Limpar lista</button>",
+      "css": ".ds-btn-quiet { min-height: 46px; padding: 10px 4px; border: 0; background: transparent; color: var(--cyan-ink); font-family: var(--font); font-size: 1rem; font-weight: 700; font-stretch: 96%; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em; cursor: pointer; } .ds-btn-quiet:hover { text-decoration-thickness: 2px; } .ds-btn-quiet:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Botão de remover",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Só para remover uma carta: contorno magenta.",
+      "html": "<button class=\"ds-btn-danger\">Remover</button>",
+      "css": ".ds-btn-danger { min-height: 40px; padding: 6px 12px; border: 1.5px solid currentColor; border-radius: var(--radius); background: transparent; color: var(--magenta-ink); font-family: var(--font); font-size: 0.9375rem; font-weight: 700; font-stretch: 96%; cursor: pointer; transition: background-color 0.15s; } .ds-btn-danger:hover { background: var(--magenta-wash); } .ds-btn-danger:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Campo de texto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo branco com contorno de 1.5px; foco com halo amarelo.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Link do deck</span><input class=\"ds-input\" placeholder=\"https://archidekt.com/decks/…\"></label>",
+      "css": ".ds-field { display: block; font-family: var(--font); } .ds-field-label { display: block; margin-bottom: 6px; font-size: 0.875rem; font-weight: 650; font-stretch: 86%; color: var(--ink); } .ds-input { width: 100%; border: 1.5px solid var(--ink-3); border-radius: var(--radius); background: var(--sheet); padding: 11px 13px; font: inherit; font-size: 1rem; color: var(--ink); transition: border-color 0.15s, box-shadow 0.15s; } .ds-input::placeholder { color: #6a7581; } .ds-input:hover { border-color: var(--ink); } .ds-input:focus-visible { outline: none; border-color: var(--k); box-shadow: 0 0 0 3px var(--y); }"
+    },
+    {
+      "name": "Abas da ordem de serviço",
+      "kind": "nav",
+      "refersTo": "tab-selected",
+      "description": "Três abas de largura igual sobre filete preto; selecionada em preto.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button class=\"ds-tab\" role=\"tab\" aria-selected=\"true\">Colar lista</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Link do deck</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Buscar carta</button></div>",
+      "css": ".ds-tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--k); } .ds-tab { flex: 1 1 0; min-height: 46px; padding: 8px 6px; border: 0; border-radius: var(--radius) var(--radius) 0 0; background: transparent; color: var(--ink-2); font-family: var(--font); font-size: 0.9375rem; font-weight: 600; font-stretch: 84%; cursor: pointer; white-space: nowrap; } .ds-tab:hover { background: var(--paper-2); color: var(--ink); } .ds-tab[aria-selected=\"true\"] { background: var(--k); color: #fff; } .ds-tab:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Controle segmentado",
+      "kind": "chip",
+      "refersTo": "segmented-option-selected",
+      "description": "Escolhas do acabamento (papel, uso, qualidade).",
+      "html": "<div class=\"ds-seg\" role=\"radiogroup\"><button class=\"ds-seg-opt\" aria-checked=\"true\" role=\"radio\">A4</button><button class=\"ds-seg-opt\" aria-checked=\"false\" role=\"radio\">Carta (EUA)</button></div>",
+      "css": ".ds-seg { display: flex; border: 1.5px solid var(--k); border-radius: var(--radius); overflow: hidden; background: var(--sheet); } .ds-seg-opt { flex: 1 1 0; min-height: 44px; padding: 6px 8px; border: 0; background: transparent; color: var(--ink); font-family: var(--font); font-size: 0.9375rem; font-weight: 600; font-stretch: 86%; cursor: pointer; } .ds-seg-opt + .ds-seg-opt { border-left: 1.5px solid var(--k); } .ds-seg-opt:hover { background: var(--paper); } .ds-seg-opt[aria-checked=\"true\"] { background: var(--k); color: #fff; } .ds-seg-opt:focus-visible { outline: 3px solid var(--y); outline-offset: -5px; }"
+    },
+    {
+      "name": "Etiquetas de resultado",
+      "kind": "chip",
+      "refersTo": "tag-reescrita",
+      "description": "Origem do texto da carta, sempre com texto além da cor.",
+      "html": "<span class=\"ds-tags\"><span class=\"ds-tag ds-tag--pt\">PT</span><span class=\"ds-tag ds-tag--ptimg\">PT img</span><span class=\"ds-tag ds-tag--en\">EN</span><span class=\"ds-tag ds-tag--frame\">EN</span></span>",
+      "css": ".ds-tags { display: inline-flex; gap: 8px; } .ds-tag { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 3px; font-family: var(--font); font-size: 0.75rem; line-height: 1.35; font-weight: 700; font-stretch: 80%; letter-spacing: 0.01em; } .ds-tag--pt { background: var(--cyan-ink); color: #fff; } .ds-tag--ptimg { background: var(--sheet); color: var(--cyan-ink); box-shadow: inset 0 0 0 1.5px var(--cyan-ink); } .ds-tag--en { background: var(--magenta-ink); color: #fff; } .ds-tag--frame { background: var(--sheet); color: var(--magenta-ink); box-shadow: inset 0 0 0 1.5px var(--magenta-ink); }"
+    },
+    {
+      "name": "Cabeçalho",
+      "kind": "nav",
+      "refersTo": "masthead",
+      "description": "Faixa ciano de processo com marca de registro e links pretos.",
+      "html": "<header class=\"ds-masthead\"><a class=\"ds-brand\" href=\"#\"><svg width=\"26\" height=\"26\" viewBox=\"0 0 32 32\" aria-hidden=\"true\"><circle cx=\"16\" cy=\"16\" r=\"9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><circle cx=\"16\" cy=\"16\" r=\"4\" fill=\"currentColor\"/><path d=\"M16 1v30M1 16h30\" stroke=\"currentColor\" stroke-width=\"2\"/></svg><span>Proxinho</span></a><nav class=\"ds-nav\"><a href=\"#\">Como funciona</a><a href=\"#\">Código aberto</a></nav></header>",
+      "css": ".ds-masthead { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 56px; padding: 0 var(--gutter); background: var(--c); color: var(--k); font-family: var(--font); } .ds-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--k); text-decoration: none; font-size: 1.375rem; font-weight: 800; font-stretch: 118%; letter-spacing: -0.02em; } .ds-nav { display: flex; gap: 28px; font-size: 0.9375rem; font-weight: 600; font-stretch: 88%; } .ds-nav a { padding: 12px 0; color: var(--k); text-decoration: none; } .ds-nav a:hover { text-decoration: underline; text-decoration-thickness: 2px; } .ds-brand:focus-visible, .ds-nav a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Folha de prova",
+      "kind": "card",
+      "refersTo": "proof-sheet",
+      "description": "Assinatura: folha branca com tira CMYK, marcas de registro e de corte, legenda técnica e régua.",
+      "html": "<section class=\"ds-sheet\"><header class=\"ds-sheet-head\"><span class=\"ds-colorbar\"><i style=\"background:var(--c)\"></i><i style=\"background:var(--m)\"></i><i style=\"background:var(--y)\"></i><i style=\"background:var(--k)\"></i></span><span class=\"ds-sheet-label\">Folha 1/1</span></header><div class=\"ds-sheet-grid\"><div class=\"ds-slot\"><div class=\"ds-slot-card\"><svg class=\"ds-crop\" viewBox=\"0 0 100 100\" preserveAspectRatio=\"none\" aria-hidden=\"true\"><path d=\"M0 6V0h6M94 0h6v6M100 94v6h-6M6 100H0v-6\" vector-effect=\"non-scaling-stroke\"/></svg><span class=\"ds-tag-on\">PT</span></div><span class=\"ds-caption\">TRC 499 · Arena · Hector Ortiz</span></div><div class=\"ds-slot\"><div class=\"ds-slot-card\"><svg class=\"ds-crop\" viewBox=\"0 0 100 100\" preserveAspectRatio=\"none\" aria-hidden=\"true\"><path d=\"M0 6V0h6M94 0h6v6M100 94v6h-6M6 100H0v-6\" vector-effect=\"non-scaling-stroke\"/></svg></div><span class=\"ds-caption\">FDC 61 · Arena · Zack Stella</span></div><div class=\"ds-slot\"><div class=\"ds-slot-card ds-slot-card--blank\"></div></div></div><footer class=\"ds-sheet-foot\"><span class=\"ds-ruler\"><span class=\"ds-ruler-ticks\"></span><span class=\"ds-sheet-label\">5 cm</span></span><span class=\"ds-sheet-label\">A4 · 300 dpi · imprimir em 100%</span></footer></section>",
+      "css": ".ds-sheet { width: min(100%, 480px); padding: 24px 28px; background: var(--sheet); box-shadow: var(--shadow-sheet); font-family: var(--font); } .ds-sheet-head, .ds-sheet-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; } .ds-sheet-head { margin-bottom: 18px; } .ds-sheet-foot { align-items: flex-end; margin-top: 24px; } .ds-colorbar { display: flex; gap: 2px; } .ds-colorbar i { width: 12px; height: 12px; } .ds-sheet-label { font-size: 0.75rem; font-weight: 600; font-stretch: 75%; color: var(--ink-3); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; } .ds-sheet-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 14px; } .ds-slot { display: grid; gap: 6px; } .ds-slot-card { position: relative; aspect-ratio: 63 / 88; border-radius: 4.6% / 3.3%; background: var(--slot); transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out); cursor: pointer; } .ds-slot-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px -10px rgb(17 20 24 / 0.5); } .ds-slot-card--blank { background: repeating-linear-gradient(135deg, transparent 0 7px, rgb(17 20 24 / 0.05) 7px 8px), var(--paper); outline: 1px dashed var(--rule); outline-offset: -1px; cursor: default; } .ds-slot-card--blank:hover { transform: none; box-shadow: none; } .ds-crop { position: absolute; inset: -7px; width: calc(100% + 14px); height: calc(100% + 14px); fill: none; stroke: var(--ink-3); stroke-width: 1; pointer-events: none; } .ds-tag-on { position: absolute; top: 6%; right: -4px; padding: 2px 7px; border-radius: 3px; background: var(--cyan-ink); color: #fff; font-size: 0.6875rem; font-weight: 700; font-stretch: 80%; box-shadow: 0 1px 3px rgb(17 20 24 / 0.3); } .ds-caption { font-size: 0.6875rem; font-weight: 600; font-stretch: 62%; color: var(--ink-3); letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; } .ds-ruler { display: grid; gap: 2px; width: 23.8%; } .ds-ruler-ticks { height: 8px; border: 1px solid var(--ink-3); border-top: 0; background: repeating-linear-gradient(90deg, var(--ink-3) 0 1px, transparent 1px 10%) bottom / 100% 4px no-repeat; }"
+    },
+    {
+      "name": "Mensagens",
+      "kind": "custom",
+      "refersTo": "message-error",
+      "description": "Erro em magenta lavado; sucesso em ciano lavado.",
+      "html": "<div class=\"ds-msgs\"><p class=\"ds-msg ds-msg--error\">Não reconhecemos nenhuma carta nessa lista.</p><p class=\"ds-msg ds-msg--ok\">PDF pronto: 9 cartas em 1 folha.</p></div>",
+      "css": ".ds-msgs { display: grid; gap: 12px; font-family: var(--font); } .ds-msg { margin: 0; padding: 11px 14px; border-radius: var(--radius); font-size: 0.9375rem; line-height: 1.45; } .ds-msg--error { background: var(--magenta-wash); color: #7d0041; border: 1.5px solid var(--magenta-ink); } .ds-msg--ok { background: var(--cyan-wash); color: #003b5c; border: 1.5px solid var(--cyan-ink); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "A Prova de Gráfica",
+    "overview": "**Creative North Star: \"A Prova de Gráfica\"**\n\nA tela é a prova que a gráfica rápida entrega antes de rodar o trabalho. O que a pessoa revisa é a folha que vai imprimir: cartas já montadas em folhas 3×3, sobre papel offset branco-azulado, com marcas de corte, marcas de registro, tira de controle de cor CMYK, régua de 5 cm e uma linha técnica no rodapé. Todo o vocabulário visual vem desse balcão: tinta de processo, papel, legenda condensada, ordem de serviço.\n\nA casca é sóbria e funcional. Uma faixa ciano de processo no topo, uma coluna de \"ordem de serviço\" à esquerda (abas, campo grande, botão ciano escuro, acabamento) e a prova à direita, com folhas brancas que flutuam pouco acima do papel. A densidade é de ferramenta de trabalho: texto em tinta preta, filetes pretos de 2 px separando blocos, cor só onde ela tem papel de gráfica (ciano para agir, magenta para avisar, amarelo para marcar).\n\nUma família só, Archivo variável, faz todo o trabalho variando a largura: larga e pesada no nome e nos títulos, condensada nos rótulos técnicos e legendas, com números tabulares.",
+    "keyCharacteristics": [
+      "Papel offset frio com folhas brancas puras; a folha é o objeto principal da tela.",
+      "Quatro tintas de processo com papéis fixos; nada de gradiente decorativo.",
+      "Archivo em larguras de 62% a 118%, nunca uma segunda família.",
+      "Marcas de impressão (registro, corte, tira de cor, régua) desenhadas em SVG e CSS.",
+      "Filetes pretos de 2 px como estrutura, em vez de cartões e sombras.",
+      "Toda informação de cor acompanhada de texto (etiquetas curtas \"PT\", \"EN\")."
+    ],
+    "rules": [
+      {
+        "name": "The Tinta Tem Função Rule",
+        "body": "Cada tinta de processo tem um único papel: ciano age, magenta avisa, amarelo marca, preto escreve. Magenta nunca vira botão principal; amarelo nunca carrega texto branco.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ciano Escuro Rule",
+        "body": "Texto branco sobre ciano usa sempre o ciano escuro de texto, nunca o ciano de processo. O ciano de processo só recebe texto preto.",
+        "section": "colors"
+      },
+      {
+        "name": "The Uma Família Rule",
+        "body": "Archivo variável em tudo. Hierarquia vem de peso e largura (62% a 118%), nunca de uma segunda fonte.",
+        "section": "typography"
+      },
+      {
+        "name": "The Número Tabular Rule",
+        "body": "Contagens, quantidades, legendas de folha e listas de deck usam algarismos tabulares.",
+        "section": "typography"
+      },
+      {
+        "name": "The Só a Folha Flutua Rule",
+        "body": "Painéis, seções e grupos da casca não ganham sombra nem fundo de cartão; eles se separam por filetes. Sombra é reservada a objetos físicos (folha, gaveta, lista, carta).",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** mostrar a carta como ela vai sair: na folha 3×3, na proporção 63:88, com marcas de corte e legenda técnica.",
+      "**Do** usar o ciano escuro de texto (cyan-ink) para todo botão e link com texto branco ou sobre fundo claro.",
+      "**Do** separar blocos com filetes pretos de 2px e listas com filetes de 1px no tom do filete (rule).",
+      "**Do** variar a largura da Archivo: larga no nome e nos títulos, condensada (62% a 88%) em rótulos, abas e legendas.",
+      "**Do** acompanhar toda cor de resultado com texto (\"PT\", \"EN\", \"PT img\") e manter alvos de toque de pelo menos 44px.",
+      "**Do** usar o amarelo de processo como halo de foco e marca-texto, sempre com texto preto.",
+      "**Do** respeitar `prefers-reduced-motion`: animações e transições caem para 0.01ms."
+    ],
+    "donts": [
+      "**Don't** usar o magenta como cor de ação ou de marca; ele é reservado a avisos de tradução, erros e remoção.",
+      "**Don't** pôr texto branco sobre o ciano de processo (#0086c9); ele só recebe texto preto.",
+      "**Don't** introduzir uma segunda família tipográfica.",
+      "**Don't** dar sombra ou fundo de cartão a painéis da casca; só folha, gaveta, lista suspensa e carta flutuam.",
+      "**Don't** trocar a prova por uma lista genérica de resultados ao lado de um formulário.",
+      "**Don't** usar \"Magic\", \"MTG\" ou logos da Wizards como marca visual; a marca é a marca de registro."
+    ]
+  }
+}
