@@ -1,3 +1,5 @@
 allowBuilds:
   esbuild: true
   workerd: true
+  # dependência do onnxruntime-web; o script só confere a versão do Node e não é necessário
+  protobufjs: false

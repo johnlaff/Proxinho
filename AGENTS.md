@@ -47,5 +47,6 @@ Sem download de navegador? `PW_CHROMIUM_PATH=/caminho/do/chrome pnpm test:e2e`.
 - O bulk do Scryfall não tem mais `download_uri`; use `jsonl_download_uri`.
 - O Moxfield bloqueia leitura por terceiros (403): oriente a colar o texto.
 - Os arquivos originais da MPlantin eram recusados pelo Chrome e pelo Firefox (OTS: tabelas sobrepostas e `cmap` com idioma 1), e o site caía calado para a fonte livre. Passe toda fonte nova por `scripts/consertar-fontes.py` e confira no navegador.
+- O pnpm 12 no CI (`--frozen-lockfile`) falha com `ERR_PNPM_IGNORED_BUILDS` quando uma dependência nova tem script de instalação: decida em `pnpm-workspace.yaml` (`allowBuilds`, `true` ou `false`) no mesmo commit da dependência.
 - As threads do WebAssembly do ONNX reabrem o arquivo da worker com o nome "em-pthread": o handler de mensagens só pode existir fora delas.
 - O .wasm do ONNX (28 MiB) não cabe nos assets do Cloudflare: o Vite não pode copiá-lo (plugin em `vite.config.ts`); ele vai em partes por `scripts/modelo.mjs`.
