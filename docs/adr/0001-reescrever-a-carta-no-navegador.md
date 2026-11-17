@@ -20,3 +20,7 @@ Partir do PNG oficial da impressão escolhida (745 × 1040 px, ~300 dpi, CORS li
 - O servidor não hospeda nem transforma imagens: menos custo e menos risco legal.
 - Cada moldura precisa de uma geometria. A primeira versão cobre a moldura 2015 de layout normal (a maioria das cartas de Commander). Outras molduras usam a imagem oficial em PT quando existe e, senão, a original com aviso.
 - O PNG pesa ~1 MB: a prévia usa a versão "normal" (488 × 680, ~100 KB) e o PNG só é baixado na hora do PDF.
+
+## Atualização (17/11/2026): fontes das cartas reais
+
+As fontes originais (Beleren e MPlantin) são comerciais e não vêm com o site. A pessoa que tem os arquivos pode escolhê-los em "Acabamento → Fontes das cartas": eles ficam no IndexedDB do navegador, são registrados como `FontFace` locais e nunca são enviados. A Splentinex desenha letras menores que a MPlantin no mesmo corpo, então o texto com fontes livres usa um fator de 1,06 para chegar ao tamanho visual das cartas reais (conferido lado a lado com a Cultivar LCC 235).

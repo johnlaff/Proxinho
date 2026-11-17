@@ -6,6 +6,7 @@
  * de gerar o PDF. No máximo 4 cartas são montadas ao mesmo tempo para não
  * travar o navegador, e cada resultado fica em cache pela chave da imagem.
  */
+import { fontsVersion } from "../engine/fonts";
 import { renderCard } from "../engine/render";
 import type { PrintRecord } from "../engine/types";
 import { frontFace, hasPtText, renderKey, selectedPrint, type Entry } from "./model";
@@ -74,7 +75,7 @@ function toUrl(canvas: HTMLCanvasElement): Promise<string> {
 }
 
 export function previewUrl(entry: Entry): Promise<string> {
-  const key = renderKey(entry);
+  const key = renderKey(entry, fontsVersion());
   let p = cache.get(key);
   if (!p) {
     const input = renderInput(entry);

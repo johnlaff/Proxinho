@@ -9,7 +9,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { importFromUrl, resolveNames } from "./app/api";
 import type { ExportProgress, Quality } from "./app/exportPdf";
 import { buildOrder, countOutcomes, totalCards, type Choice, type Entry, type Missing, type OrderLine, type Outcome } from "./app/model";
+import { loadStoredFonts, toFiles, type StoredFonts } from "./app/userFonts";
 import { CardDrawer } from "./components/CardDrawer";
+import { FontPicker } from "./components/FontPicker";
+import { applyCustomFonts } from "./engine/fonts";
 import { OrderPanel, type Tab } from "./components/OrderPanel";
 import { OUTCOME_LABEL } from "./app/labels";
 import { BlankSlots, ProofSheets, Sheet, Slot } from "./components/ProofSheets";
@@ -67,6 +70,19 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings>(() => load(SETTINGS_KEY, DEFAULT_SETTINGS));
+  // fontes das cartas escolhidas pela pessoa (ficam só no navegador)
+  const [fonts, setFonts] = useState<StoredFonts | null>(null);
+  useEffect(() => {
+    void loadStoredFonts().then(async (saved) => {
+      if (!saved) return;
+      try {
+        await applyCustomFonts(toFiles(saved));
+        setFonts(saved);
+      } catch {
+        /* arquivo salvo corrompido: segue com as fontes livres */
+      }
+    });
+  }, []);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
 
   useEffect(() => save(DRAFT_KEY, text), [text]);
@@ -320,6 +336,7 @@ export default function App() {
                     : "Ideal para impressora caseira e copiadora."
                 }
               />
+              <FontPicker stored={fonts} onChange={setFonts} />
             </fieldset>
 
             <div className="export">

@@ -7,7 +7,7 @@
  * A arte, a moldura, o custo de mana, o poder/resistência, o artista e o
  * copyright continuam os da carta original.
  */
-import { BODY_FONT, TITLE_FONT, loadCardFonts } from "./fonts";
+import { bodyFont, loadCardFonts, titleFont } from "./fonts";
 import { BASE_H, BASE_W, m15Layout } from "./geometry";
 import { eraseRegions, findSetSymbolLeft } from "./erase";
 import { preloadSymbols } from "./symbols";
@@ -62,7 +62,8 @@ function measurer(ctx: CanvasRenderingContext2D, k: number): Measurer {
       const key = `${italic ? "i" : "r"}${size}|${value}`;
       let w = memo.get(key);
       if (w === undefined) {
-        ctx.font = `${italic ? "italic " : ""}${size * k}px ${BODY_FONT}`;
+        const f = bodyFont();
+        ctx.font = `${italic ? "italic " : ""}${size * f.scale * k}px ${f.family}`;
         w = ctx.measureText(value).width / k;
         memo.set(key, w);
       }
@@ -74,12 +75,13 @@ function measurer(ctx: CanvasRenderingContext2D, k: number): Measurer {
 /** Escreve uma linha (nome ou tipo) e comprime na horizontal se não couber. */
 function drawLine(ctx: CanvasRenderingContext2D, text: string, x: number, centerY: number, maxWidth: number, size: number, k: number) {
   let s = size;
-  ctx.font = `600 ${s * k}px ${TITLE_FONT}`;
+  const t = titleFont();
+  ctx.font = `${t.weight} ${s * k}px ${t.family}`;
   let w = ctx.measureText(text).width / k;
   // primeiro comprime até 82%; se ainda não couber, reduz o corpo
   while (w * 0.82 > maxWidth && s > 18) {
     s -= 0.5;
-    ctx.font = `600 ${s * k}px ${TITLE_FONT}`;
+    ctx.font = `${t.weight} ${s * k}px ${t.family}`;
     w = ctx.measureText(text).width / k;
   }
   const sx = w > maxWidth ? maxWidth / w : 1;
@@ -179,7 +181,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
           if (icon) ctx.drawImage(icon, (x + res.size * 0.03) * k, top * k, sz * k, sz * k);
           x += res.size * (SYMBOL_EM + 0.06);
         } else {
-          ctx.font = `${run.italic ? "italic " : ""}${res.size * k}px ${BODY_FONT}`;
+          const f = bodyFont();
+          ctx.font = `${run.italic ? "italic " : ""}${res.size * f.scale * k}px ${f.family}`;
           ctx.fillText(run.value, x * k, baseline * k);
           x += m.text(run.value, res.size, run.italic);
         }

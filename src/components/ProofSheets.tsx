@@ -4,6 +4,7 @@
  * e uma legenda técnica embaixo de cada carta. Tocar numa carta abre a
  * gaveta para trocar a arte.
  */
+import { fontsVersion } from "../engine/fonts";
 import { useEffect, useState, type ReactNode } from "react";
 import { displayName, outcomeOf, renderKey, selectedPrint, toSheets, type Entry } from "../app/model";
 import { previewUrl } from "../app/preview";
@@ -102,7 +103,7 @@ function captionOf(entry: Entry): { set: string; source: string; artist: string 
 }
 
 export function Slot({ entry, onOpen, example = false }: { entry: Entry; onOpen?: (key: string) => void; example?: boolean }) {
-  const key = renderKey(entry);
+  const key = renderKey(entry, fontsVersion());
   const [state, setState] = useState<{ key: string; url?: string; error?: string }>({ key });
   const [attempt, setAttempt] = useState(0);
   const current = state.key === key ? state : { key };

@@ -115,8 +115,10 @@ export function totalCards(entries: Entry[]): number {
 }
 
 /** Chave estável da imagem que uma entrada produz (para cache de prévia). */
-export function renderKey(entry: Entry): string {
-  return entry.choice.kind === "pt" ? `pt:${entry.card.pt_print?.id}` : `p:${entry.choice.printId}:${hasPtText(entry.card) ? "pt" : "en"}`;
+export function renderKey(entry: Entry, fonts = 0): string {
+  return entry.choice.kind === "pt"
+    ? `pt:${entry.card.pt_print?.id}`
+    : `p:${entry.choice.printId}:${hasPtText(entry.card) ? "pt" : "en"}:f${fonts}`;
 }
 
 /** Ano de lançamento para a legenda. */

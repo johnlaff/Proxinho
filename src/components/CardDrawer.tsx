@@ -2,6 +2,7 @@
  * Gaveta de uma carta: escolher a arte, mudar a quantidade, ver no tamanho
  * real e entender de onde veio o texto em português.
  */
+import { fontsVersion } from "../engine/fonts";
 import { Minus, Plus, Ruler, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { displayName, frontFace, hasPtText, outcomeOf, renderKey, yearOf, type Choice, type Entry } from "../app/model";
@@ -56,7 +57,7 @@ export function CardDrawer({ entry, onClose, onChoice, onQuantity, onRemove }: P
 
 function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Props, "entry"> & { entry: Entry }) {
   const [trueSize, onTrueSize] = useState(false);
-  const imageKey = renderKey(entry);
+  const imageKey = renderKey(entry, fontsVersion());
   const [preview, setPreview] = useState<{ key: string; url: string } | null>(null);
   const url = preview?.key === imageKey ? preview.url : null;
   const outcome = outcomeOf(entry);

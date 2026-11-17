@@ -107,6 +107,7 @@ O projeto foi feito por um agente de IA trabalhando de forma autônoma, seguindo
 
 - A reescrita cobre a moldura moderna (2015+) de cartas normais. Planeswalkers, sagas, duas faces e molduras especiais usam a imagem oficial em português quando existe; senão saem em inglês com aviso.
 - Cartas sem tradução oficial saem em inglês. Não usamos tradução automática.
+- Por padrão o texto usa fontes livres parecidas com as originais. Quem tem a Beleren e a MPlantin pode escolher os arquivos no site; eles ficam só no navegador.
 
 ## Aviso legal
 
