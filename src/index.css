@@ -736,6 +736,7 @@ a:hover {
 }
 .slot {
   display: grid;
+  align-content: start;
   gap: 6px;
   width: 100%;
   padding: 0;
@@ -749,6 +750,9 @@ a:hover {
 }
 .slot-card {
   position: relative;
+  /* sem isto, a linha esticada pela legenda da vizinha aumentava os espaços vazios */
+  align-self: start;
+  width: 100%;
   aspect-ratio: 63 / 88;
   border-radius: 4.6% / 3.3%;
   background: var(--slot);
