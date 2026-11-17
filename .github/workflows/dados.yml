@@ -21,23 +21,41 @@ jobs:
     environment: producao
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      - name: Confere se os segredos da Cloudflare existem
+        id: segredos
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::warning::Segredo CLOUDFLARE_API_TOKEN ausente. Veja docs/operacao.md; este passo foi pulado."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.segredos.outputs.ok == 'true'
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
-      - name: Gera o banco (só biblioteca padrão do Python)
+      - if: steps.segredos.outputs.ok == 'true'
+        name: Gera o banco (só biblioteca padrão do Python)
         run: python3 data/pipeline/build.py
-      - name: Confere se o resultado é saudável antes de publicar
+      - if: steps.segredos.outputs.ok == 'true'
+        name: Confere se o resultado é saudável antes de publicar
         run: |
           n=$(wc -l < data/out/cards.jsonl)
           echo "cartas: $n"
           [ "$n" -gt 30000 ] || { echo "::error::Poucas cartas ($n). Não publiquei para não estragar o banco."; exit 1; }
-      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - if: steps.segredos.outputs.ok == 'true'
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - if: steps.segredos.outputs.ok == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Carrega no D1
+      - if: steps.segredos.outputs.ok == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.segredos.outputs.ok == 'true'
+        name: Carrega no D1
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

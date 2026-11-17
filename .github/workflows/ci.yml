@@ -73,21 +73,38 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - name: Confere se os segredos da Cloudflare existem
+        id: segredos
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::warning::Segredo CLOUDFLARE_API_TOKEN ausente. Veja docs/operacao.md; este passo foi pulado."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.segredos.outputs.ok == 'true'
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - if: steps.segredos.outputs.ok == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - name: Envia uma versão de prévia (não muda a produção)
+      - if: steps.segredos.outputs.ok == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.segredos.outputs.ok == 'true'
+        run: pnpm build
+      - if: steps.segredos.outputs.ok == 'true'
+        name: Envia uma versão de prévia (não muda a produção)
         id: upload
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: versions upload --preview-alias pr-${{ github.event.pull_request.number }}
-      - name: Comenta o link da prévia
+      - if: steps.segredos.outputs.ok == 'true'
+        name: Comenta o link da prévia
         env:
           GH_TOKEN: ${{ github.token }}
           OUTPUT: ${{ steps.upload.outputs.command-output }}
@@ -107,21 +124,38 @@ jobs:
       url: https://proxinho.johnlaff.com
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - name: Confere se os segredos da Cloudflare existem
+        id: segredos
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::warning::Segredo CLOUDFLARE_API_TOKEN ausente. Veja docs/operacao.md; este passo foi pulado."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.segredos.outputs.ok == 'true'
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - if: steps.segredos.outputs.ok == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - name: Migrações do banco e deploy
+      - if: steps.segredos.outputs.ok == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.segredos.outputs.ok == 'true'
+        run: pnpm build
+      - if: steps.segredos.outputs.ok == 'true'
+        name: Migrações do banco e deploy
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           preCommands: pnpm exec wrangler d1 migrations apply proxinho --remote
           command: deploy
-      - name: Teste de fumaça em produção
+      - if: steps.segredos.outputs.ok == 'true'
+        name: Teste de fumaça em produção
         run: |
           for i in 1 2 3 4 5; do
             curl -fsS https://proxinho.johnlaff.com/api/health && exit 0
