@@ -51,8 +51,8 @@ flowchart LR
   S[(Scryfall + Arena<br/>atualizados todo dia)] -.-> R
 ```
 
-1. **Dados.** Todo dia, um script em Python cruza o banco de cartas do Scryfall com os textos em português do Arena e das impressões oficiais e carrega o resultado no Cloudflare D1 (33.830 cartas, 101 mil impressões).
-2. **Lista.** Um leitor único entende os formatos de exportação mais comuns, com seções, coleção, número e nomes em português.
+1. **Dados.** Todo dia, um script em Python cruza o banco de cartas do Scryfall com os textos em português do Arena e das impressões oficiais e carrega o resultado no Cloudflare D1 (33.830 cartas e 795 fichas, 104 mil impressões).
+2. **Lista.** Um leitor único entende os formatos de exportação mais comuns, com seções (inclusive "Tokens"), coleção, número e nomes em português. O resumo do pedido sugere as fichas que as cartas do deck criam.
 3. **Carta.** No navegador, um canvas baixa o PNG oficial da impressão, apaga o texto em inglês reconstruindo a textura da moldura (máscara + preenchimento em pirâmide; nas caixas translúcidas dos planeswalkers, uma rede neural de inpainting, o LaMa, rodando no próprio navegador) e escreve o português com quebra de linha, símbolos de mana e corpo ajustado para caber.
 4. **PDF.** As cartas são paginadas 3 × 3 em A4 ou Carta, com ou sem sangria, a 300 ou 480 dpi.
 
@@ -81,7 +81,7 @@ Precisa de Node 24, pnpm 12 e Python 3.12+ (só para o pipeline completo).
 git clone https://github.com/johnlaff/proxinho.git
 cd proxinho
 pnpm install
-pnpm db:seed:local   # banco local com 11 cartas de amostra
+pnpm db:seed:local   # banco local com 14 cartas e uma ficha de amostra
 pnpm dev             # http://localhost:5173
 ```
 
@@ -108,10 +108,10 @@ O projeto foi feito por um agente de IA trabalhando de forma autônoma, seguindo
 
 ## Limites conhecidos
 
-- A reescrita cobre a moldura moderna (2015+) de cartas normais, de duas faces (transformar e modais) e de planeswalkers. Sagas, aventuras e molduras especiais usam a imagem oficial em português quando existe; senão saem em inglês com aviso.
+- A reescrita cobre a moldura moderna (2015+) de cartas normais, de duas faces (transformar e modais), de planeswalkers e de fichas (tokens). Emblemas e fichas de duas faces ainda não. Sagas, aventuras e molduras especiais usam a imagem oficial em português quando existe; senão saem em inglês com aviso.
 - Nas modais, a faixa do pé com o resumo do outro lado continua em inglês.
 - O primeiro planeswalker da sessão baixa o modelo de preenchimento (~66 MB, uma vez só); sem placa de vídeo, cada um leva cerca de 6 s.
-- Cartas sem tradução oficial saem em inglês. Não usamos tradução automática.
+- Cartas sem tradução oficial saem em inglês. Não usamos tradução automática. Nas fichas, o texto vem do Arena: 541 de 795 têm português (cerca de 82% das fichas que as cartas de Commander criam).
 - O texto usa as fontes das cartas reais (Beleren e MPlantin), servidas pelo Worker a partir do KV, fora deste repositório. Num clone sem esses arquivos, o site cai sozinho para fontes livres parecidas (Eczar e Splentinex). Também dá para escolher outros arquivos de fonte no site; eles ficam só no navegador.
 
 ## Aviso legal

@@ -27,7 +27,7 @@ interface Props {
   busy: boolean;
   onBuild: () => void;
   onImport: (url: string) => void;
-  onAdd: (name: string) => void;
+  onAdd: (hit: SearchHit) => void;
   tab: Tab;
   onTab: (tab: Tab) => void;
 }
@@ -178,7 +178,7 @@ function LinkPanel({ id, labelledBy, busy, onImport }: { id: string; labelledBy:
   );
 }
 
-function SearchPanel({ id, labelledBy, onAdd }: { id: string; labelledBy: string; onAdd: (name: string) => void }) {
+function SearchPanel({ id, labelledBy, onAdd }: { id: string; labelledBy: string; onAdd: (hit: SearchHit) => void }) {
   const [q, setQ] = useState("");
   const [rawHits, setHits] = useState<SearchHit[]>([]);
   const [active, setActive] = useState(-1);
@@ -210,7 +210,7 @@ function SearchPanel({ id, labelledBy, onAdd }: { id: string; labelledBy: string
   }, [q]);
 
   function pick(hit: SearchHit) {
-    onAdd(hit.name_en);
+    onAdd(hit);
     setAdded(hit.name_pt ?? hit.name_en);
     setQ("");
     setHits([]);
@@ -272,6 +272,7 @@ function SearchPanel({ id, labelledBy, onAdd }: { id: string; labelledBy: string
               >
                 <span className="combo-name">{h.name_pt ?? h.name_en}</span>
                 {h.name_pt && h.name_pt !== h.name_en && <span className="combo-en">{h.name_en}</span>}
+                {h.type_line?.startsWith("Token ") && <span className="combo-en">ficha</span>}
               </li>
             ))}
           </ul>

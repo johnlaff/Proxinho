@@ -13,7 +13,8 @@ import { combineMasks, eraseRegions, findSetSymbolLeft, hasRightIcon, inpaint, m
 import { lamaInpaint } from "./lama";
 import { isTallPlaneswalker, planeswalkerRows, PW, rowRects, splitAbilities } from "./planeswalker";
 import { preloadSymbols } from "./symbols";
-import { SYMBOL_EM, fitRows, fitText, type LayoutResult, type Measurer } from "./text";
+import { SYMBOL_EM, chunkWidth, fitRows, fitText, type LayoutResult, type Measurer } from "./text";
+import { findTokenBar, findTokenBoxBottom, smallCaps, TOKEN, tokenLayout } from "./token";
 import { scryfallImage, type PrintRecord, type PtFace } from "./types";
 
 export interface RenderOptions {
@@ -220,6 +221,7 @@ function drawLayout(
   boxInk: "dark" | "light",
   symbols: Map<string, CanvasImageSource>,
   m: Measurer,
+  center = false,
 ) {
   let y = box.y0 + (box.y1 - box.y0 - res.height) / 2;
   const space = m.text(" ", res.size, false);
@@ -244,6 +246,10 @@ function drawLayout(
     }
     const baseline = y + res.lineHeight * 0.8;
     let x = box.x0;
+    if (center) {
+      const width = line.chunks.reduce((w, c, ci) => w + chunkWidth(c, res.size, m) + (ci > 0 ? space : 0), 0);
+      x += (box.x1 - box.x0 - width) / 2;
+    }
     line.chunks.forEach((chunk, ci) => {
       if (ci > 0) x += space;
       for (const run of chunk) {
@@ -275,6 +281,97 @@ function drawBackPt(ctx: CanvasRenderingContext2D, pt: string, centerY: number, 
   ctx.fillStyle = ink === "light" ? "rgba(251,248,241,0.75)" : "rgba(11,11,11,0.62)";
   ctx.fillText(pt, 682 * k, centerY * k);
   ctx.restore();
+}
+
+/** Nome de ficha: centralizado, em versalete (como nas fichas impressas). */
+function drawSmallCaps(
+  ctx: CanvasRenderingContext2D,
+  name: string,
+  centerY: number,
+  x0: number,
+  x1: number,
+  size: number,
+  k: number,
+  color: string,
+) {
+  const t = titleFont();
+  const parts = smallCaps(name);
+  const fontAt = (big: boolean, s: number) => `${t.weight} ${(big ? s : s * 0.8) * t.scale * k}px ${t.family}`;
+  const widthAt = (s: number) =>
+    parts.reduce((w, p) => {
+      ctx.font = fontAt(p.big, s);
+      return w + ctx.measureText(p.text).width / k;
+    }, 0);
+  let s = size;
+  let w = widthAt(s);
+  while (w * 0.82 > x1 - x0 && s > 18) w = widthAt((s -= 0.5));
+  const sx = w > x1 - x0 ? (x1 - x0) / w : 1;
+  ctx.save();
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = color;
+  ctx.translate(((x0 + x1) / 2 - (w * sx) / 2 + t.dx) * k, (centerY + s * t.scale * 0.36) * k);
+  ctx.scale(sx, 1);
+  let x = 0;
+  for (const p of parts) {
+    ctx.font = fontAt(p.big, s);
+    ctx.fillText(p.text, x * k, 0);
+    x += ctx.measureText(p.text).width / k;
+  }
+  ctx.restore();
+}
+
+/**
+ * Ficha: nome em versalete no alto, linha de tipo de altura variável e caixa de
+ * texto entre ela e o pé (ver token.ts). Devolve false se a moldura não bater.
+ */
+async function renderToken(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  sctx: CanvasRenderingContext2D;
+  data: ImageData;
+  toImg: (r: Rect) => Rect;
+  face: PtFace;
+  W: number;
+  H: number;
+}): Promise<boolean> {
+  const { ctx, data, toImg, face } = p;
+  const bar = findTokenBar(data);
+  if (!bar) return false;
+  const fx = data.width / BASE_W;
+  const fy = data.height / BASE_H;
+  const setLeft = findSetSymbolLeft(data, Math.round((bar.y0 + 6) * fy), Math.round((bar.y1 - 6) * fy)) / fx;
+  const layout = tokenLayout(bar, setLeft, findTokenBoxBottom(data, bar));
+  const text = face.text_pt ?? "";
+  const [titleInk, typeInk, boxInk] = eraseRegions(
+    data,
+    [
+      { rect: toImg(layout.title), threshold: 28 },
+      { rect: toImg(face.type_pt ? layout.type : { ...layout.type, x1: layout.type.x0 }), threshold: 28 },
+      ...(layout.box ? [{ rect: toImg(layout.box.erase), threshold: 14, colorThreshold: 34 }] : []),
+    ],
+    [toImg(TOKEN.ptBox)],
+  );
+  // ficha sem caixa mas com texto em PT: não há onde escrever
+  if (!layout.box && text.trim()) return false;
+  p.sctx.putImageData(data, 0, 0);
+  ctx.drawImage(p.src, 0, 0, p.W, p.H);
+
+  const k = p.W / BASE_W;
+  const T = TOKEN.title;
+  drawSmallCaps(ctx, face.name_pt ?? face.name_en, T.centerY, T.x0, T.x1, T.size, k, INK[titleInk]);
+  if (face.type_pt)
+    drawLine(ctx, face.type_pt, TOKEN.typeX, layout.type.centerY, layout.type.x1 - 4 - TOKEN.typeX, TOKEN.typeSize, k, INK[typeInk]);
+  if (layout.box && text.trim()) {
+    const box = layout.box.text;
+    const symbols = await preloadSymbols(text);
+    const m = measurer(ctx, k);
+    const under = box.y1 - TOKEN.ptBox.y0;
+    const notch = under > 0 ? { width: box.x1 - TOKEN.ptBox.x0 + 6, height: under } : undefined;
+    const res = fitText(text, null, box.x1 - box.x0, box.y1 - box.y0, m, 34, 15, notch);
+    // uma linha só ("Vínculo com a vida") fica centralizada, como nas fichas impressas
+    drawLayout(ctx, res, box, k, boxInk, symbols, m, res.lines.length === 1);
+  }
+  return true;
 }
 
 export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
@@ -322,6 +419,12 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const fx = src.width / BASE_W;
   const fy = src.height / BASE_H;
   const toImg = (r: Rect) => ({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
+
+  if (print.layout === "token") {
+    const done = await renderToken({ ctx, src, sctx, data, toImg, face, W, H });
+    if (!done) ctx.drawImage(img, 0, 0, W, H);
+    return { canvas: out, translated: done };
+  }
 
   if (pw) {
     const done = await renderPlaneswalker({ ctx, src, sctx, data, toImg, face, print, W, H });

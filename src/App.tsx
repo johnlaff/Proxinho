@@ -6,9 +6,21 @@
  */
 import { Download, ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { importFromUrl, resolveNames } from "./app/api";
+import { cardsById, importFromUrl, resolveNames, type Resolved, type SearchHit } from "./app/api";
 import type { ExportProgress, Quality } from "./app/exportPdf";
-import { buildOrder, countOutcomes, totalCards, type Choice, type Entry, type Missing, type OrderLine, type Outcome } from "./app/model";
+import {
+  buildOrder,
+  countOutcomes,
+  entriesFrom,
+  mergeEntries,
+  tokenSuggestions,
+  totalCards,
+  type Choice,
+  type Entry,
+  type Missing,
+  type OrderLine,
+  type Outcome,
+} from "./app/model";
 import { loadStoredFonts, toFiles, type StoredFonts } from "./app/userFonts";
 import { CardDrawer } from "./components/CardDrawer";
 import { FontPicker } from "./components/FontPicker";
@@ -17,6 +29,7 @@ import { OrderPanel, type Tab } from "./components/OrderPanel";
 import { OUTCOME_LABEL } from "./app/labels";
 import { BlankSlots, ProofSheets, Sheet, Slot } from "./components/ProofSheets";
 import { RegMark } from "./components/RegMark";
+import { TokenSuggestions } from "./components/TokenSuggestions";
 import { mergeLines, parseDecklist } from "./lib/decklist";
 import type { Paper, PrintMode } from "./lib/pdf";
 
@@ -104,7 +117,12 @@ export default function App() {
     setError(null);
     setNotice(null);
     try {
-      const names = [...new Set(lines.map((l) => l.name.trim()))];
+      // linhas da seção de fichas preferem a ficha quando há carta com o mesmo nome
+      const names = [
+        ...new Map(
+          lines.map((l) => [`${l.section === "tokens"}:${l.name.trim()}`, { name: l.name.trim(), token: l.section === "tokens" }]),
+        ).values(),
+      ];
       const resolved = await resolveNames(names);
       const order = buildOrder(lines, resolved);
       if (mode === "replace") {
@@ -112,15 +130,7 @@ export default function App() {
         setMissing(order.missing);
         if (!order.entries.length) setError("Não reconhecemos nenhuma carta nessa lista. Confira se há um nome por linha.");
       } else {
-        setEntries((prev) => {
-          const next = [...prev];
-          for (const e of order.entries) {
-            const same = next.findIndex((x) => x.key === e.key);
-            if (same >= 0) next[same] = { ...next[same], quantity: Math.min(99, next[same].quantity + e.quantity) };
-            else next.push(e);
-          }
-          return next;
-        });
+        setEntries((prev) => mergeEntries(prev, order.entries));
         setMissing((prev) => [...prev, ...order.missing]);
       }
       return order;
@@ -162,9 +172,45 @@ export default function App() {
     }
   }
 
-  function addCard(name: string) {
-    void resolveLines([{ quantity: 1, name, section: "main" }], "append");
+  /** Da busca: pelo oracle_id, para a ficha "Tesouro" não virar uma carta de mesmo nome. */
+  async function addCard(hit: SearchHit) {
+    setBusy(true);
+    setError(null);
+    try {
+      const found = await cardsById([hit.oracle_id]);
+      setEntries((prev) => mergeEntries(prev, entriesFrom(found)));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
+
+  // fichas que as cartas do pedido criam (buscadas uma vez por ficha)
+  const [tokenCache, setTokenCache] = useState<Map<string, Resolved>>(() => new Map());
+  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(() => new Set());
+  const suggestedIds = useMemo(() => tokenSuggestions(entries, dismissed), [entries, dismissed]);
+  useEffect(() => {
+    const want = suggestedIds.filter((id) => !tokenCache.has(id));
+    if (!want.length) return;
+    const ctrl = new AbortController();
+    cardsById(want, ctrl.signal)
+      .then((found) =>
+        setTokenCache((prev) => {
+          const next = new Map(prev);
+          for (const r of found) if (r.card) next.set(r.card.oracle_id, r);
+          // o que a API não devolveu não volta a ser pedido
+          for (const id of want) if (!next.has(id)) next.set(id, { query: id, card: null, prints: [] });
+          return next;
+        }),
+      )
+      .catch(() => {
+        /* sem as sugestões o pedido segue normal */
+      });
+    return () => ctrl.abort();
+  }, [suggestedIds, tokenCache]);
+  const suggestions = suggestedIds.map((id) => tokenCache.get(id)).filter((r): r is Resolved => Boolean(r?.card && r.prints.length));
+  const addTokens = (items: Resolved[]) => setEntries((prev) => mergeEntries(prev, entriesFrom(items, "tokens")));
 
   const setChoice = (key: string, choice: Choice) => setEntries((prev) => prev.map((e) => (e.key === key ? { ...e, choice } : e)));
   const setQuantity = (key: string, quantity: number) =>
@@ -262,7 +308,9 @@ export default function App() {
                   </li>
                 ))}
               </ul>
-              <p className="hint">Confira a grafia ou procure pela aba “Buscar carta”. Fichas (tokens) ainda não entram.</p>
+              <p className="hint">
+                Confira a grafia ou procure pela aba “Buscar carta”. Fichas entram pela busca ou pela seção “Tokens” da lista.
+              </p>
             </details>
           )}
         </section>
@@ -285,6 +333,11 @@ export default function App() {
                   ))}
               </ul>
               <p className="hint">Toque ou clique numa carta da folha para trocar a arte ou a quantidade.</p>
+              <TokenSuggestions
+                tokens={suggestions}
+                onAdd={addTokens}
+                onDismiss={() => setDismissed((prev) => new Set([...prev, ...suggestedIds]))}
+              />
             </section>
 
             <fieldset className="finish">

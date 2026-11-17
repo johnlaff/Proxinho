@@ -35,11 +35,11 @@ Pegar qualquer carta, em qualquer arte, e entregar um PDF pronto para imprimir n
 
 ## Capabilities and Constraints
 
-- Moldura moderna (2015+) de layout normal é reescrita em português; outras molduras (planeswalker, saga, dupla face, showcase, antigas) mostram a imagem oficial em português quando existe, ou a original em inglês com aviso. Novas molduras entram por etapas.
+- Moldura moderna (2015+) é reescrita em português nas cartas normais, de duas faces, planeswalkers e fichas (tokens); outras molduras (saga, aventura, showcase, antigas) mostram a imagem oficial em português quando existe, ou a original em inglês com aviso. Novas molduras entram por etapas.
 - Tradução oficial cobre 92% das cartas legais no Commander (Arena + impressões em português). O restante aparece em inglês, marcado, até existir tradução.
 - Tudo é gerado no navegador da pessoa: o servidor não guarda nem distribui imagens de cartas.
 - Gratuito, sem venda de impressão, aviso de conteúdo de fã da Wizards no site e no PDF.
-- Fontes das cartas são livres (OFL); as fontes originais da Wizards não são distribuídas.
+- O texto usa as fontes das cartas reais (Beleren e MPlantin), servidas pelo próprio site e fora do repositório público; sem elas, fontes livres (OFL) parecidas.
 
 ## Brand Commitments
 

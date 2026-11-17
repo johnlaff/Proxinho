@@ -8,6 +8,9 @@ export interface PtFace {
   text_pt: string | null;
   flavor_pt: string | null;
   mana_cost: string | null;
+  /** Fichas: poder/resistência ("1/1") e cores ("WB"), para distinguir fichas de mesmo nome. */
+  pt?: string | null;
+  colors?: string;
 }
 
 /** De onde veio a tradução. */
@@ -26,6 +29,8 @@ export interface CardRecord {
   pt_print: { id: string; set: string; number: string; hires: boolean } | null;
   layout: string | null;
   type_line: string | null;
+  /** Fichas (oracle_id) que a carta cria; vazio nas próprias fichas. */
+  tokens?: string[];
 }
 
 /** Uma impressão (arte) em inglês de uma carta. */

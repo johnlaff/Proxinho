@@ -95,8 +95,8 @@ function isReprintList(p: PrintRecord): boolean {
   return p.set_code.toLowerCase() === "plst";
 }
 
-/** Ordem na folha: comandante primeiro, depois o deck, depois o sideboard. */
-const SECTION_ORDER: Record<Section, number> = { commander: 0, main: 1, side: 2 };
+/** Ordem na folha: comandante primeiro, depois o deck, o sideboard e as fichas. */
+const SECTION_ORDER: Record<Section, number> = { commander: 0, main: 1, side: 2, tokens: 3 };
 
 export function sortEntries(entries: Entry[]): Entry[] {
   return [...entries].sort((a, b) => SECTION_ORDER[a.section] - SECTION_ORDER[b.section]);
@@ -210,4 +210,54 @@ export function countOutcomes(entries: Entry[]): Record<Outcome, number> {
 /** Nome para mostrar: o português quando existe. */
 export function displayName(card: CardRecord): string {
   return card.name_pt ?? card.name_en;
+}
+
+/** A entrada é uma ficha (token), não uma carta. */
+export function isToken(card: CardRecord): boolean {
+  return card.layout === "token";
+}
+
+/**
+ * Fichas que as cartas do pedido criam e que ainda não estão nele, pelo
+ * oracle_id, na ordem em que aparecem no deck.
+ */
+export function tokenSuggestions(entries: Entry[], dismissed: ReadonlySet<string> = new Set()): string[] {
+  const have = new Set(entries.map((e) => e.card.oracle_id));
+  const out = new Set<string>();
+  for (const e of sortEntries(entries)) {
+    for (const id of e.card.tokens ?? []) if (!have.has(id) && !dismissed.has(id)) out.add(id);
+  }
+  return [...out];
+}
+
+const COLOR_NAME: Record<string, string> = { W: "branca", U: "azul", B: "preta", R: "vermelha", G: "verde" };
+
+/** "1/1 branca e preta", "incolor": o que distingue fichas de mesmo nome. */
+export function tokenDetails(card: CardRecord): string {
+  const face = frontFace(card);
+  const colors = [...(face?.colors ?? "")].map((c) => COLOR_NAME[c]).filter(Boolean);
+  const color = colors.length === 0 ? "incolor" : colors.length === 1 ? colors[0] : `${colors.slice(0, -1).join(", ")} e ${colors.at(-1)}`;
+  return [face?.pt, color].filter(Boolean).join(" ");
+}
+
+/** Entradas direto do que a API devolveu (busca, fichas sugeridas): uma cópia de cada. */
+export function entriesFrom(resolved: { card: CardRecord | null; prints: PrintRecord[] }[], section?: Section): Entry[] {
+  return resolved.flatMap(({ card, prints }) => {
+    if (!card) return [];
+    const s = section ?? (isToken(card) ? "tokens" : "main");
+    return [
+      { key: `${s}:${card.oracle_id}`, query: card.name_en, quantity: 1, section: s, card, prints, choice: defaultChoice(card, prints) },
+    ];
+  });
+}
+
+/** Soma entradas novas ao pedido: a mesma carta na mesma seção ganha quantidade (até 99). */
+export function mergeEntries(prev: Entry[], add: Entry[]): Entry[] {
+  const next = [...prev];
+  for (const e of add) {
+    const same = next.findIndex((x) => x.key === e.key);
+    if (same >= 0) next[same] = { ...next[same], quantity: Math.min(99, next[same].quantity + e.quantity) };
+    else next.push(e);
+  }
+  return next;
 }

@@ -56,6 +56,8 @@ interface CardRow {
   pt_print: string | null;
   layout: string | null;
   type_line: string | null;
+  /** fichas que a carta cria (JSON com oracle_id) */
+  tokens?: string | null;
 }
 
 function parseCard(row: CardRow) {
@@ -69,6 +71,7 @@ function parseCard(row: CardRow) {
     pt_print: row.pt_print ? JSON.parse(row.pt_print) : null,
     layout: row.layout,
     type_line: row.type_line,
+    tokens: row.tokens ? (JSON.parse(row.tokens) as string[]) : [],
   };
 }
 
@@ -100,14 +103,16 @@ function parsePrint(row: PrintRow) {
 const ALIAS_MATCH = (col: string) =>
   `(${col} = ?1 OR ${col} LIKE ?1 || ' | %' OR ${col} LIKE '% | ' || ?1 OR ${col} LIKE '% | ' || ?1 || ' | %')`;
 
-async function findByName(db: D1Database, name: string): Promise<CardRow | null> {
+/** Acha a carta pelo nome; `token` dá preferência às fichas (seção "Tokens" da lista). */
+async function findByName(db: D1Database, name: string, token = false): Promise<CardRow | null> {
   const n = normalizeName(name);
   if (!n) return null;
   return db
     .prepare(
-      `SELECT * FROM cards WHERE ${ALIAS_MATCH("search_en")} OR ${ALIAS_MATCH("search_pt")} ORDER BY edhrec_rank IS NULL, edhrec_rank LIMIT 1`,
+      `SELECT * FROM cards WHERE ${ALIAS_MATCH("search_en")} OR ${ALIAS_MATCH("search_pt")}
+       ORDER BY (COALESCE(layout, '') = 'token') <> ?2, edhrec_rank IS NULL, edhrec_rank, name_pt IS NULL LIMIT 1`,
     )
-    .bind(n)
+    .bind(n, token ? 1 : 0)
     .first<CardRow>();
 }
 
@@ -136,7 +141,7 @@ async function search(db: D1Database, q: string) {
       `SELECT oracle_id, name_en, name_pt, source, type_line FROM cards
        WHERE search_en LIKE ?1 || '%' OR search_pt LIKE ?1 || '%' OR search_en LIKE '% | ' || ?1 || '%' OR search_pt LIKE '% | ' || ?1 || '%'
           OR search_en LIKE '% ' || ?1 || '%' OR search_pt LIKE '% ' || ?1 || '%'
-       ORDER BY (search_en LIKE ?1 || '%' OR search_pt LIKE ?1 || '%') DESC, edhrec_rank IS NULL, edhrec_rank
+       ORDER BY layout = 'token', (search_en LIKE ?1 || '%' OR search_pt LIKE ?1 || '%') DESC, edhrec_rank IS NULL, edhrec_rank
        LIMIT 8`,
     )
     .bind(n)
@@ -144,15 +149,38 @@ async function search(db: D1Database, q: string) {
   return results;
 }
 
+const MAX_BY_ID = 120;
+
+/** Cartas (ou fichas) pelo oracle_id, com as impressões: usado para as fichas do deck. */
+async function cardsById(db: D1Database, ids: string[]) {
+  const unique = [...new Set(ids)].slice(0, MAX_BY_ID);
+  const rows: CardRow[] = [];
+  for (let i = 0; i < unique.length; i += 50) {
+    const chunk = unique.slice(i, i + 50);
+    const { results } = await db
+      .prepare(`SELECT * FROM cards WHERE oracle_id IN (${chunk.map(() => "?").join(",")})`)
+      .bind(...chunk)
+      .all<CardRow>();
+    rows.push(...results);
+  }
+  const prints = await printsFor(
+    db,
+    rows.map((r) => r.oracle_id),
+  );
+  return rows.map((row) => ({ query: row.name_en, card: parseCard(row), prints: prints.get(row.oracle_id) ?? [] }));
+}
+
 interface ResolveLine {
   name: string;
   set?: string;
   number?: string;
+  /** a linha veio da seção de fichas */
+  token?: boolean;
 }
 
 async function resolve(db: D1Database, lines: ResolveLine[]) {
-  const unique = [...new Map(lines.map((l) => [normalizeName(l.name), l])).values()].slice(0, MAX_RESOLVE);
-  const rows = await Promise.all(unique.map((l) => findByName(db, l.name)));
+  const unique = [...new Map(lines.map((l) => [`${l.token ? "t" : "c"}:${normalizeName(l.name)}`, l])).values()].slice(0, MAX_RESOLVE);
+  const rows = await Promise.all(unique.map((l) => findByName(db, l.name, l.token)));
   const found = rows.filter((r): r is CardRow => r !== null);
   const prints = await printsFor(db, [...new Set(found.map((r) => r.oracle_id))]);
   const results = unique.map((line, i) => {
@@ -180,8 +208,16 @@ export default {
       if (url.pathname === "/api/resolve" && request.method === "POST") {
         const body = (await request.json().catch(() => null)) as { lines?: ResolveLine[] } | null;
         if (!body?.lines || !Array.isArray(body.lines)) return problem(400, "Envie { lines: [{ name }] }.");
-        const lines = body.lines.filter((l) => typeof l?.name === "string" && l.name.trim()).map((l) => ({ name: l.name.slice(0, 200) }));
+        const lines = body.lines
+          .filter((l) => typeof l?.name === "string" && l.name.trim())
+          .map((l) => ({ name: l.name.slice(0, 200), token: l.token === true }));
         return json({ results: await resolve(env.DB, lines) });
+      }
+      if (url.pathname === "/api/cards" && request.method === "POST") {
+        const body = (await request.json().catch(() => null)) as { ids?: unknown } | null;
+        const ids = Array.isArray(body?.ids) ? body.ids.filter((x): x is string => typeof x === "string" && /^[0-9a-f-]{36}$/.test(x)) : [];
+        if (!ids.length) return problem(400, "Envie { ids: [oracle_id, …] }.");
+        return json({ results: await cardsById(env.DB, ids) });
       }
       if (url.pathname === "/api/import" && request.method === "GET") {
         const target = url.searchParams.get("url") ?? "";

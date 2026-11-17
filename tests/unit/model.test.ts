@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { buildOrder, countOutcomes, defaultChoice, outcomeOf, renderKey, toSheets, totalCards, type Entry } from "../../src/app/model";
+import {
+  buildOrder,
+  countOutcomes,
+  defaultChoice,
+  entriesFrom,
+  mergeEntries,
+  outcomeOf,
+  renderKey,
+  sortEntries,
+  toSheets,
+  tokenDetails,
+  tokenSuggestions,
+  totalCards,
+  type Entry,
+} from "../../src/app/model";
 import type { CardRecord, PrintRecord } from "../../src/engine/types";
 
 function card(over: Partial<CardRecord> = {}): CardRecord {
@@ -151,5 +165,53 @@ describe("outcomeOf", () => {
     expect(outcomeOf({ ...base, choice: { kind: "pt" } })).toBe("imagem-pt");
     expect(outcomeOf({ ...base, card: card({ source: null }) })).toBe("sem-traducao");
     expect(countOutcomes([base]).reescrita).toBe(2);
+  });
+});
+
+describe("fichas", () => {
+  const spirit = card({
+    oracle_id: "t1",
+    name_en: "Spirit",
+    name_pt: "Espírito",
+    layout: "token",
+    faces: [
+      {
+        name_en: "Spirit",
+        name_pt: "Espírito",
+        type_pt: "Criatura Ficha — Espírito",
+        text_pt: "Voar",
+        flavor_pt: null,
+        mana_cost: null,
+        pt: "1/1",
+        colors: "WB",
+      },
+    ],
+  });
+
+  it("sugere as fichas que as cartas criam, sem repetir as que já estão no pedido", () => {
+    const [a] = entriesFrom([{ card: card({ oracle_id: "c1", tokens: ["t1", "t2"] }), prints: [print("p1")] }]);
+    const [b] = entriesFrom([{ card: card({ oracle_id: "c2", tokens: ["t2", "t3"] }), prints: [print("p2")] }]);
+    expect(tokenSuggestions([a, b])).toEqual(["t1", "t2", "t3"]);
+    const [tok] = entriesFrom([{ card: spirit, prints: [print("p3", { layout: "token" })] }]);
+    expect(tokenSuggestions([a, b, tok], new Set(["t3"]))).toEqual(["t2"]);
+  });
+
+  it("fichas entram na seção de fichas e vão para o fim das folhas", () => {
+    const [tok] = entriesFrom([{ card: spirit, prints: [print("p3")] }]);
+    expect(tok.section).toBe("tokens");
+    const [c] = entriesFrom([{ card: card(), prints: [print("p1")] }]);
+    expect(sortEntries([tok, c]).map((e) => e.card.oracle_id)).toEqual(["o1", "t1"]);
+  });
+
+  it("descreve P/R e cores para distinguir fichas de mesmo nome", () => {
+    expect(tokenDetails(spirit)).toBe("1/1 branca e preta");
+    expect(tokenDetails(card({ faces: [{ ...spirit.faces[0], pt: null, colors: "" }] }))).toBe("incolor");
+  });
+
+  it("somar a mesma entrada aumenta a quantidade", () => {
+    const [tok] = entriesFrom([{ card: spirit, prints: [print("p3")] }]);
+    const merged = mergeEntries([tok], [tok, tok]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].quantity).toBe(3);
   });
 });

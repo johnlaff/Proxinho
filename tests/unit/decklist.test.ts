@@ -33,6 +33,15 @@ describe("parseDecklist", () => {
     ]);
   });
 
+  it("lê a seção de fichas (Tokens / Fichas)", () => {
+    const lines = parseDecklist("1 Sol Ring\nTokens\n3 Treasure\nFichas:\n1 Espírito");
+    expect(lines.map((l) => [l.name, l.section])).toEqual([
+      ["Sol Ring", "main"],
+      ["Treasure", "tokens"],
+      ["Espírito", "tokens"],
+    ]);
+  });
+
   it("aceita cabeçalhos com // e contagem", () => {
     const lines = parseDecklist("// Commander (1)\n1 Kona, Rescue Beastie\n// Mainboard (99)\n1 Forest");
     expect(lines.map((l) => l.section)).toEqual(["commander", "main"]);

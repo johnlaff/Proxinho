@@ -60,4 +60,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # o banco precisa das colunas novas antes de receber os dados
+          preCommands: pnpm exec wrangler d1 migrations apply proxinho --remote
           command: d1 execute proxinho --remote --file data/out/cards.sql --yes

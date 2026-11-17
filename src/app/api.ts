@@ -27,20 +27,39 @@ async function call<T>(input: string, init?: RequestInit): Promise<T> {
   return body;
 }
 
-export async function resolveNames(names: string[], signal?: AbortSignal): Promise<Resolved[]> {
+/** Um nome a procurar; `token` prefere a ficha quando há carta e ficha com o mesmo nome. */
+export interface NameQuery {
+  name: string;
+  token?: boolean;
+}
+
+export async function resolveNames(names: (string | NameQuery)[], signal?: AbortSignal): Promise<Resolved[]> {
   const out: Resolved[] = [];
+  const lines = names.map((n) => (typeof n === "string" ? { name: n } : n));
   // a API aceita até 250 nomes por vez
-  for (let i = 0; i < names.length; i += 250) {
-    const chunk = names.slice(i, i + 250);
+  for (let i = 0; i < lines.length; i += 250) {
+    const chunk = lines.slice(i, i + 250);
     const body = await call<{ results: Resolved[] }>("/api/resolve", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ lines: chunk.map((name) => ({ name })) }),
+      body: JSON.stringify({ lines: chunk }),
       signal,
     });
     out.push(...body.results);
   }
   return out;
+}
+
+/** Cartas ou fichas pelo oracle_id (as fichas que o deck cria). */
+export async function cardsById(ids: string[], signal?: AbortSignal): Promise<Resolved[]> {
+  if (!ids.length) return [];
+  const body = await call<{ results: Resolved[] }>("/api/cards", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ids }),
+    signal,
+  });
+  return body.results;
 }
 
 export async function searchCards(q: string, signal?: AbortSignal): Promise<SearchHit[]> {

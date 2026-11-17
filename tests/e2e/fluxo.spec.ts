@@ -80,3 +80,25 @@ test("planeswalker sai reescrito em português", async ({ page }) => {
   await expect(page.locator(".slot-img")).toHaveCount(1, { timeout: 60_000 });
   await expect(page.locator(".slot .tag")).toHaveCount(0); // sem etiqueta: saiu reescrito
 });
+
+test("sugere as fichas que o deck cria e as reescreve em português", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Lista do deck").fill("1 Smothering Tithe");
+  await page.getByRole("button", { name: "Montar folhas" }).click();
+  const tokens = page.getByRole("region", { name: "Fichas que o deck cria" });
+  await expect(tokens.getByText("Tesouro")).toBeVisible();
+  await tokens.getByRole("button", { name: "Adicionar a ficha", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /Seu pedido: 2 cartas, 1 folha/ })).toBeVisible();
+  // a sugestão some quando a ficha já está no pedido
+  await expect(tokens).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Tesouro/ })).toBeVisible();
+  await expect(page.locator(".slot-img")).toHaveCount(2, { timeout: 60_000 });
+});
+
+test("lê a seção Tokens da lista como fichas", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Lista do deck").fill("1 Smothering Tithe\n\nTokens\n2 Treasure");
+  await page.getByRole("button", { name: "Montar folhas" }).click();
+  await expect(page.getByRole("heading", { name: /Seu pedido: 3 cartas, 1 folha/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Fichas que o deck cria" })).toHaveCount(0);
+});

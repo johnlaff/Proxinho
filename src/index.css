@@ -525,6 +525,46 @@ a:hover {
   border: 2.5px solid var(--m);
 }
 
+/* fichas que o deck cria */
+.tokens {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+.token-list {
+  margin: 8px 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.token-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.token-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-weight: 650;
+}
+.token-meta {
+  color: var(--ink-3);
+  font-size: 0.875rem;
+  font-weight: 450;
+}
+.token-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.token-actions .btn--small {
+  min-height: 44px;
+}
+
 /* etiquetas de resultado */
 .tag {
   display: inline-flex;

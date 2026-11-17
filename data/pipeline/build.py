@@ -160,6 +160,9 @@ def load_arena(offline: bool) -> dict[str, dict]:
         name_en = text(en, card.get("titleId"))
         if not name_en or name_en.startswith("A-") or card.get("set") in DIGITAL_SETS:
             continue
+        # fichas têm nomes que coincidem com cartas ("Adorned Pouncer" eternizado): ficam em load_arena_tokens
+        if card.get("isToken"):
+            continue
         front = face(card)
         if not front:
             continue
@@ -174,6 +177,60 @@ def load_arena(offline: bool) -> dict[str, dict]:
         result[name_en] = {"faces": faces, "print": {"set": (card.get("set") or "").lower(), "number": str(card.get("collectorNumber") or "")}}
     log(f"Arena: {len(result)} cartas com texto PT-BR")
     return result
+
+
+def token_key(name: str, power: object, toughness: object, text: str) -> tuple[str, str, str, str]:
+    """Chave para casar uma ficha do Arena com a do Scryfall: nome, P/R e texto sem lembretes."""
+    t = re.sub(r"</?nobr>", "", text or "")
+    t = re.sub(r"\{o([^}]*)\}", lambda m: "{" + m.group(1) + "}", t).lower()
+    t = re.sub(r"\([^)]*\)", "", t)  # texto de lembrete
+    t = t.replace("enters the battlefield", "enters")
+    t = re.sub(r"this (creature|artifact|enchantment|permanent)", "this token", t)
+    t = re.sub(r"[^a-z0-9{}+/*]", "", t)
+    return (name.lower(), str(power), str(toughness), t)
+
+
+def load_arena_tokens() -> dict[tuple, dict]:
+    """Fichas do Arena com texto em PT-BR, pela chave de `token_key` (usa o cache de load_arena)."""
+    cards = json.loads((CACHE / "arena_cards.json").read_text())
+    br = {i["id"]: i["text"] for i in json.loads((CACHE / "arena_loc_br.json").read_text())}
+    en = {i["id"]: i["text"] for i in json.loads((CACHE / "arena_loc_en.json").read_text())}
+
+    def text(table: dict[int, str], key: int | None) -> str | None:
+        value = table.get(key) if key is not None else None
+        if not value or value == "#NoTranslationNeeded":
+            return None
+        return re.sub(r"</?nobr>", "", value)
+
+    out: dict[tuple, dict] = {}
+    for card in sorted(cards, key=lambda c: c["grpid"]):  # grpid maior = texto mais novo
+        if not card.get("isToken"):
+            continue
+        name_en, name_pt = text(en, card.get("titleId")), text(br, card.get("titleId"))
+        if not name_en or not name_pt:
+            continue
+        abilities = card.get("abilities", [])
+        en_text = "".join(text(en, a.get("TextId")) or "" for a in abilities)
+        pt_lines = [arena_symbols(t) for a in abilities if (t := text(br, a.get("TextId")))]
+        type_pt = text(br, card.get("cardTypeTextId"))
+        if not type_pt:
+            continue  # "O Monarca" e afins não são fichas de verdade
+        # algumas fichas do Arena vêm só com "Criatura" (ou "Artefato"): a palavra "Ficha" é do tipo impresso (Token).
+        # Tipos compostos ("Criatura Lendária") ficam como estão, para não inventar a ordem das palavras.
+        if "Ficha" not in type_pt and " " not in type_pt:
+            type_pt = f"{type_pt} Ficha"
+        sub = text(br, card.get("subtypeTextId"))
+        out[token_key(name_en, card.get("power"), card.get("toughness"), en_text)] = {
+            "name_en": name_en,
+            "name_pt": name_pt,
+            "type_pt": f"{type_pt} — {sub}" if sub else type_pt,
+            "text_pt": "\n".join(join_keywords(pt_lines)),
+            "flavor_pt": None,
+            "mana_cost": None,
+            "print": {"set": (card.get("set") or "").lower(), "number": str(card.get("collectorNumber") or "")},
+        }
+    log(f"Arena: {len(out)} fichas com texto PT-BR")
+    return out
 
 
 def load_printed_pt(offline: bool) -> dict[str, dict]:
@@ -298,8 +355,26 @@ def sides_of(card: dict) -> list[dict] | None:
     return out
 
 
+def token_supported(card: dict) -> bool:
+    """Ficha na moldura de 2015 (nome no alto, caixa de texto de altura variável)."""
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "token"
+        and card.get("border_color") == "black"
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not card.get("frame_effects")
+    )
+
+
+# Fichas encontradas em load_prints: {oracle_id da ficha: impressão de referência}
+TOKENS: dict[str, dict] = {}
+# Fichas que cada carta cria: {oracle_id da carta: {id da impressão da ficha}}
+TOKEN_PARTS: dict[str, set[str]] = {}
+
+
 def load_prints(offline: bool) -> list[dict]:
-    """Todas as impressões em inglês no papel (Scryfall default cards)."""
+    """Todas as impressões em inglês no papel (Scryfall default cards), fichas incluídas."""
     meta = get_json("https://api.scryfall.com/bulk-data/default-cards")
     path = fetch(meta["jsonl_download_uri"], CACHE / "default.jsonl.gz", offline)
     out = []
@@ -310,9 +385,20 @@ def load_prints(offline: bool) -> list[dict]:
             c = json.loads(line)
             if c.get("lang") != "en" or c.get("digital") or c.get("oversized") or "paper" not in c.get("games", []):
                 continue
-            if c.get("layout") in {"art_series", "token", "double_faced_token", "emblem"}:
+            if c.get("layout") in {"art_series", "double_faced_token", "emblem"}:
                 continue
             oid = c.get("oracle_id") or (c.get("card_faces") or [{}])[0].get("oracle_id")
+            if c.get("layout") == "token":
+                # "Copy", "The Monarch", "Boss" e afins são cartas de apoio, não fichas
+                if not (c.get("type_line") or "").startswith("Token "):
+                    continue
+                # a mais recente vira a referência de nome, tipo, texto e P/R da ficha
+                if oid and (oid not in TOKENS or (c.get("released_at") or "") > (TOKENS[oid].get("released_at") or "")):
+                    TOKENS[oid] = c
+            else:
+                for part in c.get("all_parts") or []:
+                    if part.get("component") == "token":
+                        TOKEN_PARTS.setdefault(oid, set()).add(part["id"])
             face = (c.get("card_faces") or [c])[0]
             sides = sides_of(c)
             out.append(
@@ -333,7 +419,7 @@ def load_prints(offline: bool) -> list[dict]:
                     "mana_cost": face.get("mana_cost") or c.get("mana_cost"),
                     "has_pt": face.get("power") is not None or c.get("power") is not None,
                     "two_sided": bool(c.get("card_faces") and not c.get("image_uris")),
-                    "supported": frame_supported(c) or bool(sides and sides[0]["supported"]),
+                    "supported": frame_supported(c) or token_supported(c) or bool(sides and sides[0]["supported"]),
                     "sides": sides,
                 }
             )
@@ -418,6 +504,44 @@ def build(offline: bool) -> list[dict]:
     return rows
 
 
+def token_rows(prints: list[dict]) -> list[dict]:
+    """Uma linha em `cards` para cada ficha, com o texto em PT do Arena quando existe."""
+    arena = load_arena_tokens()
+    rows = []
+    matched = 0
+    for oid, t in TOKENS.items():
+        a = arena.get(token_key(t["name"], t.get("power"), t.get("toughness"), t.get("oracle_text") or ""))
+        matched += bool(a)
+        face = (
+            {k: v for k, v in a.items() if k != "print"}
+            if a
+            else {"name_en": t["name"], "name_pt": None, "type_pt": None, "text_pt": None, "flavor_pt": None, "mana_cost": None}
+        )
+        # para a pessoa distinguir fichas de mesmo nome (Espírito 1/1 branco, Espírito 1/1 incolor…)
+        face["pt"] = f"{t['power']}/{t['toughness']}" if t.get("power") is not None else None
+        face["colors"] = "".join(t.get("colors") or [])
+        rows.append(
+            {
+                "oracle_id": oid,
+                "name_en": t["name"],
+                "name_pt": a["name_pt"] if a else None,
+                "search_en": norm(t["name"]),
+                "search_pt": norm(a["name_pt"]) if a else None,
+                "source": "arena" if a else None,
+                "text_print": a["print"] if a else None,
+                "faces": [face],
+                "pt_print": None,
+                "layout": "token",
+                "type_line": t.get("type_line"),
+                "edhrec_rank": None,
+                "commander": False,
+                "tokens": None,
+            }
+        )
+    log(f"fichas: {len(rows)} | com texto do Arena: {matched}")
+    return rows
+
+
 def sql_str(value: object) -> str:
     if value is None:
         return "NULL"
@@ -432,7 +556,7 @@ def sql_str(value: object) -> str:
 
 PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides"]
 
-COLUMNS = ["oracle_id", "name_en", "name_pt", "search_en", "search_pt", "source", "text_print", "faces", "pt_print", "layout", "type_line", "edhrec_rank", "commander"]
+COLUMNS = ["oracle_id", "name_en", "name_pt", "search_en", "search_pt", "source", "text_print", "faces", "pt_print", "layout", "type_line", "edhrec_rank", "commander", "tokens"]
 
 
 def write_table(fh, table: str, columns: list[str], rows: list[dict]) -> None:
@@ -460,8 +584,16 @@ def main() -> None:
     parser.add_argument("--offline", action="store_true", help="reaproveita downloads em data/cache")
     args = parser.parse_args()
     rows = build(args.offline)
+    all_prints = load_prints(args.offline)
+    # fichas que cada carta cria, pelo oracle_id da ficha
+    token_oracle = {p["id"]: p["oracle_id"] for p in all_prints if p["layout"] == "token"}
+    tokens = token_rows(all_prints)
+    for r in rows:
+        ids = sorted({token_oracle[i] for i in TOKEN_PARTS.get(r["oracle_id"], ()) if i in token_oracle})
+        r["tokens"] = ids or None
+    rows += tokens
     known = {r["oracle_id"] for r in rows}
-    prints = [p for p in load_prints(args.offline) if p["oracle_id"] in known]
+    prints = [p for p in all_prints if p["oracle_id"] in known]
     for p in prints:
         if p["oracle_id"] in PW_MISMATCH:
             p["supported"] = False

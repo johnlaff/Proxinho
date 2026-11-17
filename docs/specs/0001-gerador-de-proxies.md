@@ -12,7 +12,7 @@ Qualquer pessoa cola a lista do deck e, em poucos minutos, baixa um PDF com as c
 ### H1. Colar a lista
 Como jogador, quero colar a lista exportada de qualquer site para não digitar carta por carta.
 - [x] Aceita "1 Nome", "1x Nome", "Nome", "1 Nome (SET) 123", "*F*", seções Commander/Comandante/Sideboard, categorias do Archidekt e nomes em português.
-- [x] Ignora maybeboard e fichas.
+- [x] Ignora o maybeboard. A seção "Tokens"/"Fichas" entra como fichas (desde 17/11/2026).
 - [x] Mostra os nomes não encontrados, com a quantidade, e permite ignorá-los.
 
 ### H2. Importar por link
@@ -56,3 +56,10 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 Molduras além da 2015 normal, edição manual do texto, tradução não oficial assistida, fichas. Ver [roadmap](../roadmap.md).
 
 Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008).
+
+### H8. Fichas (entregue em 17/11/2026, ADR 0009)
+Como jogador, quero imprimir as fichas que o meu deck cria, em português, junto com as cartas.
+- [x] O resumo do pedido lista as fichas que as cartas criam e ainda não estão no pedido, com P/R e cor, e adiciona uma ou todas.
+- [x] A seção "Tokens"/"Fichas" da lista e a busca também adicionam fichas.
+- [x] A ficha sai com nome, tipo e texto oficiais do Arena; sem tradução, sai em inglês com a etiqueta de sempre.
+- [x] As fichas vão para o fim das folhas.

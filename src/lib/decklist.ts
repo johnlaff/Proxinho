@@ -6,10 +6,10 @@
  * - Arena / Moxfield:        "1 Sol Ring (C21) 263", "1 Sol Ring (C21) 263 *F*"
  * - Archidekt (texto):       "1x Sol Ring (c21) 263 [Ramp] ^Have,#37d67a^"
  * - Liga Magic:              "1 Anel Solar" (nomes em português também valem)
- * - Seções:                  "Commander", "Comandante", "Sideboard", "// Deck", "SB: 1 X"
+ * - Seções:                  "Commander", "Comandante", "Sideboard", "Tokens", "Fichas", "// Deck", "SB: 1 X"
  */
 
-export type Section = "commander" | "main" | "side";
+export type Section = "commander" | "main" | "side" | "tokens";
 
 export interface DeckLine {
   quantity: number;
@@ -37,7 +37,10 @@ const SECTION_HEADERS: Record<string, Section | "skip"> = {
   maybeboard: "skip",
   maybe: "skip",
   considering: "skip",
-  tokens: "skip",
+  tokens: "tokens",
+  token: "tokens",
+  fichas: "tokens",
+  ficha: "tokens",
 };
 
 /** Cabeçalhos de categoria comuns (Archidekt, Moxfield, Liga) que não mudam a seção. */
