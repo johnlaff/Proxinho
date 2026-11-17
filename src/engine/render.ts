@@ -9,7 +9,8 @@
  */
 import { bodyFont, loadCardFonts, titleFont } from "./fonts";
 import { BACK_PT_NOTCH, BASE_H, BASE_W, costLeft, m15Layout, type Rect } from "./geometry";
-import { eraseRegions, findSetSymbolLeft, hasRightIcon } from "./erase";
+import { combineMasks, eraseRegions, findSetSymbolLeft, hasRightIcon, inpaint, maskRegions } from "./erase";
+import { lamaInpaint } from "./lama";
 import { isTallPlaneswalker, planeswalkerRows, PW, rowRects, splitAbilities } from "./planeswalker";
 import { preloadSymbols } from "./symbols";
 import { SYMBOL_EM, fitRows, fitText, type LayoutResult, type Measurer } from "./text";
@@ -115,6 +116,12 @@ function drawLine(
  * Planeswalker: nome, tipo e uma faixa por habilidade (ver planeswalker.ts).
  * Devolve false quando a imagem não bate com o texto; aí a carta sai original.
  */
+/** Caixas de planeswalker já limpas pela rede neural (por impressão), as mais recentes. */
+const cleanBoxes = new Map<string, ImageData>();
+
+/** Arredonda um retângulo para a grade de pixels. */
+const roundRect = (r: Rect): Rect => ({ x0: Math.round(r.x0), y0: Math.round(r.y0), x1: Math.round(r.x1), y1: Math.round(r.y1) });
+
 async function renderPlaneswalker(p: {
   ctx: CanvasRenderingContext2D;
   src: HTMLCanvasElement;
@@ -136,16 +143,48 @@ async function renderPlaneswalker(p: {
   const setLeft = Math.min(Math.max(findSetSymbolLeft(data, Math.round((tb.y0 + 4) * fy), Math.round((tb.y1 - 4) * fy)) / fx, 560), 660);
   const cost = costLeft(print.mana_cost);
   const rects = rows.map(rowRects);
-  const inks = eraseRegions(
+  const protect = [toImg(PW.loyaltyBox)];
+  // nome e tipo ficam em barras opacas: o preenchimento simples basta
+  const barInks = eraseRegions(
     data,
     [
       { rect: toImg({ x0: 50, y0: PW.title.erase.y0, x1: cost - 6, y1: PW.title.erase.y1 }), threshold: 28 },
       // sem o tipo em português, a linha de tipo em inglês fica
       { rect: toImg({ x0: 50, y0: tb.y0, x1: face.type_pt ? setLeft - 6 : 50, y1: tb.y1 }), threshold: 28 },
-      ...rects.map((r) => ({ rect: toImg(r.erase), threshold: 14, colorThreshold: 34 })),
     ],
-    [toImg(PW.loyaltyBox)],
+    protect,
   );
+  // a caixa de texto é translúcida, com a arte aparecendo por trás: rede neural (ver lama.ts)
+  const masks = maskRegions(
+    data,
+    rects.map((r) => ({ rect: toImg(r.erase), threshold: 14, colorThreshold: 34 })),
+    protect,
+  );
+  const area = roundRect(toImg({ x0: PW.staticText.erase, y0: rows[0].y0, x1: PW.eraseRight, y1: rows[rows.length - 1].y1 }));
+  // a prévia e o PDF desenham a mesma arte: guarda a caixa limpa para não rodar o modelo de novo
+  const key = `${print.id}:${data.width}:${paragraphs.length}`;
+  const cached = cleanBoxes.get(key);
+  if (cached && cached.width === area.x1 - area.x0 && cached.height === area.y1 - area.y0) {
+    for (let y = 0; y < cached.height; y++)
+      data.data.set(cached.data.subarray(y * cached.width * 4, (y + 1) * cached.width * 4), ((area.y0 + y) * data.width + area.x0) * 4);
+  } else {
+    // máscara folgada: o LaMa espalha para dentro do buraco qualquer resto de borda das letras
+    const hole = combineMasks(data, masks, Math.round(fx * 3) + 1);
+    for (const r of protect.map(roundRect)) for (let y = r.y0; y < r.y1; y++) hole.fill(0, y * data.width + r.x0, y * data.width + r.x1);
+    if (!(await lamaInpaint(data, area, hole))) {
+      for (const m of masks) if (m.mask.length) inpaint(data, m.rect, m.mask);
+    } else {
+      const box = new ImageData(area.x1 - area.x0, area.y1 - area.y0);
+      for (let y = 0; y < box.height; y++)
+        box.data.set(
+          data.data.subarray(((area.y0 + y) * data.width + area.x0) * 4, ((area.y0 + y) * data.width + area.x1) * 4),
+          y * box.width * 4,
+        );
+      cleanBoxes.set(key, box);
+      if (cleanBoxes.size > 24) cleanBoxes.delete(cleanBoxes.keys().next().value!);
+    }
+  }
+  const inks = [...barInks, ...masks.map((m) => m.polarity)];
   p.sctx.putImageData(data, 0, 0);
   ctx.drawImage(p.src, 0, 0, p.W, p.H);
 
@@ -243,8 +282,12 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const side = opts.side ?? 0;
   const sideInfo = print.sides?.[side] ?? null;
   const scale = opts.scale ?? 1.6;
+  // Planeswalker usa sempre o PNG, também na prévia: a rede neural limpa a caixa
+  // melhor na imagem sem compressão JPEG, e a caixa limpa é reaproveitada no PDF.
+  const pw = !print.sides && /planeswalker/i.test(face?.type_pt ?? opts.typeLine ?? "");
+  const version = pw ? "png" : (opts.imageVersion ?? "png");
   const [img] = await Promise.all([
-    opts.source ?? loadImage(scryfallImage(print.id, opts.imageVersion ?? "png", side === 1 ? "back" : "front")),
+    opts.source ?? loadImage(scryfallImage(print.id, version, side === 1 ? "back" : "front")),
     loadCardFonts(),
   ]);
 
@@ -280,7 +323,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const fy = src.height / BASE_H;
   const toImg = (r: Rect) => ({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
 
-  if (!print.sides && /planeswalker/i.test(face.type_pt ?? opts.typeLine ?? "")) {
+  if (pw) {
     const done = await renderPlaneswalker({ ctx, src, sctx, data, toImg, face, print, W, H });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: done };

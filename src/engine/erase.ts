@@ -345,6 +345,35 @@ export function findSetSymbolLeft(img: ImageData, y0: number, y1: number): numbe
   return start;
 }
 
+/** Máscara de texto de uma região, já com o retângulo arredondado à grade de pixels. */
+export interface RegionMask {
+  rect: Rect;
+  mask: Uint8Array;
+  polarity: "dark" | "light";
+}
+
+/**
+ * Calcula as máscaras de texto de várias regiões, sem apagar nada. Regiões
+ * vazias (fora da imagem) voltam com máscara vazia.
+ */
+export function maskRegions(
+  img: ImageData,
+  regions: { rect: Rect; threshold: number; colorThreshold?: number }[],
+  protect: Rect[],
+): RegionMask[] {
+  return regions.map(({ rect, threshold, colorThreshold }) => {
+    const r = {
+      x0: clamp(Math.round(rect.x0), 0, img.width),
+      y0: clamp(Math.round(rect.y0), 0, img.height),
+      x1: clamp(Math.round(rect.x1), 0, img.width),
+      y1: clamp(Math.round(rect.y1), 0, img.height),
+    };
+    if (r.x1 <= r.x0 || r.y1 <= r.y0) return { rect: r, mask: new Uint8Array(0), polarity: "dark" };
+    const polarity = textPolarity(img, r);
+    return { rect: r, mask: textMask(img, r, threshold, protect, colorThreshold ?? 0, polarity), polarity };
+  });
+}
+
 /**
  * Apaga o texto de várias regiões de uma vez. Devolve, para cada região, se o
  * texto era escuro ou claro (para escrever o português na mesma cor).
@@ -354,24 +383,29 @@ export function eraseRegions(
   regions: { rect: Rect; threshold: number; colorThreshold?: number }[],
   protect: Rect[],
 ): ("dark" | "light")[] {
-  const polarities: ("dark" | "light")[] = [];
-  for (const { rect, threshold, colorThreshold } of regions) {
-    const r = {
-      x0: clamp(Math.round(rect.x0), 0, img.width),
-      y0: clamp(Math.round(rect.y0), 0, img.height),
-      x1: clamp(Math.round(rect.x1), 0, img.width),
-      y1: clamp(Math.round(rect.y1), 0, img.height),
-    };
-    if (r.x1 <= r.x0 || r.y1 <= r.y0) {
-      polarities.push("dark");
-      continue;
-    }
-    const polarity = textPolarity(img, r);
-    polarities.push(polarity);
-    const mask = textMask(img, r, threshold, protect, colorThreshold ?? 0, polarity);
-    inpaint(img, r, mask);
+  // uma região de cada vez: a máscara da seguinte é medida já sem o texto da anterior
+  return regions.map((region) => {
+    const [m] = maskRegions(img, [region], protect);
+    if (m.mask.length) inpaint(img, m.rect, m.mask);
+    return m.polarity;
+  });
+}
+
+/** Junta máscaras de regiões numa máscara da imagem inteira, dilatada em `grow` pixels dentro das regiões. */
+export function combineMasks(img: ImageData, masks: RegionMask[], grow = 0): Uint8Array {
+  const out = new Uint8Array(img.width * img.height);
+  for (const { rect, mask } of masks) {
+    const w = rect.x1 - rect.x0;
+    for (let y = rect.y0; y < rect.y1; y++)
+      for (let x = rect.x0; x < rect.x1; x++) if (mask[(y - rect.y0) * w + x - rect.x0]) out[y * img.width + x] = 1;
   }
-  return polarities;
+  if (grow <= 0) return out;
+  // dilata sem sair das regiões: o que está fora (ex.: os dois-pontos depois do escudo) fica intacto
+  const grown = morph(out, img.width, img.height, grow, true);
+  const inside = new Uint8Array(out.length);
+  for (const { rect } of masks) for (let y = rect.y0; y < rect.y1; y++) inside.fill(1, y * img.width + rect.x0, y * img.width + rect.x1);
+  for (let i = 0; i < grown.length; i++) grown[i] &= inside[i];
+  return grown;
 }
 
 /**

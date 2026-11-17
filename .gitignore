@@ -36,3 +36,6 @@ coverage/
 dist/
 .impeccable/questions/
 .fontes-oficiais/
+
+# Modelo de preenchimento (baixado por scripts/modelo.mjs)
+public/modelos/

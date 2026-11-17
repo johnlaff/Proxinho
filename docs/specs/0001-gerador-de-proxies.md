@@ -53,4 +53,6 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 
 ## Fora do escopo da v1
 
-Molduras além da 2015 normal, edição manual do texto, tradução não oficial assistida, fichas, cartas de duas faces reescritas. Ver [roadmap](../roadmap.md).
+Molduras além da 2015 normal, edição manual do texto, tradução não oficial assistida, fichas. Ver [roadmap](../roadmap.md).
+
+Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008).

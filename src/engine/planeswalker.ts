@@ -30,7 +30,7 @@ export const PW = {
   },
   area: { normalTop: 656, tallTop: 586, bottom: 944 },
   /** texto das habilidades de lealdade começa depois do escudo e dos dois-pontos */
-  loyaltyText: { x0: 138, erase: 129 },
+  loyaltyText: { x0: 138, erase: 132 },
   staticText: { x0: 104, erase: 96 },
   textRight: 680,
   eraseRight: 687,

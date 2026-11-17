@@ -35,3 +35,7 @@ O site é de uso privado (o mantenedor e amigos), e o mantenedor forneceu os arq
 - A Beleren tem maiúsculas menores que a Eczar no mesmo corpo: nome e tipo usam fator 1,08 e recuo de 3 px, conferidos com a Cultivar (LCC 235 em PT e TRC 460 em inglês, maiúsculas com 27 px numa carta de 1040 px).
 
 Consequência: qualquer pessoa que abra o site consegue baixar os arquivos das fontes. Se o site for aberto ao público, isso precisa ser revisto (voltar às fontes livres ou fechar o acesso).
+
+## Atualização (17/11/2026, noite): arquivos da MPlantin consertados
+
+Os três arquivos da MPlantin tinham defeitos de estrutura (tabelas sobrepostas e subtabela `cmap` da Microsoft com idioma 1) e eram recusados pelo OpenType Sanitizer do Chrome e do Firefox; nesses navegadores o texto caía, sem aviso, para a Splentinex. `scripts/consertar-fontes.py` regrava os arquivos com o fontTools, zera o idioma e confere com o próprio OTS; os desenhos das letras não mudam. As URLs ganharam `?v=2` para passar pelo cache de 7 dias.

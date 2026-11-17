@@ -2,7 +2,7 @@
 
 ## Próximos passos (o agente pode fazer)
 
-- Molduras: saga, aventura, sem borda e showcase. (Duas faces e planeswalker: feito em 17/11/2026, ver ADR 0007.)
+- Molduras: saga, aventura, sem borda e showcase. (Duas faces e planeswalker: feito em 17/11/2026, ver ADR 0007. Caixa dos planeswalkers sem mancha, com o LaMa: feito em 17/11/2026, ver ADR 0008.)
 - Cartas modais: traduzir a faixa do pé da carta com o resumo do outro lado (hoje continua em inglês).
 - Edição manual do texto antes de imprimir.
 - Fichas (tokens) e emblemas.

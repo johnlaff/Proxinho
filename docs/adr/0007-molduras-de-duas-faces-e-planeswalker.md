@@ -24,4 +24,4 @@ Até aqui o motor só reescrevia a moldura comum de 2015. As cartas de duas face
 - +351 cartas de duas faces e +263 planeswalkers de Commander saem reescritos.
 - A faixa do pé das modais ("Land", "Instant") continua em inglês.
 - Molduras especiais de verso (bússola de Ixalan, templos de LCI com nome centralizado) não são tratadas de forma específica; as de Ixalan ficam marcadas como não suportadas.
-- O apagamento sobre as caixas translúcidas dos planeswalkers pode deixar manchas suaves onde havia muito texto.
+- O apagamento sobre as caixas translúcidas dos planeswalkers deixava manchas suaves; resolvido com o preenchimento por rede neural (ADR 0008).

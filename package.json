@@ -6,8 +6,8 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "node scripts/modelo.mjs && vite",
+    "build": "node scripts/modelo.mjs && tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "lint": "oxlint --deny-warnings",
@@ -21,6 +21,7 @@
     "db:migrate:local": "wrangler d1 migrations apply proxinho --local",
     "db:seed:local": "pnpm db:migrate:local && wrangler d1 execute proxinho --local --file tests/fixtures/seed.sql",
     "fonts:local": "for f in beleren-bold mplantin mplantin-bold mplantin-italic; do [ -f .fontes-oficiais/$f.ttf ] && wrangler kv key put --local --binding FONTES $f.ttf --path .fontes-oficiais/$f.ttf; done; true",
+    "model:fetch": "node scripts/modelo.mjs",
     "data:build": "python3 data/pipeline/build.py",
     "deploy": "wrangler deploy",
     "cf-typegen": "wrangler types"
@@ -28,6 +29,7 @@
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
     "lucide-react": "^1.73.0",
+    "onnxruntime-web": "1.31.1",
     "pdf-lib": "^1.17.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

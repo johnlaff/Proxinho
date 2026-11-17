@@ -11,3 +11,4 @@ Cada arquivo registra uma decisão de arquitetura: o contexto, o que foi decidid
 | [0005](0005-pdf-no-navegador-com-pdf-lib.md) | PDF gerado no navegador com pdf-lib, em milímetros | Aceita |
 | [0006](0006-ferramentas-de-qualidade.md) | Ferramentas: Vite, TypeScript, oxlint/oxfmt, Vitest, Playwright | Aceita |
 | [0007](0007-molduras-de-duas-faces-e-planeswalker.md) | Molduras de duas faces e de planeswalker | Aceita |
+| [0008](0008-preenchimento-por-rede-neural.md) | Preenchimento por rede neural nas caixas translúcidas | Aceita |

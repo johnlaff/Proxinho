@@ -53,7 +53,7 @@ flowchart LR
 
 1. **Dados.** Todo dia, um script em Python cruza o banco de cartas do Scryfall com os textos em português do Arena e das impressões oficiais e carrega o resultado no Cloudflare D1 (33.830 cartas, 101 mil impressões).
 2. **Lista.** Um leitor único entende os formatos de exportação mais comuns, com seções, coleção, número e nomes em português.
-3. **Carta.** No navegador, um canvas baixa o PNG oficial da impressão, apaga o texto em inglês reconstruindo a textura da moldura (máscara + preenchimento em pirâmide) e escreve o português com quebra de linha, símbolos de mana e corpo ajustado para caber.
+3. **Carta.** No navegador, um canvas baixa o PNG oficial da impressão, apaga o texto em inglês reconstruindo a textura da moldura (máscara + preenchimento em pirâmide; nas caixas translúcidas dos planeswalkers, uma rede neural de inpainting, o LaMa, rodando no próprio navegador) e escreve o português com quebra de linha, símbolos de mana e corpo ajustado para caber.
 4. **PDF.** As cartas são paginadas 3 × 3 em A4 ou Carta, com ou sem sangria, a 300 ou 480 dpi.
 
 Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
@@ -64,6 +64,7 @@ Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 |---|---|---|
 | Interface | React 19, Vite 8, TypeScript 7 (strict) | Padrão de mercado, build rápido |
 | Motor da carta | Canvas 2D, SVG de símbolos, Beleren e MPlantin (com reserva OFL: Eczar, Splentinex) | Roda no navegador, sem servidor de imagem |
+| Inpainting | LaMa quantizado (37 MB) com ONNX Runtime Web, numa worker, WebGPU ou WebAssembly | Apaga texto sobre arte sem deixar mancha; tudo no navegador |
 | PDF | pdf-lib, carregado sob demanda | Medidas exatas em milímetros |
 | API | Cloudflare Worker + D1 (SQLite) + Cache API | Um deploy só, custo zero no plano atual |
 | Dados | Python (só biblioteca padrão) no GitHub Actions | Atualização diária sem servidor |
@@ -83,6 +84,8 @@ pnpm install
 pnpm db:seed:local   # banco local com 11 cartas de amostra
 pnpm dev             # http://localhost:5173
 ```
+
+Na primeira vez, o `pnpm dev` baixa o modelo de preenchimento dos planeswalkers (37 MB, conferido por SHA-256) para `public/modelos/`, fora do git. Sem rede, o site usa o preenchimento simples.
 
 Para ter o banco completo localmente: `pnpm data:build` e depois `pnpm exec wrangler d1 execute proxinho --local --file data/out/cards.sql`.
 
@@ -105,7 +108,9 @@ O projeto foi feito por um agente de IA trabalhando de forma autônoma, seguindo
 
 ## Limites conhecidos
 
-- A reescrita cobre a moldura moderna (2015+) de cartas normais. Planeswalkers, sagas, duas faces e molduras especiais usam a imagem oficial em português quando existe; senão saem em inglês com aviso.
+- A reescrita cobre a moldura moderna (2015+) de cartas normais, de duas faces (transformar e modais) e de planeswalkers. Sagas, aventuras e molduras especiais usam a imagem oficial em português quando existe; senão saem em inglês com aviso.
+- Nas modais, a faixa do pé com o resumo do outro lado continua em inglês.
+- O primeiro planeswalker da sessão baixa o modelo de preenchimento (~66 MB, uma vez só); sem placa de vídeo, cada um leva cerca de 6 s.
 - Cartas sem tradução oficial saem em inglês. Não usamos tradução automática.
 - O texto usa as fontes das cartas reais (Beleren e MPlantin), servidas pelo Worker a partir do KV, fora deste repositório. Num clone sem esses arquivos, o site cai sozinho para fontes livres parecidas (Eczar e Splentinex). Também dá para escolher outros arquivos de fonte no site; eles ficam só no navegador.
 
@@ -113,7 +118,7 @@ O projeto foi feito por um agente de IA trabalhando de forma autônoma, seguindo
 
 O Proxinho é conteúdo de fã, gratuito e não oficial, permitido pela [Política de Conteúdo de Fãs](https://company.wizards.com/pt-br/legal/fancontentpolicy) da Wizards. Não é aprovado nem endossado pela Wizards. Partes dos materiais usados são propriedade da Wizards of the Coast. ©Wizards of the Coast LLC. Proxies são para uso pessoal; não venda.
 
-Imagens das cartas: [Scryfall](https://scryfall.com). Textos do Arena: arquivos públicos da [Untapped.gg](https://untapped.gg).
+Imagens das cartas: [Scryfall](https://scryfall.com). Textos do Arena: arquivos públicos da [Untapped.gg](https://untapped.gg). Preenchimento das caixas dos planeswalkers: [LaMa](https://github.com/advimman/lama) (Apache 2.0), na versão quantizada [lama-int4-int8](https://huggingface.co/othytenk/lama-int4-int8), rodando com o [ONNX Runtime Web](https://onnxruntime.ai) (MIT).
 
 ## Licença
 

@@ -21,10 +21,11 @@ Sem download de navegador? `PW_CHROMIUM_PATH=/caminho/do/chrome pnpm test:e2e`.
 
 ## Mapa
 
-- `src/engine/` motor da carta: `render.ts` (orquestra), `erase.ts` (apaga o inglês), `text.ts` (quebra e encaixe do texto), `geometry.ts` (caixas da moldura M15).
+- `src/engine/` motor da carta: `render.ts` (orquestra), `erase.ts` (apaga o inglês), `lama.ts` + `lamaWorker.ts` (preenchimento por rede neural nos planeswalkers, ADR 0008), `text.ts` (quebra e encaixe do texto), `geometry.ts` (caixas da moldura M15).
 - `src/app/` lógica do pedido sem React: `model.ts` (escolha da arte, folhas), `preview.ts` (fila de prévias), `exportPdf.ts`.
 - `src/components/` interface React. `src/lib/` leitor de listas e PDF.
-- `worker/` API Cloudflare (`/api/search`, `/api/resolve`, `/api/import`, `/api/health`).
+- `worker/` API Cloudflare (`/api/search`, `/api/resolve`, `/api/import`, `/api/fontes/*`, `/api/health`).
+- `scripts/modelo.mjs` baixa e divide o modelo LaMa e o runtime do ONNX em `public/modelos/` (roda sozinho no `dev` e no `build`).
 - `data/pipeline/build.py` gera `data/out/cards.sql` para o D1. `migrations/` esquema do banco.
 
 ## Regras
@@ -34,6 +35,7 @@ Sem download de navegador? `PW_CHROMIUM_PATH=/caminho/do/chrome pnpm test:e2e`.
 - Nada extraído do cliente do Arena. Nenhuma imagem de carta passa pelo servidor nem fica guardada: o navegador baixa do Scryfall.
 - Não usar "Magic", "MTG" nem logos da Wizards como marca. Aviso de conteúdo de fã fica no site e no PDF.
 - Mudança de comportamento vem com teste. Mudança de arquitetura vem com ADR novo.
+- Toda mudança ou feature nova atualiza, no mesmo commit, toda a documentação afetada: README, este arquivo, `docs/arquitetura.md`, `docs/operacao.md`, `docs/pesquisa.md`, `docs/specs/`, `docs/roadmap.md` e os ADRs.
 - Interface segue `DESIGN.md` e o contrato em `.impeccable/surfaces/`. Contraste AA, alvos de toque de 44 px, nada só por cor.
 
 ## Erros que já aconteceram (não repita)
@@ -44,3 +46,6 @@ Sem download de navegador? `PW_CHROMIUM_PATH=/caminho/do/chrome pnpm test:e2e`.
 - Sangria grande no PDF passa da área imprimível das impressoras caseiras: 2 mm (A4) e 1 mm (Carta).
 - O bulk do Scryfall não tem mais `download_uri`; use `jsonl_download_uri`.
 - O Moxfield bloqueia leitura por terceiros (403): oriente a colar o texto.
+- Os arquivos originais da MPlantin eram recusados pelo Chrome e pelo Firefox (OTS: tabelas sobrepostas e `cmap` com idioma 1), e o site caía calado para a fonte livre. Passe toda fonte nova por `scripts/consertar-fontes.py` e confira no navegador.
+- As threads do WebAssembly do ONNX reabrem o arquivo da worker com o nome "em-pthread": o handler de mensagens só pode existir fora delas.
+- O .wasm do ONNX (28 MiB) não cabe nos assets do Cloudflare: o Vite não pode copiá-lo (plugin em `vite.config.ts`); ele vai em partes por `scripts/modelo.mjs`.

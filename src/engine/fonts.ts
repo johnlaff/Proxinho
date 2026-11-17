@@ -49,10 +49,12 @@ export function loadCardFonts(base = "/fonts/cartas/", officialBase = "/api/font
       new FontFace(BODY_FONT, `url(${base}Splentinex-Regular.otf)`, { style: "normal" }),
       new FontFace(BODY_FONT, `url(${base}Splentinex-Italic.otf)`, { style: "italic" }),
     ];
-    const title = new FontFace(OFFICIAL_TITLE, `url(${officialBase}beleren-bold.ttf)`, { weight: "700" });
+    // "?v=2": os arquivos da MPlantin foram consertados (scripts/consertar-fontes.py) e o cache
+    // do navegador guarda a versão anterior por 7 dias; mude o número quando trocar os arquivos
+    const title = new FontFace(OFFICIAL_TITLE, `url(${officialBase}beleren-bold.ttf?v=2)`, { weight: "700" });
     const body = [
-      new FontFace(OFFICIAL_BODY, `url(${officialBase}mplantin.ttf)`, { style: "normal", weight: "400" }),
-      new FontFace(OFFICIAL_BODY, `url(${officialBase}mplantin-italic.ttf)`, { style: "italic", weight: "400" }),
+      new FontFace(OFFICIAL_BODY, `url(${officialBase}mplantin.ttf?v=2)`, { style: "normal", weight: "400" }),
+      new FontFace(OFFICIAL_BODY, `url(${officialBase}mplantin-italic.ttf?v=2)`, { style: "italic", weight: "400" }),
     ];
     const add = (f: FontFace) => (document.fonts.add(f), true);
     loading = Promise.all([

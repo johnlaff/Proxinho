@@ -44,6 +44,18 @@ As que faltam são quase todas exclusivas de decks prontos de Commander de 2022 
 | Link do Archidekt | API pública, mas o CORS libera só localhost: passa pelo Worker | Feito |
 | Link do Moxfield | A API responde 403 para terceiros; orientamos "Exportar → copiar" | Tentativa + orientação |
 
+## Apagar texto sobre arte (planeswalkers)
+
+As caixas de texto dos planeswalkers são translúcidas: a arte aparece por trás das letras. O preenchimento por média da vizinhança deixa ali uma mancha borrada. O que existe (pesquisa de 17/11/2026):
+
+| Abordagem | Quem usa | Para nós |
+|---|---|---|
+| Refazer a moldura a partir de modelos | Proxyshop (Photoshop), Card Conjurer | Fiel ao modelo, não à impressão escolhida; exige recriar cada moldura |
+| Síntese por patches (PatchMatch) | "Preenchimento sensível ao conteúdo" clássico | Sem download, mas repete pedaços e erra em gradientes |
+| Inpainting por rede neural (LaMa, MI-GAN) | IOPaint, removedores de marca d'água no navegador | Estado da arte para remover texto; LaMa quantizado tem 37 MB e roda com ONNX Runtime Web (WebGPU ou WebAssembly) |
+
+Escolha: LaMa quantizado, só nas caixas dos planeswalkers (ADR 0008).
+
 ## Lado legal e o caminho seguro
 
 | Ponto | O que diz | Risco |
@@ -54,7 +66,7 @@ As que faltam são quase todas exclusivas de decks prontos de Commander de 2022 
 | Termos do Arena | Proíbem engenharia reversa | Alto se extrair do cliente: não fazemos |
 | Dados da Untapped | Arquivos públicos, sem termos claros de reuso | Médio: pedir autorização antes de divulgar |
 | Regras de imagem do Scryfall | Não cortar artista e copyright, não distorcer, não pôr marca d'água | Médio: avisar o Scryfall |
-| Fontes das cartas | Beleren e Plantin são de terceiros | Usamos Eczar e Splentinex (OFL) |
+| Fontes das cartas | Beleren e Plantin são de terceiros | Arquivos fornecidos pelo dono do projeto, servidos do KV e fora do repositório; reserva livre: Eczar e Splentinex (OFL). Rever antes de abrir ao público |
 
 **O que o Proxinho faz para ficar no caminho seguro:** é grátis, não vende impressão, gera tudo no navegador (o servidor não guarda nem distribui imagens de cartas, e não há galeria pública), não extrai nada do cliente do Arena, mantém artista e copyright, mostra o aviso de conteúdo de fã no site e no PDF e não usa nomes ou logos da Wizards como marca.
 
