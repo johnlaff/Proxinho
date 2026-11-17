@@ -1,0 +1,184 @@
+/**
+ * Modelo da lista em revisão: cada linha da lista vira uma "entrada" com a
+ * carta encontrada, as artes disponíveis e a escolha atual.
+ *
+ * Tudo aqui é lógica pura (sem React, sem rede), coberta por testes.
+ */
+import type { CardRecord, PrintRecord, PtFace } from "../engine/types";
+import type { Section } from "../lib/decklist";
+
+/** Qual imagem vai para a folha. */
+export type Choice =
+  | { kind: "print"; printId: string } // arte em inglês, reescrita em PT quando der
+  | { kind: "pt" }; // imagem oficial já impressa em português (Scryfall)
+
+export interface Entry {
+  key: string;
+  query: string;
+  quantity: number;
+  section: Section;
+  card: CardRecord;
+  prints: PrintRecord[];
+  choice: Choice;
+}
+
+export interface Missing {
+  key: string;
+  query: string;
+  quantity: number;
+}
+
+/** Como a carta vai sair, para mostrar com honestidade na interface. */
+export type Outcome =
+  | "reescrita" // texto em PT escrito por cima da arte escolhida
+  | "imagem-pt" // imagem oficial em português
+  | "sem-traducao" // não há texto oficial em PT: sai em inglês
+  | "moldura"; // há texto em PT, mas esta moldura ainda não é suportada
+
+export function frontFace(card: CardRecord): PtFace | null {
+  return card.faces[0] ?? null;
+}
+
+export function hasPtText(card: CardRecord): boolean {
+  const f = frontFace(card);
+  return Boolean(card.source && f?.name_pt && f.text_pt !== null);
+}
+
+export function selectedPrint(entry: Entry): PrintRecord | null {
+  if (entry.choice.kind !== "print") return null;
+  const id = entry.choice.printId;
+  return entry.prints.find((p) => p.id === id) ?? entry.prints[0] ?? null;
+}
+
+export function outcomeOf(entry: Entry): Outcome {
+  if (entry.choice.kind === "pt") return "imagem-pt";
+  if (!hasPtText(entry.card)) return "sem-traducao";
+  const p = selectedPrint(entry);
+  return p?.supported ? "reescrita" : "moldura";
+}
+
+/**
+ * Escolhe a arte inicial:
+ * 1. a impressão pedida na lista (coleção + número), se existir;
+ * 2. a impressão suportada mais recente, sem promo, em alta resolução;
+ * 3. sem moldura suportada: a imagem oficial em PT, se houver;
+ * 4. senão, a impressão mais recente (sai a original em inglês).
+ */
+export function defaultChoice(card: CardRecord, prints: PrintRecord[], wanted?: { set?: string; number?: string }): Choice {
+  if (wanted?.set) {
+    const set = wanted.set.toLowerCase();
+    const hit = prints.find((p) => p.set_code.toLowerCase() === set && (!wanted.number || p.number === wanted.number));
+    if (hit) return { kind: "print", printId: hit.id };
+  }
+  const translatable = hasPtText(card);
+  if (translatable) {
+    const ranked = prints
+      .filter((p) => p.supported)
+      .sort(
+        (a, b) =>
+          Number(b.highres) - Number(a.highres) ||
+          Number(a.promo) - Number(b.promo) ||
+          Number(isReprintList(a)) - Number(isReprintList(b)) ||
+          (b.released ?? "").localeCompare(a.released ?? ""),
+      );
+    if (ranked[0]) return { kind: "print", printId: ranked[0].id };
+    if (card.pt_print) return { kind: "pt" };
+  } else if (card.pt_print) {
+    return { kind: "pt" };
+  }
+  const first = prints.find((p) => !p.promo) ?? prints[0];
+  return first ? { kind: "print", printId: first.id } : card.pt_print ? { kind: "pt" } : { kind: "print", printId: "" };
+}
+
+/** "The List" e afins trazem um símbolo de coleção extra que atrapalha o apagamento. */
+function isReprintList(p: PrintRecord): boolean {
+  return p.set_code.toLowerCase() === "plst";
+}
+
+/** Ordem na folha: comandante primeiro, depois o deck, depois o sideboard. */
+const SECTION_ORDER: Record<Section, number> = { commander: 0, main: 1, side: 2 };
+
+export function sortEntries(entries: Entry[]): Entry[] {
+  return [...entries].sort((a, b) => SECTION_ORDER[a.section] - SECTION_ORDER[b.section]);
+}
+
+/** Expande quantidades e quebra em folhas de 9. */
+export function toSheets(entries: Entry[]): Entry[][] {
+  const slots = sortEntries(entries).flatMap((e) => Array.from({ length: e.quantity }, () => e));
+  const sheets: Entry[][] = [];
+  for (let i = 0; i < slots.length; i += 9) sheets.push(slots.slice(i, i + 9));
+  return sheets;
+}
+
+export function totalCards(entries: Entry[]): number {
+  return entries.reduce((n, e) => n + e.quantity, 0);
+}
+
+/** Chave estável da imagem que uma entrada produz (para cache de prévia). */
+export function renderKey(entry: Entry): string {
+  return entry.choice.kind === "pt" ? `pt:${entry.card.pt_print?.id}` : `p:${entry.choice.printId}:${hasPtText(entry.card) ? "pt" : "en"}`;
+}
+
+/** Ano de lançamento para a legenda. */
+export function yearOf(p: PrintRecord): string {
+  return p.released ? p.released.slice(0, 4) : "";
+}
+
+/** Linha pedida (vinda da lista colada, da importação ou da busca). */
+export interface OrderLine {
+  quantity: number;
+  name: string;
+  set?: string;
+  number?: string;
+  section: Section;
+}
+
+/**
+ * Junta as linhas pedidas com o que a API encontrou. Duas linhas da mesma
+ * carta na mesma seção viram uma entrada só (somando as quantidades).
+ */
+export function buildOrder(
+  lines: OrderLine[],
+  resolved: { query: string; card: CardRecord | null; prints: PrintRecord[] }[],
+): { entries: Entry[]; missing: Missing[] } {
+  const byQuery = new Map(resolved.map((r) => [r.query.trim().toLowerCase(), r]));
+  const entries = new Map<string, Entry>();
+  const missing = new Map<string, Missing>();
+  for (const line of lines) {
+    const hit = byQuery.get(line.name.trim().toLowerCase());
+    if (!hit?.card) {
+      const key = line.name.trim().toLowerCase();
+      const prev = missing.get(key);
+      if (prev) prev.quantity += line.quantity;
+      else missing.set(key, { key, query: line.name.trim(), quantity: line.quantity });
+      continue;
+    }
+    const key = `${line.section}:${hit.card.oracle_id}`;
+    const prev = entries.get(key);
+    if (prev) {
+      prev.quantity += line.quantity;
+      continue;
+    }
+    entries.set(key, {
+      key,
+      query: line.name,
+      quantity: line.quantity,
+      section: line.section,
+      card: hit.card,
+      prints: hit.prints,
+      choice: defaultChoice(hit.card, hit.prints, line),
+    });
+  }
+  return { entries: [...entries.values()], missing: [...missing.values()] };
+}
+
+export function countOutcomes(entries: Entry[]): Record<Outcome, number> {
+  const out: Record<Outcome, number> = { reescrita: 0, "imagem-pt": 0, "sem-traducao": 0, moldura: 0 };
+  for (const e of entries) out[outcomeOf(e)] += e.quantity;
+  return out;
+}
+
+/** Nome para mostrar: o português quando existe. */
+export function displayName(card: CardRecord): string {
+  return card.name_pt ?? card.name_en;
+}

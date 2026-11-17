@@ -24,6 +24,8 @@ export interface RenderOptions {
   scale?: number;
   /** imagem já carregada (testes); senão baixa do Scryfall */
   source?: CanvasImageSource & { width: number; height: number };
+  /** "png" (745×1040, para imprimir) ou "normal" (488×680, para a prévia) */
+  imageVersion?: "png" | "normal";
 }
 
 export interface RenderResult {
@@ -93,7 +95,7 @@ function drawLine(ctx: CanvasRenderingContext2D, text: string, x: number, center
 export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const { print, face } = opts;
   const scale = opts.scale ?? 1.6;
-  const [img] = await Promise.all([opts.source ?? loadImage(scryfallImage(print.id, "png")), loadCardFonts()]);
+  const [img] = await Promise.all([opts.source ?? loadImage(scryfallImage(print.id, opts.imageVersion ?? "png")), loadCardFonts()]);
 
   const W = Math.round(BASE_W * scale);
   const H = Math.round(BASE_H * scale);

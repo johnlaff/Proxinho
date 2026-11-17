@@ -1,0 +1,65 @@
+# Product
+
+<!-- impeccable:product-schema 1 -->
+
+## Platform
+
+web
+
+## Stack
+
+Delegated: o João pediu "stack recomendada" e autorizou adaptar a arquitetura. Escolha: React 19 + Vite 8 + TypeScript 7 no navegador; um Cloudflare Worker (API + arquivos estáticos) com banco D1; pipeline de dados em Python (só biblioteca padrão) no GitHub Actions. Deploy no plano Workers Paid que o João já paga, no domínio proxinho.johnlaff.com.
+
+## Users
+
+Jogadores brasileiros de Magic: The Gathering, principalmente de Commander, que:
+- têm cartas físicas em inglês e querem jogar com o deck "100% em português" pondo um proxy traduzido na frente da carta original, dentro do sleeve;
+- estão começando (muitos aprenderam no Arena em português) e não leem inglês, ou jogam com família e amigos que não leem;
+- querem uma arte específica que nunca saiu impressa em português.
+Situação de uso: montando ou atualizando um deck no computador ou no celular, com a lista já pronta em outro site (Archidekt, Moxfield, Liga Magic), e depois imprimindo em casa ou numa copiadora.
+
+## Product Purpose
+
+Pegar qualquer carta, em qualquer arte, e entregar um PDF pronto para imprimir no tamanho exato de uma carta de Magic (63 × 88 mm), com nome, tipo e texto oficiais em português. Sucesso: a pessoa cola a lista, revisa e baixa o PDF em poucos minutos, e a carta impressa fica indistinguível da original quando vista dentro do sleeve.
+
+## Positioning
+
+É a única ferramenta que reescreve o texto em português sobre qualquer impressão em inglês, em vez de depender de existir uma imagem em português. O texto vem do próprio MTG Arena (que continua em PT-BR) e das impressões oficiais em português; a arte, a moldura, o artista e o copyright são os da carta original.
+
+## Operating Context
+
+- Listas chegam coladas (formatos MTGO, Arena, Moxfield, Archidekt, Liga Magic) ou por link (Archidekt; Moxfield bloqueia leitura por terceiros).
+- Impressão em impressora caseira ou copiadora, papel sulfite 75–90 g ou couché 115 g, corte com tesoura ou guilhotina.
+- A folha impressa vai na frente da carta original dentro do sleeve (de preferência com sleeve interno).
+- Vocabulário da comunidade: "proxy", "sleeve", "deck", "comandante", "arte", "impressão", "coleção".
+
+## Capabilities and Constraints
+
+- Moldura moderna (2015+) de layout normal é reescrita em português; outras molduras (planeswalker, saga, dupla face, showcase, antigas) mostram a imagem oficial em português quando existe, ou a original em inglês com aviso. Novas molduras entram por etapas.
+- Tradução oficial cobre 92% das cartas legais no Commander (Arena + impressões em português). O restante aparece em inglês, marcado, até existir tradução.
+- Tudo é gerado no navegador da pessoa: o servidor não guarda nem distribui imagens de cartas.
+- Gratuito, sem venda de impressão, aviso de conteúdo de fã da Wizards no site e no PDF.
+- Fontes das cartas são livres (OFL); as fontes originais da Wizards não são distribuídas.
+
+## Brand Commitments
+
+- Nome: Proxinho (escolhido pelo João). Projeto brasileiro: linguagem do Brasil, sem referências a Portugal.
+- Não usar "Magic", "MTG" nem logos da Wizards como marca do produto.
+- Copy em português do Brasil, leve e direto, com o jargão da comunidade.
+
+## Evidence on Hand
+
+- Medição de 17/11/2026: 92,4% das 31.597 cartas de Commander têm texto PT oficial; 98,9% das 1.000 mais jogadas.
+- Só 4% das imagens em português do Scryfall têm alta resolução (1.620 de 38.832).
+- Não há depoimentos, usuários ou números de uso ainda. Não inventar.
+
+## Product Principles
+
+1. A carta impressa precisa parecer a original: fidelidade de tamanho, moldura e tipografia vem antes de qualquer recurso.
+2. Do colar ao PDF sem fricção: nenhum cadastro, nenhuma configuração obrigatória.
+3. Honestidade sobre a tradução: sempre mostrar de onde veio o texto e quando não há tradução oficial.
+4. Seguro por construção: gratuito, nada extraído do cliente do Arena, nenhuma imagem hospedada.
+
+## Accessibility & Inclusion
+
+WCAG 2.2 AA. Público inclui iniciantes e pessoas com pouca familiaridade com tecnologia: linguagem simples, alvos de toque grandes no celular, nada que dependa só de cor.

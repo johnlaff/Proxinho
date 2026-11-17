@@ -32,3 +32,6 @@ playwright-report/
 test-results/
 .impeccable/review/
 .impeccable/mocks/
+coverage/
+dist/
+.impeccable/questions/

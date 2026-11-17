@@ -341,7 +341,7 @@ def build(offline: bool) -> list[dict]:
                 "oracle_id": oid,
                 "name_en": name,
                 "name_pt": name_pt,
-                "search_en": norm(name),
+                "search_en": " | ".join(sorted({norm(name), norm(front_name)})),
                 "search_pt": " | ".join(sorted(aliases)) or None,
                 "source": source,
                 "text_print": text_print,

@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 140,
+  "ignorePatterns": [
+    "coverage/",
+    "dist/",
+    "playwright-report/",
+    "test-results/",
+    ".wrangler/",
+    "pnpm-lock.yaml",
+    "data/",
+    "public/",
+    "tests/fixtures/",
+    ".impeccable/",
+    "*.md"
+  ]
+}

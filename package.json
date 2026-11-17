@@ -1,15 +1,32 @@
 {
   "name": "proxinho",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.0",
+  "description": "Proxies de cartas com o texto oficial em português, em qualquer arte, prontos para imprimir.",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "lint": "oxlint --deny-warnings",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "db:migrate:local": "wrangler d1 migrations apply proxinho --local",
+    "db:seed:local": "pnpm db:migrate:local && wrangler d1 execute proxinho --local --file tests/fixtures/seed.sql",
+    "data:build": "python3 data/pipeline/build.py",
+    "deploy": "wrangler deploy",
+    "cf-typegen": "wrangler types"
   },
   "dependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
+    "lucide-react": "^1.73.0",
     "pdf-lib": "^1.17.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
@@ -22,11 +39,16 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "@vitest/coverage-v8": "^5.1.0",
     "oxfmt": "^0.78.0",
     "oxlint": "^1.90.0",
     "typescript": "~7.0.2",
     "vite": "^8.3.6",
     "vitest": "^5.1.0",
     "wrangler": "^4.162.0"
-  }
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@12.21.0"
 }

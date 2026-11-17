@@ -1,0 +1,1 @@
+Símbolos de mana em SVG obtidos da API de simbologia do Scryfall (https://scryfall.com/docs/api/card-symbols). Os símbolos são propriedade da Wizards of the Coast e são usados aqui sob a Política de Conteúdo de Fãs.
