@@ -61,3 +61,13 @@ test("busca uma carta pelo nome em português", async ({ page }) => {
   await page.getByRole("option", { name: /Contramágica/ }).click();
   await expect(page.getByRole("heading", { name: /Seu pedido: 1 carta/ })).toBeVisible();
 });
+
+test("carta de duas faces sai com frente e verso, cada um em português", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Lista do deck").fill("1 Tovolar, Dire Overlord");
+  await page.getByRole("button", { name: "Montar folhas" }).click();
+  await expect(page.getByRole("heading", { name: /Seu pedido: 2 cartas, 1 folha/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Tovolar, Soberano Medonho \(frente\)/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Tovolar, Flagelo da Meia-noite \(verso\)/ })).toBeVisible();
+  await expect(page.locator(".slot-img")).toHaveCount(2, { timeout: 60_000 });
+});

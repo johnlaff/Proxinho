@@ -102,23 +102,50 @@ export function sortEntries(entries: Entry[]): Entry[] {
   return [...entries].sort((a, b) => SECTION_ORDER[a.section] - SECTION_ORDER[b.section]);
 }
 
-/** Expande quantidades e quebra em folhas de 9. */
-export function toSheets(entries: Entry[]): Entry[][] {
-  const slots = sortEntries(entries).flatMap((e) => Array.from({ length: e.quantity }, () => e));
-  const sheets: Entry[][] = [];
+/** Frente (0) ou verso (1) de uma carta de duas faces. */
+export type Side = 0 | 1;
+
+/** Um espaço da folha: uma face de uma entrada. */
+export interface SheetSlot {
+  entry: Entry;
+  side: Side;
+}
+
+const DOUBLE_FACED = new Set(["transform", "modal_dfc"]);
+
+/**
+ * Quantas faces a entrada imprime: cartas de duas faces (transformar e modais)
+ * saem com a frente e o verso lado a lado, cada um num espaço da folha.
+ */
+export function sideCount(entry: Entry): 1 | 2 {
+  if (entry.choice.kind === "pt") return DOUBLE_FACED.has(entry.card.layout ?? "") ? 2 : 1;
+  return selectedPrint(entry)?.two_sided ? 2 : 1;
+}
+
+/** Expande quantidades (e faces) e quebra em folhas de 9. */
+export function toSheets(entries: Entry[]): SheetSlot[][] {
+  const slots = sortEntries(entries).flatMap((entry) =>
+    Array.from({ length: entry.quantity }, () =>
+      Array.from({ length: sideCount(entry) }, (_, side): SheetSlot => ({ entry, side: side as Side })),
+    ).flat(),
+  );
+  const sheets: SheetSlot[][] = [];
   for (let i = 0; i < slots.length; i += 9) sheets.push(slots.slice(i, i + 9));
   return sheets;
 }
 
+/** Quantas cartas vão para o papel (cada face de uma carta de duas faces conta). */
 export function totalCards(entries: Entry[]): number {
-  return entries.reduce((n, e) => n + e.quantity, 0);
+  return entries.reduce((n, e) => n + e.quantity * sideCount(e), 0);
 }
 
-/** Chave estável da imagem que uma entrada produz (para cache de prévia). */
-export function renderKey(entry: Entry, fonts = 0): string {
-  return entry.choice.kind === "pt"
-    ? `pt:${entry.card.pt_print?.id}`
-    : `p:${entry.choice.printId}:${hasPtText(entry.card) ? "pt" : "en"}:f${fonts}`;
+/** Chave estável da imagem que uma face produz (para cache de prévia). */
+export function renderKey(entry: Entry, fonts = 0, side: Side = 0): string {
+  const base =
+    entry.choice.kind === "pt"
+      ? `pt:${entry.card.pt_print?.id}`
+      : `p:${entry.choice.printId}:${hasPtText(entry.card) ? "pt" : "en"}:f${fonts}`;
+  return side ? `${base}:verso` : base;
 }
 
 /** Ano de lançamento para a legenda. */

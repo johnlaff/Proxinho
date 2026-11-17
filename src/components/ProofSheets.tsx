@@ -6,7 +6,7 @@
  */
 import { fontsVersion } from "../engine/fonts";
 import { useEffect, useState, type ReactNode } from "react";
-import { displayName, outcomeOf, renderKey, selectedPrint, toSheets, type Entry } from "../app/model";
+import { displayName, outcomeOf, renderKey, selectedPrint, sideCount, toSheets, type Entry, type Side } from "../app/model";
 import { previewUrl } from "../app/preview";
 import { ColorBar, CropCorners, RegMark } from "./RegMark";
 import { OutcomeTag } from "./OutcomeTag";
@@ -18,9 +18,9 @@ export function ProofSheets({ entries, slug, onOpen }: { entries: Entry[]; slug:
       {sheets.map((slots, si) => (
         <Sheet key={si} label={`Folha ${si + 1}/${sheets.length}`} slug={slug} ariaLabel={`Folha ${si + 1} de ${sheets.length}`}>
           <ol className="sheet-grid">
-            {slots.map((entry, i) => (
-              <li key={`${entry.key}-${i}`}>
-                <Slot entry={entry} onOpen={onOpen} />
+            {slots.map(({ entry, side }, i) => (
+              <li key={`${entry.key}-${side}-${i}`}>
+                <Slot entry={entry} side={side} onOpen={onOpen} />
               </li>
             ))}
             <BlankSlots count={9 - slots.length} />
@@ -102,15 +102,25 @@ function captionOf(entry: Entry): { set: string; source: string; artist: string 
   return { set: p ? `${p.set_code.toUpperCase()} ${p.number}` : "", source, artist: p?.artist ?? "" };
 }
 
-export function Slot({ entry, onOpen, example = false }: { entry: Entry; onOpen?: (key: string) => void; example?: boolean }) {
-  const key = renderKey(entry, fontsVersion());
+export function Slot({
+  entry,
+  side = 0,
+  onOpen,
+  example = false,
+}: {
+  entry: Entry;
+  side?: Side;
+  onOpen?: (key: string) => void;
+  example?: boolean;
+}) {
+  const key = renderKey(entry, fontsVersion(), side);
   const [state, setState] = useState<{ key: string; url?: string; error?: string }>({ key });
   const [attempt, setAttempt] = useState(0);
   const current = state.key === key ? state : { key };
 
   useEffect(() => {
     let alive = true;
-    previewUrl(entry).then(
+    previewUrl(entry, side).then(
       (url) => alive && setState({ key, url }),
       (err: Error) => alive && setState({ key, error: err.message }),
     );
@@ -122,7 +132,10 @@ export function Slot({ entry, onOpen, example = false }: { entry: Entry; onOpen?
   }, [key, attempt]);
 
   const outcome = outcomeOf(entry);
-  const name = displayName(entry.card);
+  const twoSided = sideCount(entry) === 2;
+  const faceName = entry.card.faces[side]?.name_pt ?? entry.card.faces[side]?.name_en;
+  const name = twoSided ? (faceName ?? displayName(entry.card)) : displayName(entry.card);
+  const sideLabel = twoSided ? (side === 0 ? "frente" : "verso") : "";
   const cap = captionOf(entry);
 
   const body = (
@@ -144,12 +157,13 @@ export function Slot({ entry, onOpen, example = false }: { entry: Entry; onOpen?
           <span className="slot-msg">{name}</span>
         )}
         <CropCorners />
-        {outcome !== "reescrita" && <OutcomeTag outcome={outcome} />}
+        {outcome !== "reescrita" && side === 0 && <OutcomeTag outcome={outcome} />}
         {example && <span className="tag tag--exemplo">Exemplo</span>}
       </div>
       <span className="slot-caption">
         <span className="slot-caption-set">{cap.set}</span>
         <span className="slot-caption-src">{cap.source}</span>
+        {sideLabel && <span className="slot-caption-side">{sideLabel}</span>}
         {cap.artist && <span className="slot-caption-artist">{cap.artist}</span>}
       </span>
     </>
@@ -166,7 +180,7 @@ export function Slot({ entry, onOpen, example = false }: { entry: Entry; onOpen?
       aria-label={
         current.error
           ? `${name}: a imagem não carregou. Tentar de novo.`
-          : `${name}, ${cap.set}, texto: ${cap.source}. Trocar arte ou quantidade.`
+          : `${name}${sideLabel ? ` (${sideLabel})` : ""}, ${cap.set}, texto: ${cap.source}. Trocar arte ou quantidade.`
       }
     >
       {body}

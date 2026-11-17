@@ -8,8 +8,8 @@
  * copyright continuam os da carta original.
  */
 import { bodyFont, loadCardFonts, titleFont } from "./fonts";
-import { BASE_H, BASE_W, m15Layout } from "./geometry";
-import { eraseRegions, findSetSymbolLeft } from "./erase";
+import { BACK_PT_NOTCH, BASE_H, BASE_W, m15Layout } from "./geometry";
+import { eraseRegions, findSetSymbolLeft, hasRightIcon } from "./erase";
 import { preloadSymbols } from "./symbols";
 import { SYMBOL_EM, fitText, type Measurer } from "./text";
 import { scryfallImage, type PrintRecord, type PtFace } from "./types";
@@ -26,7 +26,12 @@ export interface RenderOptions {
   source?: CanvasImageSource & { width: number; height: number };
   /** "png" (745×1040, para imprimir) ou "normal" (488×680, para a prévia) */
   imageVersion?: "png" | "normal";
+  /** cartas de duas faces: 0 = frente, 1 = verso */
+  side?: 0 | 1;
 }
+
+/** Cor do texto escrito: preto como o das cartas, ou claro nos versos escuros. */
+const INK = { dark: "#0b0b0b", light: "#fbf8f1" } as const;
 
 export interface RenderResult {
   canvas: HTMLCanvasElement;
@@ -73,7 +78,16 @@ function measurer(ctx: CanvasRenderingContext2D, k: number): Measurer {
 }
 
 /** Escreve uma linha (nome ou tipo) e comprime na horizontal se não couber. */
-function drawLine(ctx: CanvasRenderingContext2D, text: string, x: number, centerY: number, maxWidth: number, size: number, k: number) {
+function drawLine(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  centerY: number,
+  maxWidth: number,
+  size: number,
+  k: number,
+  color: string = INK.dark,
+) {
   const t = titleFont();
   let s = size * t.scale;
   ctx.font = `${t.weight} ${s * k}px ${t.family}`;
@@ -87,17 +101,34 @@ function drawLine(ctx: CanvasRenderingContext2D, text: string, x: number, center
   const sx = w > maxWidth ? maxWidth / w : 1;
   ctx.save();
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "#0b0b0b";
+  ctx.fillStyle = color;
   ctx.translate((x + t.dx) * k, (centerY + s * 0.06) * k);
   ctx.scale(sx, 1);
   ctx.fillText(text, 0, 0);
   ctx.restore();
 }
 
+/** Lembrete de poder/resistência do verso, em cinza, no canto da caixa de texto. */
+function drawBackPt(ctx: CanvasRenderingContext2D, pt: string, centerY: number, k: number, ink: "dark" | "light") {
+  const t = titleFont();
+  ctx.save();
+  ctx.font = `${t.weight} ${26 * t.scale * k}px ${t.family}`;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = ink === "light" ? "rgba(251,248,241,0.75)" : "rgba(11,11,11,0.62)";
+  ctx.fillText(pt, 682 * k, centerY * k);
+  ctx.restore();
+}
+
 export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const { print, face } = opts;
+  const side = opts.side ?? 0;
+  const sideInfo = print.sides?.[side] ?? null;
   const scale = opts.scale ?? 1.6;
-  const [img] = await Promise.all([opts.source ?? loadImage(scryfallImage(print.id, opts.imageVersion ?? "png")), loadCardFonts()]);
+  const [img] = await Promise.all([
+    opts.source ?? loadImage(scryfallImage(print.id, opts.imageVersion ?? "png", side === 1 ? "back" : "front")),
+    loadCardFonts(),
+  ]);
 
   const W = Math.round(BASE_W * scale);
   const H = Math.round(BASE_H * scale);
@@ -112,7 +143,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   ctx.fillStyle = print.border === "white" ? "#f4f2ee" : "#0d0d0d";
   ctx.fillRect(0, 0, W, H);
 
-  const canTranslate = Boolean(print.supported && face?.name_pt && face.text_pt !== null);
+  const supported = print.sides ? Boolean(sideInfo?.supported) : print.supported;
+  const canTranslate = Boolean(supported && face?.name_pt && face.text_pt !== null);
   if (!canTranslate || !face) {
     ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: false };
@@ -129,9 +161,19 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const fx = src.width / BASE_W;
   const fy = src.height / BASE_H;
   const setLeft = findSetSymbolLeft(data, Math.round(594 * fy), Math.round(632 * fy)) / fx;
-  const layout = m15Layout(print.mana_cost, print.has_pt, setLeft);
+  const manaCost = sideInfo ? sideInfo.mana_cost : print.mana_cost;
+  const hasPt = sideInfo ? sideInfo.has_pt : print.has_pt;
+  // lembrete do verso ("4/4") na frente das cartas de transformar
+  const backPt = print.layout === "transform" && side === 0 ? (print.sides?.[1]?.pt ?? null) : null;
+  const rightIcon = Boolean(sideInfo && side === 1 && !manaCost && hasRightIcon(data));
+  const layout = m15Layout(manaCost, hasPt, setLeft, {
+    leftIcon: Boolean(sideInfo) && !rightIcon,
+    rightIcon,
+    indicator: sideInfo?.indicator,
+    mdfcStrip: print.layout === "modal_dfc",
+  });
   const toImg = (r: { x0: number; y0: number; x1: number; y1: number }) => ({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
-  eraseRegions(
+  const [titleInk, typeInk, boxInk] = eraseRegions(
     data,
     layout.erase.map((e) => ({ rect: toImg(e.rect), threshold: e.threshold, colorThreshold: e.colorThreshold })),
     layout.protect.map(toImg),
@@ -143,16 +185,28 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
 
   // 3. Escreve o português (k = pixels de saída por unidade da escala-base).
   const k = W / BASE_W;
-  drawLine(ctx, face.name_pt ?? face.name_en, layout.title.x, layout.title.centerY, layout.title.maxWidth, layout.title.size, k);
-  if (face.type_pt) drawLine(ctx, face.type_pt, layout.type.x, layout.type.centerY, layout.type.maxWidth, layout.type.size, k);
+  drawLine(
+    ctx,
+    face.name_pt ?? face.name_en,
+    layout.title.x,
+    layout.title.centerY,
+    layout.title.maxWidth,
+    layout.title.size,
+    k,
+    INK[titleInk],
+  );
+  if (face.type_pt)
+    drawLine(ctx, face.type_pt, layout.type.x, layout.type.centerY, layout.type.maxWidth, layout.type.size, k, INK[typeInk]);
+  if (backPt) drawBackPt(ctx, backPt, layout.box.y1 - BACK_PT_NOTCH.height / 2, k, boxInk);
 
   const box = layout.box;
   const symbols = await preloadSymbols(face.text_pt, opts.flavor);
   const m = measurer(ctx, k);
-  const res = fitText(face.text_pt, opts.flavor ?? null, box.x1 - box.x0, box.y1 - box.y0, m);
+  const res = fitText(face.text_pt, opts.flavor ?? null, box.x1 - box.x0, box.y1 - box.y0, m, 34, 15, backPt ? BACK_PT_NOTCH : undefined);
   let y = box.y0 + (box.y1 - box.y0 - res.height) / 2;
   const space = m.text(" ", res.size, false);
-  ctx.fillStyle = "#0b0b0b";
+  const ink = INK[boxInk];
+  ctx.fillStyle = ink;
   ctx.textBaseline = "alphabetic";
   res.lines.forEach((line, i) => {
     if (i > 0 && line.first) y += res.paragraphGap;
@@ -160,13 +214,14 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       // fio separador do texto de ambientação
       const gy = y + res.paragraphGap * 0.7;
       const grad = ctx.createLinearGradient(box.x0 * k, 0, box.x1 * k, 0);
-      grad.addColorStop(0, "rgba(0,0,0,0)");
-      grad.addColorStop(0.12, "rgba(0,0,0,0.45)");
-      grad.addColorStop(0.88, "rgba(0,0,0,0.45)");
-      grad.addColorStop(1, "rgba(0,0,0,0)");
+      const rule = boxInk === "light" ? "251,248,241" : "0,0,0";
+      grad.addColorStop(0, `rgba(${rule},0)`);
+      grad.addColorStop(0.12, `rgba(${rule},0.45)`);
+      grad.addColorStop(0.88, `rgba(${rule},0.45)`);
+      grad.addColorStop(1, `rgba(${rule},0)`);
       ctx.fillStyle = grad;
       ctx.fillRect((box.x0 + 6) * k, gy * k, (box.x1 - box.x0 - 12) * k, Math.max(1, 1.6 * k));
-      ctx.fillStyle = "#0b0b0b";
+      ctx.fillStyle = ink;
       y += res.paragraphGap * 1.4;
     }
     const baseline = y + res.lineHeight * 0.8;

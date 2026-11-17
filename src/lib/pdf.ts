@@ -19,6 +19,8 @@ export type PrintMode = "sleeve" | "full";
 export interface PdfCard {
   /** imagem JPEG/PNG da carta já renderizada */
   image: Blob;
+  /** verso das cartas de duas faces: sai logo depois da frente, em cada cópia */
+  back?: Blob;
   quantity: number;
   /** cor da borda (para a sangria) */
   border: "black" | "white";
@@ -124,10 +126,17 @@ export async function buildPdf(
   const g = gridFor(opts);
   const slots: { img: PDFImage; border: PdfCard["border"] }[] = [];
   let i = 0;
+  const embed = async (blob: Blob) => {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    return blob.type === "image/png" ? doc.embedPng(bytes) : doc.embedJpg(bytes);
+  };
   for (const card of cards) {
-    const bytes = new Uint8Array(await card.image.arrayBuffer());
-    const img = card.image.type === "image/png" ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
-    for (let q = 0; q < card.quantity; q++) slots.push({ img, border: card.border });
+    const img = await embed(card.image);
+    const back = card.back ? await embed(card.back) : null;
+    for (let q = 0; q < card.quantity; q++) {
+      slots.push({ img, border: card.border });
+      if (back) slots.push({ img: back, border: card.border });
+    }
     onProgress?.(++i, cards.length);
   }
   const perPage = 9;

@@ -2,7 +2,8 @@
 
 ## Próximos passos (o agente pode fazer)
 
-- Molduras: planeswalker, saga, aventura, cartas de duas faces (as duas faces lado a lado), sem borda e showcase.
+- Molduras: planeswalker, saga, aventura, sem borda e showcase. (Cartas de duas faces de transformar e modais: feito em 17/11/2026.)
+- Cartas modais: traduzir a faixa do pé da carta com o resumo do outro lado (hoje continua em inglês).
 - Edição manual do texto antes de imprimir.
 - Fichas (tokens) e emblemas.
 - Exportar PNGs avulsos.

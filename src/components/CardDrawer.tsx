@@ -3,9 +3,20 @@
  * real e entender de onde veio o texto em português.
  */
 import { fontsVersion } from "../engine/fonts";
-import { Minus, Plus, Ruler, Trash2, X } from "lucide-react";
+import { FlipHorizontal2, Minus, Plus, Ruler, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { displayName, frontFace, hasPtText, outcomeOf, renderKey, yearOf, type Choice, type Entry } from "../app/model";
+import {
+  displayName,
+  frontFace,
+  hasPtText,
+  outcomeOf,
+  renderKey,
+  sideCount,
+  yearOf,
+  type Choice,
+  type Entry,
+  type Side,
+} from "../app/model";
 import { previewUrl } from "../app/preview";
 import { scryfallImage } from "../engine/types";
 import { OUTCOME_LABEL } from "../app/labels";
@@ -57,17 +68,20 @@ export function CardDrawer({ entry, onClose, onChoice, onQuantity, onRemove }: P
 
 function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Props, "entry"> & { entry: Entry }) {
   const [trueSize, onTrueSize] = useState(false);
-  const imageKey = renderKey(entry, fontsVersion());
+  const [sideWanted, setSide] = useState<Side>(0);
+  const twoSided = sideCount(entry) === 2;
+  const side: Side = twoSided ? sideWanted : 0;
+  const face = side === 1 ? (entry.card.faces[1] ?? frontFace(entry.card)) : frontFace(entry.card);
+  const imageKey = renderKey(entry, fontsVersion(), side);
   const [preview, setPreview] = useState<{ key: string; url: string } | null>(null);
   const url = preview?.key === imageKey ? preview.url : null;
   const outcome = outcomeOf(entry);
-  const face = frontFace(entry.card);
   const name = displayName(entry.card);
   const translatable = hasPtText(entry.card);
 
   useEffect(() => {
     let alive = true;
-    previewUrl(entry).then(
+    previewUrl(entry, side).then(
       (u) => alive && setPreview({ key: imageKey, url: u }),
       () => undefined,
     );
@@ -98,7 +112,11 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
       <div className="drawer-scroll">
         <div className="drawer-preview">
           <div className={trueSize ? "preview-card preview-card--real" : "preview-card"}>
-            {url ? <img src={url} alt={`Prévia de ${name}`} /> : <span className="slot-msg">Montando a prévia…</span>}
+            {url ? (
+              <img src={url} alt={`Prévia de ${name}${twoSided ? (side === 0 ? ", frente" : ", verso") : ""}`} />
+            ) : (
+              <span className="slot-msg">Montando a prévia…</span>
+            )}
           </div>
           <div className="drawer-facts">
             <OutcomeTag outcome={outcome} long />
@@ -109,6 +127,20 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
               </p>
             )}
             {face?.type_pt && translatable && <p className="drawer-type">{face.type_pt}</p>}
+            {twoSided && (
+              <>
+                <p className="drawer-note">Carta de duas faces: a frente e o verso saem lado a lado na folha.</p>
+                <button
+                  type="button"
+                  className="btn btn--quiet btn--small"
+                  aria-pressed={side === 1}
+                  onClick={() => setSide(side === 0 ? 1 : 0)}
+                >
+                  <FlipHorizontal2 size={16} aria-hidden="true" />
+                  {side === 0 ? "Ver o verso" : "Ver a frente"}
+                </button>
+              </>
+            )}
             <button type="button" className="btn btn--quiet btn--small" aria-pressed={trueSize} onClick={() => onTrueSize(!trueSize)}>
               <Ruler size={16} aria-hidden="true" />
               {trueSize ? (

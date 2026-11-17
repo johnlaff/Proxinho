@@ -131,7 +131,14 @@ export function chunkWidth(chunk: Chunk, size: number, m: Measurer): number {
 }
 
 /** Diagrama no corpo `size`; devolve as linhas e a altura total. */
-export function layoutAt(paragraphs: Paragraph[], size: number, width: number, m: Measurer): LayoutResult {
+export function layoutAt(
+  paragraphs: Paragraph[],
+  size: number,
+  width: number,
+  m: Measurer,
+  narrow: ReadonlySet<number> = new Set(),
+  narrowBy = 0,
+): LayoutResult {
   const lineHeight = size * 1.12;
   const paragraphGap = size * 0.3;
   const space = m.text(" ", size, false);
@@ -145,7 +152,8 @@ export function layoutAt(paragraphs: Paragraph[], size: number, width: number, m
     for (const chunk of p.chunks) {
       const cw = chunkWidth(chunk, size, m);
       const add = cur.length ? space + cw : cw;
-      if (cur.length && curW + add > width) {
+      const limit = narrow.has(lines.length) ? width - narrowBy : width;
+      if (cur.length && curW + add > limit) {
         lines.push({ chunks: cur, flavor: p.flavor, first });
         first = false;
         cur = [chunk];
@@ -166,6 +174,39 @@ export function layoutAt(paragraphs: Paragraph[], size: number, width: number, m
   return { size, lines, height, lineHeight, paragraphGap, flavorStart };
 }
 
+/** Um canto reservado no pé da caixa (ex.: o lembrete "4/4" do verso). */
+export interface Notch {
+  width: number;
+  height: number;
+}
+
+/** Linhas que, com o texto centralizado na caixa, encostam no canto reservado. */
+function linesInNotch(res: LayoutResult, boxHeight: number, notch: Notch): Set<number> {
+  const hit = new Set<number>();
+  let y = (boxHeight - res.height) / 2;
+  res.lines.forEach((line, i) => {
+    if (i > 0 && line.first) y += res.paragraphGap;
+    if (i === res.flavorStart && i > 0) y += res.paragraphGap * 1.4;
+    if (y + res.lineHeight > boxHeight - notch.height) hit.add(i);
+    y += res.lineHeight;
+  });
+  return hit;
+}
+
+/** Diagrama desviando do canto reservado (refaz até as linhas pararem de mudar). */
+function layoutAround(paragraphs: Paragraph[], size: number, width: number, height: number, m: Measurer, notch?: Notch): LayoutResult {
+  let res = layoutAt(paragraphs, size, width, m);
+  if (!notch) return res;
+  let narrow = new Set<number>();
+  for (let i = 0; i < 4; i++) {
+    const next = linesInNotch(res, height, notch);
+    if ([...next].every((n) => narrow.has(n))) break;
+    narrow = new Set([...narrow, ...next]);
+    res = layoutAt(paragraphs, size, width, m, narrow, notch.width);
+  }
+  return res;
+}
+
 /**
  * Procura o maior corpo (de `max` para baixo, passos de 0,5) em que o texto cabe.
  * Se não couber nem no mínimo, tenta sem o flavor antes de desistir.
@@ -178,11 +219,12 @@ export function fitText(
   m: Measurer,
   max = 34,
   min = 15,
+  notch?: Notch,
 ): LayoutResult {
   const attempt = (fl: string | null): LayoutResult | null => {
     const paragraphs = buildParagraphs(rules, fl);
     for (let size = max; size >= min; size -= 0.5) {
-      const res = layoutAt(paragraphs, size, width, m);
+      const res = layoutAround(paragraphs, size, width, height, m, notch);
       if (res.height <= height) return res;
     }
     return null;
@@ -192,5 +234,5 @@ export function fitText(
     const withFlavor = attempt(flavor);
     if (withFlavor && withFlavor.size >= 26) return withFlavor;
   }
-  return attempt(null) ?? layoutAt(buildParagraphs(rules, null), min, width, m);
+  return attempt(null) ?? layoutAround(buildParagraphs(rules, null), min, width, height, m, notch);
 }

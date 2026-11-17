@@ -9,7 +9,7 @@
 import { fontsVersion } from "../engine/fonts";
 import { renderCard } from "../engine/render";
 import type { PrintRecord } from "../engine/types";
-import { frontFace, hasPtText, renderKey, selectedPrint, type Entry } from "./model";
+import { hasPtText, renderKey, selectedPrint, sideCount, type Entry, type Side } from "./model";
 
 const MAX_PARALLEL = 4;
 const cache = new Map<string, Promise<string>>();
@@ -52,20 +52,20 @@ export function ptPrintRecord(entry: Entry): PrintRecord | null {
     promo: false,
     mana_cost: null,
     has_pt: false,
-    two_sided: false,
+    two_sided: sideCount(entry) === 2,
     supported: false,
   };
 }
 
-/** Parâmetros de render de uma entrada (usado na prévia e no PDF). */
-export function renderInput(entry: Entry) {
+/** Parâmetros de render de uma face de uma entrada (usado na prévia e no PDF). */
+export function renderInput(entry: Entry, side: Side = 0) {
   const print = entry.choice.kind === "pt" ? ptPrintRecord(entry) : selectedPrint(entry);
   if (!print) return null;
   const translate = entry.choice.kind === "print" && hasPtText(entry.card);
-  const face = translate ? frontFace(entry.card) : null;
+  const face = translate ? (entry.card.faces[side] ?? null) : null;
   const tp = entry.card.text_print;
   const sameAsText = Boolean(tp && print.set_code.toLowerCase() === tp.set.toLowerCase() && print.number === tp.number);
-  return { print, face, flavor: sameAsText ? (face?.flavor_pt ?? null) : null };
+  return { print, face, side, flavor: sameAsText ? (face?.flavor_pt ?? null) : null };
 }
 
 function toUrl(canvas: HTMLCanvasElement): Promise<string> {
@@ -74,11 +74,11 @@ function toUrl(canvas: HTMLCanvasElement): Promise<string> {
   );
 }
 
-export function previewUrl(entry: Entry): Promise<string> {
-  const key = renderKey(entry, fontsVersion());
+export function previewUrl(entry: Entry, side: Side = 0): Promise<string> {
+  const key = renderKey(entry, fontsVersion(), side);
   let p = cache.get(key);
   if (!p) {
-    const input = renderInput(entry);
+    const input = renderInput(entry, side);
     if (!input) return Promise.reject(new Error("Carta sem imagem disponível."));
     p = schedule(async () => {
       const { canvas } = await renderCard({ ...input, imageVersion: "normal", scale: 0.56 });

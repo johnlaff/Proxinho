@@ -47,6 +47,20 @@ export interface PrintRecord {
   has_pt: boolean;
   two_sided: boolean;
   supported: boolean;
+  /** Cartas de duas faces: dados de cada face (frente e verso). */
+  sides?: PrintSide[] | null;
+}
+
+/** Uma face de uma impressão de duas faces. */
+export interface PrintSide {
+  mana_cost: string | null;
+  has_pt: boolean;
+  /** poder/resistência, ex.: "4/4" (aparece pequeno na frente, como lembrete do verso) */
+  pt: string | null;
+  /** tem indicador de cor na linha de tipo */
+  indicator: boolean;
+  /** o motor sabe reescrever esta face */
+  supported: boolean;
 }
 
 /** Endereço da imagem no CDN do Scryfall (o padrão de URL é público e estável). */

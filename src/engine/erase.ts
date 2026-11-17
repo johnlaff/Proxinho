@@ -57,7 +57,45 @@ function boxMean(values: Float32Array, weights: Float32Array, w: number, h: numb
  * Depois a máscara é dilatada e "fechada" para levar junto a borda suavizada das
  * letras e os buracos dentro dos símbolos.
  */
-export function textMask(img: ImageData, rect: Rect, threshold: number, protect: Rect[] = [], colorThreshold = 0): Uint8Array {
+/**
+ * Descobre se o texto de uma região é escuro sobre fundo claro (o normal) ou
+ * claro sobre fundo escuro (verso das cartas de transformar, faixa das modais).
+ * Compara quantos pixels fogem muito da mediana para cada lado.
+ */
+export function textPolarity(img: ImageData, rect: Rect): "dark" | "light" {
+  const hist = new Uint32Array(256);
+  let n = 0;
+  // só o miolo da faixa: as bordas de cima e de baixo da barra são escuras
+  const inset = Math.floor((rect.y1 - rect.y0) * 0.2);
+  for (let y = rect.y0 + inset; y < rect.y1 - inset; y++) {
+    for (let x = rect.x0; x < rect.x1; x++) {
+      hist[Math.round(luminance(img.data, (y * img.width + x) * 4))]++;
+      n++;
+    }
+  }
+  let acc = 0;
+  let median = 0;
+  for (; median < 255; median++) {
+    acc += hist[median];
+    if (acc >= n / 2) break;
+  }
+  let dark = 0;
+  let light = 0;
+  for (let v = 0; v < 256; v++) {
+    if (v < median - 45) dark += hist[v];
+    else if (v > median + 45) light += hist[v];
+  }
+  return light > dark * 1.5 && light > n * 0.01 ? "light" : "dark";
+}
+
+export function textMask(
+  img: ImageData,
+  rect: Rect,
+  threshold: number,
+  protect: Rect[] = [],
+  colorThreshold = 0,
+  polarity: "dark" | "light" = "dark",
+): Uint8Array {
   const w = rect.x1 - rect.x0;
   const h = rect.y1 - rect.y0;
   const n = w * h;
@@ -68,7 +106,8 @@ export function textMask(img: ImageData, rect: Rect, threshold: number, protect:
     for (let x = 0; x < w; x++) {
       const i = ((rect.y0 + y) * img.width + rect.x0 + x) * 4;
       const k = y * w + x;
-      lum[k] = luminance(img.data, i);
+      // texto claro: inverte a luminância e a mesma regra ("bem mais escuro que o fundo") vale
+      lum[k] = polarity === "light" ? 255 - luminance(img.data, i) : luminance(img.data, i);
       rgb[0][k] = img.data[i];
       rgb[1][k] = img.data[i + 1];
       rgb[2][k] = img.data[i + 2];
@@ -306,8 +345,16 @@ export function findSetSymbolLeft(img: ImageData, y0: number, y1: number): numbe
   return start;
 }
 
-/** Apaga o texto de várias regiões de uma vez. */
-export function eraseRegions(img: ImageData, regions: { rect: Rect; threshold: number; colorThreshold?: number }[], protect: Rect[]): void {
+/**
+ * Apaga o texto de várias regiões de uma vez. Devolve, para cada região, se o
+ * texto era escuro ou claro (para escrever o português na mesma cor).
+ */
+export function eraseRegions(
+  img: ImageData,
+  regions: { rect: Rect; threshold: number; colorThreshold?: number }[],
+  protect: Rect[],
+): ("dark" | "light")[] {
+  const polarities: ("dark" | "light")[] = [];
   for (const { rect, threshold, colorThreshold } of regions) {
     const r = {
       x0: clamp(Math.round(rect.x0), 0, img.width),
@@ -315,8 +362,41 @@ export function eraseRegions(img: ImageData, regions: { rect: Rect; threshold: n
       x1: clamp(Math.round(rect.x1), 0, img.width),
       y1: clamp(Math.round(rect.y1), 0, img.height),
     };
-    if (r.x1 <= r.x0 || r.y1 <= r.y0) continue;
-    const mask = textMask(img, r, threshold, protect, colorThreshold ?? 0);
+    if (r.x1 <= r.x0 || r.y1 <= r.y0) {
+      polarities.push("dark");
+      continue;
+    }
+    const polarity = textPolarity(img, r);
+    polarities.push(polarity);
+    const mask = textMask(img, r, threshold, protect, colorThreshold ?? 0, polarity);
     inpaint(img, r, mask);
   }
+  return polarities;
+}
+
+/**
+ * Procura o ícone redondo à direita do nome (verso das cartas de transformar
+ * desde 2023, que não têm custo de mana). O anel do ícone contrasta muito com
+ * a barra do nome em toda a altura.
+ */
+export function hasRightIcon(img: ImageData): boolean {
+  const k = img.width / 745;
+  const ky = img.height / 1040;
+  const x0 = Math.round(660 * k);
+  const x1 = Math.round(700 * k);
+  const y0 = Math.round(64 * ky);
+  const y1 = Math.round(100 * ky);
+  let lo = 0;
+  let hi = 0;
+  let n = 0;
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const l = luminance(img.data, (y * img.width + x) * 4);
+      if (l < 60) lo++;
+      if (l > 200) hi++;
+      n++;
+    }
+  }
+  // o ícone é um disco escuro com um triângulo claro (ou o contrário)
+  return lo > n * 0.45 && hi > n * 0.15;
 }

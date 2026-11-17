@@ -257,6 +257,45 @@ def frame_supported(card: dict) -> bool:
     )
 
 
+DFC_LAYOUTS = {"transform", "modal_dfc"}
+# molduras de duas faces com desenho próprio (bússola de Ixalan, planeswalker de Magic Origins…)
+UNSUPPORTED_DFC_EFFECTS = UNSUPPORTED_EFFECTS | {"compasslanddfc", "originpwdfc", "fandfc", "convertdfc"}
+
+
+def face_supported(card: dict, face: dict) -> bool:
+    """Uma face de carta de duas faces (transformar ou modal) na moldura 2015."""
+    effects = set(card.get("frame_effects") or [])
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") in DFC_LAYOUTS
+        and card.get("border_color") in {"black", "white"}
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not effects & UNSUPPORTED_DFC_EFFECTS
+        and not any(t in face.get("type_line", "") for t in UNSUPPORTED_TYPES)
+    )
+
+
+def sides_of(card: dict) -> list[dict] | None:
+    """Dados de cada face de uma impressão de duas faces (para o motor da carta)."""
+    faces = card.get("card_faces")
+    if card.get("layout") not in DFC_LAYOUTS or not faces or card.get("image_uris"):
+        return None
+    out = []
+    for f in faces:
+        has_pt = f.get("power") is not None
+        out.append(
+            {
+                "mana_cost": f.get("mana_cost") or None,
+                "has_pt": has_pt,
+                "pt": f"{f['power']}/{f['toughness']}" if has_pt else None,
+                "indicator": bool(f.get("color_indicator")),
+                "supported": face_supported(card, f),
+            }
+        )
+    return out
+
+
 def load_prints(offline: bool) -> list[dict]:
     """Todas as impressões em inglês no papel (Scryfall default cards)."""
     meta = get_json("https://api.scryfall.com/bulk-data/default-cards")
@@ -273,6 +312,7 @@ def load_prints(offline: bool) -> list[dict]:
                 continue
             oid = c.get("oracle_id") or (c.get("card_faces") or [{}])[0].get("oracle_id")
             face = (c.get("card_faces") or [c])[0]
+            sides = sides_of(c)
             out.append(
                 {
                     "id": c["id"],
@@ -291,7 +331,8 @@ def load_prints(offline: bool) -> list[dict]:
                     "mana_cost": face.get("mana_cost") or c.get("mana_cost"),
                     "has_pt": face.get("power") is not None or c.get("power") is not None,
                     "two_sided": bool(c.get("card_faces") and not c.get("image_uris")),
-                    "supported": frame_supported(c),
+                    "supported": frame_supported(c) or bool(sides and sides[0]["supported"]),
+                    "sides": sides,
                 }
             )
     log(f"impressões em inglês: {len(out)} ({sum(p['supported'] for p in out)} com moldura suportada)")
@@ -376,7 +417,7 @@ def sql_str(value: object) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported"]
+PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides"]
 
 COLUMNS = ["oracle_id", "name_en", "name_pt", "search_en", "search_pt", "source", "text_print", "faces", "pt_print", "layout", "type_line", "edhrec_rank", "commander"]
 

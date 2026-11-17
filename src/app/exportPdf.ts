@@ -1,7 +1,7 @@
 /** Monta as cartas em resolução de impressão e gera o PDF, tudo no navegador. */
 import { renderCard } from "../engine/render";
 import { buildPdf, type PdfCard, type PdfOptions } from "../lib/pdf";
-import { sortEntries, type Entry } from "./model";
+import { sideCount, sortEntries, type Entry, type Side } from "./model";
 import { renderInput } from "./preview";
 
 export type Quality = "padrao" | "alta";
@@ -30,25 +30,33 @@ export async function exportPdf(
   opts: PdfOptions & { quality: Quality },
   onProgress: (p: ExportProgress) => void,
 ): Promise<Blob> {
-  const list = sortEntries(entries);
+  // cada face de uma carta de duas faces é uma imagem (frente e verso lado a lado)
+  const list = sortEntries(entries).flatMap((entry) =>
+    Array.from({ length: sideCount(entry) }, (_, side) => ({ entry, side: side as Side })),
+  );
   const cards: PdfCard[] = [];
   let done = 0;
   onProgress({ phase: "cartas", done, total: list.length });
   // duas por vez: cada PNG tem ~1 MB e o apagamento usa bastante memória
   const work = [...list.entries()];
-  const results: PdfCard[] = new Array(list.length);
+  const results: Blob[] = new Array(list.length);
+  const borders: PdfCard["border"][] = new Array(list.length);
   async function worker() {
     for (let next = work.shift(); next; next = work.shift()) {
-      const [i, entry] = next;
-      const input = renderInput(entry);
+      const [i, { entry, side }] = next;
+      const input = renderInput(entry, side);
       if (!input) throw new Error(`Não há imagem para “${entry.card.name_pt ?? entry.card.name_en}”.`);
       const { canvas } = await renderCard({ ...input, imageVersion: "png", scale: SCALE[opts.quality] });
-      results[i] = { image: await toBlob(canvas), quantity: entry.quantity, border: input.print.border === "white" ? "white" : "black" };
+      results[i] = await toBlob(canvas);
+      borders[i] = input.print.border === "white" ? "white" : "black";
       onProgress({ phase: "cartas", done: ++done, total: list.length });
     }
   }
   await Promise.all([worker(), worker()]);
-  cards.push(...results);
+  list.forEach(({ entry, side }, i) => {
+    if (side === 1) cards[cards.length - 1].back = results[i];
+    else cards.push({ image: results[i], quantity: entry.quantity, border: borders[i] });
+  });
   const bytes = await buildPdf(cards, opts, (d, t) => onProgress({ phase: "pdf", done: d, total: t }));
   return new Blob([bytes as BlobPart], { type: "application/pdf" });
 }

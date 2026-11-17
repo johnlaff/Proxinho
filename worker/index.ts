@@ -80,6 +80,7 @@ interface PrintRow {
   has_pt: number;
   two_sided: number;
   supported: number;
+  sides: string | null;
   [k: string]: unknown;
 }
 
@@ -91,6 +92,7 @@ function parsePrint(row: PrintRow) {
     has_pt: !!row.has_pt,
     two_sided: !!row.two_sided,
     supported: !!row.supported,
+    sides: row.sides ? JSON.parse(row.sides) : null,
   };
 }
 

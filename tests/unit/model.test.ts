@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildOrder, countOutcomes, defaultChoice, outcomeOf, toSheets, totalCards, type Entry } from "../../src/app/model";
+import { buildOrder, countOutcomes, defaultChoice, outcomeOf, renderKey, toSheets, totalCards, type Entry } from "../../src/app/model";
 import type { CardRecord, PrintRecord } from "../../src/engine/types";
 
 function card(over: Partial<CardRecord> = {}): CardRecord {
@@ -114,7 +114,23 @@ describe("buildOrder", () => {
     expect(totalCards(entries)).toBe(10);
     const sheets = toSheets(entries);
     expect(sheets.map((s) => s.length)).toEqual([9, 1]);
-    expect(sheets[0][0].section).toBe("commander");
+    expect(sheets[0][0].entry.section).toBe("commander");
+  });
+
+  it("carta de duas faces ocupa dois espaços: frente e verso lado a lado", () => {
+    const dfc: Entry = {
+      key: "t",
+      query: "Tovolar",
+      quantity: 2,
+      section: "main",
+      card: card({ layout: "transform" }),
+      prints: [print("tov", { layout: "transform", two_sided: true })],
+      choice: { kind: "print", printId: "tov" },
+    };
+    expect(totalCards([dfc])).toBe(4);
+    const [sheet] = toSheets([dfc]);
+    expect(sheet.map((s) => s.side)).toEqual([0, 1, 0, 1]);
+    expect(renderKey(dfc, 0, 1)).not.toBe(renderKey(dfc, 0, 0));
   });
 });
 
