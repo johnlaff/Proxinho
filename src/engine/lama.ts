@@ -9,12 +9,13 @@
  * em volta, e é o modelo de referência para remover texto e objetos.
  *
  * Roda no navegador com o ONNX Runtime Web, numa worker (lamaWorker.ts) para
- * não travar a página: na placa de vídeo (WebGPU) quando há, senão na CPU. O modelo é uma versão quantizada de 37 MB
- * (pesos int4/int8, licença Apache 2.0), baixada só quando aparece o primeiro
- * planeswalker e guardada pelo navegador. Um vigia mede cada etapa (ver `MODES` e `LIMITS`):
- * travada, a worker é trocada por uma mais simples; se essa também falhar, o modelo fica
- * indisponível na página e quem chama decide (o planeswalker volta para o push-pull; a arte sem
- * borda sai na original). `lamaStatus` diz em que etapa está, para a prévia mostrar o andamento.
+ * não travar a página: na placa de vídeo (WebGPU) quando há, senão na CPU. O modelo é uma versão
+ * quantizada de 37 MB (pesos int4/int8, licença Apache 2.0, 30 MB compactado), baixada só quando
+ * aparece a primeira carta que precisa dele e guardada pelo navegador. Um vigia mede cada etapa
+ * (ver `MODES` e `LIMITS`): travada ou com erro, a worker é trocada por uma mais simples; sem
+ * modo que funcione, o modelo fica indisponível na página e quem chama decide (o planeswalker
+ * volta para o push-pull; a arte sem borda sai na original). `lamaStatus` diz em que etapa está,
+ * onde roda, quanto leva cada quadro e por que falhou, para a prévia mostrar o andamento.
  *
  * O modelo trabalha num quadro de 512 × 512. A caixa de texto (~600 px de
  * largura no PNG do Scryfall, ~400 px na imagem menor das prévias) é recortada
@@ -24,26 +25,47 @@
  * tempo pela metade.
  */
 import type { Rect } from "./geometry";
+import type { Backend } from "./lamaFiles";
 
 const SIZE = 512;
 
 /**
- * Modos da worker, em ordem: o normal (placa de vídeo quando há; senão a CPU, com várias threads
- * quando a página está isolada) e o mais simples (CPU, uma thread). Nas threads do WebAssembly,
- * uma que não sobe deixa o carregamento esperando para sempre, sem erro (o Firefox do celular
- * ficava em "Montando a prévia…" com a arte sem borda da Konia, DSK 358): o vigia troca de modo.
+ * Modos da worker, em ordem: a placa de vídeo (WebGPU; sem ela, a CPU), a CPU com várias threads
+ * (quando a página está isolada) e a CPU com uma thread. Uma falha passa para o modo seguinte ao
+ * que a worker de fato usou (ver `nextMode`): o erro da placa de vídeo vai para a CPU com várias
+ * threads, e a thread do WebAssembly que não sobe (o Firefox do celular ficava em "Montando a
+ * prévia…" com a arte sem borda da Konia, DSK 358) vai para a de uma thread.
  */
-const MODES = [
-  { gpu: true, threads: 0 },
-  { gpu: false, threads: 1 },
+const MODES: { backend: Backend; threads: number }[] = [
+  { backend: "webgpu", threads: 0 },
+  { backend: "wasm", threads: 0 },
+  { backend: "wasm", threads: 1 },
 ];
 
+/** Onde a worker de fato rodou o modelo (a placa de vídeo pedida pode não existir). */
+export type Active = { backend: Backend; threads: number };
+
+/** O modo seguinte depois de uma falha no modo `mode`; `MODES.length` quando não há mais. */
+export function nextMode(mode: number, active: Active | null): number {
+  if (!active) return mode + 1;
+  if (active.backend === "webgpu") return 1;
+  return active.threads > 1 ? 2 : MODES.length;
+}
+
 /**
- * Limites do vigia, em ms: download sem um byte novo, do fim do download ao modelo pronto, e um
- * quadro. Num celular comum o modelo fica pronto em menos de um minuto e cada quadro leva de
- * 10 a 40 s; o dobro ou mais disso só acontece travado.
+ * Limites do vigia, em ms: download sem um byte novo, do fim do download ao modelo pronto, e o
+ * primeiro quadro em cada modo (na placa de vídeo leva de 1 a 5 s, com a compilação dos shaders
+ * no primeiro; na CPU de um celular, de 15 a 60 s). Depois do primeiro, o limite de cada quadro é
+ * `slower` vezes a média medida (no mínimo `floor`): um quadro lento que segue no ritmo não é
+ * travamento, e um travado não espera os 4 minutos do primeiro.
  */
-export const LIMITS = { stall: 60_000, prepare: 120_000, run: 180_000 };
+export const LIMITS = { stall: 60_000, prepare: 120_000, first: { webgpu: 90_000, wasm: 240_000 }, slower: 4, floor: 60_000 };
+
+/** Limite do quadro que vai rodar, pela média `frameMs` dos anteriores (0 = nenhum ainda). */
+export function runLimit(backend: Backend | null, frameMs: number): number {
+  if (!frameMs) return LIMITS.first[backend ?? "wasm"];
+  return Math.max(LIMITS.floor, LIMITS.slower * frameMs);
+}
 
 /** Etapa da rede neural, para a interface mostrar o andamento da prévia. */
 export type LamaStatus = {
@@ -51,9 +73,17 @@ export type LamaStatus = {
   /** bytes baixados e o total (0 quando o servidor não diz o tamanho) */
   loaded: number;
   total: number;
+  /** onde o modelo roda, depois de pronto */
+  backend: Backend | null;
+  /** tempo médio de um quadro neste modo, em ms (0 enquanto nenhum terminou) */
+  frameMs: number;
+  /** quando o quadro atual começou (`Date.now()`), 0 fora da etapa "run" */
+  since: number;
+  /** por que a rede neural não rodou: as falhas de cada modo, em ordem ("" sem falha) */
+  reason: string;
 };
 
-let status: LamaStatus = { stage: "idle", loaded: 0, total: 0 };
+let status: LamaStatus = { stage: "idle", loaded: 0, total: 0, backend: null, frameMs: 0, since: 0, reason: "" };
 const watchers = new Set<() => void>();
 
 export function lamaStatus(): LamaStatus {
@@ -72,22 +102,49 @@ function setStatus(next: Partial<LamaStatus>) {
   for (const l of watchers) l();
 }
 
+/**
+ * Quanto falta, em ms, para `left` quadros (o atual conta inteiro, menos o que já rodou dele), ou
+ * `null` sem medida (antes do primeiro quadro terminar).
+ */
+export function etaMs(s: LamaStatus, left: number, now = Date.now()): number | null {
+  if (!s.frameMs || left <= 0) return null;
+  const elapsed = s.stage === "run" && s.since ? Math.min(now - s.since, s.frameMs) : 0;
+  return Math.max(0, left * s.frameMs - elapsed);
+}
+
 type Job = { id: number; image: Float32Array; mask: Float32Array; done: (out: Float32Array | null) => void };
-type Reply = { type?: string; id?: number; output?: Float32Array; error?: string; loaded?: number; total?: number };
+type Reply = {
+  type?: string;
+  id?: number;
+  output?: Float32Array;
+  error?: string;
+  loaded?: number;
+  total?: number;
+  backend?: Backend;
+  threads?: number;
+};
 
 /** Quadros esperando; o primeiro está na worker quando `busy`. Um de cada vez: o vigia mede um só. */
 const jobs: Job[] = [];
 let worker: Worker | null = null;
 let mode = 0;
 let ready = false;
+let loading = false;
 let busy = false;
 let broken = false;
+let active: Active | null = null;
 let seq = 0;
 let timer: ReturnType<typeof setTimeout> | undefined;
+/** duração dos últimos quadros neste modo, para a média */
+let times: number[] = [];
+const reasons: string[] = [];
 
 function arm(ms: number) {
   clearTimeout(timer);
-  timer = setTimeout(() => fail("tempo esgotado"), ms);
+  timer = setTimeout(
+    () => fail(`${status.stage === "run" ? "quadro" : status.stage === "prepare" ? "preparo" : "download"} sem resposta`),
+    ms,
+  );
 }
 
 /** A worker travou ou falhou: descarta e manda o mesmo quadro para o modo seguinte. */
@@ -95,19 +152,31 @@ function fail(reason: string) {
   clearTimeout(timer);
   worker?.terminate();
   worker = null;
+  reasons.push(`${active?.backend ?? MODES[mode].backend}${active && active.backend === "wasm" ? ` ${active.threads}t` : ""}: ${reason}`);
+  mode = nextMode(mode, active);
   ready = false;
+  loading = false;
   busy = false;
-  mode++;
+  active = null;
+  times = [];
   if (mode >= MODES.length) {
-    // modelo indisponível (sem rede, navegador antigo): não tenta de novo nesta página
+    // modelo indisponível (sem rede, navegador antigo, falta de memória): não tenta de novo nesta página
     broken = true;
-    console.warn("Proxinho: preenchimento por rede neural indisponível.", reason);
-    setStatus({ stage: "failed" });
+    console.warn("Proxinho: preenchimento por rede neural indisponível.", reasons);
+    setStatus({ stage: "failed", backend: null, frameMs: 0, since: 0, reason: reasons.join(" · ") });
     for (const job of jobs.splice(0)) job.done(null);
     return;
   }
-  console.warn("Proxinho: a rede neural travou ou falhou; tentando na CPU com uma thread.", reason);
-  pump();
+  console.warn("Proxinho: a rede neural falhou; tentando num modo mais simples.", reason);
+  setStatus({ backend: null, frameMs: 0, since: 0 });
+  if (jobs.length) pump();
+  else prepareLama();
+}
+
+function startFrame() {
+  const since = Date.now();
+  setStatus({ stage: "run", since });
+  arm(runLimit(active?.backend ?? null, status.frameMs));
 }
 
 function spawn(): Worker {
@@ -123,12 +192,21 @@ function spawn(): Worker {
       arm(LIMITS.prepare);
     } else if (m.type === "ready") {
       ready = true;
-      setStatus({ stage: "run" });
-      arm(LIMITS.run);
+      active = { backend: m.backend ?? MODES[mode].backend, threads: m.threads ?? 1 };
+      setStatus({ backend: active.backend });
+      if (busy) startFrame();
+      else {
+        clearTimeout(timer);
+        setStatus({ stage: "idle", since: 0 });
+      }
+    } else if (m.type === "error" && m.id === undefined) {
+      fail(m.error ?? "erro ao preparar");
     } else if (m.id !== undefined && m.id === jobs[0]?.id) {
       if (m.error) return fail(m.error);
       clearTimeout(timer);
       busy = false;
+      if (status.since) times = [...times, Date.now() - status.since].slice(-5);
+      setStatus({ frameMs: times.length ? times.reduce((a, b) => a + b, 0) / times.length : 0, since: 0 });
       jobs.shift()!.done(m.output ?? null);
       pump();
     }
@@ -136,26 +214,43 @@ function spawn(): Worker {
   w.onerror = (ev: Event) => {
     if (w !== worker) return;
     ev.preventDefault();
-    fail("worker");
+    fail("a worker caiu");
   };
   return w;
+}
+
+/**
+ * Começa a baixar e preparar o modelo antes do primeiro quadro (a prévia chama assim que uma
+ * carta vai precisar dele): o download corre junto com o apagamento da carta.
+ */
+export function prepareLama() {
+  if (broken || typeof Worker === "undefined" || ready || loading) return;
+  worker ??= spawn();
+  loading = true;
+  worker.postMessage({ type: "load", ...MODES[mode] });
+  if (!busy) {
+    setStatus({ stage: "download" });
+    arm(LIMITS.stall);
+  }
 }
 
 function pump() {
   if (busy) return;
   const job = jobs[0];
   if (!job) {
-    setStatus({ stage: "idle" });
+    if (ready || !loading) {
+      clearTimeout(timer);
+      setStatus({ stage: "idle", since: 0 });
+    }
     return;
   }
   worker ??= spawn();
   busy = true;
+  loading = true;
   // (cópias, sem transferir: se a worker travar, o mesmo quadro vai para a seguinte)
   worker.postMessage({ type: "run", id: job.id, image: job.image, mask: job.mask, ...MODES[mode] });
-  if (ready) {
-    setStatus({ stage: "run" });
-    arm(LIMITS.run);
-  } else {
+  if (ready) startFrame();
+  else if (status.stage !== "download" && status.stage !== "prepare") {
     setStatus({ stage: "download" });
     arm(LIMITS.stall);
   }
@@ -300,16 +395,34 @@ export function nativeTiles(area: Rect, width: number, height: number, margin: n
  * Reduzida, a arte fina atrás da caixa sem borda (a gravura e a retícula da impressão do
  * Shivan Dragon da Secret Lair) perdia o desenho e o remendo saía em manchas borradas.
  */
-export async function lamaInpaint(img: ImageData, area: Rect, mask: Uint8Array, hide: Rect[] = [], native = false): Promise<boolean> {
+export async function lamaInpaint(
+  img: ImageData,
+  area: Rect,
+  mask: Uint8Array,
+  hide: Rect[] = [],
+  native = false,
+  onFrame?: () => void,
+): Promise<boolean> {
   const W = img.width;
-  const margin = Math.round(W * 0.03);
-  const single = cropAround(area, W, img.height, margin);
-  if (!native || single.size <= SIZE) return runFrame(img, single, mask, hide, area);
+  const single = cropAround(area, W, img.height, Math.round(W * 0.03));
+  if (!native || single.size <= SIZE) {
+    const ok = await runFrame(img, single, mask, hide, area);
+    if (ok) onFrame?.();
+    return ok;
+  }
   // a máscara muda a cada quadro: o que um já preencheu é contexto para o seguinte
   const work = Uint8Array.from(mask);
   for (const { crop, fill } of nativeTiles(area, W, img.height, Math.round(W * 0.043))) {
     if (!(await runFrame(img, crop, work, hide, fill))) return false;
+    onFrame?.();
     for (let y = fill.y0; y < fill.y1; y++) work.fill(0, y * W + fill.x0, y * W + fill.x1);
   }
   return true;
+}
+
+/** Quantos quadros do modelo `lamaInpaint` roda para `area` (a prévia mostra "parte X de Y"). */
+export function frameCount(area: Rect, width: number, height: number, native = false): number {
+  const single = cropAround(area, width, height, Math.round(width * 0.03));
+  if (!native || single.size <= SIZE) return 1;
+  return nativeTiles(area, width, height, Math.round(width * 0.043)).length;
 }

@@ -243,7 +243,9 @@ export default function App() {
 
   const progressLabel = progress
     ? progress.phase === "cartas"
-      ? `Montando cartas em alta resolução: ${progress.done} de ${progress.total}`
+      ? `Montando cartas em alta resolução: ${progress.done} de ${progress.total}${
+          progress.neural ? `. Acabamento de ${progress.neural.name}: parte ${progress.neural.done + 1} de ${progress.neural.total}` : ""
+        }`
       : `Paginando o PDF: folha ${progress.done} de ${progress.total}`
     : "";
 

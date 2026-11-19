@@ -12,6 +12,8 @@ export interface ExportProgress {
   phase: "cartas" | "pdf";
   done: number;
   total: number;
+  /** a carta esperando a rede neural agora (quadros prontos de `total`), se houver */
+  neural?: { name: string; done: number; total: number };
 }
 
 /** Nome do arquivo com a data de hoje, por exemplo "proxinho-2026-11-17.pdf". */
@@ -46,8 +48,15 @@ export async function exportPdf(
       const [i, { entry, side }] = next;
       const input = renderInput(entry, side);
       if (!input) throw new Error(`Não há imagem para “${entry.card.name_pt ?? entry.card.name_en}”.`);
-      const { canvas, translated } = await renderCard({ ...input, imageVersion: "png", scale: SCALE[opts.quality] });
-      if (input.face) noteRender(input.print.id, side, translated);
+      const name = entry.card.name_pt ?? entry.card.name_en;
+      const { canvas, translated, reason } = await renderCard({
+        ...input,
+        imageVersion: "png",
+        scale: SCALE[opts.quality],
+        // (a caixa que a prévia já limpou vem pronta e conta tudo de uma vez: sem aviso)
+        onNeural: (p) => p.done < p.total && onProgress({ phase: "cartas", done, total: list.length, neural: { name, ...p } }),
+      });
+      if (input.face) noteRender(input.print.id, side, translated, reason);
       results[i] = await toBlob(canvas);
       const border = input.print.border;
       borders[i] = border === "white" || border === "borderless" ? border : "black";

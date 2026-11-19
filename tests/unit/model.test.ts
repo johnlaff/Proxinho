@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { neuralStage } from "../../src/app/labels";
+import { formatEta, neuralLine, OUTCOME_LABEL } from "../../src/app/labels";
 import {
   buildOrder,
   countOutcomes,
@@ -8,6 +8,7 @@ import {
   flavorApplies,
   mergeEntries,
   missKey,
+  neuralMissKey,
   outcomeOf,
   renderKey,
   sortEntries,
@@ -186,6 +187,14 @@ describe("outcomeOf", () => {
     // só a frente decide a etiqueta da carta
     expect(outcomeOf(base, new Set([missKey("a", 1)]))).toBe("reescrita");
   });
+
+  it("sem borda que saiu na original porque a rede neural não rodou não culpa a moldura (Chrome do celular)", () => {
+    // a etiqueta dizia "esta moldura ainda não é reescrita" ao lado da nota do apagador
+    const misses = new Set([missKey("a", 0), neuralMissKey("a", 0)]);
+    expect(outcomeOf(base, misses)).toBe("apagador");
+    expect(countOutcomes([base], misses)).toMatchObject({ reescrita: 0, moldura: 0, apagador: 2 });
+    expect(OUTCOME_LABEL.apagador).toBe("Em inglês: o apagador de texto não rodou neste navegador");
+  });
 });
 
 describe("fichas", () => {
@@ -254,18 +263,49 @@ describe("flavorApplies (o flavor em PT de outra arte)", () => {
   });
 });
 
-describe("neuralStage", () => {
-  it("diz a etapa da rede neural, com a porcentagem do download só quando o tamanho é conhecido", () => {
-    expect(neuralStage({ stage: "download", loaded: 33e6, total: 66e6 })).toEqual({
-      text: "Baixando o apagador de texto: 50%",
-      percent: 50,
+describe("neuralLine", () => {
+  const idle = { stage: "idle" as const, loaded: 0, total: 0, backend: null, frameMs: 0, since: 0, reason: "" };
+  const running = { state: "running" as const, done: 0, total: 3 };
+
+  it("na fila, só diz que está na fila; a etapa do modelo é da carta que está na vez", () => {
+    const line = neuralLine({ ...idle, stage: "download", loaded: 1, total: 2 }, { state: "queued", done: 0, total: 0 });
+    expect(line).toEqual({ text: "Na fila do acabamento: as cartas antes desta vão primeiro.", short: "Na fila", percent: null });
+  });
+
+  it("na vez da carta, segue o download (com % só quando o tamanho é conhecido) e o preparo", () => {
+    expect(neuralLine({ ...idle, stage: "download", loaded: 18e6, total: 37e6 }, running)).toEqual({
+      text: "Baixando o apagador de texto: 48%",
+      short: "Baixando 48%",
+      percent: 48,
     });
     // (no fim do download, para no 99 até a rede ficar pronta)
-    expect(neuralStage({ stage: "download", loaded: 66e6, total: 66e6 })?.percent).toBe(99);
-    expect(neuralStage({ stage: "download", loaded: 1e6, total: 0 })).toEqual({ text: "Baixando o apagador de texto…", percent: null });
-    expect(neuralStage({ stage: "prepare", loaded: 0, total: 0 })?.text).toBe("Preparando o apagador de texto…");
-    expect(neuralStage({ stage: "run", loaded: 0, total: 0 })?.text).toBe("Apagando o inglês…");
-    expect(neuralStage({ stage: "idle", loaded: 0, total: 0 })).toBeNull();
-    expect(neuralStage({ stage: "failed", loaded: 0, total: 0 })).toBeNull();
+    expect(neuralLine({ ...idle, stage: "download", loaded: 37e6, total: 37e6 }, running)?.percent).toBe(99);
+    expect(neuralLine({ ...idle, stage: "download", loaded: 1e6, total: 0 }, running)?.percent).toBeNull();
+    expect(neuralLine({ ...idle, stage: "prepare" }, running)?.text).toBe("Preparando o apagador de texto…");
+    // antes do primeiro quadro, a carta ainda está sendo apagada
+    expect(neuralLine({ ...idle, stage: "run" }, { state: "running", done: 0, total: 0 })?.text).toBe("Apagando o inglês…");
+  });
+
+  it("nos quadros da carta, diz a parte e o tempo que falta pela média dos quadros anteriores", () => {
+    expect(neuralLine({ ...idle, stage: "run", since: 1000 }, running, 2000)).toEqual({
+      text: "Acabamento: parte 1 de 3, calculando o tempo",
+      short: "Acabamento 1/3",
+      percent: 0,
+    });
+    // 20 s por quadro, 5 s do segundo já rodaram: faltam 35 s
+    expect(neuralLine({ ...idle, stage: "run", frameMs: 20_000, since: 1000 }, { ...running, done: 1 }, 6000)).toEqual({
+      text: "Acabamento: parte 2 de 3, cerca de 35 s",
+      short: "Acabamento 2/3",
+      percent: 41,
+    });
+    expect(neuralLine({ ...idle, stage: "failed" }, running)).toBeNull();
+    expect(neuralLine(idle, undefined)).toBeNull();
+  });
+
+  it("arredonda o tempo para não piscar a cada segundo", () => {
+    expect(formatEta(4000)).toBe("alguns segundos");
+    expect(formatEta(31_000)).toBe("cerca de 35 s");
+    expect(formatEta(56_000)).toBe("cerca de 1 min");
+    expect(formatEta(150_000)).toBe("cerca de 3 min");
   });
 });

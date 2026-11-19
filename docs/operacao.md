@@ -7,7 +7,7 @@
 | Site e API | Cloudflare Worker `proxinho`, domínio `proxinho.johnlaff.com` |
 | Banco | Cloudflare D1 `proxinho` |
 | Fontes das cartas (Beleren, MPlantin) | Cloudflare KV `proxinho-fontes` (binding `FONTES`), servidas em `/api/fontes/*.ttf` |
-| Modelo LaMa e runtime do ONNX | Assets do site em `/modelos/`, gerados no build por `scripts/modelo.mjs` (baixa do Hugging Face numa revisão fixa e confere o SHA-256) |
+| Modelo LaMa e runtimes do ONNX | Assets do site em `/modelos/`, gerados no build por `scripts/modelo.mjs` (baixa do Hugging Face numa revisão fixa, confere o SHA-256 e compacta em gzip): `lama-int4.onnx.gz.0` e `.1`, `ort-webgpu-<versão>.wasm.gz` (placa de vídeo) e `ort-cpu-<versão>.wasm.gz` (CPU) |
 | Atualização dos dados | GitHub Actions, workflow "Dados diários" (04h17 de Brasília) |
 | Deploy | GitHub Actions, workflow "CI/CD", job "Deploy em produção" (a cada push na main) |
 | Logs | Painel da Cloudflare → Workers → proxinho → Logs (observability ligada) |
@@ -59,9 +59,11 @@ pnpm exec wrangler d1 execute proxinho --remote --command "SELECT count(*) FROM 
 | Importar do Archidekt falha | Deck privado ou API mudou | Testar `GET /api/import?url=...`; ver `worker/importers.ts` |
 | Busca vazia por alguns segundos às 04h17 | Recarga do banco (apaga e reinsere) | Esperado; ver ADR 0004 |
 | Planeswalker com mancha borrada na caixa de texto | O LaMa não carregou e o motor usou o preenchimento simples | Ver o console do navegador ("preenchimento por rede neural indisponível"); conferir se `/modelos/` foi publicado (o build avisa se o download falhou) |
-| Prévia de planeswalker ou de arte sem borda parada em "Montando a prévia…" | A rede neural travou (uma thread do WebAssembly que não sobe, como no Firefox do celular) | O vigia troca a worker por uma com uma thread em até 2 min (o console diz "a rede neural travou ou falhou"); se travar de novo, a carta sai do jeito simples. Ver `LIMITS` e `MODES` em `src/engine/lama.ts` e `pnpm test` (`tests/unit/lama.test.ts`) |
-| Arte sem borda sai na original e a gaveta diz "O apagador de texto não rodou neste navegador" | A rede neural falhou duas vezes na página | Esperado: sem ela a caixa sairia borrada. Recarregar a página tenta de novo; em outro navegador costuma rodar |
-| Primeiro planeswalker demora | Download único do modelo (~66 MB) e, sem placa de vídeo, ~6 s por carta na CPU | Esperado; ver ADR 0008 |
+| Prévia de planeswalker ou de arte sem borda parada no rascunho, sem a parte avançar | A rede neural travou (uma thread do WebAssembly que não sobe, como no Firefox do celular) ou está lenta na CPU | O vigia troca a worker pela do degrau seguinte (o console diz "a rede neural falhou; tentando num modo mais simples"); o limite de cada quadro segue o ritmo medido. Ver `LIMITS`, `MODES`, `nextMode` e `runLimit` em `src/engine/lama.ts` e `pnpm test` (`tests/unit/lama.test.ts`) |
+| Arte sem borda sai na original com "Em inglês: o apagador de texto não rodou neste navegador" | A rede neural falhou nos três degraus na página | Esperado: sem ela a caixa sairia borrada. O "Detalhe técnico" da gaveta diz o motivo de cada degrau. Recarregar a página tenta de novo; em outro navegador costuma rodar |
+| Chrome ou Safari com placa de vídeo levando dezenas de segundos por quadro | A placa de vídeo falhou e a carta foi para a CPU | Ver o "Detalhe técnico" da gaveta ou o console. Se for `[WebGPU] Kernel … failed`, conferir se a worker importa `onnxruntime-web/webgpu`, não o pacote principal (o JSEP falha no LaMa, ADR 0013) |
+| Build com a worker num arquivo só e a preparação do modelo travando | O Vite gerou a worker no formato iife: os runtimes do ONNX ficam embutidos e as threads do WebAssembly não sobem | `worker: { format: "es" }` em `vite.config.ts`; o build tem de gerar `ort.webgpu.bundle.min-*.js` e `ort.wasm.bundle.min-*.js` à parte |
+| Primeiro planeswalker demora | Download único do modelo e do runtime (37 MB com placa de vídeo, 33 MB sem) e, sem placa de vídeo, ~7 s por quadro na CPU de um computador | Esperado; a carta aparece antes em rascunho. Ver ADRs 0008 e 0013 |
 | Ficha sai em inglês com texto em PT disponível | A barra de tipo não foi achada (moldura diferente) | Ver `findTokenBar` em `src/engine/token.ts`; a ficha sai como está de propósito |
 | Ficha de 2003 sai em inglês | A placa do nome não foi achada (filete dourado apagado ou outro desenho) | Ver `findPlaque2003` e `plaqueRimEnd` em `src/engine/token.ts` |
 | Ponta da placa do nome de 2003 quadrada, sem o filete dourado | A medida da placa passou do filete (sombra ou arte escura ao lado) | Ver a simetria e o filete em `findPlaque2003` e `pnpm test` (`tests/unit/token.test.ts`) |

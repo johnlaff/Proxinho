@@ -22,6 +22,11 @@ function dropOrtWasm(): Plugin {
 // no mesmo runtime (workerd) usado em produção.
 export default defineConfig({
   plugins: [react(), cloudflare(), dropOrtWasm()],
+  // Worker como módulo, com pedaços à parte: cada runtime do ONNX (placa de vídeo e CPU) vira um
+  // arquivo próprio, baixado só quando é usado. E as threads do WebAssembly abrem esse arquivo
+  // ("em-pthread"): no formato iife o runtime ficava embutido na worker, só iniciava quando
+  // importado, e a thread nunca subia (a preparação do modelo travava).
+  worker: { format: "es" },
   // Isolamento de origem (como em public/_headers): libera várias threads no
   // WebAssembly do preenchimento por rede neural (src/engine/lamaWorker.ts).
   server: { headers: { "Cross-Origin-Opener-Policy": "same-origin", "Cross-Origin-Embedder-Policy": "credentialless" } },

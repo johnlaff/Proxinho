@@ -4,11 +4,11 @@
  * e uma legenda técnica embaixo de cada carta. Tocar numa carta abre a
  * gaveta para trocar a arte.
  */
-import { fontsVersion } from "../engine/fonts";
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { displayName, outcomeOf, renderKey, selectedPrint, sideCount, toSheets, type Entry, type Side } from "../app/model";
-import { engineMisses, onEngineMiss, previewUrl, waitsForNeuralFill } from "../app/preview";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { displayName, outcomeOf, selectedPrint, sideCount, toSheets, type Entry, type Side } from "../app/model";
+import { engineMisses, onEngineMiss, waitsForNeuralFill } from "../app/preview";
 import { NeuralStage } from "./NeuralStage";
+import { usePreview } from "./usePreview";
 import { ColorBar, CropCorners, RegMark } from "./RegMark";
 import { OutcomeTag } from "./OutcomeTag";
 
@@ -114,23 +114,8 @@ export function Slot({
   onOpen?: (key: string) => void;
   example?: boolean;
 }) {
-  const key = renderKey(entry, fontsVersion(), side);
-  const [state, setState] = useState<{ key: string; url?: string; error?: string }>({ key });
   const [attempt, setAttempt] = useState(0);
-  const current = state.key === key ? state : { key };
-
-  useEffect(() => {
-    let alive = true;
-    previewUrl(entry, side).then(
-      (url) => alive && setState({ key, url }),
-      (err: Error) => alive && setState({ key, error: err.message }),
-    );
-    return () => {
-      alive = false;
-    };
-    // a chave da imagem resume tudo que muda o desenho
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, attempt]);
+  const current = usePreview(entry, side, attempt);
 
   const misses = useSyncExternalStore(onEngineMiss, engineMisses);
   const outcome = outcomeOf(entry, misses);
@@ -151,6 +136,12 @@ export function Slot({
             alt={example ? `Exemplo: ${name} em português` : ""}
             draggable={false}
           />
+        ) : current.draft ? (
+          <>
+            {/* rascunho: o português já no lugar, enquanto a rede neural refaz a arte atrás dele */}
+            <img key={current.draft} className="slot-img slot-img--draft" src={current.draft} alt="" draggable={false} />
+            {!example && <NeuralStage previewKey={current.key} />}
+          </>
         ) : current.error ? (
           <span className="slot-msg slot-msg--error">
             {example ? "Exemplo indisponível agora." : "Não carregou. Toque para tentar de novo."}
@@ -158,7 +149,7 @@ export function Slot({
         ) : (
           <span className="slot-msg">
             <span>{name}</span>
-            {!example && waitsForNeuralFill(entry, side) && <NeuralStage />}
+            {!example && waitsForNeuralFill(entry, side) && <NeuralStage previewKey={current.key} />}
           </span>
         )}
         <CropCorners />
@@ -185,7 +176,7 @@ export function Slot({
       aria-label={
         current.error
           ? `${name}: a imagem não carregou. Tentar de novo.`
-          : `${name}${sideLabel ? ` (${sideLabel})` : ""}, ${cap.set}, texto: ${cap.source}. Trocar arte ou quantidade.`
+          : `${name}${sideLabel ? ` (${sideLabel})` : ""}, ${cap.set}, texto: ${cap.source}.${current.draft && !current.url ? " Prévia rápida, acabamento em andamento." : ""} Trocar arte ou quantidade.`
       }
     >
       {body}

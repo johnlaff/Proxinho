@@ -2,24 +2,12 @@
  * Gaveta de uma carta: escolher a arte, mudar a quantidade, ver no tamanho
  * real e entender de onde veio o texto em português.
  */
-import { fontsVersion } from "../engine/fonts";
 import { FlipHorizontal2, Minus, Plus, Ruler, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import {
-  displayName,
-  frontFace,
-  hasPtText,
-  missKey,
-  outcomeOf,
-  renderKey,
-  sideCount,
-  yearOf,
-  type Choice,
-  type Entry,
-  type Side,
-} from "../app/model";
-import { engineMisses, onEngineMiss, previewUrl, waitsForNeuralFill } from "../app/preview";
+import { displayName, frontFace, hasPtText, missKey, outcomeOf, sideCount, yearOf, type Choice, type Entry, type Side } from "../app/model";
+import { engineMisses, hurry, onEngineMiss, waitsForNeuralFill } from "../app/preview";
 import { NeuralStage } from "./NeuralStage";
+import { usePreview } from "./usePreview";
 import { lamaStatus, onLamaStatus } from "../engine/lama";
 import { printImage, scryfallImage, type PrintRecord } from "../engine/types";
 import { OUTCOME_LABEL } from "../app/labels";
@@ -75,31 +63,23 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
   const twoSided = sideCount(entry) === 2;
   const side: Side = twoSided ? sideWanted : 0;
   const face = side === 1 ? (entry.card.faces[1] ?? frontFace(entry.card)) : frontFace(entry.card);
-  const imageKey = renderKey(entry, fontsVersion(), side);
-  const [preview, setPreview] = useState<{ key: string; url: string } | null>(null);
-  const url = preview?.key === imageKey ? preview.url : null;
+  const preview = usePreview(entry, side);
+  const url = preview.url ?? null;
+  // a carta aberta passa na frente da fila da rede neural
+  useEffect(() => {
+    hurry(entry, side);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview.key]);
   const misses = useSyncExternalStore(onEngineMiss, engineMisses);
   const outcome = outcomeOf(entry, misses);
-  // a rede neural não rodou (travou ou falhou duas vezes): as artes que dependem dela saem na original
+  // a rede neural não rodou em nenhum modo: as artes sem borda saem na original
   const neural = useSyncExternalStore(onLamaStatus, lamaStatus);
-  const neuralFailed = neural.stage === "failed" && waitsForNeuralFill(entry, side);
-  // arte que o motor já tentou e não reconheceu (Garruk espelhado da Secret Lair) sai em inglês
-  const rewritable = (p: PrintRecord) => p.supported && !misses.has(missKey(p.id, 0));
+  const neuralFailed = neural.stage === "failed";
+  // arte que o motor já tentou e não reconheceu (Garruk espelhado da Secret Lair) sai em inglês;
+  // sem a rede neural, a sem borda também
+  const rewritable = (p: PrintRecord) => p.supported && !misses.has(missKey(p.id, 0)) && !(neuralFailed && p.border === "borderless");
   const name = displayName(entry.card);
   const translatable = hasPtText(entry.card);
-
-  useEffect(() => {
-    let alive = true;
-    previewUrl(entry, side).then(
-      (u) => alive && setPreview({ key: imageKey, url: u }),
-      () => undefined,
-    );
-    return () => {
-      alive = false;
-    };
-    // a chave da imagem resume tudo que muda o desenho
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageKey]);
 
   const pt = entry.card.pt_print;
   const selectedId = entry.choice.kind === "print" ? entry.choice.printId : "pt";
@@ -122,23 +102,50 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
         <div className="drawer-preview">
           <div className={trueSize ? "preview-card preview-card--real" : "preview-card"}>
             {url ? (
-              <img src={url} alt={`Prévia de ${name}${twoSided ? (side === 0 ? ", frente" : ", verso") : ""}`} />
+              <img key={url} src={url} alt={`Prévia de ${name}${twoSided ? (side === 0 ? ", frente" : ", verso") : ""}`} />
+            ) : preview.draft ? (
+              <img
+                key={preview.draft}
+                className="preview-draft"
+                src={preview.draft}
+                alt={`Prévia rápida de ${name}${twoSided ? (side === 0 ? ", frente" : ", verso") : ""}, acabamento em andamento`}
+              />
             ) : (
               <span className="slot-msg">
                 <span>Montando a prévia…</span>
-                {waitsForNeuralFill(entry, side) && <NeuralStage long />}
               </span>
             )}
           </div>
           <div className="drawer-facts">
-            <OutcomeTag outcome={outcome} long />
+            {!url && waitsForNeuralFill(entry, side) ? (
+              <div className="drawer-finishing" role="status">
+                <NeuralStage previewKey={preview.key} long />
+                {preview.draft && (
+                  <p className="drawer-note">Já dá para ver o português. O acabamento refaz a arte atrás do texto, e o PDF sai com ele.</p>
+                )}
+              </div>
+            ) : (
+              <OutcomeTag outcome={outcome} long />
+            )}
             <p className="drawer-note">{sourceNote(entry)}</p>
             {outcome === "moldura" && (
               <p className="drawer-note">
-                {neuralFailed
-                  ? "O apagador de texto não rodou neste navegador, então esta arte saiu na original. Escolha uma arte de moldura comum, ou tente em outro navegador."
-                  : "Escolha uma arte marcada “Sai em português” para reescrever o texto, ou a imagem oficial em português, se houver."}
+                Escolha uma arte marcada “Sai em português” para reescrever o texto, ou a imagem oficial em português, se houver.
               </p>
+            )}
+            {outcome === "apagador" && (
+              <>
+                <p className="drawer-note">
+                  O apagador de texto não rodou neste navegador, então esta arte saiu na original. Escolha uma arte de moldura comum,
+                  marcada “Sai em português”, ou tente em outro navegador.
+                </p>
+                {neural.reason && (
+                  <details className="drawer-details">
+                    <summary>Detalhe técnico</summary>
+                    <code>{neural.reason}</code>
+                  </details>
+                )}
+              </>
             )}
             {face?.type_pt && translatable && <p className="drawer-type">{face.type_pt}</p>}
             {twoSided && (

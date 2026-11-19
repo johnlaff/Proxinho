@@ -305,6 +305,8 @@ Faixa ciano de processo com 56px de altura: marca de registro de 26px e o nome e
 ### Proof Sheet (assinatura)
 Folha branca de até 720px com a sombra de folha, tira de controle de cor (ciano, magenta, amarelo, preto e dois cinzas de preto) no canto superior esquerdo, rótulo "Folha n/N" à direita, marcas de registro nas quatro margens, grade 3×3 de cartas com marcas de corte e legenda técnica condensada, e rodapé com régua de 5 cm e a linha de acabamento ("A4 · na frente da carta · 300 dpi · imprimir em 100%"). Quando uma carta é montada ou trocada, a animação de registro (0.7s, `cubic-bezier(0.16, 1, 0.3, 1)`) parte das três tintas desalinhadas em sombras coloridas e as alinha sobre a imagem.
 
+Prova e acabamento: a carta que espera a rede neural entra primeiro como rascunho (já em português, com a mesma animação de registro) e leva uma etiqueta branca sobre a arte, nunca sobre o texto, com o passo em condensada tabular ("Acabamento 2/3") e um trilho de 4px em papel sombreado com o andamento em ciano escuro; sem medida (fila, preparo), um trecho de 35% de ciano escuro corre pelo trilho, parado e claro com movimento reduzido. Quando o acabamento fica pronto, a imagem troca com outra animação de registro. Na gaveta, a frase inteira ("Acabamento: parte 2 de 3, cerca de 35 s") vai no lugar da etiqueta de resultado, com o trilho de 6px.
+
 ### Card Drawer
 Gaveta lateral de até 600px, altura total, borda superior ciano de 6px e filete preto sob o cabeçalho. Entra deslizando 40px da direita em 0.32s. Contém prévia da carta, botão "Ver no tamanho real" (63 mm), contador de quantidade com contorno preto e a grade de artes; a arte escolhida fica em ciano lavado com contorno interno de 2.5px em ciano escuro.
 

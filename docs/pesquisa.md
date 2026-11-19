@@ -84,7 +84,7 @@ A prévia de uma arte sem borda ficou parada em "Montando a prévia…" no Firef
 | Prática | Quem faz | Proxinho |
 |---|---|---|
 | Modelo numa worker, fora da página | transformers.js, ONNX Runtime Web, inpaint-web | Sim, desde o começo (ADR 0008) |
-| Placa de vídeo (WebGPU) com a CPU (WebAssembly) de reserva | transformers.js, ONNX Runtime Web | Sim |
+| Placa de vídeo (WebGPU) com a CPU (WebAssembly) de reserva | transformers.js, ONNX Runtime Web | Parecia que sim; a placa de vídeo falhava no LaMa e tudo caía para a CPU (ver a seção seguinte) |
 | Modelo guardado pelo navegador depois do primeiro download | transformers.js e os removedores de objeto no navegador | Sim |
 | Andamento do download na tela | transformers.js (`progress_callback`) e as demonstrações do Hugging Face | Não havia; agora a prévia mostra a etapa e a porcentagem |
 | Tempo-limite e plano B quando o runtime trava | o ONNX Runtime Web tem `env.wasm.initTimeout`; os apps põem tempo-limite e trocam de backend | Não havia; agora um vigia troca a worker por uma com uma thread e, por fim, desiste do jeito certo para cada moldura |
@@ -95,7 +95,26 @@ Entre os geradores de proxy, o Card Anvil também usa o LaMa para limpar a arte.
 
 A trava: no ONNX Runtime Web, uma thread do WebAssembly que não sobe deixa o carregamento do modelo esperando para sempre, sem erro. O `initTimeout` dele não resolve sozinho, porque depois do tempo esgotado o runtime não se recupera; só uma worker nova volta a funcionar. Por isso o vigia encerra a worker e cria outra, mais simples (ADR 0008).
 
-Conclusão: no essencial o Proxinho segue a prática do mercado (worker, WebGPU com a CPU de reserva, modelo guardado), e passou a seguir também no andamento e no tempo-limite. A diferença que sobra é a velocidade na CPU dos celulares sem WebGPU, como o Firefox do Android: ali cada quadro leva dezenas de segundos, e a arte sem borda tem três. O Chrome do Android usa a placa de vídeo. O próximo passo, se a espera incomodar, é o MI-GAN só na prévia (roadmap).
+Conclusão (manhã de 19/11): no essencial o Proxinho seguia a prática do mercado (worker, WebGPU com a CPU de reserva, modelo guardado), e passou a seguir também no andamento e no tempo-limite. O teste do João à tarde mostrou que não bastava (seção seguinte).
+
+### Espera da rede neural (19/11/2026, à tarde)
+
+Com o vigia no ar, o João testou de novo: no Chrome do celular a Konia sem borda saía na hora em inglês ("esta moldura ainda não é reescrita" e, abaixo, "o apagador de texto não rodou"); no Firefox, dois minutos em "Apagando o inglês…" e ele desistiu. O pedido: corrigir, esperar o mínimo sem perder qualidade e não deixar a pessoa desistir.
+
+O que achamos e o que o mercado faz:
+
+| Ponto | O que achamos | Prática / estado da arte | Proxinho agora (ADR 0013) |
+|---|---|---|---|
+| Placa de vídeo | O runtime JSEP (o padrão do pacote `onnxruntime-web`) falha no LaMa: `[WebGPU] Kernel "[Add] …/ffc/convg2g/Add" failed`. Toda carta caía para a CPU | O runtime WebGPU próprio (`onnxruntime-web/webgpu`): quem trocou relata WebGPU no Chrome e no Safari do Mac e do iPhone com uma linha de import; o JSEP no Safari 26 sobe a ~5 GB e a aba cai (issue 26827 do onnxruntime) | Runtime WebGPU, conferido: mesmo resultado da CPU (diferença máxima de 0,03 tom em 255) |
+| CPU | 6,6 a 8 s por quadro com 4 threads, 19,6 s com uma, aqui; o celular é mais lento | Runtime só de CPU (`onnxruntime-web/wasm`), menor; MI-GAN para celular | Runtime só de CPU (15 MB, 4 MB compactado). Testados e descartados: quadros do tamanho da caixa (o modelo tem medidas fixas de 512 px), manter a quantização (mais lento), outro nível de otimização (mais lento) |
+| Download | 66 MB (modelo e runtime JSEP) sem compactar | Compactar; baixar só o runtime que vai rodar | 37 MB na placa de vídeo, 33 MB na CPU (gzip, descompactado na worker); o download começa quando a primeira carta entra no pedido |
+| Recuo | Erro da placa de vídeo ia direto para a CPU com uma thread, a mais lenta, que também falhou no celular | Recuo por degraus | Placa de vídeo → CPU com várias threads → CPU com uma; o limite de cada quadro segue o ritmo medido |
+| Espera | Só a etapa, sem parte nem tempo; a prévia em branco | NN/g: acima de 10 s, porcentagem, texto do passo ("3 de 50") e tempo estimado com folga; imagens com versão provisória que vira a final (LQIP) | Rascunho em PT em segundos, "Acabamento: parte 2 de 3, cerca de 35 s" com barra que anda, fila à parte e a carta da gaveta na frente |
+| Falha | A etiqueta culpava a moldura | Dizer o motivo de verdade | "Em inglês: o apagador de texto não rodou neste navegador", com o detalhe técnico na gaveta |
+
+Fontes: Nielsen Norman Group, "Progress Indicators Make a Slow System Less Insufferable" e "Response Times: The 3 Important Limits"; microsoft/onnxruntime, issue 26827 ("Severe CPU and memory issues in Safari/WebKit 26 with JSEP mode"); relatos de troca para `onnxruntime-web/webgpu` em projetos públicos (mailwoman, the-gathering); medições próprias no quadro da Konia (DSK 358) com o mesmo modelo.
+
+O que sobra: a CPU do celular sem WebGPU (o Firefox do Android) continua levando dezenas de segundos por quadro; agora a carta em português aparece logo e a espera é visível. O próximo passo possível é o MI-GAN só para o rascunho (roadmap), se a qualidade empatar nas nossas artes.
 
 ## Lado legal e o caminho seguro
 

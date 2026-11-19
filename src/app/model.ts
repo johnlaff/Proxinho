@@ -33,7 +33,8 @@ export type Outcome =
   | "reescrita" // texto em PT escrito por cima da arte escolhida
   | "imagem-pt" // imagem oficial em português
   | "sem-traducao" // não há texto oficial em PT: sai em inglês
-  | "moldura"; // há texto em PT, mas esta moldura ainda não é suportada
+  | "moldura" // há texto em PT, mas esta moldura ainda não é suportada
+  | "apagador"; // há texto em PT e a moldura é suportada, mas a rede neural não rodou neste navegador
 
 export function frontFace(card: CardRecord): PtFace | null {
   return card.faces[0] ?? null;
@@ -67,6 +68,11 @@ export function missKey(printId: string, side: Side): string {
   return `${printId}#${side}`;
 }
 
+/** Chave de uma face que saiu na original porque a rede neural não rodou (vem junto com `missKey`). */
+export function neuralMissKey(printId: string, side: Side): string {
+  return `${printId}#${side}:rede-neural`;
+}
+
 /**
  * `misses`: faces em que o motor desistiu ao montar a carta e saiu a imagem original. O
  * desenho de algumas impressões foge da moldura comum sem que os dados digam (o Garruk
@@ -78,6 +84,7 @@ export function outcomeOf(entry: Entry, misses?: ReadonlySet<string>): Outcome {
   if (!hasPtText(entry.card)) return "sem-traducao";
   const p = selectedPrint(entry);
   if (!p?.supported) return "moldura";
+  if (misses?.has(neuralMissKey(p.id, 0))) return "apagador";
   return misses?.has(missKey(p.id, 0)) ? "moldura" : "reescrita";
 }
 
@@ -228,7 +235,7 @@ export function buildOrder(
 }
 
 export function countOutcomes(entries: Entry[], misses?: ReadonlySet<string>): Record<Outcome, number> {
-  const out: Record<Outcome, number> = { reescrita: 0, "imagem-pt": 0, "sem-traducao": 0, moldura: 0 };
+  const out: Record<Outcome, number> = { reescrita: 0, "imagem-pt": 0, "sem-traducao": 0, moldura: 0, apagador: 0 };
   for (const e of entries) out[outcomeOf(e, misses)] += e.quantity;
   return out;
 }

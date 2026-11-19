@@ -78,8 +78,8 @@ Opção 3, com o LaMa.
 ## Consequências
 
 - 3.925 artes sem borda passam a sair em português (menos as que o motor recusa ao montar; a interface só sabe depois e passa a dizer "Em inglês", ver `outcomeOf`). Na rodada 13 saíram as 12 da série Drácula de VOW; com os dados de 19/11, são 3.947.
-- Cada carta sem borda leva três quadros do LaMa (dois da caixa, um das barras): menos de 3 s na placa de vídeo e cerca de 18 s na CPU com 4 threads. A primeira da sessão baixa o modelo (cerca de 66 MB, ADR 0008).
+- Cada carta sem borda leva três quadros do LaMa (dois da caixa, um das barras): cerca de 20 s na CPU com 4 threads num computador, segundos na placa de vídeo (que só passou a rodar com o ADR 0013). A primeira da sessão baixa o modelo (37 MB com placa de vídeo, 33 MB sem). Enquanto isso, a prévia mostra o rascunho em PT e a parte que está rodando (ADR 0013).
 - As de caixa clara, de retícula grossa e as de moldura estilizada continuam na original.
 - Cada carta com nome de crossover leva mais um quadro do LaMa, o da aba.
-- Num navegador em que a rede neural não roda (travou ou falhou duas vezes, ADR 0008), a arte sem borda sai na original, com a etiqueta "Em inglês": o push-pull deixaria o borrão sobre a arte. A gaveta diz por quê e sugere outra arte.
+- Num navegador em que a rede neural não roda (falhou em todos os degraus, ADRs 0008 e 0013), a arte sem borda sai na original, com a etiqueta "Em inglês: o apagador de texto não rodou neste navegador": o push-pull deixaria o borrão sobre a arte. A gaveta diz o motivo e sugere outra arte.
 - Limites conhecidos: o texto em PT não reproduz a sombra leve que algumas sem borda têm sob a letra branca. A série Drácula de VOW sai na original.

@@ -49,7 +49,7 @@ import {
   textPolarity,
   typeBarEdges,
 } from "./erase";
-import { lamaInpaint } from "./lama";
+import { frameCount, lamaInpaint } from "./lama";
 import {
   abilityKinds,
   alignOnIcon,
@@ -101,6 +101,13 @@ export interface RenderOptions {
   side?: 0 | 1;
   /** linha de tipo em inglês da carta (reconhece planeswalkers mesmo sem o tipo em PT) */
   typeLine?: string | null;
+  /**
+   * `false` monta o rascunho: sem a rede neural, com o preenchimento simples onde ela iria. A
+   * prévia mostra o rascunho na hora e troca pela carta acabada quando a rede neural termina.
+   */
+  neural?: boolean;
+  /** andamento da rede neural nesta carta: quadros prontos e o total previsto */
+  onNeural?: (p: { done: number; total: number }) => void;
 }
 
 /** Cor do texto escrito: preto como o das cartas, ou claro nos versos escuros. */
@@ -110,6 +117,8 @@ export interface RenderResult {
   canvas: HTMLCanvasElement;
   /** true quando o texto foi reescrito em português */
   translated: boolean;
+  /** "neural": saiu a original porque a rede neural não rodou neste navegador */
+  reason?: "neural";
 }
 
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
@@ -202,15 +211,37 @@ function drawSubtitle(ctx: CanvasRenderingContext2D, text: string, baseline: num
   ctx.restore();
 }
 
-/**
- * Planeswalker: nome, tipo e uma faixa por habilidade (ver planeswalker.ts).
- * Devolve false quando a imagem não bate com o texto; aí a carta sai original.
- */
-/** Caixas já limpas pela rede neural (por impressão), as mais recentes. */
+/** Caixas já limpas pela rede neural (por impressão), as mais recentes, até `CLEAN_BYTES`. */
 const cleanBoxes = new Map<string, ImageData>();
+/**
+ * Memória das caixas limpas: a prévia e o PDF desenham a mesma arte, e o PDF não deve rodar o
+ * modelo de novo. Com o limite de 24 caixas, um pedido com mais de oito artes sem borda (três
+ * caixas cada) rodava tudo de novo no PDF; 96 MB cobrem umas 40 cartas.
+ */
+const CLEAN_BYTES = 96e6;
+/** Caixas que a rede neural está limpando agora: a segunda montagem espera a primeira (prévia e PDF). */
+const cleaning = new Map<string, Promise<void>>();
+
+function rememberBox(key: string, box: ImageData) {
+  cleanBoxes.delete(key);
+  cleanBoxes.set(key, box);
+  let bytes = 0;
+  for (const b of cleanBoxes.values()) bytes += b.data.length;
+  for (const [k, b] of cleanBoxes) {
+    if (bytes <= CLEAN_BYTES || cleanBoxes.size <= 1) break;
+    cleanBoxes.delete(k);
+    bytes -= b.data.length;
+  }
+}
 
 /** Arredonda um retângulo para a grade de pixels. */
 const roundRect = (r: Rect): Rect => ({ x0: Math.round(r.x0), y0: Math.round(r.y0), x1: Math.round(r.x1), y1: Math.round(r.y1) });
+
+/**
+ * Rede neural de uma montagem: `enabled` falso no rascunho (preenchimento simples onde ela iria),
+ * e `tick` conta os quadros prontos para o andamento da prévia.
+ */
+type Neural = { enabled: boolean; tick: (frames?: number) => void };
 
 /**
  * Apaga as letras de uma caixa translúcida (a arte aparece por trás) com a rede neural (ver
@@ -218,9 +249,11 @@ const roundRect = (r: Rect): Rect => ({ x0: Math.round(r.x0), y0: Math.round(r.y
  * imagem, inteiro); `protect` fica como está e escondido do modelo. `native` roda o modelo
  * na resolução da imagem (ver `lamaInpaint`); `grow` e `gap` são a folga da máscara e os
  * vãos entre pedaços dela que entram no buraco (ver `combineMasks`). A prévia e o PDF desenham a mesma arte: a
- * caixa limpa fica guardada por `key` para não rodar o modelo de novo. Sem o modelo, volta
+ * caixa limpa fica guardada por `key` para não rodar o modelo de novo (e, se as duas pedem ao
+ * mesmo tempo, a segunda espera a primeira). Sem o modelo, volta
  * para o preenchimento simples, salvo com `simple: false`: aí devolve `false` e a imagem fica
  * como está (na arte sem borda o preenchimento simples deixa um borrão; a carta sai na original).
+ * No rascunho (`neural.enabled` falso), sempre o preenchimento simples.
  */
 async function lamaBox(
   data: ImageData,
@@ -229,40 +262,66 @@ async function lamaBox(
   protect: Rect[],
   polarity: "dark" | "light",
   key: string,
-  { native = false, grow, gap, simple = true }: { native?: boolean; grow?: number; gap?: number; simple?: boolean } = {},
+  {
+    native = false,
+    grow,
+    gap,
+    simple = true,
+    neural,
+  }: { native?: boolean; grow?: number; gap?: number; simple?: boolean; neural?: Neural } = {},
 ): Promise<boolean> {
   const fx = data.width / BASE_W;
+  const quick = () => {
+    for (const m of masks) if (m.mask.length) inpaint(data, m.rect, m.mask);
+  };
+  if (neural && !neural.enabled) {
+    quick();
+    return true;
+  }
+  const frames = frameCount(area, data.width, data.height, native);
+  await cleaning.get(key);
   const cached = cleanBoxes.get(key);
   if (cached && cached.width === area.x1 - area.x0 && cached.height === area.y1 - area.y0) {
     for (let y = 0; y < cached.height; y++)
       data.data.set(cached.data.subarray(y * cached.width * 4, (y + 1) * cached.width * 4), ((area.y0 + y) * data.width + area.x0) * 4);
+    neural?.tick(frames);
     return true;
   }
-  // máscara folgada: o LaMa espalha para dentro do buraco qualquer resto de borda das letras,
-  // sem fios da imagem original entre dois pedaços do buraco
-  const hole = combineMasks(data, masks, grow ?? Math.round(fx * 3) + 1, gap ?? Math.round(fx * 4));
-  for (const r of protect.map(roundRect)) for (let y = r.y0; y < r.y1; y++) hole.fill(0, y * data.width + r.x0, y * data.width + r.x1);
-  if (!(await lamaInpaint(data, area, hole, protect.map(roundRect), native))) {
-    if (!simple) return false;
-    for (const m of masks) if (m.mask.length) inpaint(data, m.rect, m.mask);
+  let release = () => {};
+  cleaning.set(key, new Promise<void>((r) => (release = r)));
+  try {
+    // máscara folgada: o LaMa espalha para dentro do buraco qualquer resto de borda das letras,
+    // sem fios da imagem original entre dois pedaços do buraco
+    const hole = combineMasks(data, masks, grow ?? Math.round(fx * 3) + 1, gap ?? Math.round(fx * 4));
+    for (const r of protect.map(roundRect)) for (let y = r.y0; y < r.y1; y++) hole.fill(0, y * data.width + r.x0, y * data.width + r.x1);
+    if (!(await lamaInpaint(data, area, hole, protect.map(roundRect), native, () => neural?.tick()))) {
+      if (!simple) return false;
+      quick();
+      return true;
+    }
+    // na arte calma atrás da caixa sem borda o modelo às vezes inventa cor que não há em volta
+    if (native) tameInvented(data, area, hole, protect.map(roundRect));
+    // o modelo às vezes inventa um pingo de tinta no meio do papel liso
+    dropSpecks(data, area, hole, polarity);
+    if (native) regrain(data, area, hole);
+    const box = new ImageData(area.x1 - area.x0, area.y1 - area.y0);
+    for (let y = 0; y < box.height; y++)
+      box.data.set(
+        data.data.subarray(((area.y0 + y) * data.width + area.x0) * 4, ((area.y0 + y) * data.width + area.x1) * 4),
+        y * box.width * 4,
+      );
+    rememberBox(key, box);
     return true;
+  } finally {
+    cleaning.delete(key);
+    release();
   }
-  // na arte calma atrás da caixa sem borda o modelo às vezes inventa cor que não há em volta
-  if (native) tameInvented(data, area, hole, protect.map(roundRect));
-  // o modelo às vezes inventa um pingo de tinta no meio do papel liso
-  dropSpecks(data, area, hole, polarity);
-  if (native) regrain(data, area, hole);
-  const box = new ImageData(area.x1 - area.x0, area.y1 - area.y0);
-  for (let y = 0; y < box.height; y++)
-    box.data.set(
-      data.data.subarray(((area.y0 + y) * data.width + area.x0) * 4, ((area.y0 + y) * data.width + area.x1) * 4),
-      y * box.width * 4,
-    );
-  cleanBoxes.set(key, box);
-  if (cleanBoxes.size > 24) cleanBoxes.delete(cleanBoxes.keys().next().value!);
-  return true;
 }
 
+/**
+ * Planeswalker: nome, tipo e uma faixa por habilidade (ver planeswalker.ts).
+ * Devolve false quando a imagem não bate com o texto; aí a carta sai original.
+ */
 async function renderPlaneswalker(p: {
   ctx: CanvasRenderingContext2D;
   src: HTMLCanvasElement;
@@ -273,6 +332,8 @@ async function renderPlaneswalker(p: {
   print: PrintRecord;
   W: number;
   H: number;
+  neural: Neural;
+  plan: (frames: number) => void;
 }): Promise<boolean> {
   const { ctx, data, toImg, face, print } = p;
   const paragraphs = splitAbilities(face.text_pt);
@@ -344,7 +405,8 @@ async function renderPlaneswalker(p: {
   // abaixo da medida padrão, só o pé das letras de cima (não o canto da moldura)
   keepAttachedBelow(masks[masks.length - 1], PW.area.bottom * fy);
   const area = roundRect(toImg({ x0: PW.staticText.erase, y0: rows[0].y0, x1: PW.eraseRight, y1: lastErase.y1 }));
-  await lamaBox(data, masks, area, protect, boxPolarity, `${print.id}:${data.width}:${paragraphs.length}`);
+  p.plan(frameCount(area, data.width, data.height));
+  await lamaBox(data, masks, area, protect, boxPolarity, `${print.id}:${data.width}:${paragraphs.length}`, { neural: p.neural });
   const inks = [...barInks, ...masks.map((m) => m.polarity)];
   p.sctx.putImageData(data, 0, 0);
   ctx.drawImage(p.src, 0, 0, p.W, p.H);
@@ -800,8 +862,24 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     return { canvas: out, translated: done };
   }
 
+  // andamento da rede neural: o total previsto de quadros sobe antes do primeiro rodar
+  let neuralDone = 0;
+  let neuralTotal = 0;
+  const report = () => opts.onNeural?.({ done: Math.min(neuralDone, neuralTotal), total: neuralTotal });
+  const plan = (frames: number) => {
+    neuralTotal += frames;
+    report();
+  };
+  const neural: Neural = {
+    enabled: opts.neural ?? true,
+    tick: (frames = 1) => {
+      neuralDone += frames;
+      report();
+    },
+  };
+
   if (pw) {
-    const done = await renderPlaneswalker({ ctx, src, sctx, data, toImg, face, print, W, H });
+    const done = await renderPlaneswalker({ ctx, src, sctx, data, toImg, face, print, W, H, neural, plan });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: done };
   }
@@ -863,9 +941,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const subtitle = print.flavor_name ? subtitleLetters(data) : null;
   // (também quando a rede neural não roda neste navegador: o preenchimento simples deixaria um
   // borrão sobre a arte)
-  const original = (): RenderResult => {
+  const original = (reason?: "neural"): RenderResult => {
     ctx.drawImage(img, 0, 0, W, H);
-    return { canvas: out, translated: false };
+    return reason ? { canvas: out, translated: false, reason } : { canvas: out, translated: false };
   };
   if (blocked || (print.flavor_name && !subtitle)) return original();
   // Algumas digitalizações e molduras (arte estendida) trazem o nome ou o tipo uns
@@ -1015,30 +1093,38 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // por linha das barras opacas achatava a arte de trás num borrão liso (a asa atrás do tipo
   // do Lord of the Pit, SLD 1857; a placa atrás do "Sorcery" do Temporal Trespass, SLD
   // 2190). As duas barras vão num quadro só, reduzido; a caixa, na resolução da imagem.
+  // (com nome de crossover, o nome do alto fica e a aba vai à parte, logo abaixo)
+  const bars = (subtitle ? [layout.erase[1].rect] : [layout.erase[0].rect, layout.erase[1].rect]).map((r) => roundRect(toImg(r)));
+  const barArea = {
+    x0: Math.min(...bars.map((r) => r.x0)),
+    y0: Math.min(...bars.map((r) => r.y0)),
+    x1: Math.max(...bars.map((r) => r.x1)),
+    y1: Math.max(...bars.map((r) => r.y1)),
+  };
+  const subtitleRect = subtitle ? roundRect(toImg(subtitle)) : null;
   if (frameBox) {
+    // o total de quadros da carta, antes do primeiro: a prévia mostra "parte X de Y"
+    plan(
+      frameCount(barArea, data.width, data.height) +
+        (subtitleRect ? frameCount(subtitleRect, data.width, data.height, true) : 0) +
+        (measuredBox && !keepBox ? frameCount(measuredBox, data.width, data.height, true) : 0),
+    );
     const guard = [...opaque, ...capGuard];
-    // (com nome de crossover, o nome do alto fica e a aba vai à parte, logo abaixo)
-    const bars = (subtitle ? [layout.erase[1].rect] : [layout.erase[0].rect, layout.erase[1].rect]).map((r) => roundRect(toImg(r)));
     const barMasks = bars.map((rect) => ({ rect, mask: whiteTextMask(data, rect, guard), polarity: "light" as const }));
-    const barArea = {
-      x0: Math.min(...bars.map((r) => r.x0)),
-      y0: Math.min(...bars.map((r) => r.y0)),
-      x1: Math.max(...bars.map((r) => r.x1)),
-      y1: Math.max(...bars.map((r) => r.y1)),
-    };
     const clean = await lamaBox(data, barMasks, barArea, guard, "light", `${print.id}:${data.width}:${side}:barras`, {
       grow: Math.round(fx * 2),
       gap: 0,
       simple: false,
+      neural,
     });
-    if (!clean) return original();
+    if (!clean) return original("neural");
   }
   // A aba do nome de crossover vai à rede neural sozinha, na resolução da imagem e com o grão
   // de volta (sobre ela também aparece a arte: Awesome Android da Marvel, MSC; a retícula da
   // aba do Yojimbo, SLD 7004, num quadro reduzido junto com a barra de tipo, saía num
   // remendo liso e mais claro). Os aros de cima e de baixo da aba ficam escondidos do modelo.
-  if (subtitle) {
-    const rect = roundRect(toImg(subtitle));
+  if (subtitle && subtitleRect) {
+    const rect = subtitleRect;
     const rims = [
       { x0: rect.x0, y0: rect.y0 - Math.round(3 * fy), x1: rect.x1, y1: rect.y0 },
       { x0: rect.x0, y0: rect.y1, x1: rect.x1, y1: rect.y1 + Math.round(3 * fy) },
@@ -1051,9 +1137,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       guard,
       "light",
       `${print.id}:${data.width}:${side}:aba`,
-      { native: true, grow: Math.round(fx * 2), gap: 0, simple: false },
+      { native: true, grow: Math.round(fx * 2), gap: 0, simple: false, neural },
     );
-    if (!clean) return original();
+    if (!clean) return original("neural");
   }
   if (frameBox && measuredBox && !keepBox) {
     const mask = whiteTextMask(data, measuredBox, opaque, 110, true);
@@ -1073,8 +1159,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       grow: Math.round(fx * 2),
       gap: 0,
       simple: false,
+      neural,
     });
-    if (!clean) return original();
+    if (!clean) return original("neural");
   }
   // (sem a região do nome, apagada à parte, as cores medidas começam pela do tipo)
   const measured: ("dark" | "light" | undefined)[] = subtitle ? [undefined, ...inks] : inks;

@@ -520,7 +520,8 @@ a:hover {
 .swatch--sem-traducao {
   background: var(--m);
 }
-.swatch--moldura {
+.swatch--moldura,
+.swatch--apagador {
   background: var(--sheet);
   border: 2.5px solid var(--m);
 }
@@ -591,7 +592,8 @@ a:hover {
   background: var(--magenta-ink);
   color: #fff;
 }
-.tag--moldura {
+.tag--moldura,
+.tag--apagador {
   background: var(--sheet);
   color: var(--magenta-ink);
   box-shadow: inset 0 0 0 1.5px var(--magenta-ink);
@@ -861,36 +863,110 @@ button.slot:focus-visible .slot-card {
   align-content: center;
   gap: 0.5em;
 }
-.slot-stage {
+/* rascunho: a carta já em português; a faixa, sobre a arte (o texto fica à vista), diz quanto
+   falta do acabamento */
+.slot-finishing {
+  position: absolute;
+  inset: 13% 6% auto;
   display: grid;
-  gap: 6px;
-  justify-items: center;
-  width: 100%;
+  gap: 4px;
+  padding: 5px 7px 6px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 0.94);
+  box-shadow: 0 1px 3px rgb(17 20 24 / 0.3);
+  color: var(--ink);
+  font-size: clamp(0.625rem, 1.2vw, 0.75rem);
+  font-weight: 650;
+  font-stretch: 82%;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  text-align: left;
+}
+.slot-msg .slot-finishing {
+  position: static;
+  box-shadow: none;
+  background: none;
+  padding: 0;
+  text-align: center;
   font-weight: 500;
+}
+.finishing {
+  display: grid;
+  gap: 8px;
+  width: 100%;
   font-variant-numeric: tabular-nums;
 }
-.slot-stage progress {
-  width: min(100%, 180px);
+.finishing-text {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  color: var(--ink);
+}
+.finishing-note {
+  font-size: 0.875rem;
+  color: var(--ink-3);
+}
+.finishing-bar {
+  position: relative;
+  display: block;
+  width: 100%;
   height: 6px;
   appearance: none;
   border: 0;
   border-radius: 3px;
-  background: var(--sheet);
+  background: var(--slot);
   overflow: hidden;
 }
-.slot-stage progress::-webkit-progress-bar {
-  background: var(--sheet);
+.slot-finishing .finishing-bar {
+  height: 4px;
 }
-.slot-stage progress::-webkit-progress-value {
+.finishing-bar::-webkit-progress-bar {
+  background: var(--slot);
+}
+.finishing-bar::-webkit-progress-value {
+  background: var(--cyan-ink);
+  transition: width 0.4s var(--ease-out);
+}
+.finishing-bar::-moz-progress-bar {
   background: var(--cyan-ink);
 }
-.slot-stage progress::-moz-progress-bar {
+/* sem medida (fila, preparo): um trecho de tinta que corre, para não parecer parado */
+.finishing-bar--busy::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 35%;
+  border-radius: inherit;
   background: var(--cyan-ink);
+  animation: andamento 1.4s var(--ease-out) infinite;
 }
-.slot-stage-note {
-  font-size: 0.85em;
-  font-weight: 400;
-  font-stretch: 100%;
+@keyframes andamento {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(290%);
+  }
+}
+.drawer-finishing {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+.drawer-details {
+  font-size: 0.8125rem;
+  color: var(--ink-3);
+}
+.drawer-details summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+}
+.drawer-details code {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
 }
 .slot-card .tag {
   position: absolute;
@@ -900,7 +976,8 @@ button.slot:focus-visible .slot-card {
   box-shadow: 0 1px 3px rgb(17 20 24 / 0.3);
 }
 .slot-card .tag--imagem-pt,
-.slot-card .tag--moldura {
+.slot-card .tag--moldura,
+.slot-card .tag--apagador {
   box-shadow:
     inset 0 0 0 1.5px currentColor,
     0 1px 3px rgb(17 20 24 / 0.3);
@@ -1248,6 +1325,12 @@ button.slot:focus-visible .slot-card {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  /* a faixa que corre fica parada, inteira e clara */
+  .finishing-bar--busy::after {
+    animation: none;
+    width: 100%;
+    opacity: 0.35;
   }
 }
 

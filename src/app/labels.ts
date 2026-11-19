@@ -1,5 +1,6 @@
-import type { LamaStatus } from "../engine/lama";
+import { etaMs, type LamaStatus } from "../engine/lama";
 import type { Outcome } from "./model";
+import type { NeuralProgress } from "./preview";
 
 /** Como cada resultado aparece escrito na interface (nunca só pela cor). */
 export const OUTCOME_LABEL: Record<Outcome, string> = {
@@ -7,19 +8,46 @@ export const OUTCOME_LABEL: Record<Outcome, string> = {
   "imagem-pt": "Imagem oficial em português",
   "sem-traducao": "Em inglês: ainda sem tradução oficial",
   moldura: "Em inglês: esta moldura ainda não é reescrita",
+  apagador: "Em inglês: o apagador de texto não rodou neste navegador",
 };
 
+/** Tempo que falta, por extenso e arredondado: "alguns segundos", "cerca de 40 s", "cerca de 2 min". */
+export function formatEta(ms: number): string {
+  if (ms < 10_000) return "alguns segundos";
+  if (ms < 55_000) return `cerca de ${Math.ceil(ms / 5000) * 5} s`;
+  return `cerca de ${Math.max(1, Math.round(ms / 60_000))} min`;
+}
+
 /**
- * Andamento da rede neural que apaga o inglês nas artes sem borda e nos planeswalkers, para a
- * prévia que espera por ela. `percent` só no download com tamanho conhecido (para no 99 até
- * acabar); `null` quando não há o que mostrar.
+ * Andamento da rede neural numa carta que espera por ela (artes sem borda e planeswalkers), para a
+ * prévia: `text` na gaveta, `short` na folha e `percent` para a barra (`null` sem medida: a barra
+ * fica em movimento, sem número). Na fila, só diz que está na fila; na vez da carta, segue a
+ * etapa do modelo (download com %, preparo) e depois os quadros da carta, com o tempo que falta
+ * pela média dos quadros anteriores. `null` quando não há o que mostrar.
  */
-export function neuralStage(s: LamaStatus): { text: string; percent: number | null } | null {
+export function neuralLine(
+  s: LamaStatus,
+  p: NeuralProgress | undefined,
+  now = Date.now(),
+): { text: string; short: string; percent: number | null } | null {
+  if (!p || s.stage === "failed") return null;
+  if (p.state === "queued") return { text: "Na fila do acabamento: as cartas antes desta vão primeiro.", short: "Na fila", percent: null };
   if (s.stage === "download") {
     const percent = s.total > 0 ? Math.min(99, Math.floor((100 * s.loaded) / s.total)) : null;
-    return { text: percent === null ? "Baixando o apagador de texto…" : `Baixando o apagador de texto: ${percent}%`, percent };
+    return percent === null
+      ? { text: "Baixando o apagador de texto…", short: "Baixando…", percent }
+      : { text: `Baixando o apagador de texto: ${percent}%`, short: `Baixando ${percent}%`, percent };
   }
-  if (s.stage === "prepare") return { text: "Preparando o apagador de texto…", percent: null };
-  if (s.stage === "run") return { text: "Apagando o inglês…", percent: null };
-  return null;
+  if (s.stage === "prepare") return { text: "Preparando o apagador de texto…", short: "Preparando…", percent: null };
+  if (!p.total) return { text: "Apagando o inglês…", short: "Apagando…", percent: null };
+  const part = Math.min(p.done + 1, p.total);
+  const eta = etaMs(s, p.total - p.done, now);
+  // o quadro atual conta pelo tempo que já rodou dele (até 95%: a média é estimativa)
+  const running = s.stage === "run" && s.since && s.frameMs ? Math.min(0.95, (now - s.since) / s.frameMs) : 0;
+  const percent = Math.min(99, Math.floor((100 * (p.done + running)) / p.total));
+  return {
+    text: `Acabamento: parte ${part} de ${p.total}, ${eta === null ? "calculando o tempo" : formatEta(eta)}`,
+    short: `Acabamento ${part}/${p.total}`,
+    percent,
+  };
 }

@@ -187,8 +187,8 @@ describe("vigia da rede neural", () => {
     vi.unstubAllGlobals();
   });
 
-  type Msg = { type: string; id: number; gpu: boolean; threads: number };
-  /** Workers de mentira: `script[i]` diz o que a i-ésima faz com cada quadro que recebe. */
+  type Msg = { type: string; id: number; backend: string; threads: number };
+  /** Workers de mentira: `script[i]` diz o que a i-ésima faz com cada mensagem que recebe. */
   async function setup(script: ((w: { reply: (data: unknown) => void }, msg: Msg) => void)[]) {
     const made: { msgs: Msg[]; terminated: boolean }[] = [];
     class FakeWorker {
@@ -201,7 +201,7 @@ describe("vigia da rede neural", () => {
       }
       postMessage(msg: Msg) {
         this.log.msgs.push(msg);
-        this.act({ reply: (data) => this.onmessage?.({ data }) }, msg);
+        this.act({ reply: (data) => !this.log.terminated && this.onmessage?.({ data }) }, msg);
       }
       terminate() {
         this.log.terminated = true;
@@ -218,27 +218,63 @@ describe("vigia da rede neural", () => {
     const run = () => lama.lamaInpaint(img, { x0: 0, y0: 0, x1: W, y1: W }, mask);
     return { lama, made, img, run };
   }
-  const answer = (w: { reply: (data: unknown) => void }, msg: Msg) =>
-    setTimeout(() => {
-      w.reply({ type: "loaded" });
-      w.reply({ type: "ready" });
-      w.reply({ type: "done", id: msg.id, output: new Float32Array(3 * 512 * 512).fill(90) });
-    }, 1000);
+  /** Worker que funciona: carrega em 1 s (no modo pedido, ou `as`) e cada quadro leva `ms`. */
+  const works =
+    (ms = 1000, as?: { backend: string; threads: number }) =>
+    (w: { reply: (data: unknown) => void }, msg: Msg) => {
+      if (msg.type !== "run") return;
+      setTimeout(() => {
+        w.reply({ type: "loaded" });
+        w.reply({ type: "ready", ...(as ?? { backend: msg.backend, threads: msg.threads || 4 }) });
+        setTimeout(() => w.reply({ type: "done", id: msg.id, output: new Float32Array(3 * 512 * 512).fill(90) }), ms);
+      }, 1000);
+    };
+  const answer = works();
 
-  it("a worker que nunca responde é trocada por uma na CPU com uma thread (Firefox do celular, Konia DSK 358)", async () => {
+  it("a worker que nunca responde é trocada pela CPU (Firefox do celular, Konia DSK 358)", async () => {
     const { lama, made, img, run } = await setup([() => undefined, answer]);
     const result = run();
     await vi.advanceTimersByTimeAsync(lama.LIMITS.stall - 1);
     expect(made).toHaveLength(1);
-    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(3000);
     expect(await result).toBe(true);
     expect(made[0].terminated).toBe(true);
-    expect(made[0].msgs[0]).toMatchObject({ gpu: true, threads: 0 });
+    expect(made[0].msgs[0]).toMatchObject({ backend: "webgpu", threads: 0 });
     // o mesmo quadro, inteiro, vai para a segunda
-    expect(made[1].msgs[0]).toMatchObject({ gpu: false, threads: 1 });
+    expect(made[1].msgs[0]).toMatchObject({ backend: "wasm", threads: 0 });
     expect(made[1].msgs[0].id).toBe(made[0].msgs[0].id);
     expect(img.data[(110 * 512 + 200) * 4]).toBe(90);
     expect(lama.lamaStatus().stage).toBe("idle");
+  });
+
+  it("erro da placa de vídeo vai para a CPU com várias threads, não direto para uma (Chrome do celular)", async () => {
+    // o runtime antigo falhava na soma da convolução de Fourier logo no primeiro quadro
+    const gpuError = (w: { reply: (data: unknown) => void }, msg: Msg) => {
+      if (msg.type !== "run") return;
+      w.reply({ type: "loaded" });
+      w.reply({ type: "ready", backend: "webgpu", threads: 4 });
+      w.reply({ type: "error", id: msg.id, error: 'Error: [WebGPU] Kernel "[Add] /generator/model/model.5/conv1/ffc/convg2g/Add" failed' });
+    };
+    const { lama, made, run } = await setup([gpuError, answer]);
+    const result = run();
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(await result).toBe(true);
+    expect(made).toHaveLength(2);
+    expect(made[1].msgs[0]).toMatchObject({ backend: "wasm", threads: 0 });
+    expect(lama.lamaStatus().backend).toBe("wasm");
+  });
+
+  it("sem placa de vídeo, o primeiro modo já era a CPU com várias threads: a falha vai para uma thread", async () => {
+    const hangAfterReady = (w: { reply: (data: unknown) => void }, msg: Msg) => {
+      if (msg.type !== "run") return;
+      w.reply({ type: "loaded" });
+      w.reply({ type: "ready", backend: "wasm", threads: 4 });
+    };
+    const { lama, made, run } = await setup([hangAfterReady, answer]);
+    const result = run();
+    await vi.advanceTimersByTimeAsync(lama.LIMITS.first.wasm + 2500);
+    expect(await result).toBe(true);
+    expect(made[1].msgs[0]).toMatchObject({ backend: "wasm", threads: 1 });
   });
 
   it("download lento que segue chegando não é travamento, e a etapa acompanha", async () => {
@@ -275,28 +311,117 @@ describe("vigia da rede neural", () => {
     ]);
   });
 
-  it("travada na hora de rodar o quadro, também troca; se a segunda travar, desiste e não tenta de novo", async () => {
-    const hangAfterReady = (w: { reply: (data: unknown) => void }) =>
-      setTimeout(() => {
-        w.reply({ type: "loaded" });
-        w.reply({ type: "ready" });
-      }, 1000);
-    const { lama, made, run } = await setup([hangAfterReady, hangAfterReady]);
-    const result = run();
-    await vi.advanceTimersByTimeAsync(1000 + lama.LIMITS.run + 1000 + lama.LIMITS.run + 10);
-    expect(await result).toBe(false);
-    expect(made.map((m) => m.terminated)).toEqual([true, true]);
-    expect(lama.lamaStatus().stage).toBe("failed");
-    // nas próximas cartas, nem cria worker: quem chama usa o plano B na hora
-    expect(await run()).toBe(false);
+  it("depois do primeiro quadro, o limite segue a média: um quadro de 2 s travado não espera 4 minutos", async () => {
+    let n = 0;
+    // a primeira worker roda um quadro em 2 s e trava no segundo; a seguinte funciona
+    const fastThenHang = (w: { reply: (data: unknown) => void }, msg: Msg) => {
+      if (msg.type !== "run") return;
+      if (n++ === 0) works(2000, { backend: "wasm", threads: 4 })(w, msg);
+    };
+    const { lama, made, run } = await setup([fastThenHang, answer]);
+    expect(await Promise.all([run(), (async () => (await vi.advanceTimersByTimeAsync(3100), true))()])).toEqual([true, true]);
+    expect(lama.lamaStatus().frameMs).toBe(2000);
+    expect(lama.runLimit("wasm", 2000)).toBe(lama.LIMITS.floor);
+    const second = run();
+    await vi.advanceTimersByTimeAsync(lama.LIMITS.floor + 2500);
+    expect(await second).toBe(true);
     expect(made).toHaveLength(2);
+    expect(made[1].msgs[0]).toMatchObject({ backend: "wasm", threads: 1 });
   });
 
-  it("erro do runtime na primeira passa para a segunda", async () => {
-    const { made, run } = await setup([(w, msg) => w.reply({ type: "error", id: msg.id, error: "RangeError: out of memory" }), answer]);
+  it("travada em todos os modos, desiste, guarda o motivo de cada um e não tenta de novo", async () => {
+    const hangAfterReady = (backend: string, threads: number) => (w: { reply: (data: unknown) => void }, msg: Msg) => {
+      if (msg.type !== "run") return;
+      setTimeout(() => {
+        w.reply({ type: "loaded" });
+        w.reply({ type: "ready", backend, threads });
+      }, 1000);
+    };
+    const { lama, made, run } = await setup([hangAfterReady("webgpu", 4), hangAfterReady("wasm", 4), hangAfterReady("wasm", 1)]);
     const result = run();
-    await vi.advanceTimersByTimeAsync(1500);
-    expect(await result).toBe(true);
+    await vi.advanceTimersByTimeAsync(3 * 1000 + lama.LIMITS.first.webgpu + 2 * lama.LIMITS.first.wasm + 10);
+    expect(await result).toBe(false);
+    expect(made.map((m) => m.terminated)).toEqual([true, true, true]);
+    expect(lama.lamaStatus().stage).toBe("failed");
+    expect(lama.lamaStatus().reason).toBe("webgpu: quadro sem resposta · wasm 4t: quadro sem resposta · wasm 1t: quadro sem resposta");
+    // nas próximas cartas, nem cria worker: quem chama usa o plano B na hora
+    expect(await run()).toBe(false);
+    expect(made).toHaveLength(3);
+  });
+
+  it("prepara o modelo antes do primeiro quadro, e fica parada esperando quando termina", async () => {
+    const loads = (w: { reply: (data: unknown) => void }, msg: Msg) => {
+      if (msg.type === "load")
+        setTimeout(() => {
+          w.reply({ type: "loaded" });
+          w.reply({ type: "ready", backend: "webgpu", threads: 4 });
+        }, 1000);
+      else works(500)(w, msg);
+    };
+    const { lama, made } = await setup([loads]);
+    lama.prepareLama();
+    lama.prepareLama();
+    expect(made[0].msgs).toEqual([{ type: "load", backend: "webgpu", threads: 0 }]);
+    expect(lama.lamaStatus().stage).toBe("download");
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(lama.lamaStatus()).toMatchObject({ stage: "idle", backend: "webgpu" });
+    // parada, sem vigia: nada falha por esperar
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(made).toHaveLength(1);
+    expect(made[0].terminated).toBe(false);
+  });
+
+  it("erro na preparação, sem quadro na fila, passa para o modo seguinte", async () => {
+    const failsLoad = (w: { reply: (data: unknown) => void }, msg: Msg) => {
+      if (msg.type === "load") w.reply({ type: "error", error: "preparar o modelo (webgpu): RangeError" });
+    };
+    const { lama, made } = await setup([failsLoad, () => undefined]);
+    lama.prepareLama();
     expect(made).toHaveLength(2);
+    expect(made[1].msgs[0]).toMatchObject({ type: "load", backend: "wasm", threads: 0 });
+  });
+});
+
+describe("nextMode e etaMs", () => {
+  it("passa para o modo seguinte ao que a worker de fato usou", async () => {
+    const { nextMode } = await import("../../src/engine/lama");
+    expect(nextMode(0, { backend: "webgpu", threads: 4 })).toBe(1);
+    expect(nextMode(0, { backend: "wasm", threads: 4 })).toBe(2);
+    expect(nextMode(1, { backend: "wasm", threads: 1 })).toBe(3);
+    expect(nextMode(0, null)).toBe(1);
+    expect(nextMode(1, null)).toBe(2);
+  });
+
+  it("o tempo que falta conta os quadros que faltam pela média, menos o que já rodou do atual", async () => {
+    const { etaMs } = await import("../../src/engine/lama");
+    const base = { stage: "run" as const, loaded: 0, total: 0, backend: "wasm" as const, reason: "" };
+    expect(etaMs({ ...base, frameMs: 0, since: 0 }, 3)).toBeNull();
+    expect(etaMs({ ...base, frameMs: 20_000, since: 1000 }, 3, 6000)).toBe(55_000);
+    // o atual passou da média: conta como quase pronto, sem tempo negativo
+    expect(etaMs({ ...base, frameMs: 20_000, since: 1000 }, 1, 60_000)).toBe(0);
+  });
+});
+
+describe("arquivos da rede neural", () => {
+  it("descompacta o gzip, e deixa como está o que o navegador já descompactou", async () => {
+    const { gunzip } = await import("../../src/engine/lamaFiles");
+    const { gzipSync } = await import("node:zlib");
+    const raw = new Uint8Array([8, 1, 2, 3, 4, 250, 0, 7]);
+    expect([...(await gunzip(new Uint8Array(gzipSync(raw))))]).toEqual([...raw]);
+    expect(await gunzip(raw)).toBe(raw);
+  });
+
+  it("cada modo baixa o runtime dele, com a versão no nome (o cache é imutável)", async () => {
+    const { runtimeParts, MODEL_PARTS } = await import("../../src/engine/lamaFiles");
+    expect(runtimeParts("webgpu", "1.31.1")).toEqual(["/modelos/ort-webgpu-1.31.1.wasm.gz"]);
+    expect(runtimeParts("wasm", "1.31.1")).toEqual(["/modelos/ort-cpu-1.31.1.wasm.gz"]);
+    expect(MODEL_PARTS).toEqual(["/modelos/lama-int4.onnx.gz.0", "/modelos/lama-int4.onnx.gz.1"]);
+  });
+
+  it("saída com NaN da placa de vídeo vale como falha", async () => {
+    const { brokenOutput } = await import("../../src/engine/lamaFiles");
+    expect(brokenOutput(new Float32Array([0, 128, 255]))).toBe(false);
+    expect(brokenOutput(new Float32Array([0, Number.NaN, 255]))).toBe(true);
+    expect(brokenOutput(new Float32Array([Number.POSITIVE_INFINITY]))).toBe(true);
   });
 });
