@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, arena_symbols, balance_parens, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, frame_supported, is_intrinsic_mana, pick_printed, printed_faces, printed_has_text, pw_costs, token_face_key, token_key
+from build import ability_word_lines, arena_symbols, balance_parens, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, mark_text_flavor, print_flavor, pick_printed, printed_faces, printed_has_text, pw_costs, token_face_key, token_key
 
 
 class CitesAltName(unittest.TestCase):
@@ -276,6 +276,49 @@ class FrameSupported(unittest.TestCase):
     def test_game_day_do_wizards_play_network_tem_moldura_comum(self) -> None:
         # Consider (pw22 1)
         self.assertTrue(frame_supported({**self.base, "promo_types": ["wizardsplaynetwork", "gameday"]}))
+
+class FlavorDeOutraArte(unittest.TestCase):
+    """O flavor em PT vale para as artes com o mesmo flavor em inglês da impressão do texto."""
+
+    SPOCK = "In critical moments, men sometimes see exactly what they wish to see."
+
+    def test_mesmo_flavor_marca(self):
+        # Spock, Logical Choice: o texto do Arena é da TRC 194; a promo de arte estendida
+        # (PMEI 2026-23) tem o mesmo flavor e saía sem nenhum
+        rows = [{"oracle_id": "o", "text_print": {"set": "trc", "number": "194"}}]
+        prints = [
+            {"oracle_id": "o", "_flavor": (self.SPOCK,)},
+            {"oracle_id": "o", "_flavor": (flavor_key(f"  {self.SPOCK}\n"),)},
+            {"oracle_id": "o", "_flavor": ("Outro flavor.",)},
+            {"oracle_id": "o", "_flavor": ("",)},
+        ]
+        n = mark_text_flavor(rows, prints, {("trc", "194"): (self.SPOCK,)})
+        self.assertEqual([p["text_flavor"] for p in prints], [True, True, False, False])
+        self.assertEqual(n, 2)
+
+    def test_impressao_do_texto_sem_flavor_nao_marca(self):
+        rows = [{"oracle_id": "o", "text_print": {"set": "abc", "number": "1"}}, {"oracle_id": "x", "text_print": None}]
+        prints = [{"oracle_id": "o", "_flavor": ("",)}, {"oracle_id": "x", "_flavor": ("A.",)}]
+        mark_text_flavor(rows, prints, {("abc", "1"): ("",)})
+        self.assertEqual([p["text_flavor"] for p in prints], [False, False])
+
+    def test_codigo_da_colecao_no_arena(self):
+        # Dominaria é "DAR" no Arena e "dom" no Scryfall: sem o apelido, o flavor das 184
+        # cartas do Arena dessa coleção não saía em arte nenhuma
+        rows = [{"oracle_id": "o", "text_print": {"set": "dar", "number": "1"}}]
+        prints = [{"oracle_id": "o", "_flavor": ("A.",)}]
+        mark_text_flavor(rows, prints, {("dom", "1"): ("A.",)})
+        self.assertTrue(prints[0]["text_flavor"])
+
+    def test_aspas_e_travessao_de_um_tipo_so(self):
+        self.assertEqual(flavor_key("“Run.”\n—Jace"), flavor_key('"Run." — Jace'))
+        self.assertEqual(flavor_key(None), "")
+
+    def test_flavor_de_cada_face(self):
+        self.assertEqual(print_flavor({"card_faces": [{"flavor_text": "A."}, {}]}), ("A.", ""))
+        # aventura: as faces sem flavor e o flavor no topo
+        self.assertEqual(print_flavor({"flavor_text": "B.", "card_faces": [{}, {}]}), ("B.",))
+        self.assertEqual(print_flavor({"flavor_text": "C."}), ("C.",))
 
 
 if __name__ == "__main__":

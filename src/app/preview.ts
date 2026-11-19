@@ -9,7 +9,7 @@
 import { fontsVersion } from "../engine/fonts";
 import { renderCard } from "../engine/render";
 import type { PrintRecord } from "../engine/types";
-import { hasPtText, missKey, renderKey, selectedPrint, sideCount, type Entry, type Side } from "./model";
+import { flavorApplies, hasPtText, missKey, renderKey, selectedPrint, sideCount, type Entry, type Side } from "./model";
 
 const MAX_PARALLEL = 4;
 const cache = new Map<string, Promise<string>>();
@@ -89,9 +89,8 @@ export function renderInput(entry: Entry, side: Side = 0) {
   if (!print) return null;
   const translate = entry.choice.kind === "print" && hasPtText(entry.card);
   const face = translate ? (entry.card.faces[side] ?? null) : null;
-  const tp = entry.card.text_print;
-  const sameAsText = Boolean(tp && print.set_code.toLowerCase() === tp.set.toLowerCase() && print.number === tp.number);
-  return { print, face, side, typeLine: entry.card.type_line, flavor: sameAsText ? (face?.flavor_pt ?? null) : null };
+  const flavor = flavorApplies(entry.card, print) ? (face?.flavor_pt ?? null) : null;
+  return { print, face, side, typeLine: entry.card.type_line, flavor };
 }
 
 function toUrl(canvas: HTMLCanvasElement): Promise<string> {

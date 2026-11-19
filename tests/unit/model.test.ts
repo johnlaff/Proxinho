@@ -4,6 +4,7 @@ import {
   countOutcomes,
   defaultChoice,
   entriesFrom,
+  flavorApplies,
   mergeEntries,
   missKey,
   outcomeOf,
@@ -226,5 +227,22 @@ describe("fichas", () => {
     const merged = mergeEntries([tok], [tok, tok]);
     expect(merged).toHaveLength(1);
     expect(merged[0].quantity).toBe(3);
+  });
+});
+
+describe("flavorApplies (o flavor em PT de outra arte)", () => {
+  const spock = card({ text_print: { set: "trc", number: "194" } });
+  it("vale na impressão de onde veio o texto", () => {
+    expect(flavorApplies(spock, print("a", { set_code: "TRC", number: "194" }))).toBe(true);
+  });
+  it("vale na arte com o mesmo flavor em inglês (a promo de arte estendida)", () => {
+    expect(flavorApplies(spock, print("b", { set_code: "pmei", number: "2026-23", text_flavor: true }))).toBe(true);
+  });
+  it("não vale na arte com outro flavor ou sem flavor", () => {
+    expect(flavorApplies(spock, print("c", { set_code: "pmei", number: "2026-23" }))).toBe(false);
+    expect(flavorApplies(spock, print("d", { set_code: "sld", number: "1", text_flavor: false }))).toBe(false);
+  });
+  it("sem impressão do texto, nunca vale", () => {
+    expect(flavorApplies(card(), print("e", { text_flavor: true }))).toBe(false);
   });
 });

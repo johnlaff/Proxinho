@@ -50,6 +50,18 @@ export function selectedPrint(entry: Entry): PrintRecord | null {
   return entry.prints.find((p) => p.id === id) ?? entry.prints[0] ?? null;
 }
 
+/**
+ * O flavor em PT vale para a arte escolhida? Ele é de uma impressão (`text_print`) e vale
+ * para ela e para as outras artes com o mesmo flavor em inglês (`text_flavor`, medido no
+ * pipeline): a promo de arte estendida do Spock, Logical Choice (PMEI) tem o flavor da
+ * Star Trek Commander e saía sem nenhum. Arte com outro flavor, ou sem flavor, fica sem.
+ */
+export function flavorApplies(card: CardRecord, print: PrintRecord): boolean {
+  const tp = card.text_print;
+  if (tp && print.set_code.toLowerCase() === tp.set.toLowerCase() && print.number === tp.number) return true;
+  return Boolean(tp && print.text_flavor);
+}
+
 /** Chave de uma face de impressão em que o motor não reconheceu a moldura (ver `outcomeOf`). */
 export function missKey(printId: string, side: Side): string {
   return `${printId}#${side}`;

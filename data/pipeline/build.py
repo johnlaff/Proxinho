@@ -719,6 +719,51 @@ TOKENS: dict[str, dict] = {}
 TOKEN_PARTS: dict[str, set[str]] = {}
 # Fichas de duas faces: {id da impressão: [oracle_id da ficha de cada face]}
 DFT_FACES: dict[str, list[str]] = {}
+# Flavor em inglês de toda impressão em inglês, digitais incluídas: {(coleção, número): flavor de cada face}
+FLAVORS: dict[tuple[str, str], tuple[str, ...]] = {}
+
+
+def flavor_key(text: str | None) -> str:
+    """Flavor comparável entre impressões: aspas, travessões e espaços de um tipo só."""
+    if not text:
+        return ""
+    s = text.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
+    s = re.sub(r"\s*[—–]\s*", "—", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def print_flavor(card: dict) -> tuple[str, ...]:
+    """O flavor em inglês de cada face da impressão (vazio onde não há)."""
+    faces = card.get("card_faces") or [card]
+    values = [f.get("flavor_text") for f in faces]
+    if not any(values) and card.get("flavor_text"):
+        values = [card["flavor_text"]]
+    return tuple(flavor_key(v) for v in values)
+
+
+# coleções com outro código no Arena (Dominaria é "DAR" lá e "dom" no Scryfall)
+ARENA_SETS = {"dar": "dom"}
+
+
+def mark_text_flavor(rows: list[dict], prints: list[dict], flavors: dict[tuple[str, str], tuple[str, ...]]) -> int:
+    """Marca as impressões com o mesmo flavor em inglês da impressão de onde veio o texto em PT.
+
+    O flavor em PT é de uma impressão (`text_print`). Outra arte da carta com o mesmo
+    flavor em inglês (a promo de arte estendida do Spock, Logical Choice) leva o mesmo
+    flavor em PT; uma com outro flavor, ou sem flavor, não leva nenhum.
+    """
+    ref: dict[str, tuple[str, ...]] = {}
+    for r in rows:
+        tp = r.get("text_print")
+        f = flavors.get((ARENA_SETS.get(tp["set"].lower(), tp["set"].lower()), str(tp["number"]))) if tp else None
+        if f and any(f):
+            ref[r["oracle_id"]] = f
+    n = 0
+    for p in prints:
+        f = ref.get(p["oracle_id"])
+        p["text_flavor"] = bool(f) and p.get("_flavor") == f
+        n += p["text_flavor"]
+    return n
 
 
 def is_token_type(type_line: str | None) -> bool:
@@ -763,7 +808,9 @@ def dft_prints(dfts: list[dict]) -> list[dict]:
             oid = by_key.get(token_face_key(f))
             oids.append(oid)
             if oid:
-                out.append(print_row(c, oid, f, None, c["id"] if i == 0 else f"{c['id']}#1"))
+                row = print_row(c, oid, f, None, c["id"] if i == 0 else f"{c['id']}#1")
+                row["_flavor"] = (flavor_key(f.get("flavor_text")),)
+                out.append(row)
         DFT_FACES[c["id"]] = [o for o in oids if o]
     log(f"fichas de duas faces: {len(dfts)} | faces casadas com fichas de uma face: {len(out)}")
     return out
@@ -780,6 +827,8 @@ def load_prints(offline: bool) -> list[dict]:
             if not line.strip():
                 continue
             c = json.loads(line)
+            if c.get("lang") == "en":
+                FLAVORS[(c["set"], c["collector_number"])] = print_flavor(c)
             if c.get("lang") != "en" or c.get("digital") or c.get("oversized") or "paper" not in c.get("games", []):
                 continue
             if c.get("layout") == "art_series":
@@ -802,7 +851,9 @@ def load_prints(offline: bool) -> list[dict]:
                     if part.get("component") == "token" or (part["id"] != c["id"] and part.get("type_line", "").startswith("Emblem")):
                         TOKEN_PARTS.setdefault(oid, set()).add(part["id"])
             face = (c.get("card_faces") or [c])[0]
-            out.append(print_row(c, oid, face, sides_of(c)))
+            row = print_row(c, oid, face, sides_of(c))
+            row["_flavor"] = print_flavor(c)
+            out.append(row)
     out += dft_prints(dfts)
     log(f"impressões em inglês: {len(out)} ({sum(p['supported'] for p in out)} com moldura suportada)")
     return out
@@ -986,7 +1037,7 @@ def sql_str(value: object) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides"]
+PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides", "text_flavor"]
 
 COLUMNS = ["oracle_id", "name_en", "name_pt", "search_en", "search_pt", "source", "text_print", "faces", "pt_print", "layout", "type_line", "edhrec_rank", "commander", "tokens"]
 
@@ -1036,6 +1087,7 @@ def main() -> None:
         if p["oracle_id"] in PW_MISMATCH:
             p["supported"] = False
     log(f"planeswalkers com habilidades que não batem (saem como estão): {len(PW_MISMATCH)}")
+    log(f"artes com o flavor da impressão do texto em PT: {mark_text_flavor(rows, prints, FLAVORS)}")
     write(rows, prints)
 
 

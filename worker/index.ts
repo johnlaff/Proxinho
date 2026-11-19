@@ -84,6 +84,7 @@ interface PrintRow {
   two_sided: number;
   supported: number;
   sides: string | null;
+  text_flavor?: number;
   [k: string]: unknown;
 }
 
@@ -96,6 +97,7 @@ function parsePrint(row: PrintRow) {
     two_sided: !!row.two_sided,
     supported: !!row.supported,
     sides: row.sides ? JSON.parse(row.sides) : null,
+    text_flavor: !!row.text_flavor,
   };
 }
 

@@ -58,7 +58,7 @@ As medidas da moldura estão em `geometry.ts`, na escala da imagem de 745 × 104
 ## Banco (D1)
 
 - `cards`: uma linha por carta (`oracle_id`), com nome em inglês e português, apelidos normalizados para busca (`search_en`, `search_pt`), origem do texto (`arena` ou `impresso`), faces em JSON, a impressão PT mais recente e `tokens` (JSON com as fichas que a carta cria). As fichas e os emblemas também são linhas de `cards`, com `layout = 'token'` e, nas faces, P/R e cores. Uma face pode ter `ability_words`: as linhas do texto em PT que começam com palavra de habilidade ou de ambientação ("Aterragem — …"), que o motor escreve em itálico, como na carta impressa; a lista dessas palavras vem dos catálogos do Scryfall (`/catalog/ability-words` e `/catalog/flavor-words`), e as palavras-chave com travessão ("Max speed —") ficam de fora. Cada face de uma ficha de duas faces é uma linha de `prints` da ficha equivalente; a de trás tem id `<id>#1` (`printImage` em `src/engine/types.ts`).
-- `prints`: uma linha por impressão em inglês, com coleção, número, artista, data, moldura, efeitos, a coluna `supported` calculada pelo pipeline e, nas cartas de duas faces, `sides` (JSON com custo, P/R, indicador e suporte de cada face).
+- `prints`: uma linha por impressão em inglês, com coleção, número, artista, data, moldura, efeitos, a coluna `supported` calculada pelo pipeline, `text_flavor` (o flavor em inglês dela é o mesmo da impressão de onde veio o texto em PT, `text_print`: o flavor em PT vale também para ela) e, nas cartas de duas faces, `sides` (JSON com custo, P/R, indicador e suporte de cada face).
 - `meta`: data da última atualização (aparece em `/api/health`).
 
 ## Segurança

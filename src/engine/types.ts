@@ -24,7 +24,7 @@ export interface CardRecord {
   name_en: string;
   name_pt: string | null;
   source: TextSource;
-  /** Impressão de onde veio o texto (o flavor só vale para ela). */
+  /** Impressão de onde veio o texto (o flavor só vale para ela e para as de mesmo flavor em inglês, `text_flavor`). */
   text_print: { set: string; number: string } | null;
   faces: PtFace[];
   /** Impressão em português mais recente, para mostrar a imagem oficial. */
@@ -56,6 +56,11 @@ export interface PrintRecord {
   supported: boolean;
   /** Cartas de duas faces: dados de cada face (frente e verso). */
   sides?: PrintSide[] | null;
+  /**
+   * O flavor em inglês desta impressão é o mesmo da impressão de onde veio o texto em PT
+   * (`text_print`): o flavor em PT vale para ela também.
+   */
+  text_flavor?: boolean;
 }
 
 /** Uma face de uma impressão de duas faces. */
