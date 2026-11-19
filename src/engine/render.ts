@@ -821,7 +821,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     // (Lição sem o efeito marcado no Scryfall, como as de SOS: o ícone conferido na imagem)
     leftIcon: hasLeftIcon(print.effects, Boolean(sideInfo), rightIcon) || (/\bLição\b/.test(face.type_pt ?? "") && hasLessonIcon(data)),
     rightIcon,
-    indicator: sideInfo?.indicator,
+    // (de uma face só, o da impressão: o círculo de Crashing Footfalls era apagado e o
+    // "Feitiço" ia por cima do lugar dele)
+    indicator: sideInfo ? sideInfo.indicator : Boolean(print.indicator),
     mdfcStrip: print.layout === "modal_dfc",
     typeShift,
   });

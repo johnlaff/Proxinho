@@ -85,6 +85,7 @@ interface PrintRow {
   supported: number;
   sides: string | null;
   text_flavor?: number;
+  indicator?: number;
   [k: string]: unknown;
 }
 
@@ -98,6 +99,7 @@ function parsePrint(row: PrintRow) {
     supported: !!row.supported,
     sides: row.sides ? JSON.parse(row.sides) : null,
     text_flavor: !!row.text_flavor,
+    indicator: !!row.indicator,
   };
 }
 

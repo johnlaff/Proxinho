@@ -1941,6 +1941,12 @@ export function findSetSymbolLeft(
       // (e quando o corte pelas lacunas caiu dentro do símbolo, à direita da cor)
       else if (colored < cut || best <= Math.max(2, Math.round(3 * k))) cut = Math.max(start, colored - Math.round(3 * k));
     }
+    // Na sem borda a arte atrás da barra translúcida enche o vão entre o fim do tipo e o
+    // símbolo: o corte pela maior lacuna caía no espaço antes da última palavra, a 76 px da
+    // cor, e o "Hero" do Capitão América (MSH 316) ficava ao lado do português. Nenhum
+    // símbolo tem a cor começando a mais de 30 px do começo dele: aí ele começa no contorno
+    // da cor (até 8 px antes dela).
+    if (borderless && colored >= 0 && colored - cut > 30 * k) cut = Math.max(start, colored - Math.round(8 * k));
     // (a cor vale mesmo sem lacuna: com o fio do fim da barra grudado no símbolo, o
     // bloco passava do limite e o corte pela largura comia o começo do selo)
     start = best > 1 || colored >= 0 ? cut : Math.round(end - maxWidth * k);

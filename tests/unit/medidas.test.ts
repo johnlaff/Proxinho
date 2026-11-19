@@ -602,6 +602,26 @@ describe("findSetSymbolLeft na barra arco-íris do foil", () => {
   });
 });
 
+describe("findSetSymbolLeft com arte atrás do vão antes do símbolo", () => {
+  it('o "Hero" encostado na arte antes do "M" da Marvel sai (Capitão América, MSH 316)', () => {
+    // barra azul translúcida; fim do "Soldier" e o "Hero" em traços brancos (o espaço entre as
+    // palavras é a maior lacuna perto do fim), a arte escura enchendo o vão até o contorno do
+    // quadro do "M" (647) e o miolo laranja dele (651 a 675)
+    const { img, fill } = canvas([30, 40, 60]);
+    fill(380, 594, 689, 632, [60, 90, 140]);
+    for (let x = 472; x < 574; x += 6) fill(x, 602, x + 4, 627, [240, 240, 240]);
+    for (let x = 578; x < 630; x += 6) fill(x, 602, x + 4, 627, [240, 240, 240]);
+    fill(630, 602, 637, 627, [240, 240, 240]);
+    fill(637, 596, 647, 630, [15, 20, 35]);
+    fill(647, 598, 680, 630, [15, 10, 5]);
+    fill(651, 601, 676, 627, [230, 140, 40]);
+    const left = findSetSymbolLeft(img, 594, 632, 689, 100, undefined, true);
+    // o apagamento vai até 6 px antes: passa do fim do "Hero" (636) e para antes do quadro
+    expect(left).toBeGreaterThanOrEqual(643);
+    expect(left).toBeLessThanOrEqual(647);
+  });
+});
+
 describe("findSetSymbolLeft com lacuna entre letras quase igual à do símbolo", () => {
   it('o fim de "Werewolf" é apagado e o símbolo de EMN fica inteiro', () => {
     const { img, fill } = canvas([190, 170, 100]);

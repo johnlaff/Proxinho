@@ -66,6 +66,11 @@ export interface PrintRecord {
    * numa linha pequena logo abaixo da barra do nome, que recebe o nome em PT.
    */
   flavor_name?: string | null;
+  /**
+   * Carta de uma face só com indicador de cor (o círculo à esquerda da linha de tipo:
+   * Crashing Footfalls, Living End). Nas de duas faces ele vem em `sides`.
+   */
+  indicator?: boolean;
 }
 
 /** Uma face de uma impressão de duas faces. */

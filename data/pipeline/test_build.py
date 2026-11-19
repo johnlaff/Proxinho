@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, printed_faces, printed_has_text, pw_costs, token_face_key, token_key
+from build import ability_word_lines, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, token_face_key, token_key
 
 
 class CitesAltName(unittest.TestCase):
@@ -496,3 +496,16 @@ class AbilityWordLinesTest(unittest.TestCase):
         pt = "Descender 4 — Toda vez que você atacar, use vidência 1."
         self.assertEqual(ability_word_lines(en, pt, ITALIC), [0])
 
+
+class IndicadorDeCor(unittest.TestCase):
+    """O círculo à esquerda do tipo nas cartas de uma face só (Crashing Footfalls) era apagado."""
+
+    base = {"id": "x", "set": "mh1", "set_name": "Modern Horizons", "collector_number": "160", "layout": "normal", "frame": "2015", "border_color": "black", "type_line": "Sorcery"}
+
+    def test_carta_com_indicador(self):
+        c = {**self.base, "color_indicator": ["G"], "mana_cost": ""}
+        self.assertTrue(print_row(c, "o", c, None)["indicator"])
+
+    def test_carta_sem_indicador(self):
+        c = {**self.base, "mana_cost": "{G}"}
+        self.assertFalse(print_row(c, "o", c, None)["indicator"])

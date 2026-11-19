@@ -873,6 +873,8 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         "sides": sides,
         # nome de crossover no alto (o nome de jogo vai numa linha pequena abaixo da barra)
         "flavor_name": c.get("flavor_name") or face.get("flavor_name"),
+        # indicador de cor das cartas de uma face só (nas de duas faces, em `sides`)
+        "indicator": bool(c.get("color_indicator")),
     }
 
 
@@ -1134,7 +1136,7 @@ def sql_str(value: object) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides", "text_flavor", "flavor_name"]
+PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides", "text_flavor", "flavor_name", "indicator"]
 
 COLUMNS = ["oracle_id", "name_en", "name_pt", "search_en", "search_pt", "source", "text_print", "faces", "pt_print", "layout", "type_line", "edhrec_rank", "commander", "tokens"]
 
