@@ -116,6 +116,30 @@ Fontes: Nielsen Norman Group, "Progress Indicators Make a Slow System Less Insuf
 
 O que sobra: a CPU do celular sem WebGPU (o Firefox do Android) continua levando dezenas de segundos por quadro; agora a carta em português aparece logo e a espera é visível. O próximo passo possível é o MI-GAN só para o rascunho (roadmap), se a qualidade empatar nas nossas artes.
 
+### Velocidade do acabamento e do deck inteiro (19/11/2026, noite)
+
+Com tudo funcionando, o João perguntou quanto leva um deck inteiro, se uma carta leva 47 s. Medimos no site (Chromium sem placa de vídeo, 4 núcleos, celular emulado) e em bancada com os quadros reais de 6 artes sem borda (Konia DSK 358, Squall PSS5 2, Ulamog 2X2 577, Timber Protector LTC 533, Roaming Throne LCI 344, G'raha Tia FIC 203):
+
+| Medida | Resultado |
+|---|---|
+| Deck de 100 cartas (71 diferentes) só com nomes | Nenhuma carta passou pela rede neural. Todas as prévias em 45 s; o PDF levou mais 59 s, porque remonta cada carta na resolução de impressão, duas por vez |
+| Mesmo deck com 6 artes sem borda | As 6 mostram o rascunho e acabam em segundo plano; o PDF levou os mesmos 60 s (as caixas limpas pela prévia são reaproveitadas) |
+| Carta sem borda na CPU | Preparo do modelo 10,4 a 12,7 s (uma vez por visita) e 5,8 a 6,3 s por quadro com 4 threads (18 s com uma); 3 quadros por carta (as duas barras num, a caixa em dois) |
+| MI-GAN 512 (ICCV 2023), no mesmo navegador | Preparo 0,6 s e 0,5 s por quadro (2,1 s com uma thread): 11 vezes mais rápido. Mas nos 18 quadros deixou a sombra das letras apagadas (Konia), um bloco branco no meio da arte (Roaming Throne) e riscos vermelhos inventados dentro da barra do nome (Ulamog). Reprovado para o acabamento |
+| LaMa pré-otimizado (medidas fixas de 512 px e as constantes da transformada de Fourier calculadas antes, no ONNX Runtime em Python, com a quantização preservada) | Preparo de 10,4 s para 1,8 s, quadro no mesmo tempo, saída igual (no máximo 1 tom em 255 de diferença na CPU, arredondamento; idêntica no runtime WebGPU). O arquivo passa de 36,9 para 38,2 MB |
+| Caixa num quadro só, reduzida (em vez de dois na resolução da imagem) | Carta de 19 a 20 s para 13 a 14 s na CPU. Visualmente igual em 5 das 6; no Roaming Throne sobrou um risco escuro de uns 3 px entre duas linhas. Precisa da regressão inteira antes de valer |
+| XNNPACK no ONNX Runtime Web | Não existe no pacote web |
+
+O que o estado da arte diz:
+
+- **Modelos menores.** O MI-GAN (Sargsyan et al., ICCV 2023) tem 5,98 milhões de parâmetros e 15,7 GFLOPs a 512 px, contra 27 milhões e 128 GFLOPs do LaMa (Tabela 2 do artigo; o nosso é o Big-LaMa, com 51 milhões). O FID dele empata com o do LaMa, mas o LPIPS é pior (0,345 contra 0,314), e o artigo mede em fotos com buracos grandes, não em letras finas sobre arte. Ferramentas de proxy usam o MI-GAN no navegador para tirar marca-d'água (Card Anvil); nas nossas letras ele não segura a qualidade.
+- **Destilação.** O caminho do próprio MI-GAN é treinar uma rede pequena imitando uma grande (knowledge distillation). Uma rede nossa, treinada com o LaMa como professor em cartas com texto apagado, poderia chegar perto da qualidade com uma fração da conta, mas pede semanas de treino em placa de vídeo.
+- **Placa de vídeo no navegador.** A img.ly mediu o ONNX Runtime Web com WebGPU 16 a 20 vezes mais rápido que o WebAssembly com 16 threads num modelo de imagem. Wang et al. ("Anatomizing Deep Learning Inference in Web Browsers", ACM TOSEM 2024) medem até 28 vezes de diferença de velocidade entre aparelhos na CPU, e o Firefox uns 9% mais lento que o Chrome. Em novembro de 2026 o WebGPU está no Chrome do Android 12+ (Qualcomm, ARM, Intel desde a versão 121), no Safari do iOS 26 e no Firefox de Windows e Mac; no Firefox do Android segue atrás de uma opção, com o trabalho previsto pela Mozilla para 2026 (gpuweb, "Implementation Status").
+- **NPU.** O WebNN ainda depende de uma opção ligada à mão no Chrome e no Edge (documentação do ONNX Runtime): não serve para o público.
+- **Alta resolução.** O IOPaint (ex-lama-cleaner) oferece três estratégias: imagem inteira, recorte em volta do buraco e redução; recortar e reduzir são as rápidas. O Proxinho já recorta; reduzir é o teste da caixa num quadro só.
+
+Conclusão: na CPU não há como deixar o LaMa muito mais rápido sem perder qualidade; o ganho grande por carta vem da placa de vídeo, que o Chrome do celular já usa. O que encurta o deck inteiro é preparar o modelo antes (1,8 s em vez de 10 a 13 s), adiantar a montagem do PDF enquanto a pessoa revisa (hoje ~1 min no fim) e guardar no aparelho o que já ficou pronto.
+
 ## Lado legal e o caminho seguro
 
 | Ponto | O que diz | Risco |
