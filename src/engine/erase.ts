@@ -1858,6 +1858,64 @@ export function findSetSymbolLeft(
   // nele (o selo largo do Core Set 2020), e o corte pela largura comia o começo do selo.
   const si = cols.indexOf(start);
   const isolated = (si > 0 ? start - cols[si - 1] : start - x0) >= 20 * k && end - start <= (maxWidth + 30) * k;
+  // Símbolo colorido (incomum, rara, mítica) colado no texto preto: a cor diz onde
+  // ele começa, melhor que as lacunas (o "Hero" do Hulk fica a 2 px do símbolo).
+  // (usado abaixo, no bloco largo demais, e na sem borda, com o símbolo no tom da barra)
+  const from = Math.round(end - (maxWidth + 15) * k);
+  const chromaAt = (x: number, y: number) => {
+    const i = (y * img.width + x) * 4;
+    const d = img.data;
+    return Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]);
+  };
+  // cor de fundo da barra (as barras douradas já são coloridas: aí não serve), medida
+  // à esquerda da busca, onde só há barra e texto preto ou branco: dentro dela, um
+  // símbolo grande e colorido (o selo laranja do Core Set 2021) era a maioria e
+  // passava por "fundo"
+  // (só os pixels de fundo: as letras pretas ali puxavam a mediana para baixo, e o
+  // brilho dourado da barra entre o texto e o símbolo passava por "cor do símbolo")
+  const ch: number[] = [];
+  const sample = (a: number, b: number) => {
+    for (let y = y0; y < y1; y += 2)
+      for (let x = a; x <= b; x += 3) if (Math.abs(luminance(img.data, (y * img.width + x) * 4) - mean) <= 45) ch.push(chromaAt(x, y));
+  };
+  if (from - x0 >= 20 * k) sample(x0, from);
+  if (ch.length < 20) sample(Math.max(x0, from), end);
+  ch.sort((p, q) => p - q);
+  const lim = Math.max(40, (ch[ch.length >> 1] ?? 0) + 30);
+  // Linha colorida de ponta a ponta, desde o começo da busca, é fundo: a arte que
+  // aparece no alto da barra translúcida de algumas molduras especiais (Orthion, MOM)
+  // dava cor a toda coluna, e o "símbolo" começava no meio do tipo em inglês
+  const lead = Math.round(x0 + 25 * k);
+  const backdrop = (y: number) => {
+    let all = 0;
+    let first = 0;
+    for (let x = x0; x < x1; x++)
+      if (chromaAt(x, y) > lim) {
+        all++;
+        if (x < lead) first++;
+      }
+    return all >= (x1 - x0) * 0.5 && first >= (lead - x0) * 0.5;
+  };
+  // A cor só conta na altura das letras (de 40% a 80% da faixa): a arte que aparece no
+  // alto de uma barra translúcida só em parte dela (o céu azul atrás do "Warrior" do
+  // Mog, FIC) não chega lá, e o "símbolo" começava no meio do tipo em inglês. O
+  // símbolo, centrado na barra, sempre passa por essas linhas.
+  const rowsUsed: number[] = [];
+  const midTop = y0 + (y1 - y0) * 0.4;
+  const midBottom = y1 - (y1 - y0) * 0.2;
+  for (let y = y0; y < y1; y++) if (y >= midTop && y <= midBottom && !backdrop(y)) rowsUsed.push(y);
+  // começo da primeira sequência de três colunas coloridas entre `a` e `b` (-1 sem ela; a
+  // franja colorida da compressão na borda de uma letra branca dá uma coluna só)
+  const colorFrom = (a: number, b: number) => {
+    let run = 0;
+    for (let x = a; x <= b; x++) {
+      let n = 0;
+      for (const y of rowsUsed) if (chromaAt(x, y) > lim) n++;
+      run = n >= Math.max(2, rowsUsed.length * 0.15) ? run + 1 : 0;
+      if (run >= 3) return x - 2;
+    }
+    return -1;
+  };
   // Um símbolo de coleção não passa de ~100 px (o selo do Core Set 2021 tem ~95, o do
   // Warhammer 40.000 tem 77). Se o bloco é mais largo, ele grudou no fim da linha de
   // tipo em inglês (ex.: "Survivor"): corta na maior lacuna perto da direita, para o
@@ -1872,61 +1930,7 @@ export function findSetSymbolLeft(
     if (best > 1)
       for (let i = last; i > 0 && cols[i] >= end - (maxWidth + 15) * k; i--)
         if (cols[i] - cols[i - 1] > 1 && cols[i] - cols[i - 1] >= best - Math.max(1, Math.round(k))) cut = cols[i];
-    // Símbolo colorido (incomum, rara, mítica) colado no texto preto: a cor diz onde
-    // ele começa, melhor que as lacunas (o "Hero" do Hulk fica a 2 px do símbolo).
-    const from = Math.round(end - (maxWidth + 15) * k);
-    const chromaAt = (x: number, y: number) => {
-      const i = (y * img.width + x) * 4;
-      const d = img.data;
-      return Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]);
-    };
-    // cor de fundo da barra (as barras douradas já são coloridas: aí não serve), medida
-    // à esquerda da busca, onde só há barra e texto preto ou branco: dentro dela, um
-    // símbolo grande e colorido (o selo laranja do Core Set 2021) era a maioria e
-    // passava por "fundo"
-    // (só os pixels de fundo: as letras pretas ali puxavam a mediana para baixo, e o
-    // brilho dourado da barra entre o texto e o símbolo passava por "cor do símbolo")
-    const ch: number[] = [];
-    const sample = (a: number, b: number) => {
-      for (let y = y0; y < y1; y += 2)
-        for (let x = a; x <= b; x += 3) if (Math.abs(luminance(img.data, (y * img.width + x) * 4) - mean) <= 45) ch.push(chromaAt(x, y));
-    };
-    if (from - x0 >= 20 * k) sample(x0, from);
-    if (ch.length < 20) sample(Math.max(x0, from), end);
-    ch.sort((p, q) => p - q);
-    const lim = Math.max(40, (ch[ch.length >> 1] ?? 0) + 30);
-    // três colunas coloridas seguidas (a franja colorida da compressão na borda de uma
-    // letra branca dá uma coluna só)
-    // Linha colorida de ponta a ponta, desde o começo da busca, é fundo: a arte que
-    // aparece no alto da barra translúcida de algumas molduras especiais (Orthion, MOM)
-    // dava cor a toda coluna, e o "símbolo" começava no meio do tipo em inglês
-    const lead = Math.round(x0 + 25 * k);
-    const backdrop = (y: number) => {
-      let all = 0;
-      let first = 0;
-      for (let x = x0; x < x1; x++)
-        if (chromaAt(x, y) > lim) {
-          all++;
-          if (x < lead) first++;
-        }
-      return all >= (x1 - x0) * 0.5 && first >= (lead - x0) * 0.5;
-    };
-    // A cor só conta na altura das letras (de 40% a 80% da faixa): a arte que aparece no
-    // alto de uma barra translúcida só em parte dela (o céu azul atrás do "Warrior" do
-    // Mog, FIC) não chega lá, e o "símbolo" começava no meio do tipo em inglês. O
-    // símbolo, centrado na barra, sempre passa por essas linhas.
-    const rowsUsed: number[] = [];
-    const midTop = y0 + (y1 - y0) * 0.4;
-    const midBottom = y1 - (y1 - y0) * 0.2;
-    for (let y = y0; y < y1; y++) if (y >= midTop && y <= midBottom && !backdrop(y)) rowsUsed.push(y);
-    let colored = -1;
-    let run = 0;
-    for (let x = Math.max(x0, from); x <= end && colored < 0; x++) {
-      let n = 0;
-      for (const y of rowsUsed) if (chromaAt(x, y) > lim) n++;
-      run = n >= Math.max(2, rowsUsed.length * 0.15) ? run + 1 : 0;
-      if (run >= 3) colored = x - 2;
-    }
+    const colored = colorFrom(Math.max(x0, from), end);
     if (colored >= 0) {
       // volta até a lacuna logo antes da cor (o contorno preto do símbolo fica junto)
       let c = -1;
@@ -1974,6 +1978,25 @@ export function findSetSymbolLeft(
     if (info) {
       info.colored = colored;
       info.lim = lim;
+    }
+  } else if (borderless && end - start < 20 * k) {
+    // Símbolo colorido no mesmo tom da barra translúcida: a estrela vermelha da Secret Lair
+    // numa barra azul (Orvar, the All-Form, SLD 2867) quase não muda o brilho, não conta como
+    // tinta, e o "símbolo" achado era só a ponta do rabo, 14 px colados no fim da barra: a
+    // estrela ia para o apagamento e saía borrada. Com o "símbolo" estreito demais para ser
+    // um (menos de 20 px), cor de símbolo antes dele, a até `maxWidth` do fim e depois de um
+    // vão de 8 px sem tinta (cor colada nas letras é arte atrás delas), é o começo dele. (Sem
+    // o limite de largura, a arte colorida atrás da barra antes de um símbolo achado certo
+    // passava por símbolo em 4 das 243 artes das rodadas, e o tipo em PT perdia espaço.)
+    const colored = colorFrom(Math.max(x0, from), start - Math.round(4 * k));
+    let prev = x0 - Math.round(8 * k);
+    for (const c of cols) if (c < colored) prev = c;
+    if (colored >= 0 && colored - prev >= 8 * k) {
+      start = Math.max(x0, colored - Math.round(3 * k));
+      if (info) {
+        info.colored = colored;
+        info.lim = lim;
+      }
     }
   }
   return start;

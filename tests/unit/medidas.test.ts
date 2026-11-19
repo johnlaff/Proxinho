@@ -594,6 +594,16 @@ describe("findSetSymbolLeft com a ponta solta do rabo do cometa da Secret Lair",
     for (let x = 659; x < 673; x++) fill(x, 604 + x - 659, x + 1, 609 + x - 659, [200, 170, 90]);
     expect(findSetSymbolLeft(img, 594, 632, 688, 100, undefined, true)).toBe(597);
   });
+
+  it("a estrela vermelha no tom da barra azul não vai para o apagamento (Orvar, the All-Form, SLD 2867)", () => {
+    // barra azul translúcida (luminância 67) e a estrela vermelha (88): ela não passa por
+    // tinta, e o único bloco de tinta era a ponta clara do rabo, 10 px antes do fim da busca
+    const { img, fill } = canvas([40, 70, 120]);
+    for (let x = 400; x < 556; x += 10) fill(x, 600, x + 5, 626, [240, 240, 240]);
+    fill(600, 600, 626, 628, [200, 40, 40]);
+    fill(672, 610, 682, 626, [255, 120, 80]);
+    expect(findSetSymbolLeft(img, 594, 632, 688, 100, undefined, true)).toBe(597);
+  });
 });
 
 describe("findSetSymbolLeft na barra arco-íris do foil", () => {
