@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, arena_symbols, balance_parens, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, mark_text_flavor, print_flavor, pick_printed, printed_faces, printed_has_text, pw_costs, token_face_key, token_key
+from build import ability_word_lines, arena_symbols, balance_parens, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, printed_faces, printed_has_text, pw_costs, token_face_key, token_key
 
 
 class CitesAltName(unittest.TestCase):
@@ -318,6 +318,20 @@ class FlavorDeOutraArte(unittest.TestCase):
         mark_text_flavor(rows, prints, {("klr", "133"): ("",)})
         self.assertTrue(prints[0]["text_flavor"])
         self.assertNotIn("_flavor_ref", rows[0])
+
+    def test_versao_nova_sem_flavor(self):
+        # Itzquinth, Primogênito de Gishath: a versão mais nova do Arena (LCI 331) não tem
+        # flavor; o texto vem dela e o flavor, com a impressão dele, da LCI 230
+        old = {"faces": [{"text_pt": "Ímpeto", "flavor_pt": "Os dinossauros…"}], "print": {"set": "lci", "number": "230"}, "flavor_en": ("Dinosaurs…",)}
+        new = {"faces": [{"text_pt": "Ímpeto.", "flavor_pt": None}], "print": {"set": "lci", "number": "331"}, "flavor_en": ("",)}
+        self.assertTrue(keep_earlier_flavor(new, old))
+        self.assertEqual(new["faces"][0], {"text_pt": "Ímpeto.", "flavor_pt": "Os dinossauros…"})
+        self.assertEqual(new["print"], {"set": "lci", "number": "230"})
+        self.assertEqual(new["flavor_en"], ("Dinosaurs…",))
+        # versão nova com flavor próprio, ou anterior sem flavor: nada muda
+        com = {"faces": [{"flavor_pt": "Outro."}], "print": {"set": "x", "number": "1"}, "flavor_en": ("Other.",)}
+        self.assertFalse(keep_earlier_flavor(com, old))
+        self.assertFalse(keep_earlier_flavor({"faces": [{"flavor_pt": None}], "print": {}, "flavor_en": ("",)}, None))
 
     def test_aspas_e_travessao_de_um_tipo_so(self):
         self.assertEqual(flavor_key("“Run.”\n—Jace"), flavor_key('"Run." — Jace'))

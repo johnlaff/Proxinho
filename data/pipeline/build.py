@@ -179,6 +179,27 @@ def is_intrinsic_mana(type_en: str | None, subtypes_en: str | None, ability_en: 
     return any(BASIC_MANA.get(w) == m.group(1) for w in (subtypes_en or "").split())
 
 
+# cartas do Arena cuja versão mais nova não tem flavor e ficaram com o da anterior
+KEPT_FLAVOR: set[str] = set()
+
+
+def keep_earlier_flavor(entry: dict, prev: dict | None) -> bool:
+    """Versão nova do Arena sem flavor: fica com o flavor (e a impressão dele) da anterior.
+
+    O texto de regras vem sempre da versão mais nova. O flavor é de uma impressão, e só sai
+    nas artes com o mesmo flavor em inglês (`mark_text_flavor`), então a impressão de
+    referência passa a ser a da versão que tem o flavor.
+    """
+    if not prev or len(prev["faces"]) != len(entry["faces"]):
+        return False
+    if any(f["flavor_pt"] for f in entry["faces"]) or not any(f["flavor_pt"] for f in prev["faces"]):
+        return False
+    for f, pf in zip(entry["faces"], prev["faces"]):
+        f["flavor_pt"] = pf["flavor_pt"]
+    entry["print"], entry["flavor_en"] = prev["print"], prev["flavor_en"]
+    return True
+
+
 def load_arena(offline: bool) -> dict[str, dict]:
     """Devolve {nome em inglês: face(s) com texto em PT-BR} a partir do Arena."""
     cards = json.loads(fetch(UNTAPPED + "cards.json", CACHE / "arena_cards.json", offline).read_text())
@@ -250,12 +271,14 @@ def load_arena(offline: bool) -> dict[str, dict]:
         flavor_en = tuple(flavor_key(f.pop("_flavor_en", None) if f["flavor_pt"] else None) for f in faces)
         for f in faces:
             f.pop("_flavor_en", None)
-        result[name_en] = {
-            "faces": faces,
-            "print": {"set": (card.get("set") or "").lower(), "number": str(card.get("collectorNumber") or "")},
-            "flavor_en": flavor_en,
-        }
-    log(f"Arena: {len(result)} cartas com texto PT-BR")
+        where = {"set": (card.get("set") or "").lower(), "number": str(card.get("collectorNumber") or "")}
+        # a versão mais nova pode ser uma variante sem flavor (Itzquinth, LCI 331): o texto vem
+        # dela, e o flavor (com a impressão dele) continua o da versão anterior
+        entry = {"faces": faces, "print": where, "flavor_en": flavor_en}
+        if keep_earlier_flavor(entry, result.get(name_en)):
+            KEPT_FLAVOR.add(name_en)
+        result[name_en] = entry
+    log(f"Arena: {len(result)} cartas com texto PT-BR | flavor da versão anterior: {len(KEPT_FLAVOR)}")
     return result
 
 
