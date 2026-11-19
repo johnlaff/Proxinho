@@ -103,6 +103,21 @@ def arena_symbols(text: str) -> str:
     return re.sub(r"\{([^}]*)\}", repl, text)
 
 
+# Marcas invisíveis de direção e de largura zero (U+200B a U+200F, U+2060, U+FEFF). O
+# Arena tem "\u200e-2: Você pode conjurar…" (Chandra, Acolyte of Flame e Chandra, Flame's
+# Catalyst): com a marca na frente, o parágrafo não começava com o custo, `pw_costs`
+# punha o custo do Oracle de novo e a carta saía com "−2: -2: Você…". Não são letras.
+_INVISIBLE = re.compile("[\u200b-\u200f\u2060\ufeff]")
+
+
+def drop_invisible(text: str | None) -> str | None:
+    """Tira as marcas invisíveis e as linhas que só tinham elas ("…de terreno.\n\u200e")."""
+    if not text or not _INVISIBLE.search(text):
+        return text
+    lines = [_INVISIBLE.sub("", line) for line in text.split("\n") if line.strip() == "" or _INVISIBLE.sub("", line).strip()]
+    return "\n".join(lines)
+
+
 def fix_arena_typos(text: str) -> str:
     """Erros de digitação do arquivo do Arena que não mudam nada do texto oficial: o "+"
     repetido no bônus ("recebe +1/++1", Colorstorm Stallion; "+2/++2" no Delírio de
@@ -175,7 +190,7 @@ def load_arena(offline: bool) -> dict[str, dict]:
         # marcadores internos do Arena ("#NoTranslationNeeded", "#StationLevelInstrinsic_NoTranslation"…)
         if not value or re.fullmatch(r"#\S+", value):
             return None
-        return fix_arena_typos(re.sub(r"</?nobr>", "", value))
+        return fix_arena_typos(drop_invisible(re.sub(r"</?nobr>", "", value)))
 
     by_grp = {c["grpid"]: c for c in cards}
 
@@ -386,6 +401,16 @@ def fix_glued_symbols(text: str | None) -> str | None:
     return _GLUED.sub(lambda m: ("\n" if m.group(2) else " ") + m.group(1) + m.group(2), text)
 
 
+_GLUED_COMMA = re.compile(rf"(?<=[{_LOWER}{_UPPER}]),(?=[{_LOWER}{_UPPER}])")
+
+
+def glue_comma(text: str) -> str:
+    """Vírgula colada na palavra seguinte ("no seu turno,anexe até", Sokka, Swordmaster e
+    Barret, Avalanche Leader; "à frente,o terror", flavor do Disciple of Grace): falta o
+    espaço depois dela. Entre letras só; "1,5" e "{2},{T}" ficam."""
+    return _GLUED_COMMA.sub(", ", text)
+
+
 def fix_spacing(text: str | None) -> str | None:
     """
     Espaço antes de vírgula ou ponto ("Zumbi preta 2/2 .", Juramento de Liliana; "que você
@@ -396,6 +421,7 @@ def fix_spacing(text: str | None) -> str | None:
     if not text:
         return text
     text = re.sub(r",{2,}", ",", text)
+    text = glue_comma(text)
     text = re.sub(r"(?<!\.)\.\.(?!\.)", ".", text)
     # vírgula grudada na palavra seguinte: o espaço vai para depois dela
     text = re.sub(r"(?<=\S) +,(?=[^\s\d,])", ", ", text)
@@ -469,11 +495,12 @@ def fix_breaks(text: str | None, flavor: bool = False) -> str | None:
     """
     if not text:
         return text
+    text = drop_invisible(text)
     run_on = rf"(?<=[{_LOWER}]{{3}})(?=[{_UPPER}])"
     if flavor:
         # só antes da assinatura ("— Mina", "—Os Ensinamentos"): o travessão no meio da
         # frase ("“A Queimadura”—outrora uma região…") fica
-        text = re.sub(rf'(["”]) ?(?=— |—[{_UPPER}])', "\\1\n", text)
+        text = glue_comma(re.sub(rf'(["”]) ?(?=— |—[{_UPPER}])', "\\1\n", text))
         text = re.sub(rf"(?<![^\s\"“(—])([{_LOWER}]{{2}})(?=[{_UPPER}])", "\\1 ", text)
         return re.sub(run_on, " ", text)
     text = re.sub(r"([.)])(?=[{A-ZÀ-Ú•])", "\\1\n", text)

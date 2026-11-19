@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, arena_symbols, balance_parens, cites_alt_name, clean_rules, drop_repeated_words, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, frame_supported, is_intrinsic_mana, pick_printed, printed_faces, printed_has_text, pw_costs, token_face_key, token_key
+from build import ability_word_lines, arena_symbols, balance_parens, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, frame_supported, is_intrinsic_mana, pick_printed, printed_faces, printed_has_text, pw_costs, token_face_key, token_key
 
 
 class CitesAltName(unittest.TestCase):
@@ -94,6 +94,26 @@ class PwCosts(unittest.TestCase):
 
     def test_numero_de_paragrafos_diferente(self) -> None:
         self.assertIsNone(pw_costs(self.ORACLE, "Reforçar {2}\nUse vidência 2."))
+
+
+class DropInvisible(unittest.TestCase):
+    def test_marca_de_direcao_antes_do_custo(self) -> None:
+        # Chandra, Acolyte of Flame: "\u200e-2: Você pode conjurar…" no Arena saía "−2: -2: Você…"
+        arena = "Coloque um marcador.\nCrie duas fichas.\n\u200e-2: Você pode conjurar o card."
+        oracle = "0: Put a counter.\n0: Create two tokens.\n−2: You may cast target card."
+        self.assertEqual(
+            pw_costs(oracle, drop_invisible(arena)),
+            "0: Coloque um marcador.\n0: Crie duas fichas.\n-2: Você pode conjurar o card.",
+        )
+
+    def test_linha_so_com_a_marca_some(self) -> None:
+        # Call Damage Control: o texto acabava numa linha só com a marca
+        self.assertEqual(drop_invisible("Procure um card de terreno.\n\u200e"), "Procure um card de terreno.")
+        self.assertEqual(drop_invisible("\u200e\"Quando injetar o viscus"), "\"Quando injetar o viscus")
+
+    def test_texto_sem_marca_fica_igual(self) -> None:
+        for t in ("Voar\n\nAterragem — Compre um card.", None, ""):
+            self.assertEqual(drop_invisible(t), t)
 
 
 class FixBreaks(unittest.TestCase):
@@ -213,6 +233,13 @@ class FixGluedSymbols(unittest.TestCase):
 
 
 class FixSpacing(unittest.TestCase):
+    def test_virgula_colada_na_palavra_seguinte(self) -> None:
+        # Sokka, Swordmaster (Arena) e o flavor do Disciple of Grace
+        self.assertEqual(clean_rules("No início do combate no seu turno,anexe até um Equipamento"), "No início do combate no seu turno, anexe até um Equipamento")
+        self.assertEqual(fix_breaks("Olhando a paisagem à frente,o terror não passava", flavor=True), "Olhando a paisagem à frente, o terror não passava")
+        for t in ("{2},{T}: Compre um card.", "1,5 ponto", "Voar, vigilância"):
+            self.assertEqual(fix_spacing(t), t)
+
     def test_espaco_antes_do_ponto_e_da_virgula(self) -> None:
         self.assertEqual(fix_spacing("crie uma ficha de criatura Zumbi preta 2/2 ."), "crie uma ficha de criatura Zumbi preta 2/2.")
         self.assertEqual(fix_spacing("Amoque preta 2/2 , sendo X"), "Amoque preta 2/2, sendo X")

@@ -21,6 +21,15 @@
 
 **Atualizar os dados agora:** GitHub → Actions → "Dados diários" → Run workflow.
 
+**Publicar à mão:** sem os segredos acima no GitHub, o "Dados diários" e o deploy do "CI/CD" pulam o passo da Cloudflare (o log avisa) e nada chega à produção. Com `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` no ambiente da máquina, os mesmos passos rodam daqui:
+```bash
+python3 data/pipeline/build.py                      # dados do dia (~5 min); confira que saíram mais de 30 mil cartas
+pnpm exec wrangler d1 migrations apply proxinho --remote
+pnpm exec wrangler d1 execute proxinho --remote --file data/out/cards.sql --yes
+pnpm build && pnpm exec wrangler deploy             # site e API
+curl -s https://proxinho.johnlaff.com/api/health    # dataUpdatedAt de hoje
+```
+
 **Voltar o site para a versão anterior:**
 ```bash
 pnpm exec wrangler deployments list
