@@ -11,7 +11,9 @@
  * ficavam minutos sem prévia. Enquanto esperam, a prévia mostra o rascunho (`draftUrl`: a
  * carta em PT com o preenchimento simples), montado na fila comum, e o andamento
  * (`neuralProgress`). O rascunho vai à frente das prévias comuns, e a carta aberta na gaveta passa
- * na frente das duas filas (`hurry`).
+ * na frente das duas filas (`hurry`): o rascunho dela começa na hora, sem esperar vaga. E a carta
+ * acabada só começa a montar depois do próprio rascunho: as duas montagens disputavam a página, e
+ * no celular o acabamento já rodava a parte 1 com a gaveta ainda em "Montando a prévia…".
  *
  * A prévia acabada também fica guardada no navegador (ver cardStore.ts): numa visita seguinte,
  * com a mesma carta, ela aparece sem montar nada nem baixar a rede neural.
@@ -24,6 +26,7 @@ import type { PrintRecord } from "../engine/types";
 import { flavorApplies, hasPtText, missKey, neuralMissKey, renderKey, selectedPrint, sideCount, type Entry, type Side } from "./model";
 
 const MAX_PARALLEL = 4;
+const noop = () => undefined;
 const cache = new Map<string, Promise<string>>();
 const drafts = new Map<string, Promise<string>>();
 /** Prévias acabadas (as promessas de `cache` já resolvidas): o rascunho delas não precisa. */
@@ -118,12 +121,13 @@ function schedule<T>(lane: Lane, key: string, job: () => Promise<T>, first = fal
         .then(resolve, reject)
         .finally(() => {
           lane.running--;
-          lane.queue.shift()?.run();
+          // (o rascunho da gaveta pode ter passado do limite: só entra outra com vaga)
+          if (lane.running < lane.parallel) lane.queue.shift()?.run();
           wakeIdle();
         });
     };
-    if (lane.running < lane.parallel) run();
-    else if (urgent && (key === urgent || key === `${urgent}:rascunho`)) lane.queue.unshift({ key, run, first: true });
+    if (lane.running < lane.parallel || (urgent && key === `${urgent}:rascunho`)) run();
+    else if (urgent && key === urgent) lane.queue.unshift({ key, run, first: true });
     else if (first) {
       const i = lane.queue.findIndex((j) => !j.first);
       lane.queue.splice(i < 0 ? lane.queue.length : i, 0, { key, run, first });
@@ -135,18 +139,20 @@ function schedule<T>(lane: Lane, key: string, job: () => Promise<T>, first = fal
 let urgent: string | null = null;
 
 /**
- * A carta aberta na gaveta passa na frente das duas filas: a prévia e o rascunho dela. Num deck
- * longo, o rascunho de uma carta do fim da lista esperava as prévias de todas as de antes, e a
- * gaveta ficava em "Montando a prévia…" com o acabamento já na parte 2 de 3.
+ * A carta aberta na gaveta passa na frente das duas filas: o rascunho dela começa na hora, mesmo
+ * com as vagas da fila comum tomadas, e a prévia vai para o começo da fila. Num deck longo, o
+ * rascunho de uma carta do fim da lista esperava as prévias de todas as de antes, e a gaveta
+ * ficava em "Montando a prévia…" com o acabamento já na parte 2 de 3; no celular, esperar as
+ * quatro que já montavam ainda deixava o acabamento chegar antes.
  */
 export function hurry(entry: Entry, side: Side = 0) {
   const key = renderKey(entry, fontsVersion(), side);
   urgent = key;
   for (const lane of Object.values(lanes)) {
-    for (const k of [`${key}:rascunho`, key]) {
-      const i = lane.queue.findIndex((j) => j.key === k);
-      if (i > 0) lane.queue.unshift({ ...lane.queue.splice(i, 1)[0], first: true });
-    }
+    const d = lane.queue.findIndex((j) => j.key === `${key}:rascunho`);
+    if (d >= 0) lane.queue.splice(d, 1)[0].run();
+    const i = lane.queue.findIndex((j) => j.key === key);
+    if (i > 0) lane.queue.unshift({ ...lane.queue.splice(i, 1)[0], first: true });
   }
 }
 
@@ -226,6 +232,10 @@ export function previewUrl(entry: Entry, side: Side = 0): Promise<string> {
         if (neural) prepareLama();
         const job = schedule(neural ? lanes.neural : lanes.common, key, async () => {
           if (neural) setProgress(key, { state: "running", done: 0, total: 0 });
+          // o rascunho sai primeiro: a montagem da acabada disputava a página com ele (o modelo
+          // continua baixando e preparando na worker enquanto isso)
+          const draft = neural ? drafts.get(key) : undefined;
+          if (draft) await draft.then(noop, noop);
           const { canvas, translated, reason } = await renderCard({
             ...input,
             imageVersion: "normal",

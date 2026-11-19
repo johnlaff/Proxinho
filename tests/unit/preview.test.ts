@@ -106,17 +106,50 @@ describe("fila das prévias", () => {
     const draft = preview.draftUrl(sb);
     expect(preview.draftUrl(entry("comum"))).toBeNull();
     await flush();
-    expect(pending.map((p) => [p.id, p.neural])).toEqual([
-      ["sb", undefined],
-      ["sb", false],
-    ]);
-    pending[1].resolve();
-    expect(await draft).toBe("blob:2");
-    // com a prévia acabada, o rascunho não volta
+    // a acabada só começa a montar depois do rascunho (as duas disputavam a página)
+    expect(pending.map((p) => [p.id, p.neural])).toEqual([["sb", false]]);
+    expect(preview.neuralProgress("p:sb:pt:f0")).toEqual({ state: "running", done: 0, total: 0 });
     pending[0].resolve();
+    expect(await draft).toBe("blob:2");
+    await flush();
+    expect(pending.map((p) => [p.id, p.neural])).toEqual([
+      ["sb", false],
+      ["sb", undefined],
+    ]);
+    // com a prévia acabada, o rascunho não volta
+    pending[1].resolve();
     await flush();
     await flush();
     expect(preview.draftUrl(sb)).toBeNull();
+  });
+
+  it("o rascunho da carta aberta na gaveta começa na hora, mesmo com as quatro vagas tomadas", async () => {
+    const { preview, pending, flush } = await setup();
+    // seis comuns: quatro montando e duas esperando
+    for (let i = 0; i < 6; i++) void preview.previewUrl(entry(`c${i}`));
+    const sb = entry("sb", "borderless");
+    void preview.previewUrl(sb);
+    const draft = preview.draftUrl(sb);
+    await flush();
+    preview.hurry(sb);
+    await flush();
+    // no celular, esperar as quatro que já montavam deixava o acabamento chegar antes
+    expect(pending.map((p) => `${p.id}${p.neural === false ? ":rascunho" : ""}`)).toEqual(["c0", "c1", "c2", "c3", "sb:rascunho"]);
+    pending[4].resolve();
+    expect(await draft).toBe("blob:2");
+    // e o limite volta: quando uma comum acaba, só entra outra porque há vaga
+    pending[0].resolve();
+    await flush();
+    await flush();
+    expect(pending.map((p) => `${p.id}${p.neural === false ? ":rascunho" : ""}`)).toEqual([
+      "c0",
+      "c1",
+      "c2",
+      "c3",
+      "sb:rascunho",
+      "sb",
+      "c4",
+    ]);
   });
 
   it("num deck longo, o rascunho passa na frente das prévias comuns que esperam", async () => {
