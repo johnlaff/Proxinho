@@ -75,7 +75,7 @@ Nas artes sem borda as barras e a caixa inteiras são translúcidas, e a arte at
 | MI-GAN | Mais leve que o LaMa, mas pior em textura repetida |
 | LaMa na resolução da imagem, com máscara só das letras | Reaproveita o modelo que já está no site. A rede trabalha em 512 px: reduzir a caixa inteira para isso apagava o desenho fino da arte; em quadros na resolução da imagem, um depois do outro, ela continua a textura. A retícula grossa de impressão (2 a 3 px) ela não refaz: essas cartas saem na original |
 
-Escolha: LaMa em quadros na resolução da imagem, com a máscara só das letras brancas e o grão da vizinhança de volta depois (ADR 0012).
+Escolha: LaMa em quadros na resolução da imagem, com a máscara só das letras brancas e o grão da vizinhança de volta depois (ADR 0012). Depois que a retícula grossa passou a sair na original, a caixa voltou a um quadro só, reduzido: igual na regressão das 260 artes e 30% mais rápido (ADR 0015).
 
 ### Rede neural no navegador do celular (19/11/2026)
 
@@ -128,7 +128,7 @@ Com tudo funcionando, o João perguntou quanto leva um deck inteiro, se uma cart
 | MI-GAN 512 (ICCV 2023), no mesmo navegador | Preparo 0,6 s e 0,5 s por quadro (2,1 s com uma thread): 11 vezes mais rápido. Mas nos 18 quadros deixou a sombra das letras apagadas (Konia), um bloco branco no meio da arte (Roaming Throne) e riscos vermelhos inventados dentro da barra do nome (Ulamog). Reprovado para o acabamento |
 | LaMa pré-otimizado (medidas fixas de 512 px e as constantes da transformada de Fourier calculadas antes, no ONNX Runtime em Python, com a quantização preservada) | Preparo de 10,4 s para 1,8 s, quadro no mesmo tempo, saída igual (no máximo 1 tom em 255 de diferença na CPU, arredondamento; idêntica no runtime WebGPU). O arquivo passa de 36,9 para 38,2 MB |
 | Só fixar o lote em 1 na sessão (`freeDimensionOverrides`), no navegador | Preparo de 10,4 s para 3,2 s, saída idêntica, sem ferramenta nova no build. É o que entrou (ADR 0013, item 9); o modelo pré-otimizado no build daria 1,8 s, mas pede o `onnxruntime-node` (300 MB) |
-| Caixa num quadro só, reduzida (em vez de dois na resolução da imagem) | Carta de 19 a 20 s para 13 a 14 s na CPU. Visualmente igual em 5 das 6; no Roaming Throne sobrou um risco escuro de uns 3 px entre duas linhas. Precisa da regressão inteira antes de valer |
+| Caixa num quadro só, reduzida (em vez de dois na resolução da imagem) | Carta de 19 a 20 s para 13 a 14 s na CPU. Visualmente igual em 5 das 6; no Roaming Throne sobrou um risco escuro de uns 3 px entre duas linhas. Na regressão das 260 artes sem borda: 47 idênticas, nenhum defeito visível, só pingos de 1 a 5 px que a rede neural inventa nos dois modos (7 a mais num, 6 no outro). É o que entrou (ADR 0015) |
 | XNNPACK no ONNX Runtime Web | Não existe no pacote web |
 
 O que o estado da arte diz:

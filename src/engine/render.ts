@@ -49,7 +49,7 @@ import {
   textPolarity,
   typeBarEdges,
 } from "./erase";
-import { frameCount, lamaInpaint } from "./lama";
+import { lamaInpaint } from "./lama";
 import {
   abilityKinds,
   alignOnIcon,
@@ -246,8 +246,10 @@ type Neural = { enabled: boolean; tick: (frames?: number) => void };
 /**
  * Apaga as letras de uma caixa translúcida (a arte aparece por trás) com a rede neural (ver
  * lama.ts): planeswalkers e moldura sem borda. `area` é o retângulo preenchido (escala da
- * imagem, inteiro); `protect` fica como está e escondido do modelo. `native` roda o modelo
- * na resolução da imagem (ver `lamaInpaint`); `grow` e `gap` são a folga da máscara e os
+ * imagem, inteiro); `protect` fica como está e escondido do modelo. Cada caixa é um quadro do
+ * modelo (ver `lamaInpaint`). `art` diz que há arte atrás da caixa (sem borda): a cor que o
+ * modelo inventa volta à da vizinhança e o grão da arte volta ao remendo (`tameInvented`,
+ * `regrain`). `grow` e `gap` são a folga da máscara e os
  * vãos entre pedaços dela que entram no buraco (ver `combineMasks`). A prévia e o PDF desenham a mesma arte: a
  * caixa limpa fica guardada por `key` para não rodar o modelo de novo (e, se as duas pedem ao
  * mesmo tempo, a segunda espera a primeira). Sem o modelo, volta
@@ -262,13 +264,7 @@ async function lamaBox(
   protect: Rect[],
   polarity: "dark" | "light",
   key: string,
-  {
-    native = false,
-    grow,
-    gap,
-    simple = true,
-    neural,
-  }: { native?: boolean; grow?: number; gap?: number; simple?: boolean; neural?: Neural } = {},
+  { art = false, grow, gap, simple = true, neural }: { art?: boolean; grow?: number; gap?: number; simple?: boolean; neural?: Neural } = {},
 ): Promise<boolean> {
   const fx = data.width / BASE_W;
   const quick = () => {
@@ -278,13 +274,12 @@ async function lamaBox(
     quick();
     return true;
   }
-  const frames = frameCount(area, data.width, data.height, native);
   await cleaning.get(key);
   const cached = cleanBoxes.get(key);
   if (cached && cached.width === area.x1 - area.x0 && cached.height === area.y1 - area.y0) {
     for (let y = 0; y < cached.height; y++)
       data.data.set(cached.data.subarray(y * cached.width * 4, (y + 1) * cached.width * 4), ((area.y0 + y) * data.width + area.x0) * 4);
-    neural?.tick(frames);
+    neural?.tick();
     return true;
   }
   let release = () => {};
@@ -294,16 +289,16 @@ async function lamaBox(
     // sem fios da imagem original entre dois pedaços do buraco
     const hole = combineMasks(data, masks, grow ?? Math.round(fx * 3) + 1, gap ?? Math.round(fx * 4));
     for (const r of protect.map(roundRect)) for (let y = r.y0; y < r.y1; y++) hole.fill(0, y * data.width + r.x0, y * data.width + r.x1);
-    if (!(await lamaInpaint(data, area, hole, protect.map(roundRect), native, () => neural?.tick()))) {
+    if (!(await lamaInpaint(data, area, hole, protect.map(roundRect), () => neural?.tick()))) {
       if (!simple) return false;
       quick();
       return true;
     }
     // na arte calma atrás da caixa sem borda o modelo às vezes inventa cor que não há em volta
-    if (native) tameInvented(data, area, hole, protect.map(roundRect));
+    if (art) tameInvented(data, area, hole, protect.map(roundRect));
     // o modelo às vezes inventa um pingo de tinta no meio do papel liso
     dropSpecks(data, area, hole, polarity);
-    if (native) regrain(data, area, hole);
+    if (art) regrain(data, area, hole);
     const box = new ImageData(area.x1 - area.x0, area.y1 - area.y0);
     for (let y = 0; y < box.height; y++)
       box.data.set(
@@ -405,7 +400,7 @@ async function renderPlaneswalker(p: {
   // abaixo da medida padrão, só o pé das letras de cima (não o canto da moldura)
   keepAttachedBelow(masks[masks.length - 1], PW.area.bottom * fy);
   const area = roundRect(toImg({ x0: PW.staticText.erase, y0: rows[0].y0, x1: PW.eraseRight, y1: lastErase.y1 }));
-  p.plan(frameCount(area, data.width, data.height));
+  p.plan(1);
   await lamaBox(data, masks, area, protect, boxPolarity, `${print.id}:${data.width}:${paragraphs.length}`, { neural: p.neural });
   const inks = [...barInks, ...masks.map((m) => m.polarity)];
   p.sctx.putImageData(data, 0, 0);
@@ -1092,7 +1087,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // deles não vazar. As barras do nome e do tipo também são translúcidas: o preenchimento
   // por linha das barras opacas achatava a arte de trás num borrão liso (a asa atrás do tipo
   // do Lord of the Pit, SLD 1857; a placa atrás do "Sorcery" do Temporal Trespass, SLD
-  // 2190). As duas barras vão num quadro só, reduzido; a caixa, na resolução da imagem.
+  // 2190). As duas barras vão num quadro do modelo, a aba do crossover noutro e a caixa
+  // noutro, cada um reduzido aos 512 px do modelo (a caixa já foi em dois na resolução da
+  // imagem; num só ficou igual e 30% mais rápida, ADR 0015).
   // (com nome de crossover, o nome do alto fica e a aba vai à parte, logo abaixo)
   const bars = (subtitle ? [layout.erase[1].rect] : [layout.erase[0].rect, layout.erase[1].rect]).map((r) => roundRect(toImg(r)));
   const barArea = {
@@ -1104,11 +1101,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const subtitleRect = subtitle ? roundRect(toImg(subtitle)) : null;
   if (frameBox) {
     // o total de quadros da carta, antes do primeiro: a prévia mostra "parte X de Y"
-    plan(
-      frameCount(barArea, data.width, data.height) +
-        (subtitleRect ? frameCount(subtitleRect, data.width, data.height, true) : 0) +
-        (measuredBox && !keepBox ? frameCount(measuredBox, data.width, data.height, true) : 0),
-    );
+    plan(1 + (subtitleRect ? 1 : 0) + (measuredBox && !keepBox ? 1 : 0));
     const guard = [...opaque, ...capGuard];
     const barMasks = bars.map((rect) => ({ rect, mask: whiteTextMask(data, rect, guard), polarity: "light" as const }));
     const clean = await lamaBox(data, barMasks, barArea, guard, "light", `${print.id}:${data.width}:${side}:barras`, {
@@ -1119,7 +1112,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     });
     if (!clean) return original("neural");
   }
-  // A aba do nome de crossover vai à rede neural sozinha, na resolução da imagem e com o grão
+  // A aba do nome de crossover vai à rede neural sozinha, num recorte justo e com o grão
   // de volta (sobre ela também aparece a arte: Awesome Android da Marvel, MSC; a retícula da
   // aba do Yojimbo, SLD 7004, num quadro reduzido junto com a barra de tipo, saía num
   // remendo liso e mais claro). Os aros de cima e de baixo da aba ficam escondidos do modelo.
@@ -1137,7 +1130,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       guard,
       "light",
       `${print.id}:${data.width}:${side}:aba`,
-      { native: true, grow: Math.round(fx * 2), gap: 0, simple: false, neural },
+      { art: true, grow: Math.round(fx * 2), gap: 0, simple: false, neural },
     );
     if (!clean) return original("neural");
   }
@@ -1155,7 +1148,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     // fechados, cada linha virava uma faixa inteira para inventar, e na gravura do Shivan
     // Dragon da Secret Lair as faixas saíam borradas)
     const clean = await lamaBox(data, masks, measuredBox, opaque, "light", `${print.id}:${data.width}:${side}`, {
-      native: true,
+      art: true,
       grow: Math.round(fx * 2),
       gap: 0,
       simple: false,

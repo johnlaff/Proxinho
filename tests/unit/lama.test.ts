@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { combineMasks, dropSpecks, type RegionMask } from "../../src/engine/erase";
-import { cropAround, lamaInpaint, nativeTiles } from "../../src/engine/lama";
+import { cropAround, lamaInpaint } from "../../src/engine/lama";
 
 describe("cropAround", () => {
   it("cobre a caixa de texto do planeswalker com margem, num quadrado dentro da imagem", () => {
@@ -18,32 +18,6 @@ describe("cropAround", () => {
     expect(cropAround({ x0: 0, y0: 0, x1: 745, y1: 900 }, 745, 1040, 50).size).toBe(745);
     // imagem das prévias (488 px de largura): o recorte cabe nela e é ampliado
     expect(cropAround({ x0: 63, y0: 384, x1: 450, y1: 618 }, 488, 680, 15)).toEqual({ x: 0, y: 192, size: 488 });
-  });
-});
-
-describe("nativeTiles", () => {
-  it("cobre a caixa sem borda com quadros de 512 px, sem sobra e com contexto em volta", () => {
-    // caixa de texto da moldura sem borda no PNG do Scryfall
-    const area = { x0: 57, y0: 648, x1: 684, y1: 952 };
-    const tiles = nativeTiles(area, 745, 1040, 32);
-    expect(tiles).toHaveLength(2);
-    let covered = 0;
-    for (const { crop, fill } of tiles) {
-      expect(crop.size).toBe(512);
-      expect(crop.x).toBeGreaterThanOrEqual(0);
-      expect(crop.y).toBeGreaterThanOrEqual(0);
-      expect(crop.x + crop.size).toBeLessThanOrEqual(745);
-      expect(crop.y + crop.size).toBeLessThanOrEqual(1040);
-      // o pedaço preenchido fica dentro do quadro, com 32 px de contexto (salvo na beira da imagem)
-      expect(fill.x0 - crop.x >= 32 || crop.x === 0).toBe(true);
-      expect(crop.x + crop.size - fill.x1 >= 32 || crop.x + crop.size === 745).toBe(true);
-      expect(fill.y0 - crop.y).toBeGreaterThanOrEqual(32);
-      expect(crop.y + crop.size - fill.y1).toBeGreaterThanOrEqual(32);
-      covered += (fill.x1 - fill.x0) * (fill.y1 - fill.y0);
-    }
-    // os pedaços se seguem, sem buraco nem sobreposição
-    expect(tiles[0].fill.x1).toBe(tiles[1].fill.x0);
-    expect(covered).toBe((area.x1 - area.x0) * (area.y1 - area.y0));
   });
 });
 
@@ -145,37 +119,38 @@ describe("lamaInpaint", () => {
     expect(img.data[(390 * W + 430) * 4]).toBe(128);
   });
 
-  it("na resolução da própria imagem, cada quadro vê o que o anterior preencheu (Shivan Dragon, SLD)", async () => {
-    // o modelo de mentira devolve 100 no primeiro quadro e 150 no segundo
+  it("a caixa sem borda inteira vai num quadro só, reduzida aos 512 px do modelo (ADR 0015)", async () => {
+    // o modelo de mentira devolve 100 em cada quadro e conta quantos recebeu
     const seen: { image: Float32Array; mask: Float32Array }[] = [];
     class FakeWorker {
       onmessage: ((ev: { data: unknown }) => void) | null = null;
       onerror: (() => void) | null = null;
       postMessage(msg: { id: number; image: Float32Array; mask: Float32Array }) {
         seen.push({ image: msg.image, mask: msg.mask });
-        const output = new Float32Array(3 * 512 * 512).fill(seen.length === 1 ? 100 : 150);
+        const output = new Float32Array(3 * 512 * 512).fill(100);
         queueMicrotask(() => this.onmessage?.({ data: { id: msg.id, output } }));
       }
     }
     vi.stubGlobal("Worker", FakeWorker);
     vi.resetModules();
-    const { lamaInpaint: fresh, nativeTiles: tilesOf } = await import("../../src/engine/lama");
+    const { lamaInpaint: fresh } = await import("../../src/engine/lama");
     const W = 745;
     const H = 1040;
     const img = { width: W, height: H, data: new Uint8ClampedArray(W * H * 4).fill(40), colorSpace: "srgb" } as ImageData;
+    // caixa de texto da moldura sem borda no PNG do Scryfall: em dois quadros de 512 px na
+    // resolução da imagem, a carta levava 19 a 20 s na CPU; num só, 13 a 14 s
     const area = { x0: 57, y0: 648, x1: 684, y1: 952 };
     const mask = new Uint8Array(W * H);
     for (let y = area.y0; y < area.y1; y++) mask.fill(1, y * W + area.x0, y * W + area.x1);
-    expect(await fresh(img, area, mask, [], true)).toBe(true);
-    expect(seen).toHaveLength(2);
-    const [first, second] = tilesOf(area, W, H, Math.round(W * 0.043));
-    // no segundo quadro, o pedaço do primeiro já é imagem (100), não buraco
-    const k = (area.y0 + 100 - second.crop.y) * 512 + (first.fill.x1 - 10 - second.crop.x);
-    expect(seen[1].mask[k]).toBe(0);
-    expect(seen[1].image[k]).toBeCloseTo(100 / 255, 5);
-    // e sem redução: um pixel do quadro é um pixel da imagem
-    expect(img.data[((area.y0 + 100) * W + first.fill.x1 - 1) * 4]).toBe(100);
-    expect(img.data[((area.y0 + 100) * W + first.fill.x1) * 4]).toBe(150);
+    let frames = 0;
+    expect(await fresh(img, area, mask, [], () => frames++)).toBe(true);
+    expect(seen).toHaveLength(1);
+    expect(frames).toBe(1);
+    // o quadro cobre a caixa inteira: as duas pontas recebem a saída do modelo
+    expect(img.data[((area.y0 + 1) * W + area.x0 + 1) * 4]).toBe(100);
+    expect(img.data[((area.y1 - 2) * W + area.x1 - 2) * 4]).toBe(100);
+    // e fora da caixa nada muda
+    expect(img.data[((area.y0 - 5) * W + area.x0) * 4]).toBe(40);
     // a máscara de quem chamou não muda
     expect(mask[(area.y0 + 100) * W + area.x0]).toBe(1);
   });

@@ -368,66 +368,18 @@ async function runFrame(img: ImageData, crop: Crop, mask: Uint8Array, hide: Rect
 }
 
 /**
- * Quadros de 512 px na resolução da própria imagem que cobrem `area`, da esquerda para a
- * direita e de cima para baixo: cada um preenche um pedaço (`fill`) e fica com pelo menos
- * `margin` px de contexto de cada lado dele, salvo na beira da imagem.
- */
-export function nativeTiles(area: Rect, width: number, height: number, margin: number): { crop: Crop; fill: Rect }[] {
-  const size = Math.min(SIZE, width, height);
-  const room = size - 2 * margin;
-  const nx = Math.max(1, Math.ceil((area.x1 - area.x0) / room));
-  const ny = Math.max(1, Math.ceil((area.y1 - area.y0) / room));
-  const out: { crop: Crop; fill: Rect }[] = [];
-  const cut = (a: number, b: number, n: number, i: number) => Math.round(a + ((b - a) * i) / n);
-  const clampTo = (v: number, max: number) => Math.min(Math.max(0, Math.round(v)), max - size);
-  for (let j = 0; j < ny; j++)
-    for (let i = 0; i < nx; i++) {
-      const [x0, x1] = [cut(area.x0, area.x1, nx, i), cut(area.x0, area.x1, nx, i + 1)];
-      const [y0, y1] = [cut(area.y0, area.y1, ny, j), cut(area.y0, area.y1, ny, j + 1)];
-      const crop = { x: clampTo((x0 + x1) / 2 - size / 2, width), y: clampTo((y0 + y1) / 2 - size / 2, height), size };
-      out.push({ crop, fill: { x0, y0, x1, y1 } });
-    }
-  return out;
-}
-
-/**
  * Preenche, dentro de `area`, os pixels marcados em `mask` (máscara da imagem
  * inteira). Devolve `false` se o modelo não estiver disponível; nesse caso a
  * imagem fica intacta e quem chama usa o preenchimento simples.
  *
- * Com `native`, o modelo roda na resolução da própria imagem, em quadros de 512 px que se
- * seguem (cada um vê o que o anterior já preencheu), em vez de um quadro só reduzido.
- * Reduzida, a arte fina atrás da caixa sem borda (a gravura e a retícula da impressão do
- * Shivan Dragon da Secret Lair) perdia o desenho e o remendo saía em manchas borradas.
+ * Um quadro só, o recorte em volta de `area` reduzido aos 512 px do modelo, também na caixa
+ * sem borda (ADR 0015). Ela já foi em dois quadros na resolução da imagem, por causa da
+ * gravura do Shivan Dragon da Secret Lair, que hoje sai na original (`screenNoise`): nas 260
+ * artes sem borda da regressão o quadro só saiu igual, e a carta, 30% mais rápida.
  */
-export async function lamaInpaint(
-  img: ImageData,
-  area: Rect,
-  mask: Uint8Array,
-  hide: Rect[] = [],
-  native = false,
-  onFrame?: () => void,
-): Promise<boolean> {
-  const W = img.width;
-  const single = cropAround(area, W, img.height, Math.round(W * 0.03));
-  if (!native || single.size <= SIZE) {
-    const ok = await runFrame(img, single, mask, hide, area);
-    if (ok) onFrame?.();
-    return ok;
-  }
-  // a máscara muda a cada quadro: o que um já preencheu é contexto para o seguinte
-  const work = Uint8Array.from(mask);
-  for (const { crop, fill } of nativeTiles(area, W, img.height, Math.round(W * 0.043))) {
-    if (!(await runFrame(img, crop, work, hide, fill))) return false;
-    onFrame?.();
-    for (let y = fill.y0; y < fill.y1; y++) work.fill(0, y * W + fill.x0, y * W + fill.x1);
-  }
-  return true;
-}
-
-/** Quantos quadros do modelo `lamaInpaint` roda para `area` (a prévia mostra "parte X de Y"). */
-export function frameCount(area: Rect, width: number, height: number, native = false): number {
-  const single = cropAround(area, width, height, Math.round(width * 0.03));
-  if (!native || single.size <= SIZE) return 1;
-  return nativeTiles(area, width, height, Math.round(width * 0.043)).length;
+export async function lamaInpaint(img: ImageData, area: Rect, mask: Uint8Array, hide: Rect[] = [], onFrame?: () => void): Promise<boolean> {
+  const crop = cropAround(area, img.width, img.height, Math.round(img.width * 0.03));
+  const ok = await runFrame(img, crop, mask, hide, area);
+  if (ok) onFrame?.();
+  return ok;
 }
