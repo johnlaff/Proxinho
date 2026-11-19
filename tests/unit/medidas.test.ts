@@ -580,6 +580,20 @@ describe("findSetSymbolLeft com a ponta solta do rabo do cometa da Secret Lair",
     fill(672, 612, 673, 616, [200, 170, 90]);
     expect(findSetSymbolLeft(img, 594, 632, 688)).toBe(597);
   });
+
+  it("a descida do fim do rabo, larga e depois de 27 px de rabo fino, não vira o símbolo (Notion Thief, SLD 2482)", () => {
+    // barra escura da sem borda; a estrela (597 a 625) com o começo grosso do rabo até 632, o
+    // meio do rabo quase na horizontal (duas linhas por coluna: não conta como tinta) e a
+    // descida do fim, de 659 a 672, com cinco linhas por coluna. Com esse pedaço de 14 px como
+    // "símbolo", a estrela inteira era apagada
+    const { img, fill } = canvas([32, 30, 34]);
+    for (let x = 80; x < 170; x += 10) fill(x, 600, x + 5, 626, [240, 240, 240]);
+    fill(597, 600, 626, 628, [200, 170, 90]);
+    fill(626, 602, 633, 606, [200, 170, 90]);
+    fill(633, 603, 659, 605, [200, 170, 90]);
+    for (let x = 659; x < 673; x++) fill(x, 604 + x - 659, x + 1, 609 + x - 659, [200, 170, 90]);
+    expect(findSetSymbolLeft(img, 594, 632, 688, 100, undefined, true)).toBe(597);
+  });
 });
 
 describe("findSetSymbolLeft na barra arco-íris do foil", () => {

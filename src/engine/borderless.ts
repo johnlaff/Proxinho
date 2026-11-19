@@ -8,7 +8,7 @@
  * As medidas estão na escala-base (745 × 1040), conferidas em amostras de SLD, FDN, LTR,
  * HOB/HOC, MSH, SPG, FIN, TLA e TLE.
  */
-import { boxMean, morph } from "./erase";
+import { boxMean, morph, ptBoxLeft, ptBoxTop } from "./erase";
 import { BASE_H, BASE_W, type Rect } from "./geometry";
 
 const luminance = (d: Uint8ClampedArray, i: number) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
@@ -460,6 +460,35 @@ export function boxDividers(img: ImageData, rect: Rect): number[] {
     i = j + 1;
   }
   return out;
+}
+
+/**
+ * Caixa de P/R da moldura sem borda (escala-base): o topo e o lado esquerdo, para a proteção
+ * (`ptProtect`). A caixa tem o mesmo desenho em todas as artes sem borda (lado esquerdo em
+ * x ≈ 579 a 582 e topo em y ≈ 923 a 928, conferidos em ~120 criaturas e veículos), mas as
+ * medidas das molduras opacas comparam com o papel de cima da caixa de texto, que aqui é a
+ * arte: com arte clara no alto e escura no pé, o lado esquerdo saía no começo da busca (545),
+ * a proteção começava em 564 e o ponto final da última linha, colado na caixa, ficava em
+ * inglês (Shigeki, Jukai Visionary, SLD 2843). O lado é medido contra a arte das mesmas
+ * linhas, logo à esquerda (mediana de três linhas abaixo do topo, sem as que param antes de
+ * 566); fora de 572 a 590, ou sem medida, vale o desenho (580). O topo medido só vale entre
+ * 921 e 930; fora disso, 924.
+ */
+export function borderlessPtBox(img: ImageData): { top: number; left: number } {
+  const fx = img.width / BASE_W;
+  const fy = img.height / BASE_H;
+  const measured = ptBoxTop(img, 610 * fx, 670 * fx, 905 * fy, 950 * fy, 890 * fy);
+  const top = measured === null ? 924 : Math.min(930, Math.max(921, measured / fy));
+  const found: number[] = [];
+  for (const dy of [10, 14, 18]) {
+    const y = Math.round((top + dy) * fy);
+    const left = ptBoxLeft(img, y, 545 * fx, 610 * fx, y + Math.round(6 * fy));
+    // (perto do começo da busca é letra ou arte, não a caixa)
+    if (left !== null && left / fx >= 566) found.push(left / fx);
+  }
+  found.sort((a, b) => a - b);
+  const left = found.length ? found[found.length >> 1] : null;
+  return { top, left: left !== null && left >= 572 && left <= 590 ? left : 580 };
 }
 
 /**

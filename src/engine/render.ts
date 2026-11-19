@@ -10,6 +10,7 @@
 import {
   SUBTITLE,
   borderlessBox,
+  borderlessPtBox,
   borderlessStamp,
   boxDividers,
   letterBandCenter,
@@ -931,7 +932,12 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const ptSource = bands && lifted ? lifted : data;
   // a proteção do P/R começa logo acima da caixa medida: com a medida fixa, o pé das
   // letras da última linha (ou um traço do flavor) ficava de fora do apagamento
-  if (hasPt && layout.protect[0]) {
+  // (na sem borda o "papel" é a arte: a caixa é medida contra a arte das mesmas linhas, com o
+  // desenho da moldura de reserva; ver borderlessPtBox)
+  if (hasPt && layout.protect[0] && frameBox) {
+    const pt = borderlessPtBox(ptSource);
+    layout.protect.splice(0, 1, ...ptProtect(pt.top, pt.left));
+  } else if (hasPt && layout.protect[0]) {
     const top = ptBoxTop(ptSource, 610 * fx, 670 * fx, 905 * fy, 950 * fy, 890 * fy);
     if (top !== null) {
       const left = ptBoxLeft(ptSource, top + 22 * fy, 545 * fx, 610 * fx, 890 * fy);

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   SUBTITLE,
   borderlessBox,
+  borderlessPtBox,
   borderlessStamp,
   boxDividers,
   letterBandCenter,
@@ -12,6 +13,7 @@ import {
   whiteTextMask,
 } from "../../src/engine/borderless";
 import { regrain, tameInvented } from "../../src/engine/erase";
+import { ptProtect } from "../../src/engine/geometry";
 import { findCardStamp } from "../../src/engine/token";
 
 const W = 745;
@@ -555,5 +557,32 @@ describe("findCardStamp", () => {
     expect(stamp!.x1).toBeGreaterThanOrEqual(400);
     // sem o pé da caixa, o selo não é achado (a caixa é escura como a borda)
     expect(findCardStamp(img)).toBeNull();
+  });
+});
+
+describe("borderlessPtBox", () => {
+  it("o ponto final colado na caixa de P/R fica fora da proteção (Shigeki, Jukai Visionary, SLD 2843)", () => {
+    // arte clara (tons de bege) no alto da caixa de texto e quase preta no pé; a caixa de P/R
+    // verde de 580 a 700, de 924 ao pé, e o ponto final da última linha (569 a 572, 929 a 932)
+    const { img, fill } = canvas([18, 16, 14]);
+    fill(60, 700, 690, 910, (x, y, c) => 120 - c * 10 + Math.round(6 * hash(x, y, c)));
+    fill(580, 924, 700, 958, [40, 110, 70]);
+    fill(569, 929, 573, 933, [245, 245, 245]);
+    const pt = borderlessPtBox(img);
+    expect(pt.left).toBeGreaterThanOrEqual(578);
+    expect(pt.left).toBeLessThanOrEqual(582);
+    const inside = (x: number, y: number) => ptProtect(pt.top, pt.left).some((r) => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
+    for (const [x, y] of [
+      [569, 929],
+      [572, 932],
+    ])
+      expect(inside(x, y)).toBe(false);
+    // a caixa continua protegida
+    expect(inside(590, 940)).toBe(true);
+  });
+
+  it("sem medida (arte igual à caixa), vale o desenho da moldura", () => {
+    const { img } = canvas([40, 110, 70]);
+    expect(borderlessPtBox(img)).toEqual({ top: 924, left: 580 });
   });
 });

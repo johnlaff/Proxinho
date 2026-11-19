@@ -1792,9 +1792,15 @@ export function findSetSymbolLeft(
     while (i > 0 && cols[i] - cols[i - 1] <= Math.max(1, Math.round(3 * kk))) i--;
     const gap = i > 0 ? cols[i] - cols[i - 1] : 0;
     const b = i > 0 ? blockStart(i - 1) : 0;
+    // Na barra escura sem borda o meio do rabo, quase na horizontal, cruza só uma ou duas
+    // linhas por coluna e não conta como tinta: a descida do fim do rabo sobrava como um
+    // bloco de 14 px depois de 27 px de lacuna, passava por símbolo e a estrela era apagada
+    // (Notion Thief, SLD 2482). Na sem borda o pedaço do fim vai até 20 px, com o bloco de
+    // antes solto (20 px vazios antes dele: não é o fim do tipo) e o símbolo inteiro cabendo.
+    const wideTip = borderless && cols[last] - cols[i] < Math.round(20 * kk) && loose(b) && cols[last] - cols[b] <= maxWidth * k;
     if (
       i > 0 &&
-      cols[last] - cols[i] < Math.round(4 * kk) &&
+      (cols[last] - cols[i] < Math.round(4 * kk) || wideTip) &&
       gap > Math.max(3, 8 * k) &&
       gap <= Math.round(32 * kk) &&
       cols[i - 1] - cols[b] >= 10 * k &&
