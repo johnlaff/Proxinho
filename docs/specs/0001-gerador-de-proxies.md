@@ -28,7 +28,7 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 - [x] Cada carta mostra coleção e número e, quando não sai reescrita, uma etiqueta em texto.
 - [x] Um resumo conta quantas saem reescritas, com imagem oficial em PT ou em inglês (e por quê).
 - [x] Enquanto a rede neural prepara uma carta, a prévia diz a etapa (baixando, com a porcentagem; preparando; apagando o inglês). Se ela travar ou falhar no navegador, a carta não fica presa: sai do jeito simples ou na original, e a gaveta diz por quê (desde 19/11/2026).
-- [x] A carta que espera a rede neural aparece em português em poucos segundos (rascunho) e troca sozinha pela acabada; a prévia diz a parte e o tempo que falta ("Acabamento: parte 2 de 3, cerca de 35 s"), as outras cartas não esperam por ela, a carta aberta na gaveta passa na frente e o PDF diz qual carta está no acabamento. Quando a rede neural não roda, a etiqueta diz isso, e não que a moldura não é reescrita (ADR 0013, 19/11/2026).
+- [x] A carta que espera a rede neural aparece em português em poucos segundos (rascunho) e troca sozinha pela acabada; a prévia diz a parte e o tempo que falta ("Acabamento: parte 2 de 3, cerca de 35 s"), as outras cartas não esperam por ela, a carta aberta na gaveta passa na frente e o PDF diz qual carta está no acabamento. Quando a rede neural não roda, a etiqueta diz isso, e não que a moldura não é reescrita (ADR 0013, 19/11/2026). A gaveta diz se o acabamento roda na placa de vídeo ou no processador, e por quê (ADR 0014).
 
 ### H5. Trocar a arte e a quantidade
 - [x] Tocar numa carta abre a gaveta com todas as impressões (coleção, número, ano, artista) e diz se cada uma sai em português.
@@ -40,6 +40,7 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 - [x] Qualidade padrão (300 dpi) ou alta (480 dpi).
 - [x] Marcas de corte, régua de 5 cm e aviso de imprimir em tamanho real em toda página.
 - [x] Progresso visível; tudo gerado no navegador.
+- [x] O PDF é montado em segundo plano enquanto a pessoa revisa (depois das prévias, com a página parada, e nada antes do clique com a economia de dados ligada), e as cartas prontas ficam guardadas no navegador para a próxima visita: num deck de 100 cartas, o PDF sai em 2 s depois de um minuto de revisão, em vez de ~1 min (ADR 0014, 19/11/2026).
 
 ### H7. Honestidade e regras
 - [x] A origem do texto aparece na gaveta (Arena ou impressão PT).

@@ -17,3 +17,4 @@ Cada arquivo registra uma decisão de arquitetura: o contexto, o que foi decidid
 | [0011](0011-medidas-na-imagem-e-varredura-de-erros.md) | Medir a moldura na imagem (fios da caixa, barra, selo, símbolo) e dados do Arena sem versões alternativas | Aceita |
 | [0012](0012-moldura-sem-borda.md) | Moldura sem borda: letras brancas e caixa e barras translúcidas pela rede neural, na resolução da imagem | Aceita |
 | [0013](0013-rede-neural-rapida-e-previa-em-duas-etapas.md) | Rede neural na placa de vídeo de verdade (runtime WebGPU), download compactado e prévia em duas etapas (rascunho na hora, acabamento com parte e tempo) | Aceita |
+| [0014](0014-pdf-adiantado-e-cartas-guardadas.md) | PDF montado em segundo plano enquanto a pessoa revisa, cartas prontas guardadas no navegador entre visitas e a gaveta dizendo onde a rede neural roda | Aceita |

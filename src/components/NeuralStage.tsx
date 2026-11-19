@@ -1,11 +1,12 @@
 /**
  * Andamento da rede neural numa carta que espera por ela (artes sem borda e planeswalkers): na
  * folha, uma faixa curta sobre o rascunho; na gaveta, a frase inteira, a barra e, no primeiro
- * download, o tamanho. Sem isso, a espera do celular sem placa de vídeo (um a dois minutos)
- * parecia travada e a pessoa desistia.
+ * download, o tamanho; depois, onde o modelo roda (no processador, por que ali e não na placa de
+ * vídeo). Sem isso, a espera do celular sem placa de vídeo (um a dois minutos) parecia travada e
+ * a pessoa desistia.
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { neuralLine } from "../app/labels";
+import { browserGpu, neuralLine, neuralWhere } from "../app/labels";
 import { neuralProgress, onNeuralProgress } from "../app/preview";
 import { lamaStatus, onLamaStatus } from "../engine/lama";
 
@@ -27,6 +28,7 @@ export function NeuralStage({ previewKey, long = false }: { previewKey: string; 
   }, [ticking, status.since]);
   const line = neuralLine(status, progress, now);
   if (!line) return null;
+  const where = long ? neuralWhere(status.backend, browserGpu()) : null;
   if (!long)
     return (
       <span className="slot-finishing">
@@ -41,6 +43,7 @@ export function NeuralStage({ previewKey, long = false }: { previewKey: string; 
       {status.stage === "download" && status.total > 0 && progress?.state === "running" && (
         <span className="finishing-note">{`${Math.round(status.total / 1e6)} MB, só na primeira vez: depois fica guardado no navegador.`}</span>
       )}
+      {status.stage === "run" && progress?.state === "running" && where && <span className="finishing-note">{where}</span>}
     </span>
   );
 }

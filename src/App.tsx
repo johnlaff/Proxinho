@@ -7,7 +7,8 @@
 import { Download, ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { cardsById, importFromUrl, resolveNames, type Resolved, type SearchHit } from "./app/api";
-import type { ExportProgress, Quality } from "./app/exportPdf";
+import type { ExportProgress } from "./app/exportPdf";
+import { warmPrints, type Quality } from "./app/printFaces";
 import {
   buildOrder,
   countOutcomes,
@@ -101,6 +102,13 @@ export default function App() {
 
   useEffect(() => save(DRAFT_KEY, text), [text]);
   useEffect(() => save(SETTINGS_KEY, JSON.stringify(settings)), [settings]);
+
+  // PDF adiantado: enquanto a pessoa revisa, as cartas já vão sendo montadas para a impressão
+  // (só depois das prévias; ver printFaces.ts). O respiro deixa a folha começar antes.
+  useEffect(() => {
+    const t = setTimeout(() => warmPrints(entries, settings.quality), entries.length ? 1500 : 0);
+    return () => clearTimeout(t);
+  }, [entries, settings.quality, fonts]);
 
   const total = totalCards(entries);
   const misses = useSyncExternalStore(onEngineMiss, engineMisses);

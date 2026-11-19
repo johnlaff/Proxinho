@@ -139,7 +139,18 @@ O que o estado da arte diz:
 - **NPU.** O WebNN ainda depende de uma opção ligada à mão no Chrome e no Edge (documentação do ONNX Runtime): não serve para o público.
 - **Alta resolução.** O IOPaint (ex-lama-cleaner) oferece três estratégias: imagem inteira, recorte em volta do buraco e redução; recortar e reduzir são as rápidas. O Proxinho já recorta; reduzir é o teste da caixa num quadro só.
 
-Conclusão: na CPU não há como deixar o LaMa muito mais rápido sem perder qualidade; o ganho grande por carta vem da placa de vídeo, que o Chrome do celular já usa. O que encurta o deck inteiro é preparar o modelo mais rápido (3,2 s em vez de 10 a 13 s, já no ar), adiantar a montagem do PDF enquanto a pessoa revisa (hoje ~1 min no fim) e guardar no aparelho o que já ficou pronto.
+Conclusão: na CPU não há como deixar o LaMa muito mais rápido sem perder qualidade; o ganho grande por carta vem da placa de vídeo, que o Chrome do celular já usa. O que encurta o deck inteiro é preparar o modelo mais rápido (3,2 s em vez de 10 a 13 s), adiantar a montagem do PDF enquanto a pessoa revisa (hoje ~1 min no fim) e guardar no aparelho o que já ficou pronto.
+
+Depois de feitos (ADR 0014), no mesmo deck de 100 cartas, num build local:
+
+| Medida | Resultado |
+|---|---|
+| PDF logo depois das prévias, 2 cartas por vez | 61,1 s |
+| PDF logo depois das prévias, 4 por vez (computador, 4 núcleos) | 55,7 s: a montagem roda na thread da página, e mais vagas ajudam pouco |
+| PDF depois de 70 s de revisão (computador) | 1,8 s |
+| PDF depois de 30 s de revisão (celular emulado) | 30,8 s, em vez de ~60 |
+| Página durante o adiantado (30 s, celular emulado) | 27 tarefas longas, a maior de 646 ms, 14,7 s ocupados: por isso o adiantado só monta depois de 1,5 s sem toque, rolagem ou tecla |
+| Segunda visita com a mesma lista (Konia sem borda, Sol Ring, Arcane Signet) | As três acabadas em 0,2 s, sem baixar a rede neural; PDF em 0,1 s; 0,9 MB guardados |
 
 ## Lado legal e o caminho seguro
 

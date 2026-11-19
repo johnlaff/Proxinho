@@ -41,6 +41,8 @@ let official = { title: false, body: false };
 let custom: { title: boolean; body: boolean; italic: boolean } = { title: false, body: false, italic: false };
 let customFaces: FontFace[] = [];
 let version = 0;
+/** Identidade dos arquivos pessoais (tamanho e um resumo dos bytes), para as cartas guardadas. */
+let customIds = { title: "", body: "", italic: "" };
 
 export function loadCardFonts(base = "/fonts/cartas/", officialBase = "/api/fontes/"): Promise<void> {
   if (!loading) {
@@ -94,6 +96,26 @@ export function activeFonts(): "pessoais" | "oficiais" | "livres" {
   return official.title && official.body ? "oficiais" : "livres";
 }
 
+/**
+ * Quais arquivos desenham as cartas agora, estável entre uma visita e outra (ao contrário de
+ * `fontsVersion`, que conta as trocas desta página): entra na chave das cartas guardadas no
+ * navegador. Só vale depois de `loadCardFonts`.
+ */
+export function fontsId(): string {
+  const title = custom.title ? `p${customIds.title}` : official.title ? "o" : "l";
+  const body = custom.body ? `p${customIds.body}${custom.italic ? `+${customIds.italic}` : ""}` : official.body ? "o" : "l";
+  return `${title}|${body}`;
+}
+
+/** Resumo curto de um arquivo: o tamanho e uma soma dos bytes (não precisa resistir a ataque). */
+function digest(data: ArrayBuffer | null | undefined): string {
+  if (!data) return "";
+  const bytes = new Uint8Array(data);
+  let h = 2166136261;
+  for (let i = 0; i < bytes.length; i++) h = Math.imul(h ^ bytes[i], 16777619);
+  return `${bytes.length.toString(36)}.${(h >>> 0).toString(36)}`;
+}
+
 /** Muda sempre que as fontes mudam: entra na chave do cache das prévias. */
 export function fontsVersion(): number {
   return version;
@@ -119,6 +141,7 @@ export async function applyCustomFonts(files: CustomFontFiles): Promise<void> {
   for (const f of faces) document.fonts.add(f);
   customFaces = faces;
   custom = { title: Boolean(files.title), body: Boolean(files.body), italic: Boolean(files.bodyItalic) };
+  customIds = { title: digest(files.title), body: digest(files.body), italic: digest(files.bodyItalic) };
   version++;
 }
 

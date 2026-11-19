@@ -11,8 +11,12 @@
  * ficavam minutos sem prévia. Enquanto esperam, a prévia mostra o rascunho (`draftUrl`: a
  * carta em PT com o preenchimento simples), montado na fila comum, e o andamento
  * (`neuralProgress`). A carta aberta na gaveta passa na frente (`hurry`).
+ *
+ * A prévia acabada também fica guardada no navegador (ver cardStore.ts): numa visita seguinte,
+ * com a mesma carta, ela aparece sem montar nada nem baixar a rede neural.
  */
 import { fontsVersion } from "../engine/fonts";
+import { cardKey, storeCard, storedCard, type StoredCard } from "./cardStore";
 import { prepareLama } from "../engine/lama";
 import { renderCard, usesNeuralFill } from "../engine/render";
 import type { PrintRecord } from "../engine/types";
@@ -84,6 +88,24 @@ export function noteRender(printId: string, side: Side, translated: boolean, rea
   for (const l of listeners) l();
 }
 
+/** Quem espera as duas filas de prévias esvaziarem (ver `whenPreviewsIdle`). */
+const idleWaiters: (() => void)[] = [];
+/** Prévias procurando a guardada antes de entrar numa fila (ver `lookup`). */
+let starting = 0;
+const previewsBusy = () => starting > 0 || Object.values(lanes).some((l) => l.running > 0 || l.queue.length > 0);
+function wakeIdle() {
+  if (!previewsBusy()) for (const wake of idleWaiters.splice(0)) wake();
+}
+
+/**
+ * Resolve quando nenhuma prévia está montando nem esperando: o PDF adiantado (ver
+ * `warmPrints`) só usa o processador depois que as folhas ficam prontas.
+ */
+export function whenPreviewsIdle(): Promise<void> {
+  if (!previewsBusy()) return Promise.resolve();
+  return new Promise((resolve) => idleWaiters.push(resolve));
+}
+
 function schedule<T>(lane: Lane, key: string, job: () => Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const run = () => {
@@ -93,16 +115,22 @@ function schedule<T>(lane: Lane, key: string, job: () => Promise<T>): Promise<T>
         .finally(() => {
           lane.running--;
           lane.queue.shift()?.run();
+          wakeIdle();
         });
     };
     if (lane.running < lane.parallel) run();
+    else if (lane === lanes.neural && key === urgent) lane.queue.unshift({ key, run });
     else lane.queue.push({ key, run });
   });
 }
 
+/** A carta aberta na gaveta: se ainda não entrou na fila (procurando a guardada), entra na frente. */
+let urgent: string | null = null;
+
 /** A prévia desta face passa na frente da fila da rede neural (a carta aberta na gaveta). */
 export function hurry(entry: Entry, side: Side = 0) {
   const key = renderKey(entry, fontsVersion(), side);
+  urgent = key;
   const q = lanes.neural.queue;
   const i = q.findIndex((j) => j.key === key);
   if (i > 0) q.unshift(...q.splice(i, 1));
@@ -143,10 +171,21 @@ export function renderInput(entry: Entry, side: Side = 0) {
   return { print, face, side, typeLine: entry.card.type_line, flavor };
 }
 
-function toUrl(canvas: HTMLCanvasElement): Promise<string> {
+function toBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(URL.createObjectURL(b)) : reject(new Error("Falha ao montar a prévia."))), "image/jpeg", 0.88),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Falha ao montar a prévia."))), "image/jpeg", 0.88),
   );
+}
+
+/** A prévia guardada no navegador numa visita anterior (ver cardStore.ts), procurada uma vez por chave. */
+const lookups = new Map<string, Promise<{ id: string | null; card: StoredCard | null }>>();
+function lookup(key: string, input: NonNullable<ReturnType<typeof renderInput>>) {
+  let p = lookups.get(key);
+  if (!p) {
+    p = cardKey("previa", input).then(async (id) => ({ id, card: await storedCard(id) }));
+    lookups.set(key, p);
+  }
+  return p;
 }
 
 export function previewUrl(entry: Entry, side: Side = 0): Promise<string> {
@@ -156,22 +195,43 @@ export function previewUrl(entry: Entry, side: Side = 0): Promise<string> {
     const input = renderInput(entry, side);
     if (!input) return Promise.reject(new Error("Carta sem imagem disponível."));
     const neural = usesNeuralFill(input.print, input.face, side, input.typeLine);
-    if (neural) {
-      setProgress(key, { state: "queued", done: 0, total: 0 });
-      // o modelo começa a baixar já, junto com o apagamento da carta
-      prepareLama();
-    }
-    p = schedule(neural ? lanes.neural : lanes.common, key, async () => {
-      if (neural) setProgress(key, { state: "running", done: 0, total: 0 });
-      const { canvas, translated, reason } = await renderCard({
-        ...input,
-        imageVersion: "normal",
-        scale: 0.56,
-        onNeural: neural ? ({ done, total }) => setProgress(key, { state: "running", done, total }) : undefined,
-      });
-      if (input.face) noteRender(input.print.id, side, translated, reason);
-      return toUrl(canvas);
-    });
+    if (neural) setProgress(key, { state: "queued", done: 0, total: 0 });
+    starting++;
+    const started = () => {
+      starting--;
+      wakeIdle();
+    };
+    p = lookup(key, input).then(
+      ({ id, card }) => {
+        if (card) {
+          started();
+          if (input.face) noteRender(input.print.id, side, card.translated);
+          return URL.createObjectURL(card.blob);
+        }
+        // o modelo começa a baixar já, junto com o apagamento da carta
+        if (neural) prepareLama();
+        const job = schedule(neural ? lanes.neural : lanes.common, key, async () => {
+          if (neural) setProgress(key, { state: "running", done: 0, total: 0 });
+          const { canvas, translated, reason } = await renderCard({
+            ...input,
+            imageVersion: "normal",
+            scale: 0.56,
+            onNeural: neural ? ({ done, total }) => setProgress(key, { state: "running", done, total }) : undefined,
+          });
+          if (input.face) noteRender(input.print.id, side, translated, reason);
+          const blob = await toBlob(canvas);
+          // (sem a rede neural a carta saiu na original: noutra visita ela pode rodar)
+          if (reason !== "neural") storeCard(id, { blob, translated });
+          return URL.createObjectURL(blob);
+        });
+        started();
+        return job;
+      },
+      (err: unknown) => {
+        started();
+        throw err;
+      },
+    );
     p.then(
       () => finished.add(key),
       () => cache.delete(key),
@@ -193,10 +253,13 @@ export function draftUrl(entry: Entry, side: Side = 0): Promise<string> | null {
   if (!p) {
     const input = renderInput(entry, side);
     if (!input || !usesNeuralFill(input.print, input.face, side, input.typeLine)) return null;
-    p = schedule(lanes.common, `${key}:rascunho`, async () => {
-      if (finished.has(key)) throw new Error("A prévia acabada já existe.");
-      const { canvas } = await renderCard({ ...input, imageVersion: "normal", scale: 0.56, neural: false });
-      return toUrl(canvas);
+    p = lookup(key, input).then(({ card }) => {
+      if (card) throw new Error("A prévia acabada está guardada no navegador.");
+      return schedule(lanes.common, `${key}:rascunho`, async () => {
+        if (finished.has(key)) throw new Error("A prévia acabada já existe.");
+        const { canvas } = await renderCard({ ...input, imageVersion: "normal", scale: 0.56, neural: false });
+        return URL.createObjectURL(await toBlob(canvas));
+      });
     });
     p.catch(() => drafts.delete(key));
     drafts.set(key, p);

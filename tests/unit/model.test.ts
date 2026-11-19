@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatEta, neuralLine, OUTCOME_LABEL } from "../../src/app/labels";
+import { browserGpu, formatEta, neuralLine, neuralWhere, OUTCOME_LABEL } from "../../src/app/labels";
 import {
   buildOrder,
   countOutcomes,
@@ -300,6 +300,25 @@ describe("neuralLine", () => {
     });
     expect(neuralLine({ ...idle, stage: "failed" }, running)).toBeNull();
     expect(neuralLine(idle, undefined)).toBeNull();
+  });
+
+  it("diz onde o acabamento roda e, no Firefox sem placa de vídeo, aponta o Chrome", () => {
+    const firefoxAndroid = "Mozilla/5.0 (Android 14; Mobile; rv:145.0) Gecko/145.0 Firefox/145.0";
+    const chromeAndroid =
+      "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36";
+    expect(browserGpu({ userAgent: firefoxAndroid })).toEqual({ gpu: false, firefox: true });
+    expect(browserGpu({ gpu: {}, userAgent: chromeAndroid })).toEqual({ gpu: true, firefox: false });
+    // antes de o modelo ficar pronto não se sabe onde ele roda
+    expect(neuralWhere(null, { gpu: false, firefox: true })).toBeNull();
+    expect(neuralWhere("webgpu", { gpu: true, firefox: false })).toBe("Rodando na placa de vídeo deste aparelho.");
+    expect(neuralWhere("wasm", browserGpu({ userAgent: firefoxAndroid }))).toMatch(/^Rodando no processador: o Firefox .* No Chrome/);
+    // com a placa de vídeo no navegador, a falha foi dela (ou o adaptador era de software): sem trocar de navegador
+    expect(neuralWhere("wasm", { gpu: true, firefox: true })).toBe(
+      "Rodando no processador: a placa de vídeo deste aparelho não serviu para o acabamento.",
+    );
+    expect(neuralWhere("wasm", { gpu: false, firefox: false })).toBe(
+      "Rodando no processador: este navegador ainda não deixa sites usarem a placa de vídeo.",
+    );
   });
 
   it("arredonda o tempo para não piscar a cada segundo", () => {
