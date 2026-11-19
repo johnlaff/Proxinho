@@ -28,6 +28,19 @@ export async function gunzip(buf: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
+/**
+ * Opções da sessão do modelo. A quantização é desfeita na carga (a inferência roda como o
+ * modelo original). E o lote fica fixo em 1: o resto da entrada já é fixo (512 px), então com
+ * o lote fixo o ONNX Runtime calcula uma vez só, na preparação, as medidas e as constantes da
+ * transformada de Fourier que o grafo exportado refaz a partir da entrada. O preparo cai de
+ * 10,4 s para 3,2 s na CPU com 4 threads, com a saída idêntica (ver docs/pesquisa.md).
+ */
+export const sessionOptions = (backend: Backend) => ({
+  executionProviders: [backend],
+  freeDimensionOverrides: { batch: 1 },
+  extra: { session: { disable_quant_qdq: "1" } },
+});
+
 /** Saída com NaN ou infinito: a placa de vídeo calculou errado (vale como falha). */
 export function brokenOutput(out: Float32Array): boolean {
   for (let i = 0; i < out.length; i++) if (!Number.isFinite(out[i])) return true;

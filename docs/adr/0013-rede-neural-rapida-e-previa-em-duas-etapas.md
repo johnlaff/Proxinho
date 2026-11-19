@@ -19,7 +19,7 @@ O que o mercado faz (pesquisa em `docs/pesquisa.md`, "Espera da rede neural"):
 - **Espera:** o Nielsen Norman Group pede indicador com porcentagem acima de 10 s, com texto do que está acontecendo ("3 de 50"), estimativa de tempo arredondada e com folga ("cerca de 3 minutos"), e um jeito de não ficar preso esperando. Para imagens, o padrão é mostrar uma versão provisória na hora e trocar pela final (o "LQIP" ou "blur-up").
 - **Download:** o `.wasm` do ONNX cai a um quarto com gzip; o modelo, a 80%.
 
-Alternativas que não servem: quadros do tamanho da caixa (o LaMa quantizado tem `Reshape` com medidas fixas de 512 px e quebra com outro tamanho, testado), manter a quantização no preparo (mais lento na CPU, medido), outro nível de otimização do grafo (mais lento), o MI-GAN no lugar do LaMa (mais rápido, mas sem prova de mesma qualidade nas nossas artes; fica no roadmap só para o rascunho).
+Alternativas que não servem: quadros do tamanho da caixa (o LaMa quantizado tem `Reshape` com medidas fixas de 512 px e quebra com outro tamanho, testado), manter a quantização no preparo (mais lento na CPU, medido), outro nível de otimização do grafo (mais lento), o MI-GAN no lugar do LaMa (11 vezes mais rápido, mas testado à noite nos quadros reais de 6 artes sem borda: inventou riscos na barra do nome, um bloco branco na arte e deixou a sombra das letras; reprovado para o acabamento, ver `docs/pesquisa.md`).
 
 ## Decisão
 
@@ -31,6 +31,7 @@ Alternativas que não servem: quadros do tamanho da caixa (o LaMa quantizado tem
 6. **Fila à parte:** as cartas da rede neural esperam numa fila própria, uma de cada vez; antes elas tomavam as quatro vagas da fila e as cartas comuns ficavam minutos sem prévia. A carta aberta na gaveta passa na frente (`hurry`). A prévia e o PDF que pedem a mesma caixa ao mesmo tempo esperam uma pela outra, e a memória das caixas limpas vai a 96 MB (umas 40 cartas) em vez de 24 caixas.
 7. **Andamento honesto:** a montagem diz quantos quadros a carta vai rodar antes do primeiro (`frameCount`), e a prévia mostra "Acabamento: parte 2 de 3, cerca de 35 s", com o tempo pela média dos quadros anteriores (`etaMs`, `neuralLine`), uma barra que anda com o tempo do quadro atual, "Na fila do acabamento" para as que esperam e, no primeiro download, a porcentagem e o tamanho. O PDF diz qual carta está no acabamento.
 8. **Falha que não culpa a moldura:** a carta que saiu na original porque a rede neural não rodou ganha o resultado próprio "Em inglês: o apagador de texto não rodou neste navegador" (`apagador`), com o motivo de cada degrau num "Detalhe técnico" da gaveta; as outras artes sem borda passam a dizer "Sai em inglês" na escolha de arte.
+9. **Lote fixo em 1 (19/11/2026, à noite):** a sessão do modelo fixa a única medida livre da entrada, o lote (`freeDimensionOverrides`, em `sessionOptions` de `lamaFiles.ts`). O grafo exportado do LaMa tem 16 mil nós e recalcula, a partir da entrada, as medidas e as matrizes da transformada de Fourier; com o lote livre o ONNX Runtime não consegue calculá-las de antemão. Com ele fixo, o preparo cai de 10,4 s para 3,2 s na CPU com 4 threads, com a saída idêntica. Gravar o modelo já otimizado no build daria 1,8 s, mas pede o `onnxruntime-node` (300 MB) só para isso.
 
 ## Consequências
 
@@ -39,3 +40,4 @@ Alternativas que não servem: quadros do tamanho da caixa (o LaMa quantizado tem
 - O primeiro uso baixa 37 MB (placa de vídeo) ou 33 MB (CPU), uma vez só.
 - Um navegador sem `DecompressionStream` (anterior a 2023) não roda a rede neural; os planeswalkers saem com o preenchimento simples e as artes sem borda na original, como antes.
 - O rascunho custa uma montagem a mais por carta da rede neural (um a dois segundos de CPU), na fila comum.
+- A primeira carta da rede neural de cada visita espera uns 7 s a menos de preparo (medido na CPU com 4 threads; no celular, proporcionalmente mais).

@@ -418,6 +418,16 @@ describe("arquivos da rede neural", () => {
     expect(MODEL_PARTS).toEqual(["/modelos/lama-int4.onnx.gz.0", "/modelos/lama-int4.onnx.gz.1"]);
   });
 
+  it("a sessão fixa o lote em 1 (preparo mais curto) e desfaz a quantização", async () => {
+    const { sessionOptions } = await import("../../src/engine/lamaFiles");
+    for (const backend of ["webgpu", "wasm"] as const) {
+      const opts = sessionOptions(backend);
+      expect(opts.executionProviders).toEqual([backend]);
+      expect(opts.freeDimensionOverrides).toEqual({ batch: 1 });
+      expect(opts.extra.session.disable_quant_qdq).toBe("1");
+    }
+  });
+
   it("saída com NaN da placa de vídeo vale como falha", async () => {
     const { brokenOutput } = await import("../../src/engine/lamaFiles");
     expect(brokenOutput(new Float32Array([0, 128, 255]))).toBe(false);

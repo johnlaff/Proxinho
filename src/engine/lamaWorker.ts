@@ -21,7 +21,7 @@
  * - Falha na carga, sem quadro na fila: `{ type: "error", error }`.
  */
 import type { InferenceSession, Tensor } from "onnxruntime-web";
-import { MODEL_PARTS, brokenOutput, gunzip, runtimeParts, type Backend } from "./lamaFiles";
+import { MODEL_PARTS, brokenOutput, gunzip, runtimeParts, sessionOptions, type Backend } from "./lamaFiles";
 
 const SIZE = 512;
 
@@ -118,10 +118,8 @@ function load(wanted: Backend, threads: number): Promise<Loaded> {
     const [wasm, model] = await download([runtimeParts(backend, version), MODEL_PARTS]);
     ort.env.wasm.wasmBinary = wasm.buffer as ArrayBuffer;
     ort.env.wasm.numThreads = threads || (self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1);
-    // desfaz a quantização na carga: a inferência roda como o modelo original
-    const extra = { session: { disable_quant_qdq: "1" } };
     try {
-      const session = await ort.InferenceSession.create(model, { executionProviders: [backend], extra });
+      const session = await ort.InferenceSession.create(model, sessionOptions(backend));
       return { session, Tensor: ort.Tensor, backend, threads: ort.env.wasm.numThreads };
     } catch (e) {
       throw new Error(`preparar o modelo (${backend}): ${String(e)}`);

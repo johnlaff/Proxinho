@@ -127,6 +127,7 @@ Com tudo funcionando, o João perguntou quanto leva um deck inteiro, se uma cart
 | Carta sem borda na CPU | Preparo do modelo 10,4 a 12,7 s (uma vez por visita) e 5,8 a 6,3 s por quadro com 4 threads (18 s com uma); 3 quadros por carta (as duas barras num, a caixa em dois) |
 | MI-GAN 512 (ICCV 2023), no mesmo navegador | Preparo 0,6 s e 0,5 s por quadro (2,1 s com uma thread): 11 vezes mais rápido. Mas nos 18 quadros deixou a sombra das letras apagadas (Konia), um bloco branco no meio da arte (Roaming Throne) e riscos vermelhos inventados dentro da barra do nome (Ulamog). Reprovado para o acabamento |
 | LaMa pré-otimizado (medidas fixas de 512 px e as constantes da transformada de Fourier calculadas antes, no ONNX Runtime em Python, com a quantização preservada) | Preparo de 10,4 s para 1,8 s, quadro no mesmo tempo, saída igual (no máximo 1 tom em 255 de diferença na CPU, arredondamento; idêntica no runtime WebGPU). O arquivo passa de 36,9 para 38,2 MB |
+| Só fixar o lote em 1 na sessão (`freeDimensionOverrides`), no navegador | Preparo de 10,4 s para 3,2 s, saída idêntica, sem ferramenta nova no build. É o que entrou (ADR 0013, item 9); o modelo pré-otimizado no build daria 1,8 s, mas pede o `onnxruntime-node` (300 MB) |
 | Caixa num quadro só, reduzida (em vez de dois na resolução da imagem) | Carta de 19 a 20 s para 13 a 14 s na CPU. Visualmente igual em 5 das 6; no Roaming Throne sobrou um risco escuro de uns 3 px entre duas linhas. Precisa da regressão inteira antes de valer |
 | XNNPACK no ONNX Runtime Web | Não existe no pacote web |
 
@@ -138,7 +139,7 @@ O que o estado da arte diz:
 - **NPU.** O WebNN ainda depende de uma opção ligada à mão no Chrome e no Edge (documentação do ONNX Runtime): não serve para o público.
 - **Alta resolução.** O IOPaint (ex-lama-cleaner) oferece três estratégias: imagem inteira, recorte em volta do buraco e redução; recortar e reduzir são as rápidas. O Proxinho já recorta; reduzir é o teste da caixa num quadro só.
 
-Conclusão: na CPU não há como deixar o LaMa muito mais rápido sem perder qualidade; o ganho grande por carta vem da placa de vídeo, que o Chrome do celular já usa. O que encurta o deck inteiro é preparar o modelo antes (1,8 s em vez de 10 a 13 s), adiantar a montagem do PDF enquanto a pessoa revisa (hoje ~1 min no fim) e guardar no aparelho o que já ficou pronto.
+Conclusão: na CPU não há como deixar o LaMa muito mais rápido sem perder qualidade; o ganho grande por carta vem da placa de vídeo, que o Chrome do celular já usa. O que encurta o deck inteiro é preparar o modelo mais rápido (3,2 s em vez de 10 a 13 s, já no ar), adiantar a montagem do PDF enquanto a pessoa revisa (hoje ~1 min no fim) e guardar no aparelho o que já ficou pronto.
 
 ## Lado legal e o caminho seguro
 
