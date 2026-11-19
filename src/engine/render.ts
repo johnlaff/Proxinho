@@ -23,6 +23,7 @@ import {
   keepAttachedBelow,
   liftShadedBands,
   eraseBackPtNotch,
+  symbolRowsFrom,
   symbolRowsLeft,
   maskRegions,
   notM15Frame,
@@ -722,7 +723,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // (o primeiro fio achado varia de 573 a 591 na padrão e de 630 a 633 na baixa; o
   // desenho da moldura baixa é sempre o mesmo, 44 abaixo)
   const typeShift = barTop !== null && barTop >= 615 && barTop <= 660 ? 44 : 0;
-  const symbolInfo = { colored: -1, lim: 0 };
+  const symbolInfo: { colored: number; lim: number; tight?: boolean } = { colored: -1, lim: 0 };
   const setLeft =
     findSetSymbolLeft(data, Math.round((594 + typeShift) * fy), Math.round((632 + typeShift) * fy), undefined, 100, symbolInfo) / fx;
   const manaCost = sideInfo ? sideInfo.mana_cost : print.mana_cost;
@@ -783,6 +784,17 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       symbolGuard.push({ x0: (setLeft - 2) * fx, y0: r.y0 * fy, x1: data.width, y1: sy0 });
       symbolGuard.push({ x0: (setLeft - 2) * fx, y0: sy1, x1: data.width, y1: r.y1 * fy });
     }
+  }
+  // Símbolo colado no fim do tipo, sem cor que o separe (a adaga do Lazav comum, MKM 216):
+  // a folga de 6 px antes do símbolo deixava o pé do último "e" em inglês. O apagamento vai
+  // até o fim da barra, com o desenho do símbolo opaco linha a linha (do primeiro pixel dele
+  // em diante): a barra entre o fim do texto e o contorno serve de fonte do remendo. Com o
+  // retângulo acabando no símbolo, o remendo só tinha o lado esquerdo, mais claro (a barra
+  // escurece para a ponta), e ficava um bloco claro antes da adaga.
+  if (symbolInfo.tight && !symbolGuard.length) {
+    const r = layout.erase[1].rect;
+    layout.erase[1] = { ...layout.erase[1], rect: { ...r, x1: BASE_W * 0.955 } };
+    symbolGuard.push(...symbolRowsFrom(data, Math.round(setLeft * fx), Math.round(r.y0 * fy), Math.round(r.y1 * fy)));
   }
   // terreno básico sem texto: o símbolo de mana grande na caixa é desenho, não texto
   const keepBox = /Básic/.test(face.type_pt ?? "") && !(face.text_pt ?? "").trim();

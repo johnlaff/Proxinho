@@ -19,6 +19,7 @@ import {
   textMask,
   textPolarity,
   smoothNoisyPaper,
+  symbolRowsFrom,
   symbolRowsLeft,
   typeBarEdges,
   typeBarTop,
@@ -366,6 +367,44 @@ describe("findSetSymbolLeft com o símbolo perto do contorno da barra", () => {
     fill(659, 602, 673, 624, [30, 30, 30]);
     fill(687, 594, 712, 632, [200, 60, 40]);
     expect(findSetSymbolLeft(img, 594, 632)).toBe(655);
+  });
+});
+
+describe("findSetSymbolLeft com o símbolo colado no fim do tipo, sem cor", () => {
+  it('um trecho de 30 px de tinta sem vão é o símbolo: o "tive" de "Detective" sai (Lazav, MKM 216)', () => {
+    // barra dourada; as letras escuras vão até 630, com vãos de 2 a 5 px entre elas; a adaga
+    // (contorno escuro e miolo dourado-claro, da cor da barra) começa a 2 px, em 632, e é um
+    // trecho só de 51 px; o fio do fim da barra, de 694 a 709. O corte pelas lacunas caía
+    // entre as letras
+    const { img, fill } = canvas([200, 170, 100]);
+    const letters: [number, number][] = [
+      [558, 570],
+      [573, 584],
+      [588, 593],
+      [597, 601],
+      [606, 616],
+      [618, 630],
+    ];
+    for (const [a, b] of letters) fill(a, 603, b + 1, 627, [30, 25, 15]);
+    fill(632, 596, 683, 630, [30, 25, 15]);
+    fill(640, 604, 676, 622, [230, 200, 120]);
+    fill(694, 594, 710, 632, [40, 35, 30]);
+    const info: { colored: number; lim: number; tight?: boolean } = { colored: -1, lim: 0 };
+    expect(findSetSymbolLeft(img, 594, 632, undefined, 100, info)).toBe(632);
+    expect(info.tight).toBe(true);
+  });
+});
+
+describe("symbolRowsFrom", () => {
+  it("cobre, linha a linha, do contorno do símbolo ao fim, e deixa a barra antes dele", () => {
+    // adaga na diagonal: o contorno começa em 632 na primeira linha e anda 1 px por linha
+    const { img, fill } = canvas([200, 170, 100]);
+    for (let y = 600; y < 610; y++) fill(632 + (y - 600), y, 640 + (y - 600), y + 1, [30, 25, 15]);
+    const rows = symbolRowsFrom(img, 625, 598, 610);
+    expect(rows.map((r) => r.y0)).toEqual([600, 601, 602, 603, 604, 605, 606, 607, 608, 609]);
+    expect(rows[0].x0).toBe(631);
+    expect(rows[9].x0).toBe(640);
+    expect(rows.every((r) => r.x1 === 745)).toBe(true);
   });
 });
 

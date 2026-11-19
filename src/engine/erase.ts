@@ -1338,6 +1338,26 @@ export function textBandCenter(img: ImageData, rect: Rect): number | null {
 }
 
 /**
+ * Retângulos de uma linha que cobrem o símbolo da coleção a partir de `x` (escala da
+ * imagem): em cada linha, do primeiro pixel que foge 45 tons da mediana da linha até o fim
+ * da barra. Para o símbolo colado no fim do tipo (`tight` em `findSetSymbolLeft`): fica opaco
+ * no preenchimento, mas a barra antes do contorno dele continua servindo de fonte.
+ */
+export function symbolRowsFrom(img: ImageData, x: number, y0: number, y1: number): Rect[] {
+  const x1 = Math.round(img.width * 0.955);
+  const out: Rect[] = [];
+  if (x1 <= x) return out;
+  const row = new Float32Array(x1 - x);
+  for (let y = y0; y < y1; y++) {
+    for (let i = 0; i < row.length; i++) row[i] = luminance(img.data, (y * img.width + x + i) * 4);
+    const med = median(row.slice());
+    const i = row.findIndex((v) => Math.abs(v - med) > 45);
+    if (i >= 0) out.push({ x0: Math.max(x, x + i - 1), y0: y, x1: img.width, y1: y + 1 });
+  }
+  return out;
+}
+
+/**
  * Borda esquerda, linha a linha, do símbolo colorido da coleção, ou `null` nas linhas em
  * que ele não aparece. Para o símbolo que avança na diagonal sobre o fim do tipo (a adaga
  * de MKM): coluna nenhuma separa o fim do "Detective" da ponta da adaga, e
@@ -1446,7 +1466,7 @@ export function findSetSymbolLeft(
   y1: number,
   xMax?: number,
   maxWidth = 100,
-  info?: { colored: number; lim: number },
+  info?: { colored: number; lim: number; tight?: boolean },
 ): number {
   const x0 = Math.round(img.width * 0.75);
   // nas fichas a barra de tipo termina antes (ponta arredondada): quem chama passa o fim dela
@@ -1694,6 +1714,21 @@ export function findSetSymbolLeft(
     // (a cor vale mesmo sem lacuna: com o fio do fim da barra grudado no símbolo, o
     // bloco passava do limite e o corte pela largura comia o começo do selo)
     start = best > 1 || colored >= 0 ? cut : Math.round(end - maxWidth * k);
+    // Sem cor que separe o símbolo, um trecho de 30 px ou mais de tinta sem nenhuma coluna
+    // vazia, no fim do bloco, é o símbolo: letra nenhuma vai tão longe sem um vão. A adaga
+    // dourada do Lazav, Usuário dos Rostos (MKM 216), numa barra dourada, fica a 1 px do fim
+    // do "Detective", e as lacunas entre as letras são quase do tamanho dessa: o corte caía
+    // no meio da palavra e o "tive" ficava ao lado do português.
+    if (colored < 0) {
+      let r = last;
+      while (r > 0 && cols[r] - cols[r - 1] === 1) r--;
+      const width = end - cols[r];
+      if (r > 0 && width >= 30 * k && width <= maxWidth * k && cols[r] > start) {
+        start = cols[r];
+        // (colado no texto: quem chama apaga até a coluna antes dele, sem a folga de sempre)
+        if (info) info.tight = true;
+      }
+    }
     if (info) {
       info.colored = colored;
       info.lim = lim;
