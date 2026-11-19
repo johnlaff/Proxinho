@@ -834,8 +834,10 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // retícula grossa atrás, a rede neural não refaz a textura, ver screenNoise). A letra é
   // sempre branca (o pipeline só marca as de efeito "inverted"): a polaridade medida errava
   // com arte preta atrás de parte da caixa (Shirei, CMM 676)
+  // (sem borda com a barra de tipo mais baixa é a caixa curta da série Drácula, VOW: o pipeline já
+  // a deixa de fora, e aqui também sai a original)
   const blocked = frameBox
-    ? lightBorderlessBox(data, toImg(frameBox)) || screenNoise(data, toImg(frameBox)) > 16
+    ? typeShift > 0 || lightBorderlessBox(data, toImg(frameBox)) || screenNoise(data, toImg(frameBox)) > 16
     : borderless || notM15Frame(data, toImg(layout.box));
   // Nome de crossover ("Skeletor, Lord of Destruction" no Tinybones, the Pickpocket da Secret
   // Lair): o nome do alto é nome próprio e fica como impresso; o nome de jogo, em inglês na

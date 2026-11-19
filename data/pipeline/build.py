@@ -710,6 +710,10 @@ def borderless_supported(card: dict) -> bool:
     Só as de efeito "inverted": as sem ele são molduras próprias (Invocações de Amonkhet, a Mythic
     Edition, várias da Secret Lair). O motor ainda confere a caixa na imagem e, se não achar os fios
     dela ou ela for clara ou de retícula grossa, a arte sai como está.
+
+    A série Drácula de Innistrad: Voto Carmesim (VOW 329 a 345 e o Voldaren Estate, VOW 403) tem a
+    barra de tipo uns 60 px mais baixa e a caixa mais curta: com as medidas da padrão, o português
+    ficava por baixo da barra de tipo e o símbolo da coleção era apagado. Fica de fora.
     """
     effects = set(card.get("frame_effects") or [])
     type_line = card.get("type_line", "")
@@ -723,6 +727,7 @@ def borderless_supported(card: dict) -> bool:
         and not card.get("textless")
         and not any(t in type_line for t in UNSUPPORTED_TYPES)
         and "Station" not in (card.get("keywords") or [])
+        and "draculaseries" not in (card.get("promo_types") or [])
     )
 
 

@@ -2621,16 +2621,20 @@ export function hasRightIcon(img: ImageData): boolean {
  * Strixhaven o Scryfall não marca o efeito `lesson`, e o nome em PT saía por cima do ícone
  * apagado (Restoration Seminar, SOS 290). Com o ícone, a barra do nome começa depois dele
  * num fio preto em curva (de x ≈ 100 a 109), com o disco claro do ícone à esquerda: em 80%
- * ou mais das linhas do meio da barra há um pixel preto ali com claro logo antes. Num nome
- * sem ícone, a letra que cai nesse lugar não ocupa as linhas acima e abaixo dela (até 78%
- * nas amostras). Quem chama só pergunta isso para as Lições.
+ * ou mais das linhas do meio da barra há um pixel preto ali com claro até 16 px antes. Num
+ * nome sem ícone, a letra que cai nesse lugar não ocupa as linhas acima e abaixo dela (até
+ * 78% nas amostras). Quem chama só pergunta isso para as Lições.
+ * (no ícone branco de contorno preto das Lições sem borda de SOS, com a barra vermelha entre
+ * o contorno e o fio, no alto e no pé do círculo o branco recua e fica 9 a 14 px antes do fio:
+ * com 8 px, 30 ou 31 das 40 linhas passavam, o ícone era apagado e o nome ia por cima dele,
+ * Improvisation Capstone, SOS 294)
  */
 export function hasLessonIcon(img: ImageData): boolean {
   const k = img.width / 745;
   const ky = img.height / 1040;
   const y0 = Math.round(60 * ky);
   const y1 = Math.round(100 * ky);
-  const back = Math.max(2, Math.round(8 * k));
+  const back = Math.max(2, Math.round(16 * k));
   let hits = 0;
   for (let y = y0; y < y1; y++)
     for (let x = Math.round(96 * k); x <= Math.round(118 * k); x++) {

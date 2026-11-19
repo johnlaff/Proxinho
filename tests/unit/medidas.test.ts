@@ -558,6 +558,22 @@ describe("hasLessonIcon", () => {
     expect(hasLessonIcon(img)).toBe(true);
   });
 
+  it("acha o ícone branco de contorno preto das sem borda, com a barra vermelha antes do fio (Improvisation Capstone, SOS 294)", () => {
+    // barra vermelha; o disco branco recua de x = 96 (meio) para 84 (alto e pé), com o contorno
+    // preto colado nele; o fio preto da barra vai de x = 100 (meio) a 108, com vermelho entre os
+    // dois. Com o claro só até 8 px antes, só as linhas do meio passavam e o ícone era apagado
+    const { img, fill } = canvas([190, 70, 50]);
+    for (let y = 52; y < 104; y++) {
+      const t = ((y - 78) / 26) ** 2;
+      const rx = 96 - Math.round(12 * t);
+      const bx = 100 + Math.round(8 * t);
+      fill(40, y, rx, y + 1, [245, 245, 245]);
+      fill(rx, y, rx + 2, y + 1, [20, 20, 20]);
+      fill(bx, y, bx + 3, y + 1, [10, 10, 10]);
+    }
+    expect(hasLessonIcon(img)).toBe(true);
+  });
+
   it("um nome sem ícone, com letra preta nesse lugar, não engana", () => {
     // barra clara de carta comum; letras pretas de 27 px de altura desde x = 66
     const { img, fill } = canvas([222, 215, 200]);

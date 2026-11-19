@@ -322,6 +322,12 @@ class BorderlessSupported(unittest.TestCase):
         self.assertFalse(borderless_supported({**self.base, "type_line": "Enchantment — Saga"}))
         self.assertFalse(borderless_supported({**self.base, "keywords": ["Station"]}))
 
+    def test_serie_dracula_tem_a_barra_de_tipo_mais_baixa(self) -> None:
+        # Voldaren Estate (VOW 403) e Falkenrath Forebear (VOW 334), da série Drácula: caixa curta
+        self.assertFalse(borderless_supported({**self.base, "promo_types": ["draculaseries", "buyabox"]}))
+        self.assertFalse(borderless_supported({**self.base, "promo_types": ["draculaseries", "boosterfun"]}))
+        self.assertTrue(borderless_supported({**self.base, "promo_types": ["boosterfun"]}))
+
     def test_moldura_com_borda_fica_com_frame_supported(self) -> None:
         self.assertFalse(borderless_supported({**self.base, "border_color": "black"}))
         self.assertFalse(frame_supported(self.base))

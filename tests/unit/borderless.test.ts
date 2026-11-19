@@ -357,6 +357,32 @@ describe("borderlessStamp com arte lisa entre o aro e a última linha", () => {
   });
 });
 
+describe("borderlessStamp com arte de dois tons atrás da caixa", () => {
+  it("a enchente não sobe pela arte escura em volta do eixo até a última linha (Sphere of Safety, SLD 2331)", () => {
+    const { img, fill } = frame();
+    const box = { x0: 57, y0: 648, x1: 684, y1: 955 };
+    // arte vista pela caixa: escura e com grão até x = 385 (o eixo do selo é 372), cinza-azulada
+    // depois; no retângulo do selo a parte cinza é a maior, e a mediana da faixa fica nela
+    fill(57, 880, 385, 955, (x, y, c) => [40, 42, 48][c] + 10 * hash(x, y, c));
+    fill(385, 880, 684, 955, (x, y, c) => [110, 120, 135][c] + 10 * hash(x, y, c));
+    // aro branco em arco em volta do selo (alto em y = 942), com o miolo cinza do selo
+    for (let y = 930; y < 955; y++)
+      for (let x = 330; x < 415; x++) {
+        const r = Math.hypot(x - 372, y - 966);
+        const i = (y * W + x) * 4;
+        if (r >= 20 && r <= 24) img.data[i] = img.data[i + 1] = img.data[i + 2] = 240;
+        else if (r < 20) img.data[i] = img.data[i + 1] = img.data[i + 2] = 150 + 40 * hash(x, y);
+      }
+    // última linha do flavor, em traços brancos, de y = 914 a 931, por cima do selo
+    for (let x = 300; x < 440; x += 7) fill(x, 914, x + 4, 931, [245, 245, 245]);
+    const rects = borderlessStamp(img, { x0: 285, y0: 914, x1: 568, y1: 955 }, box);
+    const covers = (x: number, y: number) => rects.some((r) => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
+    expect(covers(372, 950)).toBe(true);
+    expect(covers(372, 943)).toBe(true);
+    for (const x of [363, 370, 377]) expect(covers(x + 1, 925)).toBe(false);
+  });
+});
+
 describe("letterBandCenter", () => {
   it("acha o nome em branco numa barra clara com brilho, uns 8 px acima do padrão (Ancient Gold Dragon, CLB)", () => {
     const { img, fill } = canvas(art);

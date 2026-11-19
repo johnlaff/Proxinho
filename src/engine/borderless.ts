@@ -575,12 +575,34 @@ export function borderlessStamp(img: ImageData, stamp: Rect, box: Rect): Rect[] 
     }
   if (!ch[0].length) return [{ x0, y0, x1, y1 }];
   const bg = ch.map((v) => v.sort((a, b) => a - b)[v.length >> 1]);
+  // Acima da altura do aro (12 px acima do pé da caixa) o pixel tem de destoar também da mesma
+  // faixa nas colunas vizinhas: com a arte de dois tons atrás da caixa, escura de um lado do selo
+  // e cinza do outro (Sphere of Safety, SLD 2331), a mediana da faixa inteira ficava no cinza, a
+  // arte escura destoava dela, era simétrica perto do eixo e levava a enchente do alto do aro até
+  // a última linha, que ficava em inglês ("er st" de "stronger still"). Abaixo disso não: entre o
+  // aro e o selo há pixels de transição no tom da arte, e sem eles a enchente parava no pé.
+  const near = Math.round(10 * unit);
+  const local: number[][] = [];
+  for (let x = x0; x < x1; x++) {
+    const v: number[][] = [[], [], []];
+    for (let y = Math.max(0, y0 - band); y < y0; y++)
+      for (let xx = Math.max(x0, x - near); xx < Math.min(x1, x + near + 1); xx++) {
+        const i = (y * img.width + xx) * 4;
+        if (luminance(img.data, i) > 150) continue;
+        for (let c = 0; c < 3; c++) v[c].push(img.data[i + c]);
+      }
+    local.push(v[0].length >= band * near ? v.map((c) => c.sort((a, b) => a - b)[c.length >> 1]) : bg);
+  }
+  const top = y1 - Math.round(12 * unit);
+  const far = (i: number, ref: number[]) => {
+    const dr = img.data[i] - ref[0];
+    const dg = img.data[i + 1] - ref[1];
+    const db = img.data[i + 2] - ref[2];
+    return dr * dr + dg * dg + db * db > 40 * 40;
+  };
   const differs = (x: number, y: number) => {
     const i = (y * img.width + x) * 4;
-    const dr = img.data[i] - bg[0];
-    const dg = img.data[i + 1] - bg[1];
-    const db = img.data[i + 2] - bg[2];
-    return dr * dr + dg * dg + db * db > 40 * 40;
+    return far(i, bg) && (y >= top || far(i, local[x - x0]));
   };
   // O selo e o aro que sobe em volta dele são simétricos em torno do meio da carta, também na
   // cor; a letra e a arte, não. Só conta o pixel com par da mesma cor do outro lado (com 2 px
