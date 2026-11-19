@@ -101,6 +101,8 @@ export function defaultChoice(card: CardRecord, prints: PrintRecord[], wanted?: 
       .sort(
         (a, b) =>
           Number(b.highres) - Number(a.highres) ||
+          // a arte sem borda só é escolhida pela pessoa: o apagamento da moldura comum é mais seguro
+          Number(a.border === "borderless") - Number(b.border === "borderless") ||
           Number(a.promo) - Number(b.promo) ||
           Number(isReprintList(a)) - Number(isReprintList(b)) ||
           (b.released ?? "").localeCompare(a.released ?? ""),

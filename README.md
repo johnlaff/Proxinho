@@ -53,7 +53,7 @@ flowchart LR
 
 1. **Dados.** Todo dia, um script em Python cruza o banco de cartas do Scryfall com os textos em português do Arena e das impressões oficiais e carrega o resultado no Cloudflare D1 (33.830 cartas, 795 fichas e 89 emblemas, 104 mil impressões).
 2. **Lista.** Um leitor único entende os formatos de exportação mais comuns, com seções (inclusive "Tokens"), coleção, número e nomes em português. O resumo do pedido sugere as fichas que as cartas do deck criam.
-3. **Carta.** No navegador, um canvas baixa o PNG oficial da impressão, apaga o texto em inglês reconstruindo a textura da moldura (máscara + preenchimento em pirâmide; nas caixas translúcidas dos planeswalkers, uma rede neural de inpainting, o LaMa, rodando no próprio navegador) e escreve o português com quebra de linha, símbolos de mana e corpo ajustado para caber.
+3. **Carta.** No navegador, um canvas baixa o PNG oficial da impressão, apaga o texto em inglês reconstruindo a textura da moldura (máscara + preenchimento em pirâmide; nas caixas translúcidas dos planeswalkers e das artes sem borda, uma rede neural de inpainting, o LaMa, rodando no próprio navegador) e escreve o português com quebra de linha, símbolos de mana e corpo ajustado para caber.
 4. **PDF.** As cartas são paginadas 3 × 3 em A4 ou Carta, com ou sem sangria, a 300 ou 480 dpi.
 
 Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
@@ -85,7 +85,7 @@ pnpm db:seed:local   # banco local com 14 cartas, uma ficha e um emblema de amos
 pnpm dev             # http://localhost:5173
 ```
 
-Na primeira vez, o `pnpm dev` baixa o modelo de preenchimento dos planeswalkers (37 MB, conferido por SHA-256) para `public/modelos/`, fora do git. Sem rede, o site usa o preenchimento simples.
+Na primeira vez, o `pnpm dev` baixa o modelo de preenchimento dos planeswalkers e das artes sem borda (37 MB, conferido por SHA-256) para `public/modelos/`, fora do git. Sem rede, o site usa o preenchimento simples.
 
 Para ter o banco completo localmente: `pnpm data:build` e depois `pnpm exec wrangler d1 execute proxinho --local --file data/out/cards.sql`.
 
@@ -109,9 +109,9 @@ O projeto foi feito por um agente de IA trabalhando de forma autônoma, seguindo
 
 ## Limites conhecidos
 
-- A reescrita cobre a moldura moderna (2015+) de cartas normais, de duas faces (transformar e modais), de planeswalkers, de fichas (tokens, inclusive as de duas faces e as da moldura de 2003) e de emblemas. Sagas, aventuras, molduras especiais e promos de Game Day com a arte atrás da caixa usam a imagem oficial em português quando existe; senão saem em inglês com aviso. Se o motor não reconhece a moldura de uma impressão (algumas edições especiais da Secret Lair têm o desenho invertido sem que os dados digam), a carta também sai em inglês, e a etiqueta muda para dizer isso.
+- A reescrita cobre a moldura moderna (2015+) de cartas normais, de duas faces (transformar e modais), de planeswalkers, de fichas (tokens, inclusive as de duas faces e as da moldura de 2003), de emblemas e as artes sem borda na moldura padrão (Secret Lair, Commander, Marvel e as variantes sem borda das coleções). Nas artes com nome de crossover (o Skeletor no Tinybones da Secret Lair), o nome do alto fica como impresso e o nome em PT vai na linha pequena logo abaixo. Sagas, aventuras, molduras especiais e promos de Game Day com a arte atrás da caixa usam a imagem oficial em português quando existe; senão saem em inglês com aviso. Se o motor não reconhece a moldura de uma impressão (algumas edições especiais da Secret Lair têm o desenho invertido sem que os dados digam), a carta também sai em inglês, e a etiqueta muda para dizer isso.
 - Nas modais, a faixa do pé com o resumo do outro lado continua em inglês.
-- O primeiro planeswalker da sessão baixa o modelo de preenchimento (~66 MB, uma vez só); sem placa de vídeo, cada um leva cerca de 6 s.
+- O primeiro planeswalker ou arte sem borda da sessão baixa o modelo de preenchimento (~66 MB, uma vez só); sem placa de vídeo, cada planeswalker leva cerca de 6 s e cada arte sem borda, cerca de 18 s. A arte padrão de cada carta continua sendo a com borda: a sem borda só sai se você escolher.
 - Cartas sem tradução oficial saem em inglês. Não usamos tradução automática. Nas fichas, o texto vem do Arena: 534 de 795 têm português (cerca de 82% das fichas que as cartas de Commander criam). Nos emblemas, vem do texto oficial do planeswalker que o cria: 73 de 89.
 - O texto usa as fontes das cartas reais (Beleren e MPlantin), servidas pelo Worker a partir do KV, fora deste repositório. Num clone sem esses arquivos, o site cai sozinho para fontes livres parecidas (Eczar e Splentinex). Também dá para escolher outros arquivos de fonte no site; eles ficam só no navegador.
 
@@ -119,7 +119,7 @@ O projeto foi feito por um agente de IA trabalhando de forma autônoma, seguindo
 
 O Proxinho é conteúdo de fã, gratuito e não oficial, permitido pela [Política de Conteúdo de Fãs](https://company.wizards.com/pt-br/legal/fancontentpolicy) da Wizards. Não é aprovado nem endossado pela Wizards. Partes dos materiais usados são propriedade da Wizards of the Coast. ©Wizards of the Coast LLC. Proxies são para uso pessoal; não venda.
 
-Imagens das cartas: [Scryfall](https://scryfall.com). Textos do Arena: arquivos públicos da [Untapped.gg](https://untapped.gg). Preenchimento das caixas dos planeswalkers: [LaMa](https://github.com/advimman/lama) (Apache 2.0), na versão quantizada [lama-int4-int8](https://huggingface.co/othytenk/lama-int4-int8), rodando com o [ONNX Runtime Web](https://onnxruntime.ai) (MIT).
+Imagens das cartas: [Scryfall](https://scryfall.com). Textos do Arena: arquivos públicos da [Untapped.gg](https://untapped.gg). Preenchimento das caixas dos planeswalkers e das artes sem borda: [LaMa](https://github.com/advimman/lama) (Apache 2.0), na versão quantizada [lama-int4-int8](https://huggingface.co/othytenk/lama-int4-int8), rodando com o [ONNX Runtime Web](https://onnxruntime.ai) (MIT).
 
 ## Licença
 

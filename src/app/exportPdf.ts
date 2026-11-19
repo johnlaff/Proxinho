@@ -49,7 +49,8 @@ export async function exportPdf(
       const { canvas, translated } = await renderCard({ ...input, imageVersion: "png", scale: SCALE[opts.quality] });
       if (input.face) noteRender(input.print.id, side, translated);
       results[i] = await toBlob(canvas);
-      borders[i] = input.print.border === "white" ? "white" : "black";
+      const border = input.print.border;
+      borders[i] = border === "white" || border === "borderless" ? border : "black";
       onProgress({ phase: "cartas", done: ++done, total: list.length });
     }
   }

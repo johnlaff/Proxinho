@@ -83,6 +83,12 @@ describe("defaultChoice", () => {
     expect(defaultChoice(card(), prints)).toEqual({ kind: "print", printId: "nova" });
   });
 
+  it("prefere a moldura com borda à arte sem borda, mesmo mais nova", () => {
+    const prints = [print("sem-borda", { border: "borderless", released: "2025-01-01" }), print("comum", { released: "2021-01-01" })];
+    expect(defaultChoice(card(), prints)).toEqual({ kind: "print", printId: "comum" });
+    expect(defaultChoice(card(), [print("sem-borda", { border: "borderless" })])).toEqual({ kind: "print", printId: "sem-borda" });
+  });
+
   it("sem moldura suportada, usa a imagem oficial em português", () => {
     const c = card({ pt_print: { id: "pt", set: "war", number: "1", hires: true } });
     expect(defaultChoice(c, [print("x", { supported: false })])).toEqual({ kind: "pt" });

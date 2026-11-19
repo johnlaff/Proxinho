@@ -15,3 +15,4 @@ Cada arquivo registra uma decisão de arquitetura: o contexto, o que foi decidid
 | [0009](0009-fichas.md) | Fichas (tokens): texto do Arena e moldura achada na imagem | Aceita |
 | [0010](0010-emblemas-fichas-duplas-e-moldura-2003.md) | Emblemas, fichas de duas faces e moldura de ficha de 2003 | Aceita |
 | [0011](0011-medidas-na-imagem-e-varredura-de-erros.md) | Medir a moldura na imagem (fios da caixa, barra, selo, símbolo) e dados do Arena sem versões alternativas | Aceita |
+| [0012](0012-moldura-sem-borda.md) | Moldura sem borda: letras brancas e caixa e barras translúcidas pela rede neural, na resolução da imagem | Aceita |

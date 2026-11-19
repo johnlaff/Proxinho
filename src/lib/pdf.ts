@@ -8,6 +8,8 @@
  * - Modo "carta completa": sangria (2 mm na A4, 1 mm na Carta) para cortar
  *   sem filete branco, com marcas de corte no tamanho final. A sangria é
  *   pequena de propósito: impressoras caseiras não imprimem nos últimos ~4 mm.
+ *   Ela tem a cor da borda da carta; nas artes sem borda, a própria arte
+ *   esticada até a beira da célula (ver `bleedLayers`).
  * - Régua de 5 cm na margem lateral de toda página, para conferir se a
  *   impressora não reduziu (as margens laterais são as mais folgadas).
  */
@@ -22,8 +24,8 @@ export interface PdfCard {
   /** verso das cartas de duas faces: sai logo depois da frente, em cada cópia */
   back?: Blob;
   quantity: number;
-  /** cor da borda (para a sangria) */
-  border: "black" | "white";
+  /** cor da borda (para a sangria); "borderless" é a arte que vai até a beira */
+  border: "black" | "white" | "borderless";
 }
 
 export interface PdfOptions {
@@ -56,7 +58,25 @@ export function gridFor(opts: PdfOptions) {
   return { pw, ph, cw, ch, bleed, cellW, cellH, x0, y0 };
 }
 
-function cropMarks(page: PDFPage, g: ReturnType<typeof gridFor>) {
+type Grid = ReturnType<typeof gridFor>;
+type BleedLayer = { kind: "color"; rgb: [number, number, number] } | { kind: "art"; x: number; y: number; width: number; height: number };
+
+/**
+ * O que vai atrás da carta na célula com sangria (mm, a partir do canto de cima da célula).
+ * Borda preta ou branca: a célula inteira dessa cor. Arte sem borda: com a sangria preta, um
+ * erro de meio milímetro no corte deixava um filete preto numa carta que tem arte até a beira;
+ * a própria imagem, esticada até a célula, continua a arte na sangria (a emenda fica a ~2 mm
+ * da beira do conteúdo, e o esticão é de 4 a 6%) e cobre os cantos arredondados da imagem.
+ * O preto fica por baixo, nos cantos da célula.
+ */
+export function bleedLayers(border: PdfCard["border"], g: Grid): BleedLayer[] {
+  if (g.bleed <= 0) return [];
+  const color: BleedLayer = { kind: "color", rgb: border === "white" ? [0.96, 0.95, 0.93] : [0.05, 0.05, 0.05] };
+  if (border !== "borderless") return [color];
+  return [color, { kind: "art", x: 0, y: 0, width: g.cellW, height: g.cellH }];
+}
+
+function cropMarks(page: PDFPage, g: Grid) {
   const len = 4;
   const gap = 1;
   const color = rgb(0.25, 0.25, 0.25);
@@ -149,15 +169,16 @@ export async function buildPdf(
       const row = Math.floor(idx / 3);
       const cx = g.x0 + col * g.cellW;
       const cy = g.y0 + row * g.cellH;
-      if (g.bleed > 0) {
-        // sangria: pinta a célula inteira da cor da borda da carta
-        page.drawRectangle({
-          x: cx * MM,
-          y: Y(cy + g.cellH),
-          width: g.cellW * MM,
-          height: g.cellH * MM,
-          color: slot.border === "white" ? rgb(0.96, 0.95, 0.93) : rgb(0.05, 0.05, 0.05),
-        });
+      for (const layer of bleedLayers(slot.border, g)) {
+        if (layer.kind === "color")
+          page.drawRectangle({ x: cx * MM, y: Y(cy + g.cellH), width: g.cellW * MM, height: g.cellH * MM, color: rgb(...layer.rgb) });
+        else
+          page.drawImage(slot.img, {
+            x: (cx + layer.x) * MM,
+            y: Y(cy + layer.y + layer.height),
+            width: layer.width * MM,
+            height: layer.height * MM,
+          });
       }
       page.drawImage(slot.img, { x: (cx + g.bleed) * MM, y: Y(cy + g.bleed + g.ch), width: g.cw * MM, height: g.ch * MM });
     });

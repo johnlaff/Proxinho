@@ -72,7 +72,7 @@ function dropArtBelowText(mask: Uint8Array, w: number, h: number, unit: number):
 }
 
 /** Média em janela quadrada (raio r) usando imagem integral, com pesos. */
-function boxMean(values: Float32Array, weights: Float32Array, w: number, h: number, r: number): Float32Array {
+export function boxMean(values: Float32Array, weights: Float32Array, w: number, h: number, r: number): Float32Array {
   const iw = w + 1;
   const sv = new Float64Array(iw * (h + 1));
   const sw = new Float64Array(iw * (h + 1));
@@ -669,7 +669,7 @@ function blurredDeviation(w: number, h: number, mask: Uint8Array, dev: (k: numbe
 }
 
 /** Dilatação (grow = true) ou erosão separável com raio r. */
-function morph(src: Uint8Array, w: number, h: number, r: number, grow: boolean): Uint8Array {
+export function morph(src: Uint8Array, w: number, h: number, r: number, grow: boolean): Uint8Array {
   const tmp = new Uint8Array(w * h);
   const out = new Uint8Array(w * h);
   const hit = grow ? 1 : 0;
@@ -870,6 +870,189 @@ export function smoothNoisyPaper(c: Float32Array, a: Float32Array, w: number, h:
 }
 
 /**
+ * Devolve o grão da vizinhança a um remendo já preenchido (pela rede neural) dentro de
+ * `rect`: os pixels de `hole` (máscara da imagem inteira) ficam com a média local do
+ * próprio remendo mais o desvio copiado de pixels conhecidos (`addGrain`). A rede neural
+ * não reproduz a retícula de 2 a 3 px de uma arte impressa atrás da caixa sem borda (a
+ * gravura do Shivan Dragon da Secret Lair): o remendo saía liso, a forma das letras
+ * apagadas aparecendo como faixas. Numa arte lisa o grão copiado é quase nada.
+ */
+export function regrain(img: ImageData, rect: Rect, hole: Uint8Array): void {
+  const w = rect.x1 - rect.x0;
+  const h = rect.y1 - rect.y0;
+  if (w <= 0 || h <= 0) return;
+  const local = new Uint8Array(w * h);
+  const weight = new Float32Array(w * h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const v = hole[(rect.y0 + y) * img.width + rect.x0 + x];
+      local[y * w + x] = v;
+      weight[y * w + x] = v ? 1 : 0;
+    }
+  const r = Math.max(1, Math.round((2 * img.width) / 745));
+  const base = [0, 1, 2].map((c) => {
+    const v = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) v[y * w + x] = img.data[((rect.y0 + y) * img.width + rect.x0 + x) * 4 + c];
+    return boxMean(v, weight, w, h, r);
+  });
+  // O grão de cada ponto vai até 2 + 3 vezes o grão fino da vizinhança: o desvio copiado vem
+  // de uma janela de 8 px e de até 64 px de distância, e trazia a forma da arte de lá. Na
+  // caixa escura e lisa do Molten Duplication da Secret Lair (SLC 54), com faixas verdes e
+  // marrons na arte ao lado, a última linha do flavor apagada voltava como letras listradas e
+  // pingos escuros. Grão fino é o desvio de cada pixel para a média 3 × 3 em volta, só nos
+  // pixels conhecidos a mais de 3 px do buraco (a borda suavizada das letras é áspera); a
+  // vizinhança é a mediana dos blocos de 16 px em volta (a mediana: as beiras das faixas são
+  // poucas). Na retícula e no brilho do foil o grão fino é forte, e volta inteiro.
+  const unit = img.width / 745;
+  const ones = new Float32Array(w * h).fill(1);
+  const near = boxMean(weight, ones, w, h, Math.max(2, Math.round(3 * unit)));
+  const lum = new Float32Array(w * h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) lum[y * w + x] = luminance(img.data, ((rect.y0 + y) * img.width + rect.x0 + x) * 4);
+  const known = new Float32Array(w * h);
+  for (let k = 0; k < w * h; k++) known[k] = local[k] ? 0 : 1;
+  const smooth = boxMean(lum, known, w, h, Math.max(1, Math.round(unit)));
+  const B = Math.max(8, Math.round(16 * unit));
+  const bw = Math.ceil(w / B);
+  const bh = Math.ceil(h / B);
+  const blocks = new Float32Array(bw * bh).fill(-1);
+  for (let by = 0; by < bh; by++)
+    for (let bx = 0; bx < bw; bx++) {
+      const vals: number[] = [];
+      for (let y = by * B; y < Math.min(h, by * B + B); y++)
+        for (let x = bx * B; x < Math.min(w, bx * B + B); x++) {
+          const k = y * w + x;
+          if (near[k] === 0) vals.push(Math.abs(lum[k] - smooth[k]));
+        }
+      if (vals.length >= B) blocks[by * bw + bx] = median(Float32Array.from(vals));
+    }
+  const all = Array.from(blocks).filter((v) => v >= 0);
+  const fallback = all.length ? median(Float32Array.from(all)) : 255;
+  const fine = new Float32Array(bw * bh);
+  for (let by = 0; by < bh; by++)
+    for (let bx = 0; bx < bw; bx++) {
+      const vals: number[] = [];
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const v = blocks[(by + dy) * bw + bx + dx];
+          if (by + dy >= 0 && by + dy < bh && bx + dx >= 0 && bx + dx < bw && v >= 0) vals.push(v);
+        }
+      fine[by * bw + bx] = vals.length ? median(Float32Array.from(vals)) : fallback;
+    }
+  addGrain(
+    img,
+    rect,
+    local,
+    (k, c) => base[c][k],
+    10,
+    local,
+    (k) => {
+      const x = k % w;
+      const y = (k - x) / w;
+      return 2 + 3 * fine[Math.floor(y / B) * bw + Math.floor(x / B)];
+    },
+  );
+}
+
+/**
+ * Tira a cor que a rede neural inventa no meio do buraco sem nada parecido em volta: sobre a
+ * arte escura e calma do Dol Amroth (LTC 399, foil), onde estava o {U} ficou um anel laranja e
+ * no fim do "Dol" um "l" cinza, que a máscara cobria inteiros. O pixel do buraco sai da faixa
+ * da vizinhança conhecida (de 49 px, sem o buraco e sem `hide`) por mais de 14 tons num canal
+ * qualquer: ele e o que está a até 2 px dele no buraco voltam para a média dessa vizinhança
+ * (o grão volta depois, em `regrain`). Arte que segue por baixo das letras tem par fora do
+ * buraco e fica. Muda a imagem no lugar e devolve quantos pixels trocou.
+ */
+export function tameInvented(img: ImageData, rect: Rect, hole: Uint8Array, hide: Rect[] = []): number {
+  const W = img.width;
+  const w = rect.x1 - rect.x0;
+  const h = rect.y1 - rect.y0;
+  if (w <= 0 || h <= 0) return 0;
+  const n = w * h;
+  const unit = W / 745;
+  const r = Math.max(8, Math.round(24 * unit));
+  const tol = 14;
+  const known = new Float32Array(n);
+  const inHole = new Uint8Array(n);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const k = y * w + x;
+      inHole[k] = hole[(rect.y0 + y) * W + rect.x0 + x];
+      known[k] = inHole[k] ? 0 : 1;
+    }
+  for (const g of hide)
+    for (let y = Math.max(Math.round(g.y0), rect.y0); y < Math.min(Math.round(g.y1), rect.y1); y++)
+      for (let x = Math.max(Math.round(g.x0), rect.x0); x < Math.min(Math.round(g.x1), rect.x1); x++)
+        known[(y - rect.y0) * w + x - rect.x0] = 0;
+  // máximo (ou mínimo, com o sinal trocado) dos conhecidos numa janela quadrada, em duas
+  // passadas de uma dimensão (van Herk / Gil-Werman: linear, qualquer que seja a janela)
+  const line = (a: Float32Array) => {
+    const s = 2 * r + 1;
+    const len = a.length + 2 * r;
+    const pad = new Float32Array(len).fill(-Infinity);
+    pad.set(a, r);
+    const pre = new Float32Array(len);
+    const suf = new Float32Array(len);
+    for (let i = 0; i < len; i++) pre[i] = i % s === 0 ? pad[i] : Math.max(pre[i - 1], pad[i]);
+    for (let i = len - 1; i >= 0; i--) suf[i] = i % s === s - 1 || i === len - 1 ? pad[i] : Math.max(suf[i + 1], pad[i]);
+    const out = new Float32Array(a.length);
+    for (let i = 0; i < a.length; i++) out[i] = Math.max(suf[i], pre[i + s - 1]);
+    return out;
+  };
+  const extreme = (v: Float32Array, sign: number) => {
+    const out = new Float32Array(n);
+    const row = new Float32Array(w);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) row[x] = known[y * w + x] ? sign * v[y * w + x] : -Infinity;
+      out.set(line(row), y * w);
+    }
+    const col = new Float32Array(h);
+    for (let x = 0; x < w; x++) {
+      for (let y = 0; y < h; y++) col[y] = out[y * w + x];
+      const m = line(col);
+      for (let y = 0; y < h; y++) out[y * w + x] = m[y];
+    }
+    return out;
+  };
+  const chans = [0, 1, 2].map((c) => {
+    const v = new Float32Array(n);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) v[y * w + x] = img.data[((rect.y0 + y) * W + rect.x0 + x) * 4 + c];
+    return { v, hi: extreme(v, 1), lo: extreme(v, -1), mean: boxMean(v, known, w, h, r) };
+  });
+  const odd = new Uint8Array(n);
+  for (let k = 0; k < n; k++) {
+    if (!inHole[k] || chans[0].hi[k] === -Infinity) continue;
+    for (const { v, hi, lo } of chans)
+      if (v[k] > hi[k] + tol || v[k] < -lo[k] - tol) {
+        odd[k] = 1;
+        break;
+      }
+  }
+  const g = Math.max(1, Math.round(2 * unit));
+  let count = 0;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const k = y * w + x;
+      if (!inHole[k] || chans[0].hi[k] === -Infinity) continue;
+      let near = false;
+      for (let dy = -g; dy <= g && !near; dy++)
+        for (let dx = -g; dx <= g; dx++) {
+          const yy = y + dy;
+          const xx = x + dx;
+          if (yy >= 0 && yy < h && xx >= 0 && xx < w && odd[yy * w + xx]) {
+            near = true;
+            break;
+          }
+        }
+      if (!near) continue;
+      const i = ((rect.y0 + y) * W + rect.x0 + x) * 4;
+      for (let c = 0; c < 3; c++) img.data[i + c] = Math.round(chans[c].mean[k]);
+      count++;
+    }
+  return count;
+}
+
+/**
  * Escreve o preenchimento nos pixels mascarados, com grão. O preenchimento sozinho
  * é liso, e num fundo granulado (barra de tipo texturizada, papel da caixa) o trecho
  * liso aparece como mancha. Cada pixel ganha o desvio de um vizinho conhecido
@@ -883,6 +1066,8 @@ function addGrain(
   value: (k: number, c: number) => number,
   ry = 10,
   unknown: Uint8Array = mask,
+  /** teto do grão em cada ponto, além do teto do papel (ver `regrain`) */
+  limitAt?: (k: number) => number,
 ): void {
   const w = rect.x1 - rect.x0;
   const h = rect.y1 - rect.y0;
@@ -979,7 +1164,8 @@ function addGrain(
       }
       const i = ((rect.y0 + y) * img.width + rect.x0 + x) * 4;
       for (let c = 0; c < 3; c++) {
-        const grain = q < 0 ? 0 : clamp(chan[c].v[q] - chan[c].mean[q], -cap[c], cap[c]);
+        const lim = limitAt ? Math.min(cap[c], limitAt(k)) : cap[c];
+        const grain = q < 0 ? 0 : clamp(chan[c].v[q] - chan[c].mean[q], -lim, lim);
         img.data[i + c] = value(k, c) + grain;
       }
     }
@@ -1467,6 +1653,8 @@ export function findSetSymbolLeft(
   xMax?: number,
   maxWidth = 100,
   info?: { colored: number; lim: number; tight?: boolean },
+  /** barra translúcida da moldura sem borda (ver o degradê do arco-íris, abaixo) */
+  borderless = false,
 ): number {
   const x0 = Math.round(img.width * 0.75);
   // nas fichas a barra de tipo termina antes (ponta arredondada): quem chama passa o fim dela
@@ -1484,6 +1672,7 @@ export function findSetSymbolLeft(
   }
   let mean = 0;
   for (let acc = 0; mean < 255; mean++) if ((acc += hist[mean]) >= count / 2) break;
+  const bandMedian = mean;
   // Um selo largo e cheio toma mais da metade da busca (o dourado "M19" das promoções do
   // Core Set 2019 tem 90 px): a mediana caía nele, a barra inteira virava "tinta" e o
   // começo do selo era apagado. Aí a referência é a barra à esquerda da busca, onde o
@@ -1516,6 +1705,24 @@ export function findSetSymbolLeft(
     }
   };
   scan(false);
+  // Barra com degradê forte (o arco-íris do foil do Ian Malcolm, REX 38: clara à esquerda,
+  // escura no fim): a barra à esquerda da busca não serve de referência, toda coluna virava
+  // "tinta" e, por linha, o vão antes do símbolo também (a mediana das linhas das letras cai
+  // nelas e no símbolo); o "tist" de "Scientist" ficava ao lado do português. Se a barra à
+  // esquerda, mais clara que a busca, deixa a faixa inteira como tinta, vale a mediana da
+  // própria busca. (Com a busca mais clara, a mediana dela pode ser o símbolo: com a arte
+  // laranja no alto da barra do Orthion, MOM, quem resolve é a referência por linha.) Só na
+  // sem borda: nas barras opacas, varridas em 1.600 cartas e fichas, isso mudava o corte de
+  // cartas que já saíam certas.
+  if (borderless && cols.length >= (x1 - x0) * 0.98 && mean - bandMedian > 45) {
+    const ref = mean;
+    mean = bandMedian;
+    scan(false);
+    if (cols.length >= (x1 - x0) * 0.98) {
+      mean = ref;
+      scan(false);
+    }
+  }
   // faixa inteira "tinta", sem nenhuma lacuna: é o contorno da barra; refaz por linha
   if (cols.length >= (x1 - x0) * 0.98) scan(true);
   if (!cols.length) return Math.round(img.width * 0.85);
@@ -1572,6 +1779,29 @@ export function findSetSymbolLeft(
     return j;
   };
   const loose = (j: number) => (j > 0 ? cols[j] - cols[j - 1] : cols[j] - x0) >= 20 * k;
+  // Pingo solto no fim, de até 4 px, separado por 9 a 32 px de um bloco largo antes dele: é a
+  // ponta do rabo do cometa da Secret Lair, que sai do traço fino da curva. Nenhum símbolo é
+  // tão estreito; com ele como "símbolo", a estrela inteira era apagada (Sol Ring, SLD 2467;
+  // Sylvan Safekeeper, SLD 2109). Ele continua protegido: fica depois do começo do símbolo.
+  // Se uma camada do contorno foi pulada, o bloco de antes tem de estar solto (20 px vazios
+  // antes dele): o que sobra pode ser o fim do tipo, e o símbolo volta mais abaixo. Sem camada
+  // pulada, o bloco pode vir desde o começo da busca (a mão vermelha da arte atrás da estrela
+  // no Titanic Ultimatum da Secret Lair, SLC 111).
+  {
+    let i = last;
+    while (i > 0 && cols[i] - cols[i - 1] <= Math.max(1, Math.round(3 * kk))) i--;
+    const gap = i > 0 ? cols[i] - cols[i - 1] : 0;
+    const b = i > 0 ? blockStart(i - 1) : 0;
+    if (
+      i > 0 &&
+      cols[last] - cols[i] < Math.round(4 * kk) &&
+      gap > Math.max(3, 8 * k) &&
+      gap <= Math.round(32 * kk) &&
+      cols[i - 1] - cols[b] >= 10 * k &&
+      (beforeLayer === null || loose(b))
+    )
+      last = i - 1;
+  }
   // traço de letra: oito linhas seguidas de tinta numa coluna (o grão de uma barra
   // granulada dá pontos soltos, nunca um traço)
   const stroke = (a: number, b: number) => {
@@ -1904,7 +2134,7 @@ export function maskRegions(
  * trecho liso, e para ali também. Quem chama passa as pontas a `eraseRegions` como `caps`:
  * opacas e também sem semente da máscara, para a folga das letras não passar por cima.
  */
-export function barCapGuard(img: ImageData, rect: Rect, side: "left" | "right"): Rect[] {
+export function barCapGuard(img: ImageData, rect: Rect, side: "left" | "right", whiteLetters = false): Rect[] {
   const x0 = Math.round(rect.x0);
   const x1 = Math.round(rect.x1);
   const y0 = Math.max(0, Math.round(rect.y0));
@@ -1939,6 +2169,20 @@ export function barCapGuard(img: ImageData, rect: Rect, side: "left" | "right"):
     let level = 0;
     for (; n < maxRun; n++) {
       const v = at(start + dir * n, y);
+      // Na moldura sem borda (`whiteLetters`) a primeira letra começa já em x = 57 (o "S" do
+      // Regrowth da Secret Lair, SLD 866): numa barra de grão forte nada parecia papel, a
+      // ponta ia até 11 px e cobria a borda do "S", que ficava em pingos brancos ao lado do
+      // português. Letra branca, ali, é um pixel quase branco depois de um escuro, a 5 px ou
+      // mais da borda (o aro claro de algumas barras já começa colado nela): a ponta para
+      // antes da borda suavizada dela.
+      if (whiteLetters && n >= Math.round(5 * k) && v >= 200) {
+        let dark = false;
+        for (let j = 1; j <= 3; j++) if (at(start + dir * (n - j), y) < 150) dark = true;
+        if (dark) {
+          while (n > Math.round(5 * k) && at(start + dir * (n - 1), y) > 120) n--;
+          break;
+        }
+      }
       // nas primeiras colunas, o contorno escuro logo adiante: ainda é a ponta. Na linha
       // de sombra do pé da barra o papel da linha é a própria sombra, e o contorno da curva,
       // logo depois, entrava na máscara (um risco claro no pé do Espectrolume Errante, CLU)
@@ -2335,6 +2579,35 @@ export function hasRightIcon(img: ImageData): boolean {
   }
   // o ícone é um disco escuro com um triângulo claro (ou o contrário)
   return lo > n * 0.45 && hi > n * 0.15;
+}
+
+/**
+ * Procura o ícone das Lições à esquerda do nome (o pergaminho com a pena). Nas de Secrets of
+ * Strixhaven o Scryfall não marca o efeito `lesson`, e o nome em PT saía por cima do ícone
+ * apagado (Restoration Seminar, SOS 290). Com o ícone, a barra do nome começa depois dele
+ * num fio preto em curva (de x ≈ 100 a 109), com o disco claro do ícone à esquerda: em 80%
+ * ou mais das linhas do meio da barra há um pixel preto ali com claro logo antes. Num nome
+ * sem ícone, a letra que cai nesse lugar não ocupa as linhas acima e abaixo dela (até 78%
+ * nas amostras). Quem chama só pergunta isso para as Lições.
+ */
+export function hasLessonIcon(img: ImageData): boolean {
+  const k = img.width / 745;
+  const ky = img.height / 1040;
+  const y0 = Math.round(60 * ky);
+  const y1 = Math.round(100 * ky);
+  const back = Math.max(2, Math.round(8 * k));
+  let hits = 0;
+  for (let y = y0; y < y1; y++)
+    for (let x = Math.round(96 * k); x <= Math.round(118 * k); x++) {
+      if (luminance(img.data, (y * img.width + x) * 4) >= 50) continue;
+      let bright = false;
+      for (let b = x - back; b < x && !bright; b++) bright = luminance(img.data, (y * img.width + b) * 4) > 200;
+      if (bright) {
+        hits++;
+        break;
+      }
+    }
+  return hits >= (y1 - y0) * 0.8;
 }
 
 /**

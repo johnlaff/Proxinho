@@ -277,6 +277,18 @@ export function findStamp(img: ImageData, boxBottom: number, maxRise = 60, reach
 }
 
 /**
+ * O selo das cartas (o da M15 e o da sem borda): procura a borda preta a partir de y = 948,
+ * com até 26 px de subida. Na sem borda a caixa é escura até o pé, abaixo de 60 tons: a
+ * "borda preta" era achada ainda dentro da caixa, ali o selo não acendia e a carta ficava
+ * sem proteção nenhuma no selo; o aro claro em volta dele era apagado e o remendo deixava um
+ * degrau no aro (Reassembling Skeleton, SLD 1406, e mais 22 de 183 amostras). Sem selo assim,
+ * tenta de novo a partir do pé medido da caixa (`boxBottom`, escala-base).
+ */
+export function findCardStamp(img: ImageData, boxBottom?: number): Rect | null {
+  return findStamp(img, 948, 26, 30) ?? (boxBottom === undefined ? null : findStamp(img, boxBottom, 26, 30));
+}
+
+/**
  * A proteção do selo seguindo o contorno dele, linha a linha (em pixels da imagem). O
  * retângulo de `findStamp` tem folga para os lados, e a cúpula escura em volta do selo
  * sobe em curva: nos cantos de cima do retângulo fica papel, e ali cai o pé da última

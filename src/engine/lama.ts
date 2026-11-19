@@ -63,8 +63,11 @@ function infer(image: Float32Array, mask: Float32Array): Promise<Float32Array | 
   });
 }
 
+/** Recorte quadrado da imagem (canto e lado, em pixels). */
+type Crop = { x: number; y: number; size: number };
+
 /** Recorte quadrado em volta de `area`, com margem de contexto, dentro da imagem. */
-export function cropAround(area: Rect, width: number, height: number, margin: number): { x: number; y: number; size: number } {
+export function cropAround(area: Rect, width: number, height: number, margin: number): Crop {
   const size = Math.min(Math.max(SIZE, area.x1 - area.x0 + 2 * margin, area.y1 - area.y0 + 2 * margin), width, height);
   const clampTo = (v: number, max: number) => Math.min(Math.max(0, Math.round(v)), max - size);
   return {
@@ -75,13 +78,12 @@ export function cropAround(area: Rect, width: number, height: number, margin: nu
 }
 
 /**
- * Preenche, dentro de `area`, os pixels marcados em `mask` (máscara da imagem
- * inteira). Devolve `false` se o modelo não estiver disponível; nesse caso a
- * imagem fica intacta e quem chama usa o preenchimento simples.
+ * Um quadro do modelo: recorta `crop` da imagem, reduz ou amplia para 512 × 512, roda o
+ * modelo e devolve o resultado só nos buracos de `mask` dentro de `fill`. Devolve `false`
+ * se o modelo não estiver disponível.
  */
-export async function lamaInpaint(img: ImageData, area: Rect, mask: Uint8Array, hide: Rect[] = []): Promise<boolean> {
+async function runFrame(img: ImageData, crop: Crop, mask: Uint8Array, hide: Rect[], fill: Rect): Promise<boolean> {
   const W = img.width;
-  const crop = cropAround(area, W, img.height, Math.round(W * 0.03));
   const s = SIZE / crop.size; // < 1 reduz (PNG), > 1 amplia (imagem menor das prévias)
   const n = SIZE * SIZE;
   const image = new Float32Array(3 * n);
@@ -137,8 +139,8 @@ export async function lamaInpaint(img: ImageData, area: Rect, mask: Uint8Array, 
   if (!out) return false;
   // volta ao tamanho original só nos buracos (bilinear sobre a saída do modelo)
   const at = (x: number, y: number, c: number) => out[c * n + y * SIZE + x];
-  for (let y = Math.max(area.y0, crop.y); y < Math.min(area.y1, crop.y + crop.size); y++) {
-    for (let x = Math.max(area.x0, crop.x); x < Math.min(area.x1, crop.x + crop.size); x++) {
+  for (let y = Math.max(fill.y0, crop.y); y < Math.min(fill.y1, crop.y + crop.size); y++) {
+    for (let x = Math.max(fill.x0, crop.x); x < Math.min(fill.x1, crop.x + crop.size); x++) {
       const p = y * W + x;
       if (!mask[p]) continue;
       const fx = Math.min(Math.max((x - crop.x + 0.5) * s - 0.5, 0), SIZE - 1);
@@ -155,6 +157,53 @@ export async function lamaInpaint(img: ImageData, area: Rect, mask: Uint8Array, 
         img.data[p * 4 + c] = a * (1 - ty) + b * ty;
       }
     }
+  }
+  return true;
+}
+
+/**
+ * Quadros de 512 px na resolução da própria imagem que cobrem `area`, da esquerda para a
+ * direita e de cima para baixo: cada um preenche um pedaço (`fill`) e fica com pelo menos
+ * `margin` px de contexto de cada lado dele, salvo na beira da imagem.
+ */
+export function nativeTiles(area: Rect, width: number, height: number, margin: number): { crop: Crop; fill: Rect }[] {
+  const size = Math.min(SIZE, width, height);
+  const room = size - 2 * margin;
+  const nx = Math.max(1, Math.ceil((area.x1 - area.x0) / room));
+  const ny = Math.max(1, Math.ceil((area.y1 - area.y0) / room));
+  const out: { crop: Crop; fill: Rect }[] = [];
+  const cut = (a: number, b: number, n: number, i: number) => Math.round(a + ((b - a) * i) / n);
+  const clampTo = (v: number, max: number) => Math.min(Math.max(0, Math.round(v)), max - size);
+  for (let j = 0; j < ny; j++)
+    for (let i = 0; i < nx; i++) {
+      const [x0, x1] = [cut(area.x0, area.x1, nx, i), cut(area.x0, area.x1, nx, i + 1)];
+      const [y0, y1] = [cut(area.y0, area.y1, ny, j), cut(area.y0, area.y1, ny, j + 1)];
+      const crop = { x: clampTo((x0 + x1) / 2 - size / 2, width), y: clampTo((y0 + y1) / 2 - size / 2, height), size };
+      out.push({ crop, fill: { x0, y0, x1, y1 } });
+    }
+  return out;
+}
+
+/**
+ * Preenche, dentro de `area`, os pixels marcados em `mask` (máscara da imagem
+ * inteira). Devolve `false` se o modelo não estiver disponível; nesse caso a
+ * imagem fica intacta e quem chama usa o preenchimento simples.
+ *
+ * Com `native`, o modelo roda na resolução da própria imagem, em quadros de 512 px que se
+ * seguem (cada um vê o que o anterior já preencheu), em vez de um quadro só reduzido.
+ * Reduzida, a arte fina atrás da caixa sem borda (a gravura e a retícula da impressão do
+ * Shivan Dragon da Secret Lair) perdia o desenho e o remendo saía em manchas borradas.
+ */
+export async function lamaInpaint(img: ImageData, area: Rect, mask: Uint8Array, hide: Rect[] = [], native = false): Promise<boolean> {
+  const W = img.width;
+  const margin = Math.round(W * 0.03);
+  const single = cropAround(area, W, img.height, margin);
+  if (!native || single.size <= SIZE) return runFrame(img, single, mask, hide, area);
+  // a máscara muda a cada quadro: o que um já preencheu é contexto para o seguinte
+  const work = Uint8Array.from(mask);
+  for (const { crop, fill } of nativeTiles(area, W, img.height, Math.round(W * 0.043))) {
+    if (!(await runFrame(img, crop, work, hide, fill))) return false;
+    for (let y = fill.y0; y < fill.y1; y++) work.fill(0, y * W + fill.x0, y * W + fill.x1);
   }
   return true;
 }

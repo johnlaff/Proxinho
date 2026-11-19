@@ -61,6 +61,11 @@ export interface PrintRecord {
    * (`text_print`): o flavor em PT vale para ela também.
    */
   text_flavor?: boolean;
+  /**
+   * Nome de crossover impresso no alto ("Skeletor, Lord of Destruction"); o nome de jogo vem
+   * numa linha pequena logo abaixo da barra do nome, que recebe o nome em PT.
+   */
+  flavor_name?: string | null;
 }
 
 /** Uma face de uma impressão de duas faces. */

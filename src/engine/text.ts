@@ -153,6 +153,8 @@ export interface Line {
   flavor: boolean;
   /** primeira linha de um parágrafo (recebe espaço antes) */
   first: boolean;
+  /** recuo da linha (as continuações de uma opção "•" começam embaixo do texto dela) */
+  indent?: number;
 }
 
 export interface LayoutResult {
@@ -194,12 +196,17 @@ export function layoutAt(
     let cur: Chunk[] = [];
     let curW = 0;
     let first = true;
+    // Opção de "escolha um" ("• Destrua o artefato alvo e o / encantamento alvo."): na carta
+    // impressa a continuação começa embaixo do texto, não embaixo do marcador (Hull Breach)
+    const lead = p.chunks[0];
+    const hang = lead?.length === 1 && lead[0].kind === "text" && lead[0].value === "•" ? chunkWidth(lead, size, m) + space : 0;
+    const push = () => lines.push({ chunks: cur, flavor: p.flavor, first, ...(first || !hang ? {} : { indent: hang }) });
     for (const chunk of p.chunks) {
       const cw = chunkWidth(chunk, size, m);
       const add = cur.length ? space + cw : cw;
-      const limit = narrow.has(lines.length) ? width - narrowBy : width;
+      const limit = (narrow.has(lines.length) ? width - narrowBy : width) - (first ? 0 : hang);
       if (cur.length && curW + add > limit) {
-        lines.push({ chunks: cur, flavor: p.flavor, first });
+        push();
         first = false;
         cur = [chunk];
         curW = cw;
@@ -208,7 +215,7 @@ export function layoutAt(
         curW += add;
       }
     }
-    if (cur.length) lines.push({ chunks: cur, flavor: p.flavor, first });
+    if (cur.length) push();
   }
   let height = 0;
   lines.forEach((line, i) => {

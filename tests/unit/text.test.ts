@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildParagraphs, fitText, lineText, TABLE_ROW, tokenize, toChunks, type Measurer } from "../../src/engine/text";
+import { buildParagraphs, fitText, layoutAt, lineText, TABLE_ROW, tokenize, toChunks, type Measurer } from "../../src/engine/text";
 import { costLeft, countSymbols, hasLeftIcon, m15Layout } from "../../src/engine/geometry";
 import { normalizeName } from "../../src/lib/normalize";
 
@@ -99,6 +99,33 @@ describe("buildParagraphs com palavra de habilidade", () => {
     expect(p.chunks.slice(0, 3).map((c) => c[0].italic)).toEqual([true, true, true]);
     const [q] = buildParagraphs("Salvaguarda — Pague 2 pontos de vida.", null, []);
     expect(q.chunks.flat().some((r) => r.italic)).toBe(false);
+  });
+});
+
+describe("layoutAt com opções", () => {
+  it("a continuação de uma opção começa embaixo do texto, não do marcador (Brecha na Quilha, SDS)", () => {
+    // corpo 10: cada caractere mede 5 e o espaço também; "• " mede 10
+    const paragraphs = buildParagraphs("Escolha um —\n•Destrua o artefato alvo e o encantamento alvo.", null);
+    const res = layoutAt(paragraphs, 10, 150, fake);
+    const lines = res.lines.map((l) => ({ text: lineText(l.chunks), indent: l.indent ?? 0 }));
+    expect(lines[0]).toEqual({ text: "Escolha um —", indent: 0 });
+    expect(lines[1]).toEqual({ text: "• Destrua o artefato alvo e o", indent: 0 });
+    expect(lines[2]).toEqual({ text: "encantamento alvo.", indent: 10 });
+    // a continuação recua 10 e tem só os 140 que sobram: "o encantamento alvo." (100) cabia
+    // nos 150, mas a linha de cima, com 145, já não aceitava mais nada
+    expect(lines).toHaveLength(3);
+  });
+
+  it("o recuo também conta na largura das continuações", () => {
+    // "• " + 26 caracteres (140) cabe nos 150 da primeira; a continuação de 29 caracteres
+    // (145) cabe nos 150 sem o recuo, mas não nos 140 com ele
+    const res = layoutAt(buildParagraphs("•aaaaaaaaaaaaaaaaaaaaaaaaaa bbbbbbbbbbbbbb cccccccccccccc", null), 10, 150, fake);
+    expect(res.lines.map((l) => lineText(l.chunks))).toEqual(["• aaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbb", "cccccccccccccc"]);
+  });
+
+  it("parágrafo sem marcador não recua", () => {
+    const res = layoutAt(buildParagraphs("Destrua o artefato alvo e o encantamento alvo.", null), 10, 150, fake);
+    expect(res.lines.every((l) => !l.indent)).toBe(true);
   });
 });
 

@@ -121,8 +121,18 @@ def drop_invisible(text: str | None) -> str | None:
 def fix_arena_typos(text: str) -> str:
     """Erros de digitação do arquivo do Arena que não mudam nada do texto oficial: o "+"
     repetido no bônus ("recebe +1/++1", Colorstorm Stallion; "+2/++2" no Delírio de
-    SOS). Nomes como "Cura++" (Final Fantasy) ficam como estão."""
-    return re.sub(r"([+-](?:\d+|X))/\+\+(\d+|X)\b", r"\1/+\2", text)
+    SOS). Nomes como "Cura++" (Final Fantasy) ficam como estão.
+
+    E o ponto no meio da frase, antes de palavra minúscula, onde a pontuação é outra: depois
+    do bônus não há nenhuma ("recebe +1/+1. por cada", Destino do Avatar), entre custos é
+    vírgula ("{T}. sacrifique", Jan Jansen) e antes de "e depois" também ("use dobra de terra
+    1. e depois", Agentes Dai Li). Ponto antes de minúscula em outro lugar (frase que começa
+    com minúscula, siglas como "S.H.I.E.L.D.") fica: corrigir pede mudar letra, não pontuação."""
+    text = re.sub(r"([+-](?:\d+|X))/\+\+(\d+|X)\b", r"\1/+\2", text)
+    low = "a-záéíóúâêôãõçà"
+    text = re.sub(rf"([+-](?:\d+|X)/[+-](?:\d+|X))\. (?=[{low}])", r"\1 ", text)
+    text = re.sub(rf"(\{{o[^}}]+\}})\. (?=[{low}])", r"\1, ", text)
+    return re.sub(r"(?<=\w)\. (?=e (?:depois|então) )", ", ", text)
 
 
 def arena_cost(cost: str | None) -> str | None:
@@ -687,6 +697,35 @@ def frame_supported(card: dict) -> bool:
     )
 
 
+# efeitos que não mudam o desenho da moldura sem borda padrão: "inverted" (letra clara sobre a
+# caixa escura) é o que a marca; coroa de lendária, brilho de encantamento e o círculo das Lições
+# não tiram o texto do lugar
+BORDERLESS_EFFECTS_OK = {"inverted", "legendary", "enchantment", "lesson"}
+
+
+def borderless_supported(card: dict) -> bool:
+    """Arte sem borda na moldura padrão (2019+): a arte vai até a beira e o texto fica numa caixa
+    escura translúcida, nas mesmas posições da moldura comum (src/engine/borderless.ts, ADR 0012).
+
+    Só as de efeito "inverted": as sem ele são molduras próprias (Invocações de Amonkhet, a Mythic
+    Edition, várias da Secret Lair). O motor ainda confere a caixa na imagem e, se não achar os fios
+    dela ou ela for clara ou de retícula grossa, a arte sai como está.
+    """
+    effects = set(card.get("frame_effects") or [])
+    type_line = card.get("type_line", "")
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "normal"
+        and card.get("border_color") == "borderless"
+        and "inverted" in effects
+        and effects <= BORDERLESS_EFFECTS_OK
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not any(t in type_line for t in UNSUPPORTED_TYPES)
+        and "Station" not in (card.get("keywords") or [])
+    )
+
+
 DFC_LAYOUTS = {"transform", "modal_dfc"}
 # molduras de duas faces com desenho próprio (bússola de Ixalan, planeswalker de Magic Origins…)
 UNSUPPORTED_DFC_EFFECTS = UNSUPPORTED_EFFECTS | {"compasslanddfc", "originpwdfc", "fandfc", "convertdfc"}
@@ -830,8 +869,10 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         "mana_cost": face.get("mana_cost") or c.get("mana_cost"),
         "has_pt": face.get("power") is not None or c.get("power") is not None,
         "two_sided": bool(c.get("card_faces") and not c.get("image_uris")) and c.get("layout") != "double_faced_token",
-        "supported": frame_supported(c) or token_supported(c) or bool(sides and sides[0]["supported"]),
+        "supported": frame_supported(c) or borderless_supported(c) or token_supported(c) or bool(sides and sides[0]["supported"]),
         "sides": sides,
+        # nome de crossover no alto (o nome de jogo vai numa linha pequena abaixo da barra)
+        "flavor_name": c.get("flavor_name") or face.get("flavor_name"),
     }
 
 
@@ -1093,7 +1134,7 @@ def sql_str(value: object) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides", "text_flavor"]
+PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides", "text_flavor", "flavor_name"]
 
 COLUMNS = ["oracle_id", "name_en", "name_pt", "search_en", "search_pt", "source", "text_print", "faces", "pt_print", "layout", "type_line", "edhrec_rank", "commander", "tokens"]
 

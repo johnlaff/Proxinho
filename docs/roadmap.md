@@ -2,7 +2,8 @@
 
 ## Próximos passos (o agente pode fazer)
 
-- Molduras: saga, aventura, sem borda, showcase, naves com "Estacionar" (Station) e promos de Game Day com a arte atrás da caixa de texto. (Duas faces e planeswalker: feito em 17/11/2026, ver ADR 0007. Caixa dos planeswalkers sem mancha, com o LaMa: feito em 17/11/2026, ver ADR 0008.)
+- Molduras: saga, aventura, showcase, naves com "Estacionar" (Station) e promos de Game Day com a arte atrás da caixa de texto. (Duas faces e planeswalker: feito em 17/11/2026, ver ADR 0007. Caixa dos planeswalkers sem mancha, com o LaMa: feito em 17/11/2026, ver ADR 0008. Sem borda, na moldura padrão: feito em 19/11/2026, ver ADR 0012.)
+- Sem borda, o que ficou de fora: as molduras próprias (sem o efeito `inverted`: Invocações de Amonkhet, Mythic Edition, várias da Secret Lair), as de caixa clara, as de retícula grossa, os planeswalkers e as de duas faces sem borda.
 - Cartas modais: traduzir a faixa do pé da carta com o resumo do outro lado (hoje continua em inglês).
 - Planeswalkers lotados (Will e Rowan Kenrith, CLB): o texto em PT é mais longo e a faixa mais apertada encolhe a letra de todas. Deixar a faixa de lealdade avançar no espaço vazio do bloco de baixo.
 - Edição manual do texto antes de imprimir.

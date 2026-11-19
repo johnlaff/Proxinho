@@ -52,7 +52,7 @@ Pesquisa de 17/11/2026. Impressões de fichas em português quase não existem n
 
 Emblemas: o Arena não tem os emblemas de papel e o Scryfall não tem emblemas em PT, mas o texto de cada emblema está entre aspas na habilidade do planeswalker ("Você recebe um emblema com …"), oficial. 81 dos 89 emblemas saem assim (ADR 0010).
 
-## Apagar texto sobre arte (planeswalkers)
+## Apagar texto sobre arte (planeswalkers e sem borda)
 
 As caixas de texto dos planeswalkers são translúcidas: a arte aparece por trás das letras. O preenchimento por média da vizinhança deixa ali uma mancha borrada. O que existe (pesquisa de 17/11/2026):
 
@@ -63,6 +63,19 @@ As caixas de texto dos planeswalkers são translúcidas: a arte aparece por trá
 | Inpainting por rede neural (LaMa, MI-GAN) | IOPaint, removedores de marca d'água no navegador | Estado da arte para remover texto; LaMa quantizado tem 37 MB e roda com ONNX Runtime Web (WebGPU ou WebAssembly) |
 
 Escolha: LaMa quantizado, só nas caixas dos planeswalkers (ADR 0008).
+
+### Artes sem borda (19/11/2026)
+
+Nas artes sem borda as barras e a caixa inteiras são translúcidas, e a arte atrás é mais variada que nos planeswalkers (gravuras, retícula de impressão, robôs, céus). A pesquisa de novo:
+
+| Abordagem | Para nós |
+|---|---|
+| Refazer a moldura a partir de modelos (Proxyshop, Card Conjurer) | Precisa da arte sem o texto, que a imagem da carta não tem: a arte passa por trás da caixa |
+| Remoção de texto de cena por difusão (modelos de inpainting de difusão) | Melhor em fundos complexos, mas pesa gigabytes e leva segundos por quadro na placa de vídeo; inviável no navegador |
+| MI-GAN | Mais leve que o LaMa, mas pior em textura repetida |
+| LaMa na resolução da imagem, com máscara só das letras | Reaproveita o modelo que já está no site. A rede trabalha em 512 px: reduzir a caixa inteira para isso apagava o desenho fino da arte; em quadros na resolução da imagem, um depois do outro, ela continua a textura. A retícula grossa de impressão (2 a 3 px) ela não refaz: essas cartas saem na original |
+
+Escolha: LaMa em quadros na resolução da imagem, com a máscara só das letras brancas e o grão da vizinhança de volta depois (ADR 0012).
 
 ## Lado legal e o caminho seguro
 

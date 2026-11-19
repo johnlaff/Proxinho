@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, arena_symbols, balance_parens, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, printed_faces, printed_has_text, pw_costs, token_face_key, token_key
+from build import ability_word_lines, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, printed_faces, printed_has_text, pw_costs, token_face_key, token_key
 
 
 class CitesAltName(unittest.TestCase):
@@ -163,6 +163,26 @@ class FixArenaTypos(unittest.TestCase):
         self.assertEqual(fix_arena_typos("•Cura++ — {o3oW} — As permanentes"), "•Cura++ — {o3oW} — As permanentes")
         self.assertEqual(fix_arena_typos("recebe +1/+1 e -X/+0"), "recebe +1/+1 e -X/+0")
 
+    def test_ponto_no_meio_da_frase(self) -> None:
+        # Destino do Avatar (TLA): depois do bônus não há pontuação
+        self.assertEqual(
+            fix_arena_typos("A criatura encantada recebe +1/+1. por cada card de criatura"),
+            "A criatura encantada recebe +1/+1 por cada card de criatura",
+        )
+        # Jan Jansen (HBG): entre custos é vírgula
+        self.assertEqual(fix_arena_typos("{oT}. sacrifique uma criatura artefato: Crie"), "{oT}, sacrifique uma criatura artefato: Crie")
+        # Agentes Dai Li (TLA): antes de "e depois" também
+        self.assertEqual(
+            fix_arena_typos("use dobra de terra 1. e depois use dobra de terra 1."),
+            "use dobra de terra 1, e depois use dobra de terra 1.",
+        )
+
+    def test_ponto_antes_de_minuscula_que_fica(self) -> None:
+        # siglas e frases que começam com minúscula: mexer pede trocar letra, não pontuação
+        self.assertEqual(fix_arena_typos("Pague 3 pontos de vida: M.O.D.O.K. acoberta."), "Pague 3 pontos de vida: M.O.D.O.K. acoberta.")
+        self.assertEqual(fix_arena_typos("de seus donos. por cada oponente"), "de seus donos. por cada oponente")
+        self.assertEqual(fix_arena_typos("Fim do turno. Compre um card."), "Fim do turno. Compre um card.")
+
 
 class BalanceParens(unittest.TestCase):
     def test_parentese_de_abrir_que_falta(self) -> None:
@@ -276,6 +296,36 @@ class FrameSupported(unittest.TestCase):
     def test_game_day_do_wizards_play_network_tem_moldura_comum(self) -> None:
         # Consider (pw22 1)
         self.assertTrue(frame_supported({**self.base, "promo_types": ["wizardsplaynetwork", "gameday"]}))
+
+class BorderlessSupported(unittest.TestCase):
+    """Arte sem borda entra só na moldura padrão, com a caixa escura ("inverted")."""
+
+    base = {"frame": "2015", "layout": "normal", "border_color": "borderless", "type_line": "Creature — Dragon", "frame_effects": ["inverted"]}
+
+    def test_moldura_padrao(self) -> None:
+        self.assertTrue(borderless_supported(self.base))
+        self.assertTrue(borderless_supported({**self.base, "frame_effects": ["inverted", "legendary"]}))
+        self.assertTrue(borderless_supported({**self.base, "frame_effects": ["enchantment", "inverted"]}))
+
+    def test_sem_caixa_escura_e_moldura_propria(self) -> None:
+        # Invocações de Amonkhet (MP2), Mythic Edition: sem borda, mas com desenho próprio
+        self.assertFalse(borderless_supported({**self.base, "frame_effects": []}))
+
+    def test_efeitos_de_outro_desenho(self) -> None:
+        for extra in ("showcase", "miracle", "companion", "fullart", "etched"):
+            self.assertFalse(borderless_supported({**self.base, "frame_effects": ["inverted", extra]}), extra)
+
+    def test_arte_cheia_sem_texto_e_tipos_com_caixa_propria(self) -> None:
+        self.assertFalse(borderless_supported({**self.base, "full_art": True}))
+        self.assertFalse(borderless_supported({**self.base, "textless": True}))
+        self.assertFalse(borderless_supported({**self.base, "type_line": "Legendary Planeswalker — Jace"}))
+        self.assertFalse(borderless_supported({**self.base, "type_line": "Enchantment — Saga"}))
+        self.assertFalse(borderless_supported({**self.base, "keywords": ["Station"]}))
+
+    def test_moldura_com_borda_fica_com_frame_supported(self) -> None:
+        self.assertFalse(borderless_supported({**self.base, "border_color": "black"}))
+        self.assertFalse(frame_supported(self.base))
+
 
 class FlavorDeOutraArte(unittest.TestCase):
     """O flavor em PT vale para as artes com o mesmo flavor em inglês da impressão do texto."""

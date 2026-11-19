@@ -8,6 +8,7 @@ import {
   eraseBackPtNotch,
   eraseRegions,
   findSetSymbolLeft,
+  hasLessonIcon,
   inpaint,
   insideBoxSides,
   liftShadedBands,
@@ -542,6 +543,62 @@ describe("findSetSymbolLeft com três fios no fim da barra", () => {
     fill(704, 594, 707, 632, [40, 40, 40]);
     fill(710, 594, 711, 632, [40, 40, 40]);
     expect(findSetSymbolLeft(img, 594, 632)).toBe(637);
+  });
+});
+
+describe("hasLessonIcon", () => {
+  it("acha o ícone das Lições pelo fio preto em curva que começa a barra do nome (Restoration Seminar, SOS 290)", () => {
+    // barra cinza; o disco claro do ícone à esquerda e o fio preto em curva de x = 100 a 109
+    const { img, fill } = canvas([150, 150, 150]);
+    for (let y = 52; y < 104; y++) {
+      const cx = 100 + Math.round(9 * Math.sin((Math.PI * (y - 52)) / 52));
+      fill(40, y, cx, y + 1, [240, 240, 240]);
+      fill(cx, y, cx + 3, y + 1, [5, 5, 5]);
+    }
+    expect(hasLessonIcon(img)).toBe(true);
+  });
+
+  it("um nome sem ícone, com letra preta nesse lugar, não engana", () => {
+    // barra clara de carta comum; letras pretas de 27 px de altura desde x = 66
+    const { img, fill } = canvas([222, 215, 200]);
+    for (let x = 66; x < 300; x += 12) fill(x, 68, x + 4, 95, [15, 15, 15]);
+    expect(hasLessonIcon(img)).toBe(false);
+  });
+});
+
+describe("findSetSymbolLeft com a ponta solta do rabo do cometa da Secret Lair", () => {
+  it("a estrela fica inteira mesmo com um pingo do rabo separado por 16 px (Sol Ring, SLD 2467)", () => {
+    // barra escura da sem borda, tipo curto longe à esquerda; a estrela (597 a 625) com o rabo
+    // em curva até 657, em traço fino com folgas de 3 a 4 px, e a ponta do rabo, uma coluna
+    // só em 672. O aro da caixa fica fora da busca (xMax 688). Com o pingo como "símbolo", a
+    // estrela inteira era apagada
+    const { img, fill } = canvas([32, 30, 34]);
+    for (let x = 80; x < 170; x += 10) fill(x, 600, x + 5, 626, [240, 240, 240]);
+    fill(597, 600, 626, 628, [200, 170, 90]);
+    for (let x = 626; x < 645; x++) fill(x, 600 + Math.floor((x - 626) / 4), x + 1, 604 + Math.floor((x - 626) / 4), [200, 170, 90]);
+    for (const x of [648, 649, 653, 656]) fill(x, 606, x + 1, 611, [200, 170, 90]);
+    fill(672, 612, 673, 616, [200, 170, 90]);
+    expect(findSetSymbolLeft(img, 594, 632, 688)).toBe(597);
+  });
+});
+
+describe("findSetSymbolLeft na barra arco-íris do foil", () => {
+  it('a barra clara à esquerda e escura no fim não toma o vão antes do símbolo: o "tist" sai (Ian Malcolm, REX 38)', () => {
+    // barra de 594 a 632: clara (155) antes da busca, com letras brancas; na busca, um degradê
+    // de 70 a 31 com o fim do "Scientist" (traços brancos de 559 a 623) e, depois de 20 px
+    // vazios, o símbolo dourado claro com miolo escuro (643 a 684). A barra à esquerda virava a
+    // referência, a faixa inteira passava por tinta e, por linha, o vão também
+    const { img, fill } = canvas([20, 20, 20]);
+    fill(380, 594, 559, 632, [155, 155, 155]);
+    for (let x = 400; x < 555; x += 12) fill(x, 604, x + 4, 626, [245, 245, 245]);
+    fill(559, 594, 689, 632, (x) => Math.round(70 - (x - 559) * 0.3));
+    for (let x = 559; x < 620; x += 7) fill(x, 604, x + 4, 627, [240, 240, 240]);
+    fill(620, 604, 624, 627, [240, 240, 240]);
+    fill(643, 600, 685, 628, [200, 170, 90]);
+    fill(655, 608, 672, 620, [30, 25, 20]);
+    const left = findSetSymbolLeft(img, 594, 632, 689, 100, undefined, true);
+    expect(left).toBeGreaterThanOrEqual(640);
+    expect(left).toBeLessThanOrEqual(643);
   });
 });
 
@@ -1544,6 +1601,23 @@ describe("barCapGuard (a ponta arredondada das barras)", () => {
     const rect = { x0: 50, y0: 58, x1: 688, y1: 106 };
     eraseRegions(img, [{ rect, threshold: 28, fill: "rows" }], []);
     expect(Math.max(lum(img, 50, 64), lum(img, 50, 100))).toBeGreaterThan(120);
+  });
+
+  it('sem borda, a letra branca colada na ponta fica de fora dela (o "S" do Regrowth, SLD 866)', () => {
+    // barra escura de grão forte (70 a 110) com a arte mais escura (30) no meio da linha, e a
+    // primeira letra em x = 57 (borda suavizada em 57, branca de 58 a 62). Nada perto da
+    // ponta parecia papel, e ela ia até 61, por cima do "S"
+    const { img, fill } = canvas([20, 20, 20]);
+    fill(40, 590, 700, 636, (x, y, c) => 90 + noise(x, y, c));
+    fill(250, 590, 560, 636, [30, 30, 30]);
+    fill(57, 604, 58, 626, [150, 150, 150]);
+    fill(58, 604, 63, 626, [250, 250, 250]);
+    const rect = { x0: 50, y0: 590, x1: 560, y1: 636 };
+    const guard = barCapGuard(img, rect, "left", true);
+    for (let y = 604; y < 626; y++) for (let x = 57; x < 63; x++) expect(covered(guard, x, y), `(${x}, ${y})`).toBe(false);
+    // sem a regra das letras brancas (moldura comum), a ponta passava por cima (o defeito antigo)
+    const old = barCapGuard(img, rect, "left");
+    expect(old.some((g) => g.y0 >= 604 && g.y0 < 626 && g.x1 > 58)).toBe(true);
   });
 
   it("a ponta não semeia a máscara: a folga dela não passa da proteção", () => {

@@ -56,7 +56,7 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 
 Molduras além da 2015 normal, edição manual do texto, tradução não oficial assistida, fichas. Ver [roadmap](../roadmap.md).
 
-Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008).
+Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008). Em 19/11/2026: artes sem borda na moldura padrão, com o nome de crossover mantido no alto e o nome em PT na linha de baixo, e a sangria do PDF com a própria arte (ADR 0012).
 
 ### H8. Fichas (entregue em 17/11/2026, ADR 0009)
 Como jogador, quero imprimir as fichas que o meu deck cria, em português, junto com as cartas.
@@ -66,3 +66,10 @@ Como jogador, quero imprimir as fichas que o meu deck cria, em português, junto
 - [x] As fichas vão para o fim das folhas.
 - [x] Emblemas dos planeswalkers entram nas sugestões, com o texto oficial tirado do planeswalker (ADR 0010).
 - [x] Fichas de duas faces aparecem como artes das fichas equivalentes; fichas de 2003 saem reescritas.
+
+### H9. Artes sem borda (entregue em 19/11/2026, ADR 0012)
+Como jogador, quero usar as artes sem borda (Secret Lair, Commander, Marvel) com o texto em português.
+- [x] As artes sem borda na moldura padrão saem em português; as de moldura própria, caixa clara ou arte de retícula grossa saem na original, e a etiqueta diz que saem em inglês.
+- [x] A arte padrão de cada carta continua sendo a com borda; a sem borda aparece na gaveta para escolher.
+- [x] Nas artes com nome de crossover (sem borda e com borda), o nome do alto fica como impresso e o nome em PT vai na linha pequena logo abaixo.
+- [x] No PDF com sangria, a sangria das artes sem borda é a própria arte, sem filete preto.
