@@ -470,9 +470,13 @@ export function boxDividers(img: ImageData, rect: Rect): number[] {
  * arte: com arte clara no alto e escura no pé, o lado esquerdo saía no começo da busca (545),
  * a proteção começava em 564 e o ponto final da última linha, colado na caixa, ficava em
  * inglês (Shigeki, Jukai Visionary, SLD 2843). O lado é medido contra a arte das mesmas
- * linhas, logo à esquerda (mediana de três linhas abaixo do topo, sem as que param antes de
- * 566); fora de 572 a 590, ou sem medida, vale o desenho (580). O topo medido só vale entre
- * 921 e 930; fora disso, 924.
+ * linhas, logo à esquerda (mediana de três linhas, sem as que param antes de 566); fora de
+ * 572 a 590, ou sem medida, vale o desenho (580). As linhas ficam de 16 a 24 px abaixo do
+ * topo: mais acima, a curva do canto da caixa empurra a medida para a direita (na Mother of
+ * Runes da Secret Lair, SLD 296, com o topo em 933, a medida dava 589 e o aro claro do lado,
+ * em 585, ficava de fora da proteção e saía com um dente). E a proteção começa 2 px antes do
+ * lado medido: o contorno escuro da caixa, quando há, fica antes do aro. O topo medido só
+ * vale entre 921 e 930; fora disso, 924.
  */
 export function borderlessPtBox(img: ImageData): { top: number; left: number } {
   const fx = img.width / BASE_W;
@@ -480,7 +484,7 @@ export function borderlessPtBox(img: ImageData): { top: number; left: number } {
   const measured = ptBoxTop(img, 610 * fx, 670 * fx, 905 * fy, 950 * fy, 890 * fy);
   const top = measured === null ? 924 : Math.min(930, Math.max(921, measured / fy));
   const found: number[] = [];
-  for (const dy of [10, 14, 18]) {
+  for (const dy of [16, 20, 24]) {
     const y = Math.round((top + dy) * fy);
     const left = ptBoxLeft(img, y, 545 * fx, 610 * fx, y + Math.round(6 * fy));
     // (perto do começo da busca é letra ou arte, não a caixa)
@@ -488,7 +492,7 @@ export function borderlessPtBox(img: ImageData): { top: number; left: number } {
   }
   found.sort((a, b) => a - b);
   const left = found.length ? found[found.length >> 1] : null;
-  return { top, left: left !== null && left >= 572 && left <= 590 ? left : 580 };
+  return { top, left: (left !== null && left >= 572 && left <= 590 ? left : 580) - 2 };
 }
 
 /**

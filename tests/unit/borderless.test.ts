@@ -569,20 +569,39 @@ describe("borderlessPtBox", () => {
     fill(580, 924, 700, 958, [40, 110, 70]);
     fill(569, 929, 573, 933, [245, 245, 245]);
     const pt = borderlessPtBox(img);
-    expect(pt.left).toBeGreaterThanOrEqual(578);
-    expect(pt.left).toBeLessThanOrEqual(582);
+    expect(pt.left).toBeGreaterThanOrEqual(576);
+    expect(pt.left).toBeLessThanOrEqual(580);
     const inside = (x: number, y: number) => ptProtect(pt.top, pt.left).some((r) => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
     for (const [x, y] of [
       [569, 929],
       [572, 932],
     ])
       expect(inside(x, y)).toBe(false);
-    // a caixa continua protegida
+    // a caixa continua protegida, desde o lado dela
     expect(inside(590, 940)).toBe(true);
+    expect(inside(580, 950)).toBe(true);
+  });
+
+  it("o aro claro do lado da caixa fica protegido abaixo do canto arredondado (Mother of Runes, SLD 296)", () => {
+    // arte clara, mais escura acima da caixa (o topo medido sai no começo da busca, 905, e
+    // fica em 921); a caixa com o topo em 933, o canto de cima arredondado (o lado recua 1 px
+    // por linha até 941), contorno escuro em 583 e 584 e aro claro de 585 a 589. Medido logo
+    // abaixo do topo, o lado caía na curva (589) e o aro ficava de fora da proteção
+    const { img, fill } = canvas([115, 110, 100]);
+    fill(600, 895, 700, 933, [60, 55, 50]);
+    for (let y = 933; y < 1000; y++) {
+      const x = 583 + Math.max(0, 941 - y);
+      fill(x, y, x + 2, y + 1, [40, 40, 40]);
+      fill(x + 2, y, x + 7, y + 1, [215, 215, 215]);
+      fill(x + 7, y, 700, y + 1, [125, 120, 112]);
+    }
+    const pt = borderlessPtBox(img);
+    const inside = (x: number, y: number) => ptProtect(pt.top, pt.left).some((r) => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
+    for (const y of [945, 950, 960]) expect(inside(585, y)).toBe(true);
   });
 
   it("sem medida (arte igual à caixa), vale o desenho da moldura", () => {
     const { img } = canvas([40, 110, 70]);
-    expect(borderlessPtBox(img)).toEqual({ top: 924, left: 580 });
+    expect(borderlessPtBox(img)).toEqual({ top: 924, left: 578 });
   });
 });
