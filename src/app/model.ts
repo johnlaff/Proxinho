@@ -50,11 +50,23 @@ export function selectedPrint(entry: Entry): PrintRecord | null {
   return entry.prints.find((p) => p.id === id) ?? entry.prints[0] ?? null;
 }
 
-export function outcomeOf(entry: Entry): Outcome {
+/** Chave de uma face de impressão em que o motor não reconheceu a moldura (ver `outcomeOf`). */
+export function missKey(printId: string, side: Side): string {
+  return `${printId}#${side}`;
+}
+
+/**
+ * `misses`: faces em que o motor desistiu ao montar a carta e saiu a imagem original. O
+ * desenho de algumas impressões foge da moldura comum sem que os dados digam (o Garruk
+ * espelhado da Secret Lair, SLD 9995, é "2015" e "normal" como qualquer outro): sem isso,
+ * a interface prometia português numa carta que saía em inglês.
+ */
+export function outcomeOf(entry: Entry, misses?: ReadonlySet<string>): Outcome {
   if (entry.choice.kind === "pt") return "imagem-pt";
   if (!hasPtText(entry.card)) return "sem-traducao";
   const p = selectedPrint(entry);
-  return p?.supported ? "reescrita" : "moldura";
+  if (!p?.supported) return "moldura";
+  return misses?.has(missKey(p.id, 0)) ? "moldura" : "reescrita";
 }
 
 /**
@@ -201,9 +213,9 @@ export function buildOrder(
   return { entries: [...entries.values()], missing: [...missing.values()] };
 }
 
-export function countOutcomes(entries: Entry[]): Record<Outcome, number> {
+export function countOutcomes(entries: Entry[], misses?: ReadonlySet<string>): Record<Outcome, number> {
   const out: Record<Outcome, number> = { reescrita: 0, "imagem-pt": 0, "sem-traducao": 0, moldura: 0 };
-  for (const e of entries) out[outcomeOf(e)] += e.quantity;
+  for (const e of entries) out[outcomeOf(e, misses)] += e.quantity;
   return out;
 }
 

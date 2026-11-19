@@ -79,13 +79,17 @@ export function cropAround(area: Rect, width: number, height: number, margin: nu
  * inteira). Devolve `false` se o modelo não estiver disponível; nesse caso a
  * imagem fica intacta e quem chama usa o preenchimento simples.
  */
-export async function lamaInpaint(img: ImageData, area: Rect, mask: Uint8Array): Promise<boolean> {
+export async function lamaInpaint(img: ImageData, area: Rect, mask: Uint8Array, hide: Rect[] = []): Promise<boolean> {
   const W = img.width;
   const crop = cropAround(area, W, img.height, Math.round(W * 0.03));
   const s = SIZE / crop.size; // < 1 reduz (PNG), > 1 amplia (imagem menor das prévias)
   const n = SIZE * SIZE;
   const image = new Float32Array(3 * n);
   const holes = new Float32Array(n);
+  // o que fica escondido do modelo, sem ser preenchido: a caixa da lealdade, preta, no
+  // canto da caixa de texto. Vista pelo modelo, ela virava fonte do preenchimento e a
+  // letra apagada logo acima saía como uma mancha marrom (Tezzeret, AER)
+  const hidden = (x: number, y: number) => hide.some((r) => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
   // buraco no quadro: qualquer pixel de buraco da imagem que caia dentro dele
   const span = (d: number) => [Math.floor(d / s), Math.max(Math.floor(d / s), Math.ceil((d + 1) / s) - 1)];
   for (let y = 0; y < SIZE; y++) {
@@ -94,8 +98,11 @@ export async function lamaInpaint(img: ImageData, area: Rect, mask: Uint8Array):
       const [xa, xb] = span(x);
       let hole = 0;
       for (let yy = ya; yy <= yb && !hole; yy++)
-        for (let xx = xa; xx <= xb && !hole; xx++)
-          hole = mask[(crop.y + Math.min(yy, crop.size - 1)) * W + crop.x + Math.min(xx, crop.size - 1)];
+        for (let xx = xa; xx <= xb && !hole; xx++) {
+          const px = crop.x + Math.min(xx, crop.size - 1);
+          const py = crop.y + Math.min(yy, crop.size - 1);
+          hole = mask[py * W + px] || (hidden(px, py) ? 1 : 0);
+        }
       holes[y * SIZE + x] = hole;
     }
   }

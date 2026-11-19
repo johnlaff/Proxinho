@@ -22,6 +22,14 @@ export interface Paragraph {
   flavor: boolean;
 }
 
+/** Linha de uma tabela de d20 ("1—9 | …", "20 | …", "15+ | …"). */
+export const TABLE_ROW = /^\d+(?:[—–-]\d+|\+)? \|/;
+
+/** Texto corrido de uma linha já diagramada (símbolos entre chaves). */
+export function lineText(chunks: Chunk[]): string {
+  return chunks.map((c) => c.map((r) => (r.kind === "symbol" ? `{${r.value}}` : r.value)).join("")).join(" ");
+}
+
 /** Quebra uma linha de texto em runs, marcando itálico nos parênteses. */
 export function tokenize(line: string, italicAll = false): Run[] {
   const runs: Run[] = [];
@@ -54,6 +62,17 @@ export function tokenize(line: string, italicAll = false): Run[] {
       depth = Math.max(0, depth - 1);
       continue;
     }
+    // aspas retas do Arena viram as curvas da carta impressa: abre no começo ou depois
+    // de espaço, parêntese ou travessão; fecha no resto
+    // o marcador das opções do Arena vem colado na palavra ("•Crie"): a carta tem espaço
+    if (ch === "•" && line[i + 1] && line[i + 1] !== " ") {
+      buf += "• ";
+      continue;
+    }
+    if (ch === '"') {
+      buf += i === 0 || /[\s([—–-]/.test(line[i - 1]) ? "“" : "”";
+      continue;
+    }
     buf += ch;
   }
   flush();
@@ -81,15 +100,34 @@ export function toChunks(runs: Run[]): Chunk[] {
     }
   }
   if (cur.length) chunks.push(cur);
+  // Travessão solto ("escolha um —", "Aterragem — Toda vez") vai junto da palavra de
+  // antes: sozinho, ele podia cair no começo da linha seguinte, numa linha só dele
+  // (Druida do Pólen Brilhante, CMM). Na carta impressa a quebra é sempre depois dele.
+  for (let i = chunks.length - 1; i > 0; i--) {
+    const c = chunks[i];
+    if (c.length === 1 && c[0].kind === "text" && /^[—–]$/.test(c[0].value)) {
+      chunks[i - 1].push({ ...c[0], value: ` ${c[0].value}` });
+      chunks.splice(i, 1);
+    }
+  }
   return chunks;
 }
 
-/** Monta os parágrafos: regras (uma por linha) e, opcionalmente, o flavor. */
-export function buildParagraphs(rules: string | null, flavor: string | null): Paragraph[] {
+/**
+ * Monta os parágrafos: regras (uma por linha) e, opcionalmente, o flavor. As linhas em
+ * `abilityWords` (índices de `rules.split("\n")`) começam com uma palavra de habilidade
+ * ("Aterragem — Toda vez…"), que a carta impressa traz em itálico, sem o travessão.
+ */
+export function buildParagraphs(rules: string | null, flavor: string | null, abilityWords: readonly number[] = []): Paragraph[] {
   const out: Paragraph[] = [];
-  for (const line of (rules ?? "").split("\n")) {
-    if (line.trim()) out.push({ chunks: toChunks(tokenize(line.trim())), flavor: false });
-  }
+  (rules ?? "").split("\n").forEach((raw, i) => {
+    const line = raw.trim();
+    if (!line) return;
+    const dash = abilityWords.includes(i) ? line.indexOf(" — ") : -1;
+    const runs =
+      dash > 0 ? [{ kind: "text" as const, value: line.slice(0, dash), italic: true }, ...tokenize(line.slice(dash))] : tokenize(line);
+    out.push({ chunks: toChunks(runs), flavor: false });
+  });
   if (flavor) {
     for (const line of flavor.split("\n")) {
       if (line.trim()) out.push({ chunks: toChunks(tokenize(line.trim(), true)), flavor: true });
@@ -220,9 +258,10 @@ export function fitText(
   max = 34,
   min = 15,
   notch?: Notch,
+  abilityWords: readonly number[] = [],
 ): LayoutResult {
   const attempt = (fl: string | null): LayoutResult | null => {
-    const paragraphs = buildParagraphs(rules, fl);
+    const paragraphs = buildParagraphs(rules, fl, abilityWords);
     for (let size = max; size >= min; size -= 0.5) {
       const res = layoutAround(paragraphs, size, width, height, m, notch);
       if (res.height <= height) return res;

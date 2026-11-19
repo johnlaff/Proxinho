@@ -5,9 +5,9 @@
  * gaveta para trocar a arte.
  */
 import { fontsVersion } from "../engine/fonts";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { displayName, outcomeOf, renderKey, selectedPrint, sideCount, toSheets, type Entry, type Side } from "../app/model";
-import { previewUrl } from "../app/preview";
+import { engineMisses, onEngineMiss, previewUrl } from "../app/preview";
 import { ColorBar, CropCorners, RegMark } from "./RegMark";
 import { OutcomeTag } from "./OutcomeTag";
 
@@ -91,8 +91,8 @@ export function BlankSlots({ count }: { count: number }) {
 const SOURCE_CAPTION = { arena: "Arena", impresso: "imp. PT" } as const;
 
 /** Legenda técnica: coleção e número · origem do texto · artista. */
-function captionOf(entry: Entry): { set: string; source: string; artist: string } {
-  const outcome = outcomeOf(entry);
+function captionOf(entry: Entry, misses: ReadonlySet<string>): { set: string; source: string; artist: string } {
+  const outcome = outcomeOf(entry, misses);
   if (entry.choice.kind === "pt") {
     const pt = entry.card.pt_print;
     return { set: pt ? `${pt.set.toUpperCase()} ${pt.number}` : "", source: "imagem PT", artist: "" };
@@ -131,12 +131,13 @@ export function Slot({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, attempt]);
 
-  const outcome = outcomeOf(entry);
+  const misses = useSyncExternalStore(onEngineMiss, engineMisses);
+  const outcome = outcomeOf(entry, misses);
   const twoSided = sideCount(entry) === 2;
   const faceName = entry.card.faces[side]?.name_pt ?? entry.card.faces[side]?.name_en;
   const name = twoSided ? (faceName ?? displayName(entry.card)) : displayName(entry.card);
   const sideLabel = twoSided ? (side === 0 ? "frente" : "verso") : "";
-  const cap = captionOf(entry);
+  const cap = captionOf(entry, misses);
 
   const body = (
     <>

@@ -78,11 +78,15 @@ def norm(text: str) -> str:
 # --------------------------------------------------------------------------
 # Arena: símbolos de mana vêm como {o2oU}; o padrão da comunidade é {2}{U}.
 # --------------------------------------------------------------------------
-_TOKEN = re.compile(r"o(\([^)]+\)|\d+|Si|[A-Z])")
+_TOKEN = re.compile(r"o(\([^)]+\)|\d+|Si|[A-Za-z])")
 _SYMBOL_FIX = {"Si": "S"}
 
 
 def arena_symbols(text: str) -> str:
+    """{o2oU} vira {2}{U}. Dois defeitos do arquivo do Arena também são consertados:
+    a chave escapada (Countervailing Winds: "\\\\{o1\\\\}") e a cor em minúscula
+    (Aeromunculus: "{o2oGou}")."""
+
     def repl(match: re.Match[str]) -> str:
         inner = match.group(1)
         parts = _TOKEN.findall(inner)
@@ -91,10 +95,19 @@ def arena_symbols(text: str) -> str:
         out = []
         for part in parts:
             part = part.strip("()")
+            part = part if part == "Si" else part.upper()
             out.append("{" + _SYMBOL_FIX.get(part, part) + "}")
         return "".join(out)
 
+    text = re.sub(r"\\+([{}])", "\\1", text)
     return re.sub(r"\{([^}]*)\}", repl, text)
+
+
+def fix_arena_typos(text: str) -> str:
+    """Erros de digitação do arquivo do Arena que não mudam nada do texto oficial: o "+"
+    repetido no bônus ("recebe +1/++1", Colorstorm Stallion; "+2/++2" no Delírio de
+    SOS). Nomes como "Cura++" (Final Fantasy) ficam como estão."""
+    return re.sub(r"([+-](?:\d+|X))/\+\+(\d+|X)\b", r"\1/+\2", text)
 
 
 def arena_cost(cost: str | None) -> str | None:
@@ -124,6 +137,33 @@ def join_keywords(lines: list[str]) -> list[str]:
     return [line.rstrip("\u0000") for line in out]
 
 
+def cites_alt_name(text_pt: str, alt_names: list[str | None]) -> bool:
+    """O texto cita o nome alternativo da carta (inteiro ou só antes da vírgula)?"""
+    for name in alt_names:
+        if not name:
+            continue
+        for part in {name.strip(), name.split(",")[0].strip()}:
+            if part and part in text_pt:
+                return True
+    return False
+
+
+BASIC_MANA = {"Plains": "W", "Island": "U", "Swamp": "B", "Mountain": "R", "Forest": "G"}
+
+
+def is_intrinsic_mana(type_en: str | None, subtypes_en: str | None, ability_en: str | None) -> bool:
+    """
+    "{T}: Adicione {U}." de um terreno do tipo Ilha vem do próprio tipo: a carta impressa
+    não traz essa linha (no máximo um lembrete), mas o Arena a lista como habilidade.
+    Túmulo Aquoso e as Triomes saíam com duas ou três linhas a mais, fora de ordem. Só vale
+    para terrenos: o "{T}: Adicione {G}." dos Elfos de Llanowar é habilidade de verdade.
+    """
+    m = re.fullmatch(r"\{oT\}: Add \{o([WUBRG])\}\.", ability_en or "")
+    if not m or "Land" not in (type_en or "").split():
+        return False
+    return any(BASIC_MANA.get(w) == m.group(1) for w in (subtypes_en or "").split())
+
+
 def load_arena(offline: bool) -> dict[str, dict]:
     """Devolve {nome em inglês: face(s) com texto em PT-BR} a partir do Arena."""
     cards = json.loads(fetch(UNTAPPED + "cards.json", CACHE / "arena_cards.json", offline).read_text())
@@ -132,9 +172,10 @@ def load_arena(offline: bool) -> dict[str, dict]:
 
     def text(table: dict[int, str], key: int | None) -> str | None:
         value = table.get(key) if key is not None else None
-        if not value or value == "#NoTranslationNeeded":
+        # marcadores internos do Arena ("#NoTranslationNeeded", "#StationLevelInstrinsic_NoTranslation"…)
+        if not value or re.fullmatch(r"#\S+", value):
             return None
-        return re.sub(r"</?nobr>", "", value)
+        return fix_arena_typos(re.sub(r"</?nobr>", "", value))
 
     by_grp = {c["grpid"]: c for c in cards}
 
@@ -146,17 +187,24 @@ def load_arena(offline: bool) -> dict[str, dict]:
         sub = text(br, card.get("subtypeTextId"))
         if sub:
             type_pt = f"{type_pt} — {sub}"
-        lines = [arena_symbols(t) for a in card.get("abilities", []) if (t := text(br, a.get("TextId")))]
+        type_en, sub_en = en.get(card.get("cardTypeTextId")), en.get(card.get("subtypeTextId"))
+        lines = [
+            arena_symbols(t)
+            for a in card.get("abilities", [])
+            if (t := text(br, a.get("TextId"))) and not is_intrinsic_mana(type_en, sub_en, en.get(a.get("TextId")))
+        ]
         return {
             "name_pt": name_pt,
             "type_pt": type_pt,
-            "text_pt": "\n".join(join_keywords(lines)),
-            "flavor_pt": text(br, card.get("flavorId")),
+            "text_pt": clean_rules("\n".join(join_keywords(lines))),
+            "flavor_pt": fix_breaks(text(br, card.get("flavorId")), flavor=True),
             "mana_cost": arena_cost(card.get("castingcost")),
         }
 
     result: dict[str, dict] = {}
-    for card in sorted(cards, key=lambda c: c["grpid"]):  # grpid maior = texto mais novo
+    # grpid maior = texto mais novo; as versões com nome alternativo vêm antes, para a
+    # impressão normal sempre ganhar quando existe
+    for card in sorted(cards, key=lambda c: (not c.get("altTitleId"), c["grpid"])):
         name_en = text(en, card.get("titleId"))
         if not name_en or name_en.startswith("A-") or card.get("set") in DIGITAL_SETS:
             continue
@@ -166,6 +214,13 @@ def load_arena(offline: bool) -> dict[str, dict]:
         front = face(card)
         if not front:
             continue
+        if card.get("altTitleId"):
+            # Versão com nome alternativo (Universes Beyond, Godzilla, Drácula): o texto
+            # cita o outro nome ("Quando Keenser entrar…", no Rishkar). Só entra quando
+            # não há impressão normal e o texto não cita o outro nome.
+            if cites_alt_name(front["text_pt"], [text(en, card.get("altTitleId")), text(br, card.get("altTitleId"))]):
+                continue
+            front["flavor_pt"] = None
         faces = [front]
         for linked in card.get("linkedFaces") or []:
             other = by_grp.get(linked)
@@ -179,15 +234,28 @@ def load_arena(offline: bool) -> dict[str, dict]:
     return result
 
 
-def token_key(name: str, power: object, toughness: object, text: str) -> tuple[str, str, str, str]:
-    """Chave para casar uma ficha do Arena com a do Scryfall: nome, P/R e texto sem lembretes."""
+def token_key(name: str, power: object, toughness: object, text: str, type_line: str | None) -> tuple[str, str, str, str, str]:
+    """
+    Chave para casar uma ficha do Arena com a do Scryfall: nome, P/R, texto sem lembretes e
+    os tipos. Sem os tipos, a Barreira 0/4 artefato (THB) levava o tipo da Barreira 0/4 que
+    não é artefato (MSH, mais nova no Arena): "Criatura Ficha", sem o "Artefato".
+    """
+    types = " ".join(sorted(w for w in (type_line or "").split("—")[0].lower().split() if w != "token"))
     t = re.sub(r"</?nobr>", "", text or "")
     t = re.sub(r"\{o([^}]*)\}", lambda m: "{" + m.group(1) + "}", t).lower()
     t = re.sub(r"\([^)]*\)", "", t)  # texto de lembrete
     t = t.replace("enters the battlefield", "enters")
     t = re.sub(r"this (creature|artifact|enchantment|permanent)", "this token", t)
     t = re.sub(r"[^a-z0-9{}+/*]", "", t)
-    return (name.lower(), str(power), str(toughness), t)
+    return (name.lower(), str(power), str(toughness), t, types)
+
+
+def token_face_key(face: dict) -> tuple:
+    """Chave de uma ficha do Scryfall (ou de uma face de ficha de duas faces) com as cores:
+    o Zumbi preto da ficha de duas faces não é o Zumbi encantamento, nem o Vampiro branco o
+    Vampiro branco e preto."""
+    key = token_key(face.get("name", ""), face.get("power"), face.get("toughness"), face.get("oracle_text") or "", face.get("type_line"))
+    return (*key, "".join(face.get("colors") or []))
 
 
 def load_arena_tokens() -> dict[tuple, dict]:
@@ -198,7 +266,7 @@ def load_arena_tokens() -> dict[tuple, dict]:
 
     def text(table: dict[int, str], key: int | None) -> str | None:
         value = table.get(key) if key is not None else None
-        if not value or value == "#NoTranslationNeeded":
+        if not value or re.fullmatch(r"#\S+", value):
             return None
         return re.sub(r"</?nobr>", "", value)
 
@@ -220,11 +288,11 @@ def load_arena_tokens() -> dict[tuple, dict]:
         if "Ficha" not in type_pt:
             type_pt = f"{type_pt} Ficha"
         sub = text(br, card.get("subtypeTextId"))
-        out[token_key(name_en, card.get("power"), card.get("toughness"), en_text)] = {
+        out[token_key(name_en, card.get("power"), card.get("toughness"), en_text, text(en, card.get("cardTypeTextId")))] = {
             "name_en": name_en,
             "name_pt": name_pt,
             "type_pt": f"{type_pt} — {sub}" if sub else type_pt,
-            "text_pt": "\n".join(join_keywords(pt_lines)),
+            "text_pt": clean_rules("\n".join(join_keywords(pt_lines))),
             "flavor_pt": None,
             "mana_cost": None,
             "print": {"set": (card.get("set") or "").lower(), "number": str(card.get("collectorNumber") or "")},
@@ -251,37 +319,268 @@ def load_printed_pt(offline: bool) -> dict[str, dict]:
                 if page % 25 == 0:
                     log(f"Scryfall PT: página {page}")
                 time.sleep(0.1)  # Scryfall pede 50-100 ms entre chamadas
-    best: dict[str, dict] = {}
     with open(cache) as fh:
-        for line in fh:
-            card = json.loads(line)
-            oid = card.get("oracle_id") or (card.get("card_faces") or [{}])[0].get("oracle_id")
-            if not oid:
-                continue
-            current = best.get(oid)
-            score = (card.get("highres_image", False), card.get("released_at", ""))
-            if current is None or score > current["_score"]:
-                card["_score"] = score
-                best[oid] = card
+        best = pick_printed(json.loads(line) for line in fh)
     log(f"Scryfall: {len(best)} cartas com impressão em português")
     return best
 
 
+def pick_printed(cards) -> dict[str, dict]:
+    """
+    Escolhe, por carta, a impressão em PT da imagem (alta resolução primeiro, depois a
+    mais nova) e guarda em `_text` a do texto: a mais nova. O texto das impressões
+    antigas segue regras velhas ("Coloque em jogo uma ficha", "reserva de mana"), e a
+    alta resolução quase sempre é de uma coleção antiga, escaneada.
+    """
+    best: dict[str, dict] = {}
+    newest: dict[str, dict] = {}
+    for card in cards:
+        oid = card.get("oracle_id") or (card.get("card_faces") or [{}])[0].get("oracle_id")
+        if not oid:
+            continue
+        score = (card.get("highres_image", False), card.get("released_at", ""))
+        if oid not in best or score > best[oid]["_score"]:
+            card["_score"] = score
+            best[oid] = card
+        faces = card.get("card_faces") or [card]
+        text_score = (all(f.get("printed_type_line") for f in faces), card.get("released_at", ""), card.get("highres_image", False))
+        if oid not in newest or text_score > newest[oid][0]:
+            newest[oid] = (text_score, card)
+    for oid, card in best.items():
+        card["_text"] = newest[oid][1]
+    return best
+
+
+_LOWER = "a-zà-öø-ÿ"
+_UPPER = "A-ZÀ-ÖØ-Þ"
+
+
+_REPEATED = re.compile(rf"(?<![\w{_LOWER}{_UPPER}])([{_LOWER}]{{2,}}) \1(?![\w{_LOWER}{_UPPER}])")
+
+
+def drop_repeated_words(text: str | None) -> str | None:
+    """
+    Palavra repetida no texto de regras ("Toda vez que que", "As criaturas criaturas não
+    ficha", "use use dobra de terra"): erro de digitação, umas 15 vezes no Arena e 2 no
+    Scryfall. Só minúsculas (nomes como "Jeong Jeong" ficam) e só nas regras: no flavor
+    a repetição pode ser de propósito ("existem os mortos e existem os mortos mortos").
+    """
+    if not text:
+        return text
+    return _REPEATED.sub(r"\1", text)
+
+
+_GLUED = re.compile(r"(?<=[a-zà-úç])((?:\{[^}]+\})+)(:?)")
+
+
+def fix_glued_symbols(text: str | None) -> str | None:
+    """
+    Palavra colada num símbolo de mana. Se os símbolos fecham com ":", é o custo de uma
+    habilidade ativada que perdeu a quebra de linha no texto impresso do Scryfall
+    ("Ímpeto{T}: Adicione", Beastcaller Savant; "Vigilância{R}{W}:", Truefire Paladin) e
+    ela volta. Senão, é o espaço que o Arena perdeu ("Adicione{B}{B}{B}{B}", o emblema da
+    Liliana of the Dark Realms; "pague{X}", Spectral Denial). Só pontuação, nunca palavras.
+    """
+    if not text:
+        return text
+    return _GLUED.sub(lambda m: ("\n" if m.group(2) else " ") + m.group(1) + m.group(2), text)
+
+
+def fix_spacing(text: str | None) -> str | None:
+    """
+    Espaço antes de vírgula ou ponto ("Zumbi preta 2/2 .", Juramento de Liliana; "que você
+    controla ,em vez de", Épico de Herança) e pontuação dobrada ("{X},, {T}", Lira
+    Hipnotizante; "Primoc de Elo Mental..", com dois pontos e não três). Uns 20 casos, quase
+    todos do Arena. As reticências ("Arremessar...") ficam. Só pontuação, nunca palavras.
+    """
+    if not text:
+        return text
+    text = re.sub(r",{2,}", ",", text)
+    text = re.sub(r"(?<!\.)\.\.(?!\.)", ".", text)
+    # vírgula grudada na palavra seguinte: o espaço vai para depois dela
+    text = re.sub(r"(?<=\S) +,(?=[^\s\d,])", ", ", text)
+    return re.sub(r"(?<=\S) +([.,])(?=\s|$|[)\"”])", r"\1", text)
+
+
+def clean_rules(text: str | None) -> str | None:
+    """Consertos de digitação e pontuação do texto de regras, nas duas fontes."""
+    return balance_parens(drop_repeated_words(fix_glued_symbols(fix_spacing(text))))
+
+
+def balance_parens(text: str | None) -> str | None:
+    """
+    Parênteses do lembrete que faltam no texto em PT (14 cartas no Scryfall, 5 no Arena).
+    O lembrete é o que sai em itálico, e um parêntese a menos deixava o lembrete em
+    letra comum com um ")" solto (Dismantling Blow, MH1: "Reforçar {2}{U} Você pode
+    pagar….)") ou sem o fecho ("Voar (Esta criatura só pode ser bloqueada…").
+
+    - quebra de linha dentro de um lembrete que fecha depois vira espaço (Fangs of
+      Kalonia: o lembrete da Sobrecarga é um parágrafo só);
+    - ")" sem "(": o "(" volta no começo da frase dele, depois do último ") " ou ". "
+      ou do custo da palavra-chave ("} " e maiúscula);
+    - "(" sem ")": o ")" volta no fim da linha.
+    É conserto de pontuação: as palavras continuam as do texto oficial.
+    """
+    if not text or ("(" not in text and ")" not in text):
+        return text
+    out = []
+    depth = 0
+    for i, ch in enumerate(text):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth = max(0, depth - 1)
+        elif ch == "\n" and depth > 0 and ")" in text[i:].split("(")[0]:
+            out.append(" ")
+            continue
+        out.append(ch)
+    lines = []
+    for line in "".join(out).split("\n"):
+        # aspas e fecho repetidos no fim (Fangs of Kalonia: "…criatura".) ".)")
+        line = re.sub(r'(["”]\.\))\s*["”]\.\)$', r"\1", line)
+        depth = 0
+        i = 0
+        while i < len(line):
+            if line[i] == "(":
+                depth += 1
+            elif line[i] == ")":
+                if depth == 0:
+                    starts = [m.end() for m in re.finditer(rf"[).] |\}} (?=[{_UPPER}])", line[:i])]
+                    at = starts[-1] if starts else 0
+                    line = line[:at] + "(" + line[at:]
+                    i += 2
+                    continue
+                depth -= 1
+            i += 1
+        lines.append(line + ")" * depth)
+    return "\n".join(lines)
+
+
+def fix_breaks(text: str | None, flavor: bool = False) -> str | None:
+    """
+    Quebras de linha e espaços que faltam no texto impresso do Scryfall (coleções de
+    2015 e 2016, sobretudo): "virada.Quando…", "mana.{3}{W}, {T}…", a palavra-chave
+    colada na frase seguinte ("VoarAterragem", "Encantar criaturaA criatura") e, no
+    flavor, a assinatura colada nas aspas ("…diferente."— Mina) e o espaço que some
+    na troca de itálico ("SantoTraft", "deWirewood").
+
+    Três minúsculas seguidas de maiúscula nunca são nome: os nomes com maiúscula no
+    meio têm uma ou duas antes dela (McCoy, DePietro, MacArthur).
+    """
+    if not text:
+        return text
+    run_on = rf"(?<=[{_LOWER}]{{3}})(?=[{_UPPER}])"
+    if flavor:
+        # só antes da assinatura ("— Mina", "—Os Ensinamentos"): o travessão no meio da
+        # frase ("“A Queimadura”—outrora uma região…") fica
+        text = re.sub(rf'(["”]) ?(?=— |—[{_UPPER}])', "\\1\n", text)
+        text = re.sub(rf"(?<![^\s\"“(—])([{_LOWER}]{{2}})(?=[{_UPPER}])", "\\1 ", text)
+        return re.sub(run_on, " ", text)
+    text = re.sub(r"([.)])(?=[{A-ZÀ-Ú•])", "\\1\n", text)
+    return re.sub(run_on, "\n", text)
+
+
+_COST = re.compile(r"^\s*\[?([+−–-]?(?:\d+|X))\]?\s*:\s*")
+
+
+def pw_costs(oracle_text: str | None, text_pt: str | None) -> str | None:
+    """
+    Texto de planeswalker com um parágrafo por habilidade e o custo de lealdade na
+    frente de cada uma ("+1: Use vidência 2."), como na carta impressa. O Arena traz as
+    habilidades sem o custo; ele vem da linha correspondente do Oracle em inglês. Com
+    o custo, o motor sabe quais parágrafos são estáticos e se ficam em cima ou embaixo
+    dos escudos. Devolve None quando o número de parágrafos não bate com o Oracle.
+    """
+    en = [x for x in (oracle_text or "").split("\n") if x.strip()]
+    pt_text = re.sub(r'([.”"])\s*(?=[+−–-](?:\d+|X):)', "\\1\n", text_pt or "")
+    pt = [x.strip() for x in pt_text.split("\n") if x.strip()]
+    if len(en) != len(pt):
+        return None
+    out = []
+    for e, t in zip(en, pt):
+        cost = _COST.match(e)
+        out.append(f"{cost.group(1)}: {t}" if cost and not _COST.match(t) else t)
+    return "\n".join(out)
+
+
+# Parágrafo que começa com um nome e um travessão, com texto depois na mesma linha
+# ("Landfall — Whenever…", "Aterragem — Toda vez…"). O custo de uma palavra-chave
+# ("Ward—Pay 2 life") não tem espaço em volta do travessão no Oracle, e "Choose one —"
+# não tem texto depois.
+_ABILITY_WORD = re.compile(r"^([^—{}:•(\n]{1,40}) — \S")
+
+# Palavras de habilidade e de ambientação (minúsculas), que a carta impressa traz em
+# itálico. Vêm dos catálogos do Scryfall (ver `load_italic_words`).
+ITALIC_WORDS: set[str] = set()
+
+
+def load_italic_words(offline: bool) -> set[str]:
+    """Palavras de habilidade ("Landfall") e de ambientação ("Lightning Breath") do Scryfall."""
+    words: set[str] = set()
+    for name in ("ability-words", "flavor-words"):
+        path = fetch(f"https://api.scryfall.com/catalog/{name}", CACHE / f"catalog_{name}.json", offline)
+        words |= {w.lower() for w in json.loads(path.read_text())["data"]}
+    return words
+
+
+def italic_prefix(prefix: str, italic: set[str]) -> bool:
+    """O nome antes do travessão é palavra de habilidade? "Descend 4" conta como "Descend"."""
+    p = prefix.strip().lower()
+    return p in italic or re.sub(r" \d+$", "", p) in italic
+
+
+def ability_word_lines(oracle_text: str | None, text_pt: str | None, italic: set[str] | None = None) -> list[int] | None:
+    """
+    Linhas do texto em PT (índices de `text_pt.split("\n")`) que começam com uma palavra de
+    habilidade, que a carta impressa traz em itálico ("*Aterragem* — Toda vez…"). O texto
+    em PT não diz o que é palavra de habilidade e o que é custo de palavra-chave ("Salva-
+    guarda — Pague 2 pontos de vida"); o Oracle diz, pelos espaços em volta do travessão.
+    E nem todo nome com travessão é palavra de habilidade: "Max speed —" (Zahur, DFT),
+    "Exhaust —" e "Boast —" são palavras-chave, em tipo comum, como os capítulos das
+    sagas ("I, II —"). Só entra o nome que está nos catálogos de palavras de habilidade e
+    de ambientação (`italic`). As linhas com travessão dos dois lados casam pela ordem: só
+    vale quando o número delas bate; senão, nenhuma.
+    """
+    italic = ITALIC_WORDS if italic is None else italic
+    en = [m.group(1) for x in (oracle_text or "").split("\n") if (m := _ABILITY_WORD.match(x.strip()))]
+    if not en or not text_pt:
+        return None
+    pt = [i for i, x in enumerate(text_pt.split("\n")) if _ABILITY_WORD.match(x.strip())]
+    if len(pt) != len(en):
+        return None
+    out = [i for i, prefix in zip(pt, en) if italic_prefix(prefix, italic)]
+    return out or None
+
+
 def printed_faces(card: dict) -> list[dict]:
+    """Faces com o texto em PT da impressão mais nova (ver `pick_printed`)."""
+    card = card.get("_text", card)
     faces = card.get("card_faces") or [card]
     out = []
     for f in faces:
+        text = f.get("printed_text")
+        # criatura sem habilidades (Great-Horn Krushok): o Scryfall não manda o texto,
+        # que é vazio mesmo. Com o tipo em PT, é tradução; antes ficava `None` e a carta
+        # saía em inglês, como se não houvesse texto oficial
+        if text is None and f.get("printed_type_line") and f.get("oracle_text") == "":
+            text = ""
         out.append(
             {
                 "name_en": f.get("name"),
                 "name_pt": f.get("printed_name"),
-                "type_pt": f.get("printed_type_line"),
-                "text_pt": f.get("printed_text"),
-                "flavor_pt": f.get("flavor_text"),
+                # impressões antigas separam o subtipo com hífen: é o travessão da carta
+                "type_pt": re.sub(r" - ", " — ", f["printed_type_line"]) if f.get("printed_type_line") else None,
+                "text_pt": clean_rules(fix_breaks(text)),
+                "flavor_pt": fix_breaks(f.get("flavor_text"), flavor=True),
                 "mana_cost": f.get("mana_cost"),
             }
         )
     return out
+
+
+def printed_has_text(card: dict) -> bool:
+    """A impressão em PT traz tipo ou texto (algumas do Scryfall vêm só com a imagem)."""
+    return any(f["text_pt"] or f["type_pt"] for f in printed_faces(card))
 
 
 def load_oracle(offline: bool) -> list[dict]:
@@ -297,6 +596,15 @@ UNSUPPORTED_TYPES = ("Planeswalker", "Saga", "Class", "Battle", "Case", "Room")
 UNSUPPORTED_TYPES_NORMAL = tuple(t for t in UNSUPPORTED_TYPES if t != "Planeswalker")
 
 
+def art_behind_box(card: dict) -> bool:
+    """Promos de Game Day de 2014 a 2022: a arte passa por trás da linha de tipo e da
+    caixa de texto, que é translúcida, mas o Scryfall não as marca como `full_art`. O
+    motor apagava retângulos de papel que ali não existem. As do Wizards Play Network
+    (2022) têm a moldura comum e ficam."""
+    promos = set(card.get("promo_types") or [])
+    return "gameday" in promos and "wizardsplaynetwork" not in promos
+
+
 def frame_supported(card: dict) -> bool:
     """O motor do Proxinho reescreve a moldura moderna (2015+) de layout normal.
 
@@ -310,9 +618,12 @@ def frame_supported(card: dict) -> bool:
         and card.get("layout") == "normal"
         and card.get("border_color") in {"black", "white"}
         and not card.get("full_art")
+        and not art_behind_box(card)
         and not card.get("textless")
         and not effects & UNSUPPORTED_EFFECTS
         and not any(t in type_line for t in UNSUPPORTED_TYPES_NORMAL)
+        # naves e planetas com "Estacionar" têm caixas de nível próprias (2+, 12+)
+        and "Station" not in (card.get("keywords") or [])
     )
 
 
@@ -329,6 +640,7 @@ def face_supported(card: dict, face: dict) -> bool:
         and card.get("layout") in DFC_LAYOUTS
         and card.get("border_color") in {"black", "white"}
         and not card.get("full_art")
+        and not art_behind_box(card)
         and not card.get("textless")
         and not effects & UNSUPPORTED_DFC_EFFECTS
         and not any(t in face.get("type_line", "") for t in UNSUPPORTED_TYPES)
@@ -416,12 +728,12 @@ def dft_prints(dfts: list[dict]) -> list[dict]:
 
     A face de trás tem id "<id>#1": o site entende e baixa a imagem do verso (src/engine/types.ts).
     """
-    by_key = {token_key(t["name"], t.get("power"), t.get("toughness"), t.get("oracle_text") or ""): oid for oid, t in TOKENS.items()}
+    by_key = {token_face_key(t): oid for oid, t in TOKENS.items()}
     out = []
     for c in dfts:
         oids = []
         for i, f in enumerate(c.get("card_faces") or []):
-            oid = by_key.get(token_key(f.get("name", ""), f.get("power"), f.get("toughness"), f.get("oracle_text") or ""))
+            oid = by_key.get(token_face_key(f))
             oids.append(oid)
             if oid:
                 out.append(print_row(c, oid, f, None, c["id"] if i == 0 else f"{c['id']}#1"))
@@ -479,6 +791,7 @@ def build(offline: bool) -> list[dict]:
     arena = load_arena(offline)
     printed = load_printed_pt(offline)
     oracle = load_oracle(offline)
+    ITALIC_WORDS.update(load_italic_words(offline))
 
     rows = []
     stats = {"arena": 0, "impresso": 0, "sem": 0}
@@ -494,19 +807,26 @@ def build(offline: bool) -> list[dict]:
 
         if a:
             source, faces, text_print = "arena", a["faces"], a["print"]
-        elif p:
+        # (algumas impressões em PT do Scryfall vêm só com a imagem, sem nome, tipo nem
+        # texto: aí não há tradução, e a carta não pode passar por "impresso")
+        elif p and printed_has_text(p):
             source, faces = "impresso", printed_faces(p)
-            text_print = {"set": p["set"], "number": p["collector_number"]}
+            text_print = {"set": p["_text"]["set"], "number": p["_text"]["collector_number"]}
         else:
             source, faces, text_print = None, [], None
         stats[source or "sem"] += 1
         # planeswalker: o motor casa cada parágrafo em PT com uma faixa da carta
         if "Planeswalker" in card.get("type_line", "") and card.get("layout") == "normal" and faces:
-            en = len([x for x in (card.get("oracle_text") or "").split("\n") if x.strip()])
-            pt_text = re.sub(r'([.”"])\s*(?=[+−–-](?:\d+|X):)', "\\1\n", faces[0].get("text_pt") or "")
-            pt = len([x for x in pt_text.split("\n") if x.strip()])
-            if en != pt:
+            text_pt = pw_costs(card.get("oracle_text"), faces[0].get("text_pt"))
+            if text_pt is None:
                 PW_MISMATCH.add(oid)
+            else:
+                faces[0]["text_pt"] = text_pt
+
+        for i, f in enumerate(faces):
+            aw = ability_word_lines(faces_en[min(i, len(faces_en) - 1)].get("oracle_text"), f.get("text_pt"))
+            if aw:
+                f["ability_words"] = aw
 
         # Nome em português: o impresso é o que a comunidade conhece (Liga Magic).
         name_pt = None
@@ -590,7 +910,7 @@ def token_rows(cards: list[dict], print_oracle: dict[str, str]) -> list[dict]:
             e = emblem_face(t, by_oid, print_oracle)
             a = {**e, "print": None} if e else None
         else:
-            a = arena.get(token_key(t["name"], t.get("power"), t.get("toughness"), t.get("oracle_text") or ""))
+            a = arena.get(token_key(t["name"], t.get("power"), t.get("toughness"), t.get("oracle_text") or "", t.get("type_line")))
         matched += bool(a)
         face = (
             {k: v for k, v in a.items() if k not in ("print", "source")}
@@ -600,6 +920,9 @@ def token_rows(cards: list[dict], print_oracle: dict[str, str]) -> list[dict]:
         # para a pessoa distinguir fichas de mesmo nome (Espírito 1/1 branco, Espírito 1/1 incolor…)
         face["pt"] = f"{t['power']}/{t['toughness']}" if t.get("power") is not None else None
         face["colors"] = "".join(t.get("colors") or [])
+        aw = ability_word_lines(t.get("oracle_text"), face.get("text_pt"))
+        if aw:
+            face["ability_words"] = aw
         rows.append(
             {
                 "oracle_id": oid,

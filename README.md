@@ -94,6 +94,7 @@ Para ter o banco completo localmente: `pnpm data:build` e depois `pnpm exec wran
 | `pnpm check` | Tipos, lint, formatação e testes de unidade |
 | `pnpm test:e2e` | Testes de ponta a ponta no desktop e no celular |
 | `pnpm test:coverage` | Cobertura dos testes de unidade |
+| `pnpm test:data` | Testes de unidade do pipeline de dados (Python) |
 | `pnpm build` | Build de produção |
 
 ## Como foi construído
@@ -108,10 +109,10 @@ O projeto foi feito por um agente de IA trabalhando de forma autônoma, seguindo
 
 ## Limites conhecidos
 
-- A reescrita cobre a moldura moderna (2015+) de cartas normais, de duas faces (transformar e modais), de planeswalkers, de fichas (tokens, inclusive as de duas faces e as da moldura de 2003) e de emblemas. Sagas, aventuras e molduras especiais usam a imagem oficial em português quando existe; senão saem em inglês com aviso.
+- A reescrita cobre a moldura moderna (2015+) de cartas normais, de duas faces (transformar e modais), de planeswalkers, de fichas (tokens, inclusive as de duas faces e as da moldura de 2003) e de emblemas. Sagas, aventuras, molduras especiais e promos de Game Day com a arte atrás da caixa usam a imagem oficial em português quando existe; senão saem em inglês com aviso. Se o motor não reconhece a moldura de uma impressão (algumas edições especiais da Secret Lair têm o desenho invertido sem que os dados digam), a carta também sai em inglês, e a etiqueta muda para dizer isso.
 - Nas modais, a faixa do pé com o resumo do outro lado continua em inglês.
 - O primeiro planeswalker da sessão baixa o modelo de preenchimento (~66 MB, uma vez só); sem placa de vídeo, cada um leva cerca de 6 s.
-- Cartas sem tradução oficial saem em inglês. Não usamos tradução automática. Nas fichas, o texto vem do Arena: 541 de 795 têm português (cerca de 82% das fichas que as cartas de Commander criam). Nos emblemas, vem do texto oficial do planeswalker que o cria: 73 de 89.
+- Cartas sem tradução oficial saem em inglês. Não usamos tradução automática. Nas fichas, o texto vem do Arena: 534 de 795 têm português (cerca de 82% das fichas que as cartas de Commander criam). Nos emblemas, vem do texto oficial do planeswalker que o cria: 73 de 89.
 - O texto usa as fontes das cartas reais (Beleren e MPlantin), servidas pelo Worker a partir do KV, fora deste repositório. Num clone sem esses arquivos, o site cai sozinho para fontes livres parecidas (Eczar e Splentinex). Também dá para escolher outros arquivos de fonte no site; eles ficam só no navegador.
 
 ## Aviso legal

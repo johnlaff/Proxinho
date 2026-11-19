@@ -39,3 +39,4 @@ dist/
 
 # Modelo de preenchimento (baixado por scripts/modelo.mjs)
 public/modelos/
+__pycache__/

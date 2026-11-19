@@ -2,7 +2,7 @@
 import { renderCard } from "../engine/render";
 import { buildPdf, type PdfCard, type PdfOptions } from "../lib/pdf";
 import { sideCount, sortEntries, type Entry, type Side } from "./model";
-import { renderInput } from "./preview";
+import { noteRender, renderInput } from "./preview";
 
 export type Quality = "padrao" | "alta";
 /** pixels de saída por pixel do PNG (745 px ≈ 300 dpi em 63 mm) */
@@ -46,7 +46,8 @@ export async function exportPdf(
       const [i, { entry, side }] = next;
       const input = renderInput(entry, side);
       if (!input) throw new Error(`Não há imagem para “${entry.card.name_pt ?? entry.card.name_en}”.`);
-      const { canvas } = await renderCard({ ...input, imageVersion: "png", scale: SCALE[opts.quality] });
+      const { canvas, translated } = await renderCard({ ...input, imageVersion: "png", scale: SCALE[opts.quality] });
+      if (input.face) noteRender(input.print.id, side, translated);
       results[i] = await toBlob(canvas);
       borders[i] = input.print.border === "white" ? "white" : "black";
       onProgress({ phase: "cartas", done: ++done, total: list.length });

@@ -42,6 +42,7 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 ### H7. Honestidade e regras
 - [x] A origem do texto aparece na gaveta (Arena ou impressão PT).
 - [x] Sem tradução oficial, a carta sai em inglês e a interface diz.
+- [x] Se o motor não reconhece a moldura de uma impressão e ela sai na imagem original, a etiqueta, a legenda e o resumo dizem que sai em inglês.
 - [x] Aviso de conteúdo de fã no site e no PDF; nenhuma marca da Wizards como marca do produto.
 
 ## Requisitos não funcionais

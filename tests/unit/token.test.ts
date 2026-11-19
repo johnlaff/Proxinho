@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { findPlaque2003, findTokenBar, findTokenBoxBottom, smallCaps, tokenLayout, tokenPtBox } from "../../src/engine/token";
+import {
+  findPlaque2003,
+  findTokenBar,
+  findTokenBoxBottom,
+  plaqueRowSpan,
+  smallCaps,
+  textCentered,
+  titleIsLeftAligned,
+  titleIsEmblemWord,
+  tokenLayout,
+  tokenPtBox,
+} from "../../src/engine/token";
 import { printImage } from "../../src/engine/types";
 
 /** Ficha falsa 745 × 1040: arte com ruído, barra clara entre dois fios escuros e caixa clara. */
@@ -39,6 +50,18 @@ describe("findTokenBar", () => {
   it("acha a barra alta das fichas com muito texto e a baixa das sem texto", () => {
     expect(Math.round(findTokenBar(fakeToken([583, 641]))!.y0)).toBeOneOf([583, 584]);
     expect(Math.round(findTokenBar(fakeToken([850, 907]))!.y0)).toBeOneOf([850, 851]);
+  });
+
+  it("ficha de duas cores: o fio de cima some no papel claro de metade da barra (Espírito, EVE)", () => {
+    const img = fakeToken([686, 738]);
+    // à esquerda, papel claro da cor da barra em cima dela: sem fio de cima ali
+    for (let y = 676; y <= 687; y++) for (let x = 0; x < 340; x++) img.data.fill(225, (y * 745 + x) * 4, (y * 745 + x) * 4 + 3);
+    const bar = findTokenBar(img)!;
+    expect(bar).not.toBeNull();
+    expect(bar.y0).toBeGreaterThanOrEqual(683);
+    expect(bar.y0).toBeLessThanOrEqual(688);
+    expect(bar.y1).toBeGreaterThanOrEqual(737);
+    expect(bar.y1).toBeLessThanOrEqual(740);
   });
 
   it("devolve null quando não há moldura de ficha", () => {
@@ -82,6 +105,18 @@ describe("moldura de 2003", () => {
     expect(l.name.x1 - l.name.x0).toBeLessThan(450);
   });
 
+  it("barra de tipo: o apagador começa depois do fio arredondado da ponta esquerda (Javali, THS)", () => {
+    // medido nas imagens: fio escuro em "(" de x ≈ 52 a 59, papel a partir de 60 (62 nas
+    // linhas de cima e de baixo, pela curva) e o tipo em inglês em x ≈ 71
+    const l = tokenLayout({ y0: 854, y1: 906 }, 655, 962, "2003");
+    expect(l.type.x0).toBeGreaterThan(62);
+    expect(l.type.x0).toBeLessThan(71);
+    expect(l.type.x).toBeGreaterThanOrEqual(l.type.x0 + 4);
+    // a moldura nova tem a barra até a borda e segue como estava
+    const n = tokenLayout({ y0: 854, y1: 906 }, 655, 962);
+    expect([n.type.x0, n.type.x]).toEqual([50, 62]);
+  });
+
   /** Fundo claro com textura, placa escura centrada (x 260–485) e letras douradas. */
   function fakePlaque(): ImageData {
     const width = 745;
@@ -112,6 +147,81 @@ describe("moldura de 2003", () => {
   });
 });
 
+describe("placa de 2003 ao lado de arte escura", () => {
+  /**
+   * Placa escura (x 260–485, ou `px0`–`px1`) com filete dourado de 3 px em volta e
+   * letras douradas. `art(x, y)` pinta o que fica fora da placa.
+   */
+  function plaqueOn(art: (x: number, y: number) => number[], px0 = 260, px1 = 485): ImageData {
+    const width = 745;
+    const height = 1040;
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let y = 0; y < height; y++)
+      for (let x = 0; x < width; x++) {
+        let rgb = art(x, y);
+        if (y >= 54 && y < 105 && x >= px0 && x < px1) {
+          const rim = y < 57 || y >= 102 || x < px0 + 3 || x >= px1 - 3;
+          rgb = rim ? [200, 170, 90] : [30, 24, 16];
+          if (!rim && y >= 66 && y < 98 && x >= px0 + 25 && x < px1 - 25 && (x - px0 - 25) % 20 < 4) rgb = [215, 190, 110];
+        }
+        data.set([...rgb, 255], (y * width + x) * 4);
+      }
+    return { width, height, data, colorSpace: "srgb" } as ImageData;
+  }
+  // moldura preta com grão: a mesma cor do fundo da placa
+  const dark = (x: number, y: number) => ((x * 7 + y * 3) % 5 === 0 ? [44, 44, 48] : [22, 22, 26]);
+  const light = (x: number, y: number) => ((x + y) % 7 === 0 ? [150, 160, 140] : [190, 200, 180]);
+
+  it("ficha preta (Zumbi, Demônio): a placa acaba onde acaba o filete dourado", () => {
+    const p = findPlaque2003(plaqueOn(dark))!;
+    expect(p).not.toBeNull();
+    expect(p.x0).toBeGreaterThanOrEqual(255);
+    expect(p.x0).toBeLessThanOrEqual(266);
+    expect(p.x1).toBeGreaterThanOrEqual(479);
+    expect(p.x1).toBeLessThanOrEqual(490);
+  });
+
+  it("sombra escura fora da ponta: a placa repintada não cobre o filete (Goblin, 10E)", () => {
+    // 14 px de sombra da cor do fundo logo à esquerda do filete
+    const p = findPlaque2003(plaqueOn((x, y) => (x >= 246 && x < 260 ? dark(x, y) : light(x, y))))!;
+    // a placa é repintada de x0 + 7 em diante: o filete (260–262) tem de ficar
+    expect(p.x0 + 7).toBeGreaterThanOrEqual(263);
+    expect(p.x0).toBeLessThanOrEqual(266);
+  });
+
+  it('placa curta ("Cat") e placa quase da largura da carta ("Elemental Shaman")', () => {
+    const cat = findPlaque2003(plaqueOn(light, 310, 436))!;
+    expect(cat).not.toBeNull();
+    expect(cat.x0).toBeGreaterThanOrEqual(305);
+    expect(cat.x1).toBeLessThanOrEqual(441);
+    const wide = findPlaque2003(plaqueOn(light, 50, 695))!;
+    expect(wide).not.toBeNull();
+    expect(wide.x0).toBeLessThanOrEqual(56);
+    expect(wide.x1).toBeGreaterThanOrEqual(689);
+  });
+
+  it("pé de letra perto do filete é repintado, e o filete fica (Elemental, DD1)", () => {
+    for (const art of [light, dark]) {
+      const img = plaqueOn(art);
+      // pé do "L": 3 px, a 4 px do filete da direita (482–484)
+      for (let y = 90; y < 98; y++) for (let x = 475; x < 478; x++) img.data.set([215, 190, 110], (y * 745 + x) * 4);
+      const p = findPlaque2003(img)!;
+      const [a, b] = plaqueRowSpan(img, p, 93 - Math.round(p.y0));
+      expect(b).toBeGreaterThanOrEqual(478); // cobre o pé (475–477); o recuo fixo parava antes
+      expect(b).toBeLessThanOrEqual(482); // o filete da direita (482–484) fica
+      expect(a).toBeGreaterThanOrEqual(263); // o da esquerda (260–262) também
+      expect(a).toBeLessThanOrEqual(270);
+    }
+  });
+
+  it("céu escuro só de um lado: o lado que passa do filete fica com o do filete (Golem, J13)", () => {
+    // à direita, 40 px de céu escuro antes da arte clara: a cor passava 20 px do filete
+    const p = findPlaque2003(plaqueOn((x, y) => (x >= 485 && x < 525 ? dark(x, y) : light(x, y))))!;
+    expect(p.x1 - 7).toBeLessThanOrEqual(482);
+    expect(p.x1).toBeGreaterThanOrEqual(479);
+  });
+});
+
 describe("printImage", () => {
   it("a face de trás das fichas de duas faces vem do verso", () => {
     expect(printImage({ id: "05934d59-7e98-4fff-8ccb-70cd1a61c6fd#1" }, "png")).toBe(
@@ -130,5 +240,92 @@ describe("caixa de P/R das fichas", () => {
   });
   it("não protege nada em emblemas e fichas sem P/R, para apagar o canto em inglês", () => {
     expect(tokenPtBox(layout, null)).toBeNull();
+  });
+});
+
+describe("emblemas", () => {
+  it('o título dos emblemas até 2019 é "Emblem", não o nome do planeswalker (Liliana, ORI)', () => {
+    // medidas da Vraska (GRN): título de 156 px, "Emblem" no nosso corpo tem 124, o nome 390
+    expect(titleIsEmblemWord(156, 124, 390, 605)).toBe(true);
+    // Wrenn e Seis (MH1): nome curto, mas o título de 157 px é "Emblem"
+    expect(titleIsEmblemWord(157, 124, 245, 605)).toBe(true);
+    // nos de 2019 em diante o título é o nome (Basri Ket, M21: 201 px, nome de 158)
+    expect(titleIsEmblemWord(201, 124, 158, 605)).toBe(false);
+    // nome comprido, apertado na barra
+    expect(titleIsEmblemWord(590, 124, 700, 605)).toBe(false);
+  });
+
+  it("acha o texto centralizado (Domri Rade, MM3) e o alinhado à esquerda (Sephiroth, FIN)", () => {
+    const w = 600;
+    const h = 120;
+    const lines = (spans: [number, number][]) => {
+      const mask = new Uint8Array(w * h);
+      spans.forEach(([a, b], i) => {
+        for (let y = 10 + i * 30; y < 28 + i * 30; y++) for (let x = a; x < b; x += 3) mask[y * w + x] = mask[y * w + x + 1] = 1;
+      });
+      // a marca-d'água no meio da caixa, de cima a baixo, liga as linhas
+      for (let y = 0; y < h; y++) for (let x = 280; x < 300; x++) mask[y * w + x] = 1;
+      return { rect: { x0: 60, y0: 900, x1: 60 + w, y1: 900 + h }, mask };
+    };
+    // linhas de larguras diferentes com o meio no mesmo lugar
+    expect(
+      textCentered(
+        lines([
+          [90, 510],
+          [120, 480],
+          [200, 400],
+        ]),
+        1,
+      ),
+    ).toBe(true);
+    // o começo no mesmo lugar, o fim muda
+    expect(
+      textCentered(
+        lines([
+          [20, 560],
+          [20, 540],
+          [20, 120],
+        ]),
+        1,
+      ),
+    ).toBe(false);
+    // uma linha só, longe da margem e com o meio no meio da caixa: centralizada (Wrenn and
+    // Seven, INR); o português que quebra em duas linhas sai centralizado também
+    expect(textCentered(lines([[44, 556]]), 1)).toBe(true);
+    // uma linha curta que começa na margem: alinhada à esquerda (Druida Elfo, CMM; Boo,
+    // AFR), e o português de uma linha também sai assim
+    expect(textCentered(lines([[20, 300]]), 1)).toBe(false);
+    // de ponta a ponta: quem decide é quem chama
+    expect(textCentered(lines([[10, 590]]), 1)).toBeNull();
+    // linhas de mesma largura longe da margem: não dá para dizer
+    expect(
+      textCentered(
+        lines([
+          [100, 500],
+          [102, 498],
+        ]),
+        1,
+      ),
+    ).toBeNull();
+  });
+
+  it("um pingo da textura longe das letras não faz a linha do meio começar na margem (Pássaro, P03)", () => {
+    const w = 617;
+    const h = 166;
+    const mask = new Uint8Array(w * h);
+    // "Flying" no meio da caixa
+    for (let y = 70; y < 105; y++) for (let x = 250; x < 360; x += 3) mask[y * w + x] = mask[y * w + x + 1] = 1;
+    // e uma bolha da textura, pequena, perto da margem, na altura do alto das letras
+    for (let y = 69; y < 75; y++) for (let x = 15; x < 25; x++) mask[y * w + x] = 1;
+    expect(textCentered({ rect: { x0: 65, y0: 756, x1: 65 + w, y1: 756 + h }, mask }, 1)).toBe(true);
+  });
+
+  it("nome de carta na moldura de ficha, na esquerda (Marit Lage da SLD 1681), e os centralizados", () => {
+    const bar = { x0: 70, x1: 675 };
+    expect(titleIsLeftAligned({ x0: 67, x1: 527 }, bar)).toBe(true);
+    // centralizados: curto, comprido e quase de ponta a ponta
+    expect(titleIsLeftAligned({ x0: 330, x1: 415 }, bar)).toBe(false);
+    expect(titleIsLeftAligned({ x0: 165, x1: 540 }, bar)).toBe(false);
+    expect(titleIsLeftAligned({ x0: 80, x1: 660 }, bar)).toBe(false);
   });
 });

@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "test:data": "python3 -m unittest discover -s data/pipeline",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "db:migrate:local": "wrangler d1 migrations apply proxinho --local",
     "db:seed:local": "pnpm db:migrate:local && wrangler d1 execute proxinho --local --file tests/fixtures/seed.sql",

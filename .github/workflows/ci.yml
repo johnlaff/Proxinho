@@ -37,8 +37,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm test:coverage
-      - name: Pipeline de dados compila
-        run: python3 -m py_compile data/pipeline/build.py
+      - name: Pipeline de dados compila e passa nos testes
+        run: python3 -m py_compile data/pipeline/build.py && python3 -m unittest discover -s data/pipeline
       - run: pnpm build
 
   e2e:

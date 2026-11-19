@@ -4,11 +4,12 @@
  */
 import { fontsVersion } from "../engine/fonts";
 import { FlipHorizontal2, Minus, Plus, Ruler, Trash2, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   displayName,
   frontFace,
   hasPtText,
+  missKey,
   outcomeOf,
   renderKey,
   sideCount,
@@ -17,8 +18,8 @@ import {
   type Entry,
   type Side,
 } from "../app/model";
-import { previewUrl } from "../app/preview";
-import { printImage, scryfallImage } from "../engine/types";
+import { engineMisses, onEngineMiss, previewUrl } from "../app/preview";
+import { printImage, scryfallImage, type PrintRecord } from "../engine/types";
 import { OUTCOME_LABEL } from "../app/labels";
 import { OutcomeTag } from "./OutcomeTag";
 
@@ -75,7 +76,10 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
   const imageKey = renderKey(entry, fontsVersion(), side);
   const [preview, setPreview] = useState<{ key: string; url: string } | null>(null);
   const url = preview?.key === imageKey ? preview.url : null;
-  const outcome = outcomeOf(entry);
+  const misses = useSyncExternalStore(onEngineMiss, engineMisses);
+  const outcome = outcomeOf(entry, misses);
+  // arte que o motor já tentou e não reconheceu (Garruk espelhado da Secret Lair) sai em inglês
+  const rewritable = (p: PrintRecord) => p.supported && !misses.has(missKey(p.id, 0));
   const name = displayName(entry.card);
   const translatable = hasPtText(entry.card);
 
@@ -221,8 +225,8 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
                 thumb={printImage(p, "small")}
                 title={p.set_name}
                 meta={[`${p.set_code.toUpperCase()} ${p.number}`, yearOf(p), p.artist].filter(Boolean).join(" · ")}
-                tag={translatable ? (p.supported ? "Sai em português" : "Sai em inglês") : "Sai em inglês"}
-                tagKind={translatable ? (p.supported ? "reescrita" : "moldura") : "sem-traducao"}
+                tag={translatable && rewritable(p) ? "Sai em português" : "Sai em inglês"}
+                tagKind={translatable ? (rewritable(p) ? "reescrita" : "moldura") : "sem-traducao"}
               />
             ))}
           </div>

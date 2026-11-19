@@ -5,6 +5,7 @@ import {
   defaultChoice,
   entriesFrom,
   mergeEntries,
+  missKey,
   outcomeOf,
   renderKey,
   sortEntries,
@@ -165,6 +166,17 @@ describe("outcomeOf", () => {
     expect(outcomeOf({ ...base, choice: { kind: "pt" } })).toBe("imagem-pt");
     expect(outcomeOf({ ...base, card: card({ source: null }) })).toBe("sem-traducao");
     expect(countOutcomes([base]).reescrita).toBe(2);
+  });
+
+  it("moldura que o motor não reconheceu na imagem sai em inglês, e a interface diz isso (Garruk espelhado, SLD 9995)", () => {
+    // os dados não separam esse desenho da moldura comum: só a montagem descobre
+    const misses = new Set([missKey("a", 0)]);
+    expect(outcomeOf(base, misses)).toBe("moldura");
+    expect(countOutcomes([base], misses)).toMatchObject({ reescrita: 0, moldura: 2 });
+    // outra arte da mesma carta não herda a falha
+    expect(outcomeOf({ ...base, prints: [print("c"), ...base.prints], choice: { kind: "print", printId: "c" } }, misses)).toBe("reescrita");
+    // só a frente decide a etiqueta da carta
+    expect(outcomeOf(base, new Set([missKey("a", 1)]))).toBe("reescrita");
   });
 });
 

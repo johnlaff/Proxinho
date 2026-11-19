@@ -52,7 +52,14 @@ pnpm exec wrangler d1 execute proxinho --remote --command "SELECT count(*) FROM 
 | Planeswalker com mancha borrada na caixa de texto | O LaMa não carregou e o motor usou o preenchimento simples | Ver o console do navegador ("preenchimento por rede neural indisponível"); conferir se `/modelos/` foi publicado (o build avisa se o download falhou) |
 | Primeiro planeswalker demora | Download único do modelo (~66 MB) e, sem placa de vídeo, ~6 s por carta na CPU | Esperado; ver ADR 0008 |
 | Ficha sai em inglês com texto em PT disponível | A barra de tipo não foi achada (moldura diferente) | Ver `findTokenBar` em `src/engine/token.ts`; a ficha sai como está de propósito |
-| Ficha de 2003 sai em inglês | A placa do nome não foi achada (fundo escuro demais) | Ver `findPlaque2003` em `src/engine/token.ts` |
+| Ficha de 2003 sai em inglês | A placa do nome não foi achada (filete dourado apagado ou outro desenho) | Ver `findPlaque2003` e `plaqueRimEnd` em `src/engine/token.ts` |
+| Ponta da placa do nome de 2003 quadrada, sem o filete dourado | A medida da placa passou do filete (sombra ou arte escura ao lado) | Ver a simetria e o filete em `findPlaque2003` e `pnpm test` (`tests/unit/token.test.ts`) |
 | Emblema sem português | O planeswalker não tem texto em PT ou tem dois emblemas na mesma face | Esperado; ver `emblem_face` em `data/pipeline/build.py` e o ADR 0010 |
-| Ficha sem a etiqueta de português | O Arena não tem essa ficha ou o texto em inglês difere | Conferir a chave em `token_key` (`data/pipeline/build.py`) |
+| Ficha sem a etiqueta de português | O Arena não tem essa ficha, o texto em inglês difere ou os tipos diferem (artefato, encantamento) | Conferir a chave em `token_key` (`data/pipeline/build.py`) |
+| Planeswalker com o tipo em PT sobre a arte ou texto por cima da linha de tipo | Moldura alta e normal confundidas | Ver `measureTallPlaneswalker` em `src/engine/planeswalker.ts` e `pnpm test` (`tests/unit/planeswalker.test.ts`) |
+| Tracejado ou pingo de tinta na caixa do planeswalker | Fio da imagem original entre dois pedaços do buraco, ou pingo inventado pelo LaMa | Ver `combineMasks` e `dropSpecks` em `src/engine/erase.ts` e `pnpm test` (`tests/unit/lama.test.ts`) |
+| Emblema com o nome do planeswalker onde a carta diz "Emblem" (ou o contrário) | A largura do título impresso ficou entre as duas leituras | Ver `titleIsEmblemWord` em `src/engine/token.ts` e `emblemTitle` em `src/engine/render.ts` |
+| Resto de letra ao lado do símbolo, fio da caixa apagado ou texto em branco sem apagar o inglês | Moldura medida errado (coleção nova, digitalização diferente) | Ver as medidas na imagem do ADR 0011 (`src/engine/erase.ts`); acrescente um caso em `tests/unit/medidas.test.ts` |
+| Lembrete sem itálico com um ")" solto, ou sem o fecho | Parêntese faltando no texto oficial (Scryfall ou Arena) | Ver `balance_parens` em `data/pipeline/build.py` e `pnpm test:data` |
+| Carta com o nome de outra versão no texto ("Keenser") | Versão com nome alternativo do Arena | Ver `cites_alt_name` em `data/pipeline/build.py` e `pnpm test:data` |
 | Texto com outra fonte | `/api/fontes/` sem os arquivos no KV | Recolocar com `wrangler kv key put` (acima) |

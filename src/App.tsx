@@ -5,7 +5,7 @@
  * ordem de serviço (esquerda) → prova das folhas (direita) → PDF.
  */
 import { Download, ExternalLink } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { cardsById, importFromUrl, resolveNames, type Resolved, type SearchHit } from "./app/api";
 import type { ExportProgress, Quality } from "./app/exportPdf";
 import {
@@ -21,6 +21,7 @@ import {
   type OrderLine,
   type Outcome,
 } from "./app/model";
+import { engineMisses, onEngineMiss } from "./app/preview";
 import { loadStoredFonts, toFiles, type StoredFonts } from "./app/userFonts";
 import { CardDrawer } from "./components/CardDrawer";
 import { FontPicker } from "./components/FontPicker";
@@ -102,7 +103,8 @@ export default function App() {
   useEffect(() => save(SETTINGS_KEY, JSON.stringify(settings)), [settings]);
 
   const total = totalCards(entries);
-  const counts = useMemo(() => countOutcomes(entries), [entries]);
+  const misses = useSyncExternalStore(onEngineMiss, engineMisses);
+  const counts = useMemo(() => countOutcomes(entries, misses), [entries, misses]);
   const openEntry = entries.find((e) => e.key === openKey) ?? null;
   const slug = [
     PAPER_LABEL[settings.paper],

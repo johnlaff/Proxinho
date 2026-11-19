@@ -17,7 +17,7 @@ Dois problemas: de onde vem o texto oficial em português de cada ficha, e como 
 
 ## Decisão
 
-Opção 2. O pipeline casa cada ficha do Scryfall (`layout: token`, a impressão mais recente é a referência) com a ficha do Arena pela chave nome + poder + resistência + texto em inglês sem lembretes. Cartas de apoio ("Copy", "The Monarch", "Boss") ficam de fora: o tipo precisa começar por "Token ". Algumas fichas do Arena trazem só "Criatura" no tipo; nesse caso (tipo de uma palavra só) o pipeline acrescenta "Ficha", como no tipo impresso ("Token Creature"). Tipos compostos ficam como o Arena escreve.
+Opção 2. O pipeline casa cada ficha do Scryfall (`layout: token`, a impressão mais recente é a referência) com a ficha do Arena pela chave nome + tipos + poder + resistência + texto em inglês sem lembretes. Os tipos entram porque fichas de mesmo nome, P/R e texto podem ser artefato ou encantamento numa coleção e não em outra: a Barreira 0/4 de THB é artefato e levava o tipo da Barreira da MSH, que não é ("Criatura Ficha — Barreira", sem "Artefato"). Sem ficha do Arena com os mesmos tipos, a ficha sai em inglês. Cartas de apoio ("Copy", "The Monarch", "Boss") ficam de fora: o tipo precisa começar por "Token ". Algumas fichas do Arena trazem só "Criatura" no tipo; nesse caso (tipo de uma palavra só) o pipeline acrescenta "Ficha", como no tipo impresso ("Token Creature"). Tipos compostos ficam como o Arena escreve.
 
 - **Banco:** cada ficha vira uma linha em `cards` (`layout = 'token'`) com o texto do Arena quando há, e cada carta ganha a coluna `tokens` (migração 0004) com os `oracle_id` das fichas que cria, tirados do `all_parts` do Scryfall.
 - **API:** `POST /api/cards {ids}` devolve cartas ou fichas pelo `oracle_id`, com as impressões. A busca e o `/api/resolve` põem as fichas por último, salvo nas linhas da seção "Tokens" da lista, que preferem a ficha.
@@ -27,6 +27,6 @@ Opção 2. O pipeline casa cada ficha do Scryfall (`layout: token`, a impressão
 
 ## Consequências
 
-- 795 fichas no banco, 541 com texto oficial em PT. Elas cobrem cerca de 82% das referências a fichas nas cartas legais em Commander; as outras saem em inglês, com a etiqueta de sempre.
+- 795 fichas no banco, 534 com texto oficial em PT. Elas cobrem cerca de 82% das referências a fichas nas cartas legais em Commander; as outras saem em inglês, com a etiqueta de sempre.
 - Conferido em 24 fichas sorteadas de 20 coleções (claras, escuras, coloridas, com e sem texto): nenhuma falha de detecção.
 - Emblemas, fichas de duas faces e a moldura de 2003 entraram depois, no ADR 0010.

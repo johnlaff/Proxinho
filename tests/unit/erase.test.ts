@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findSetSymbolLeft, textPolarity } from "../../src/engine/erase";
+import { findSetSymbolLeft, textMask, textPolarity } from "../../src/engine/erase";
 
 /** Imagem falsa 745×1040: fundo claro, com blocos escuros na linha de tipo. */
 function fakeImage(blocks: [number, number][]): ImageData {
@@ -62,5 +62,38 @@ describe("textPolarity", () => {
   });
   it("texto branco em barra cinza-clara (verso das modais)", () => {
     expect(textPolarity(band(175, 252), all)).toBe("light");
+  });
+});
+
+describe("textMask nos planeswalkers", () => {
+  it("sem limiar por ladrilho, a palavra sobre arte agitada entra na máscara (Vraska, ONE)", () => {
+    // caixa 745 × 120: metade lisa; na outra, a arte clara aparece em riscos diagonais
+    // (os veios de óleo da Vraska) e a palavra ("poison") fica só ali
+    const width = 745;
+    const height = 120;
+    const data = new Uint8ClampedArray(width * height * 4);
+    const letter = (x: number, y: number) => x >= 470 && x < 560 && y >= 50 && y < 64 && x % 9 < 3;
+    for (let y = 0; y < height; y++)
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        const v = letter(x, y) ? 30 : x >= 400 && (x + 2 * y) % 7 === 0 ? 225 : 185;
+        data[i] = data[i + 1] = data[i + 2] = v;
+        data[i + 3] = 255;
+      }
+    const img = { width, height, data, colorSpace: "srgb" } as ImageData;
+    const rect = { x0: 0, y0: 0, x1: width, y1: height };
+    const share = (mask: Uint8Array) => {
+      let hit = 0;
+      let total = 0;
+      for (let y = 0; y < height; y++)
+        for (let x = 0; x < width; x++)
+          if (letter(x, y)) {
+            total++;
+            hit += mask[y * width + x];
+          }
+      return hit / total;
+    };
+    // com o limiar por ladrilho (o das fichas) a palavra sumia da máscara
+    expect(share(textMask(img, rect, 14, [], 0, "dark", false, false))).toBeGreaterThan(0.95);
   });
 });

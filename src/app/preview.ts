@@ -9,12 +9,38 @@
 import { fontsVersion } from "../engine/fonts";
 import { renderCard } from "../engine/render";
 import type { PrintRecord } from "../engine/types";
-import { hasPtText, renderKey, selectedPrint, sideCount, type Entry, type Side } from "./model";
+import { hasPtText, missKey, renderKey, selectedPrint, sideCount, type Entry, type Side } from "./model";
 
 const MAX_PARALLEL = 4;
 const cache = new Map<string, Promise<string>>();
 const queue: (() => void)[] = [];
 let running = 0;
+
+/**
+ * Faces em que o motor não reconheceu a moldura e devolveu a imagem original (ver
+ * `outcomeOf`). Só a montagem descobre isso; a interface assina para refazer as etiquetas.
+ */
+let misses: ReadonlySet<string> = new Set();
+const listeners = new Set<() => void>();
+
+export function engineMisses(): ReadonlySet<string> {
+  return misses;
+}
+
+export function onEngineMiss(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/** Anota o resultado de uma montagem que tentou escrever o português. */
+export function noteRender(printId: string, side: Side, translated: boolean) {
+  const key = missKey(printId, side);
+  if (translated || misses.has(key)) return;
+  misses = new Set([...misses, key]);
+  for (const l of listeners) l();
+}
 
 function schedule<T>(job: () => Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -81,7 +107,8 @@ export function previewUrl(entry: Entry, side: Side = 0): Promise<string> {
     const input = renderInput(entry, side);
     if (!input) return Promise.reject(new Error("Carta sem imagem disponível."));
     p = schedule(async () => {
-      const { canvas } = await renderCard({ ...input, imageVersion: "normal", scale: 0.56 });
+      const { canvas, translated } = await renderCard({ ...input, imageVersion: "normal", scale: 0.56 });
+      if (input.face) noteRender(input.print.id, side, translated);
       return toUrl(canvas);
     });
     p.catch(() => cache.delete(key));

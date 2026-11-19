@@ -11,6 +11,8 @@ export interface PtFace {
   /** Fichas: poder/resistência ("1/1") e cores ("WB"), para distinguir fichas de mesmo nome. */
   pt?: string | null;
   colors?: string;
+  /** Linhas de `text_pt` (índices de `split("\n")`) que começam com palavra de habilidade, em itálico na carta. */
+  ability_words?: number[];
 }
 
 /** De onde veio a tradução. */
