@@ -61,6 +61,29 @@ describe("tokenize", () => {
   });
 });
 
+describe("número no fim da habilidade", () => {
+  it("vai junto da palavra de antes", () => {
+    const chunks = toChunks(tokenize("Quando este terreno entrar, use vidência 1."));
+    expect(
+      chunks
+        .at(-1)
+        ?.map((r) => r.value)
+        .join(""),
+    ).toBe("vidência 1.");
+    // número no meio da frase fica solto, como sempre
+    const mid = toChunks(tokenize("Compre 2 cards."));
+    expect(mid.map((c) => c.map((r) => r.value).join(""))).toEqual(["Compre", "2", "cards."]);
+  });
+
+  it("nunca fica numa linha só dele (Templo da Epifania, CLB)", () => {
+    // corpo 20 no medidor falso: 10 px por caractere; "use vidência" = 120 cabe em 125,
+    // "use vidência 1." = 150 não: "vidência 1." desce junto
+    const res = fitText("use vidência 1.", null, 125, 400, fake, 20, 20);
+    const lines = res.lines.map((l) => l.chunks.map((c) => c.map((r) => r.value).join("")).join(" "));
+    expect(lines).toEqual(["use", "vidência 1."]);
+  });
+});
+
 describe("buildParagraphs com palavra de habilidade", () => {
   it("põe em itálico a palavra de habilidade das linhas marcadas, sem o travessão", () => {
     const [voar, aterragem] = buildParagraphs("Voar\nAterragem — Toda vez que um terreno entra.", null, [1]);

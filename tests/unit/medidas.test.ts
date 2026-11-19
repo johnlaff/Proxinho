@@ -354,6 +354,21 @@ describe("findSetSymbolLeft com o símbolo colado no fim da busca", () => {
   });
 });
 
+describe("findSetSymbolLeft com o símbolo perto do contorno da barra", () => {
+  it('o "M" da Marvel a 11 px do contorno vermelho não é segunda camada dele: o "ro" de "Hero" sai (Mercúrio, MSH)', () => {
+    // barra preta de carta; o tipo em letras brancas vai até 588, passando do começo da
+    // busca (559); o quadro dourado do "M" (655 a 677) e o contorno vermelho grosso do fim
+    // da barra (687 a 711). O "M" passava por segunda camada do contorno, e o fim do tipo
+    // em inglês, por símbolo
+    const { img, fill } = canvas([20, 20, 20]);
+    for (let x = 400; x < 589; x += 10) fill(x, 600, x + 4, 626, [245, 245, 245]);
+    fill(655, 598, 677, 628, [200, 180, 100]);
+    fill(659, 602, 673, 624, [30, 30, 30]);
+    fill(687, 594, 712, 632, [200, 60, 40]);
+    expect(findSetSymbolLeft(img, 594, 632)).toBe(655);
+  });
+});
+
 describe("findSetSymbolLeft com o símbolo da 30th Edition", () => {
   it('o "E" dourado de braços finos fica junto do resto, mesmo com uma coluna vazia antes do "D" (Icy Manipulator, 30A)', () => {
     // barra clara; o traço do "E" (587 a 590) é tinta, os braços (591 a 598) são só um

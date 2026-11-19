@@ -110,6 +110,13 @@ export function toChunks(runs: Run[]): Chunk[] {
       chunks.splice(i, 1);
     }
   }
+  // Número sozinho no fim da habilidade ("use vidência 1.") vai junto da palavra de antes:
+  // sozinho, ele podia descer para uma linha só dele (Templo da Epifania, CLB 923).
+  const last = chunks.at(-1);
+  if (chunks.length > 1 && last?.length === 1 && last[0].kind === "text" && /^\d{1,2}[.,;:)]*$/.test(last[0].value)) {
+    chunks[chunks.length - 2].push({ ...last[0], value: ` ${last[0].value}` });
+    chunks.pop();
+  }
   return chunks;
 }
 

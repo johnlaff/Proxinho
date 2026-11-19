@@ -1518,16 +1518,18 @@ export function findSetSymbolLeft(
   // símbolo (Doombot).
   const edgeWidth = (pass: number) => (xMax !== undefined || pass >= 2 ? 12 : 24);
   let edgeFrom = x1;
+  // (o fim do bloco antes da última camada pulada depois da primeira, para desfazer)
+  let beforeLayer: number | null = null;
   for (let pass = 0; pass < 3; pass++) {
     let i = last;
     // o fio é contínuo: qualquer lacuna o separa do símbolo
     while (i > 0 && cols[i] - cols[i - 1] <= Math.max(1, Math.round(3 * kk))) i--;
     if (i > 0 && cols[last] - cols[i] < Math.round(edgeWidth(pass) * kk) && cols[last] >= edgeFrom - Math.round(12 * kk)) {
+      if (pass > 0) beforeLayer = last;
       edgeFrom = cols[i];
       last = i - 1;
     } else break;
   }
-  const end = cols[last];
   // Coluna "fraca": algo mais claro que tinta, mas fora do fundo (os braços finos do
   // "E" dourado do símbolo da 30th Edition). Uma lacuna toda feita de colunas fracas
   // não separa blocos: senão a primeira letra do símbolo ficava de fora e era apagada.
@@ -1562,22 +1564,39 @@ export function findSetSymbolLeft(
     }
     return false;
   };
-  let start = end;
-  for (let i = last; i > 0; i--) {
-    const gap = cols[i] - cols[i - 1];
-    if (gap > Math.max(3, 8 * k) && !(gap <= 16 * k && bridged(cols[i - 1], cols[i]))) {
-      // Numa barra cinza o dourado do símbolo da 30th Edition quase não passa por tinta: só
-      // o traço do "E" conta, e o "D" inteiro é "fraco". A lacuna até o resto chega a 25 px
-      // e a primeira letra e meia era apagada (Demonic Tutor, 30A). Uma lacuna maior, toda
-      // de colunas fracas, ainda une os dois quando o bloco da esquerda está solto (não é o
-      // fim de uma linha de tipo, que vem colado na palavra de antes), tem um traço de letra
-      // (não é o grão de uma barra granulada) e o símbolo cabe.
-      const b = blockStart(i - 1);
-      const ok = gap <= 32 * k && loose(b) && end - cols[b] <= maxWidth * k && bridged(cols[i - 1], cols[i]);
-      if (!(ok && stroke(cols[b], cols[i - 1]))) break;
+  const startOf = (lastIdx: number) => {
+    const blockEnd = cols[lastIdx];
+    let from = blockEnd;
+    for (let i = lastIdx; i > 0; i--) {
+      const gap = cols[i] - cols[i - 1];
+      if (gap > Math.max(3, 8 * k) && !(gap <= 16 * k && bridged(cols[i - 1], cols[i]))) {
+        // Numa barra cinza o dourado do símbolo da 30th Edition quase não passa por tinta: só
+        // o traço do "E" conta, e o "D" inteiro é "fraco". A lacuna até o resto chega a 25 px
+        // e a primeira letra e meia era apagada (Demonic Tutor, 30A). Uma lacuna maior, toda
+        // de colunas fracas, ainda une os dois quando o bloco da esquerda está solto (não é o
+        // fim de uma linha de tipo, que vem colado na palavra de antes), tem um traço de letra
+        // (não é o grão de uma barra granulada) e o símbolo cabe.
+        const b = blockStart(i - 1);
+        const ok = gap <= 32 * k && loose(b) && blockEnd - cols[b] <= maxWidth * k && bridged(cols[i - 1], cols[i]);
+        if (!(ok && stroke(cols[b], cols[i - 1]))) break;
+      }
+      from = cols[i - 1];
     }
-    start = cols[i - 1];
+    return from;
+  };
+  let start = startOf(last);
+  // O "símbolo" que sobra começa já no começo da busca: é o fim da linha de tipo, que vem
+  // de antes dela, e o símbolo de verdade foi pulado como segunda camada do contorno. O
+  // quadro do "M" da Marvel, a 11 px do contorno vermelho da barra nas cartas de MSH,
+  // passava por camada, e o "ro" de "Hero" ficava ao lado do português (Mercúrio, Borrão
+  // Provocador). Aí, se uma lacuna larga separa o bloco da camada (com o símbolo colado
+  // no fim do tipo, a lacuna é pequena e quem decide é o corte pela largura), a camada
+  // volta a ser o símbolo.
+  if (beforeLayer !== null && start - x0 <= Math.round(3 * k) && cols[last + 1] - cols[last] >= 20 * k) {
+    last = beforeLayer;
+    start = startOf(last);
   }
+  const end = cols[last];
   // Bloco solto, com 20 px vazios antes dele (mais que o espaço entre duas palavras): não
   // tem texto grudado, é o símbolo. Só passa da largura porque a ponta da barra encosta
   // nele (o selo largo do Core Set 2020), e o corte pela largura comia o começo do selo.
