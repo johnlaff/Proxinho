@@ -119,6 +119,40 @@ describe("fila das prévias", () => {
     expect(preview.draftUrl(sb)).toBeNull();
   });
 
+  it("num deck longo, o rascunho passa na frente das prévias comuns que esperam", async () => {
+    const { preview, pending, flush } = await setup();
+    // seis comuns antes: quatro montando e duas esperando
+    for (let i = 0; i < 6; i++) void preview.previewUrl(entry(`c${i}`));
+    const sb = [entry("sb0", "borderless"), entry("sb1", "borderless")];
+    for (const c of sb) {
+      void preview.previewUrl(c);
+      void preview.draftUrl(c);
+    }
+    await flush();
+    // os rascunhos entram depois das quatro que já montam, na ordem em que chegaram
+    for (let i = 0; i < 3; i++) {
+      pending.find((p) => p.id === `c${i}`)!.resolve();
+      await flush();
+      await flush();
+    }
+    const started = pending
+      .filter((p) => p.neural === false || p.id.startsWith("c"))
+      .map((p) => `${p.id}${p.neural === false ? ":rascunho" : ""}`);
+    expect(started).toEqual(["c0", "c1", "c2", "c3", "sb0:rascunho", "sb1:rascunho", "c4"]);
+  });
+
+  it("a carta aberta na gaveta passa na frente também da fila comum", async () => {
+    const { preview, pending, flush } = await setup();
+    const cards = Array.from({ length: 8 }, (_, i) => entry(`c${i}`));
+    for (const c of cards) void preview.previewUrl(c);
+    await flush();
+    preview.hurry(cards[7]);
+    pending[0].resolve();
+    await flush();
+    await flush();
+    expect(pending.map((p) => p.id)).toEqual(["c0", "c1", "c2", "c3", "c7"]);
+  });
+
   it("o andamento de cada carta: na fila, rodando com os quadros, e some quando acaba", async () => {
     const { preview, pending, flush } = await setup();
     const [a, b] = [entry("sa", "borderless"), entry("sb", "borderless")];

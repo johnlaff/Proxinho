@@ -13,6 +13,14 @@ export const MODEL_PARTS = ["/modelos/lama-int4.onnx.gz.0", "/modelos/lama-int4.
  */
 export type Backend = "webgpu" | "wasm";
 
+/**
+ * Por que a worker não usou a placa de vídeo: o navegador não tem WebGPU (`sem-webgpu`), não
+ * liberou a placa deste aparelho (`sem-adaptador`; o Chrome do Android libera só em parte dos
+ * aparelhos), só tem a simulada, mais lenta que o processador (`simulada`), ou ela falhou no
+ * modelo (`falhou`). Vazio quando a placa de vídeo roda.
+ */
+export type GpuProblem = "" | "sem-webgpu" | "sem-adaptador" | "simulada" | "falhou";
+
 /** O runtime leva a versão no nome: o cache é imutável e precisa mudar junto com o pacote. */
 export const runtimeParts = (backend: Backend, version: string) => [
   `/modelos/ort-${backend === "webgpu" ? "webgpu" : "cpu"}-${version}.wasm.gz`,

@@ -264,7 +264,7 @@ describe("flavorApplies (o flavor em PT de outra arte)", () => {
 });
 
 describe("neuralLine", () => {
-  const idle = { stage: "idle" as const, loaded: 0, total: 0, backend: null, frameMs: 0, since: 0, reason: "" };
+  const idle = { stage: "idle" as const, loaded: 0, total: 0, backend: null, gpu: null, frameMs: 0, since: 0, reason: "" };
   const running = { state: "running" as const, done: 0, total: 3 };
 
   it("na fila, só diz que está na fila; a etapa do modelo é da carta que está na vez", () => {
@@ -319,6 +319,18 @@ describe("neuralLine", () => {
     expect(neuralWhere("wasm", { gpu: false, firefox: false })).toBe(
       "Rodando no processador: este navegador ainda não deixa sites usarem a placa de vídeo.",
     );
+  });
+
+  it("no processador, diz o motivo que a worker achou: sem adaptador, placa simulada ou falha", () => {
+    const chrome = { gpu: true, firefox: false };
+    // o Chrome do Android tem navigator.gpu, mas sem adaptador neste aparelho (era "não serviu")
+    expect(neuralWhere("wasm", chrome, "sem-adaptador")).toBe(
+      "Rodando no processador: o navegador não liberou a placa de vídeo deste aparelho para sites (no Android, o Chrome libera só em parte dos aparelhos).",
+    );
+    expect(neuralWhere("wasm", { gpu: true, firefox: true }, "sem-adaptador")).toMatch(/^Rodando no processador: o Firefox .* No Chrome/);
+    expect(neuralWhere("wasm", chrome, "simulada")).toMatch(/simulada, mais lenta que o processador\.$/);
+    expect(neuralWhere("wasm", chrome, "falhou")).toBe("Rodando no processador: a placa de vídeo deste aparelho falhou no acabamento.");
+    expect(neuralWhere("webgpu", chrome, "")).toBe("Rodando na placa de vídeo deste aparelho.");
   });
 
   it("arredonda o tempo para não piscar a cada segundo", () => {

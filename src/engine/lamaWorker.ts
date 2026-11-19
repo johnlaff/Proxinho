@@ -17,11 +17,12 @@
  *   `{ type: "error", id, error }`. Quem carrega primeiro decide o modo (`threads` 0 = automático).
  * - No caminho: `{ type: "progress", loaded, total }` durante o download (`total` 0 quando o
  *   servidor não diz o tamanho), `{ type: "loaded" }` com tudo baixado e
- *   `{ type: "ready", backend, threads }` com o modelo pronto, dizendo onde ele roda.
+ *   `{ type: "ready", backend, threads, gpu }` com o modelo pronto, dizendo onde ele roda e, na
+ *   CPU, por que não na placa de vídeo (`GpuProblem`).
  * - Falha na carga, sem quadro na fila: `{ type: "error", error }`.
  */
 import type { InferenceSession, Tensor } from "onnxruntime-web";
-import { MODEL_PARTS, brokenOutput, gunzip, runtimeParts, sessionOptions, type Backend } from "./lamaFiles";
+import { MODEL_PARTS, brokenOutput, gunzip, runtimeParts, sessionOptions, type Backend, type GpuProblem } from "./lamaFiles";
 
 const SIZE = 512;
 
@@ -84,18 +85,19 @@ async function download(groups: string[][]): Promise<Uint8Array[]> {
 }
 
 /**
- * Há placa de vídeo? Sem `navigator.gpu`, sem adaptador ou com o adaptador de software (o
- * SwiftShader, que leva minutos por quadro), a CPU.
+ * A placa de vídeo serve? Sem `navigator.gpu`, sem adaptador ou com o adaptador de software (o
+ * SwiftShader, que leva minutos por quadro), a CPU; o motivo vai para a gaveta (`GpuProblem`).
  */
-async function hasGpu(): Promise<boolean> {
+async function gpuProblem(): Promise<GpuProblem> {
   type Adapter = { isFallbackAdapter?: boolean; info?: { isFallbackAdapter?: boolean } };
   const gpu = (navigator as unknown as { gpu?: { requestAdapter(): Promise<unknown> } }).gpu;
-  if (!gpu) return false;
+  if (!gpu) return "sem-webgpu";
   try {
     const adapter = (await gpu.requestAdapter()) as Adapter | null;
-    return Boolean(adapter && !adapter.isFallbackAdapter && !adapter.info?.isFallbackAdapter);
+    if (!adapter) return "sem-adaptador";
+    return adapter.isFallbackAdapter || adapter.info?.isFallbackAdapter ? "simulada" : "";
   } catch {
-    return false;
+    return "sem-adaptador";
   }
 }
 
@@ -104,6 +106,8 @@ type Loaded = {
   Tensor: typeof Tensor;
   backend: Backend;
   threads: number;
+  /** por que não a placa de vídeo, quando ela foi pedida */
+  gpu: GpuProblem;
 };
 
 let ready: Promise<Loaded> | null = null;
@@ -111,7 +115,8 @@ let ready: Promise<Loaded> | null = null;
 function load(wanted: Backend, threads: number): Promise<Loaded> {
   if (ready) return ready;
   ready = (async () => {
-    const backend: Backend = wanted === "webgpu" && (await hasGpu()) ? "webgpu" : "wasm";
+    const gpu = wanted === "webgpu" ? await gpuProblem() : "";
+    const backend: Backend = wanted === "webgpu" && !gpu ? "webgpu" : "wasm";
     // cada runtime só baixa quando é usado (o JavaScript dele vem num pedaço à parte)
     const ort = backend === "webgpu" ? await import("onnxruntime-web/webgpu") : await import("onnxruntime-web/wasm");
     const version = ort.env.versions.web ?? ort.env.versions.common ?? "";
@@ -120,13 +125,13 @@ function load(wanted: Backend, threads: number): Promise<Loaded> {
     ort.env.wasm.numThreads = threads || (self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1);
     try {
       const session = await ort.InferenceSession.create(model, sessionOptions(backend));
-      return { session, Tensor: ort.Tensor, backend, threads: ort.env.wasm.numThreads };
+      return { session, Tensor: ort.Tensor, backend, threads: ort.env.wasm.numThreads, gpu };
     } catch (e) {
       throw new Error(`preparar o modelo (${backend}): ${String(e)}`);
     }
   })();
   ready.then(
-    (s) => self.postMessage({ type: "ready", backend: s.backend, threads: s.threads }),
+    (s) => self.postMessage({ type: "ready", backend: s.backend, threads: s.threads, gpu: s.gpu }),
     () => (ready = null),
   );
   return ready;

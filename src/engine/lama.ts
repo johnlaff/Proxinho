@@ -25,7 +25,7 @@
  * tempo pela metade.
  */
 import type { Rect } from "./geometry";
-import type { Backend } from "./lamaFiles";
+import type { Backend, GpuProblem } from "./lamaFiles";
 
 const SIZE = 512;
 
@@ -75,6 +75,8 @@ export type LamaStatus = {
   total: number;
   /** onde o modelo roda, depois de pronto */
   backend: Backend | null;
+  /** na CPU, por que não na placa de vídeo (`null` antes de pronto) */
+  gpu: GpuProblem | null;
   /** tempo médio de um quadro neste modo, em ms (0 enquanto nenhum terminou) */
   frameMs: number;
   /** quando o quadro atual começou (`Date.now()`), 0 fora da etapa "run" */
@@ -83,7 +85,7 @@ export type LamaStatus = {
   reason: string;
 };
 
-let status: LamaStatus = { stage: "idle", loaded: 0, total: 0, backend: null, frameMs: 0, since: 0, reason: "" };
+let status: LamaStatus = { stage: "idle", loaded: 0, total: 0, backend: null, gpu: null, frameMs: 0, since: 0, reason: "" };
 const watchers = new Set<() => void>();
 
 export function lamaStatus(): LamaStatus {
@@ -122,6 +124,7 @@ type Reply = {
   total?: number;
   backend?: Backend;
   threads?: number;
+  gpu?: GpuProblem;
 };
 
 /** Quadros esperando; o primeiro está na worker quando `busy`. Um de cada vez: o vigia mede um só. */
@@ -168,7 +171,7 @@ function fail(reason: string) {
     return;
   }
   console.warn("Proxinho: a rede neural falhou; tentando num modo mais simples.", reason);
-  setStatus({ backend: null, frameMs: 0, since: 0 });
+  setStatus({ backend: null, gpu: null, frameMs: 0, since: 0 });
   if (jobs.length) pump();
   else prepareLama();
 }
@@ -193,7 +196,9 @@ function spawn(): Worker {
     } else if (m.type === "ready") {
       ready = true;
       active = { backend: m.backend ?? MODES[mode].backend, threads: m.threads ?? 1 };
-      setStatus({ backend: active.backend });
+      // na CPU depois de uma falha na placa de vídeo, o motivo é a falha
+      const gpuFailed = reasons.some((r) => r.startsWith("webgpu"));
+      setStatus({ backend: active.backend, gpu: active.backend === "webgpu" ? "" : gpuFailed ? "falhou" : (m.gpu ?? null) });
       if (busy) startFrame();
       else {
         clearTimeout(timer);

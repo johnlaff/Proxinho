@@ -394,7 +394,7 @@ describe("nextMode e etaMs", () => {
 
   it("o tempo que falta conta os quadros que faltam pela média, menos o que já rodou do atual", async () => {
     const { etaMs } = await import("../../src/engine/lama");
-    const base = { stage: "run" as const, loaded: 0, total: 0, backend: "wasm" as const, reason: "" };
+    const base = { stage: "run" as const, loaded: 0, total: 0, backend: "wasm" as const, gpu: null, reason: "" };
     expect(etaMs({ ...base, frameMs: 0, since: 0 }, 3)).toBeNull();
     expect(etaMs({ ...base, frameMs: 20_000, since: 1000 }, 3, 6000)).toBe(55_000);
     // o atual passou da média: conta como quase pronto, sem tempo negativo

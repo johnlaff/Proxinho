@@ -28,7 +28,7 @@ export function NeuralStage({ previewKey, long = false }: { previewKey: string; 
   }, [ticking, status.since]);
   const line = neuralLine(status, progress, now);
   if (!line) return null;
-  const where = long ? neuralWhere(status.backend, browserGpu()) : null;
+  const where = long ? neuralWhere(status.backend, browserGpu(), status.gpu) : null;
   if (!long)
     return (
       <span className="slot-finishing">

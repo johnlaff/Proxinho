@@ -10,7 +10,8 @@
  * parte, uma de cada vez: esperando o modelo, elas tomavam as quatro vagas e as cartas comuns
  * ficavam minutos sem prévia. Enquanto esperam, a prévia mostra o rascunho (`draftUrl`: a
  * carta em PT com o preenchimento simples), montado na fila comum, e o andamento
- * (`neuralProgress`). A carta aberta na gaveta passa na frente (`hurry`).
+ * (`neuralProgress`). O rascunho vai à frente das prévias comuns, e a carta aberta na gaveta passa
+ * na frente das duas filas (`hurry`).
  *
  * A prévia acabada também fica guardada no navegador (ver cardStore.ts): numa visita seguinte,
  * com a mesma carta, ela aparece sem montar nada nem baixar a rede neural.
@@ -28,8 +29,11 @@ const drafts = new Map<string, Promise<string>>();
 /** Prévias acabadas (as promessas de `cache` já resolvidas): o rascunho delas não precisa. */
 const finished = new Set<string>();
 
-/** Uma fila com até `parallel` montagens ao mesmo tempo; `hurry` passa uma da fila na frente. */
-type Lane = { parallel: number; running: number; queue: { key: string; run: () => void }[] };
+/**
+ * Uma fila com até `parallel` montagens ao mesmo tempo. `first` marca as que vão à frente das
+ * comuns (os rascunhos e a carta aberta na gaveta, ver `hurry`), na ordem em que chegaram.
+ */
+type Lane = { parallel: number; running: number; queue: { key: string; run: () => void; first?: boolean }[] };
 const lanes = { common: { parallel: MAX_PARALLEL, running: 0, queue: [] } as Lane, neural: { parallel: 1, running: 0, queue: [] } as Lane };
 
 /**
@@ -106,7 +110,7 @@ export function whenPreviewsIdle(): Promise<void> {
   return new Promise((resolve) => idleWaiters.push(resolve));
 }
 
-function schedule<T>(lane: Lane, key: string, job: () => Promise<T>): Promise<T> {
+function schedule<T>(lane: Lane, key: string, job: () => Promise<T>, first = false): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const run = () => {
       lane.running++;
@@ -119,21 +123,31 @@ function schedule<T>(lane: Lane, key: string, job: () => Promise<T>): Promise<T>
         });
     };
     if (lane.running < lane.parallel) run();
-    else if (lane === lanes.neural && key === urgent) lane.queue.unshift({ key, run });
-    else lane.queue.push({ key, run });
+    else if (urgent && (key === urgent || key === `${urgent}:rascunho`)) lane.queue.unshift({ key, run, first: true });
+    else if (first) {
+      const i = lane.queue.findIndex((j) => !j.first);
+      lane.queue.splice(i < 0 ? lane.queue.length : i, 0, { key, run, first });
+    } else lane.queue.push({ key, run });
   });
 }
 
 /** A carta aberta na gaveta: se ainda não entrou na fila (procurando a guardada), entra na frente. */
 let urgent: string | null = null;
 
-/** A prévia desta face passa na frente da fila da rede neural (a carta aberta na gaveta). */
+/**
+ * A carta aberta na gaveta passa na frente das duas filas: a prévia e o rascunho dela. Num deck
+ * longo, o rascunho de uma carta do fim da lista esperava as prévias de todas as de antes, e a
+ * gaveta ficava em "Montando a prévia…" com o acabamento já na parte 2 de 3.
+ */
 export function hurry(entry: Entry, side: Side = 0) {
   const key = renderKey(entry, fontsVersion(), side);
   urgent = key;
-  const q = lanes.neural.queue;
-  const i = q.findIndex((j) => j.key === key);
-  if (i > 0) q.unshift(...q.splice(i, 1));
+  for (const lane of Object.values(lanes)) {
+    for (const k of [`${key}:rascunho`, key]) {
+      const i = lane.queue.findIndex((j) => j.key === k);
+      if (i > 0) lane.queue.unshift({ ...lane.queue.splice(i, 1)[0], first: true });
+    }
+  }
 }
 
 /** Impressão "falsa" para desenhar a imagem oficial em PT sem reescrever nada. */
@@ -255,11 +269,17 @@ export function draftUrl(entry: Entry, side: Side = 0): Promise<string> | null {
     if (!input || !usesNeuralFill(input.print, input.face, side, input.typeLine)) return null;
     p = lookup(key, input).then(({ card }) => {
       if (card) throw new Error("A prévia acabada está guardada no navegador.");
-      return schedule(lanes.common, `${key}:rascunho`, async () => {
-        if (finished.has(key)) throw new Error("A prévia acabada já existe.");
-        const { canvas } = await renderCard({ ...input, imageVersion: "normal", scale: 0.56, neural: false });
-        return URL.createObjectURL(await toBlob(canvas));
-      });
+      // o rascunho vai à frente das prévias comuns: é o que a carta mais lenta mostra primeiro
+      return schedule(
+        lanes.common,
+        `${key}:rascunho`,
+        async () => {
+          if (finished.has(key)) throw new Error("A prévia acabada já existe.");
+          const { canvas } = await renderCard({ ...input, imageVersion: "normal", scale: 0.56, neural: false });
+          return URL.createObjectURL(await toBlob(canvas));
+        },
+        true,
+      );
     });
     p.catch(() => drafts.delete(key));
     drafts.set(key, p);

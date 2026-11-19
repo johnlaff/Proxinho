@@ -1,5 +1,5 @@
 import { etaMs, type LamaStatus } from "../engine/lama";
-import type { Backend } from "../engine/lamaFiles";
+import type { Backend, GpuProblem } from "../engine/lamaFiles";
 import type { Outcome } from "./model";
 import type { NeuralProgress } from "./preview";
 
@@ -62,14 +62,23 @@ export function browserGpu(nav: { gpu?: unknown; userAgent?: string } = navigato
 
 /**
  * Onde o acabamento roda, para a gaveta. No processador a espera é bem maior (no celular, de 15 a
- * 60 s por quadro, contra 1 a 5 s na placa de vídeo), e a frase explica por quê; no Firefox, que
- * ainda não deixa sites usarem a placa de vídeo no Android nem no Linux, aponta o Chrome. `null`
- * antes de o modelo ficar pronto (ainda não se sabe onde ele roda).
+ * 60 s por quadro, contra 1 a 5 s na placa de vídeo), e a frase explica por quê, pelo que a worker
+ * achou (`gpu`): sem adaptador (o Chrome do Android libera a placa de vídeo só em parte dos
+ * aparelhos), só a simulada, ou a placa falhou no modelo. No Firefox, que ainda não deixa sites
+ * usarem a placa de vídeo no Android nem no Linux, aponta o Chrome. `null` antes de o modelo
+ * ficar pronto (ainda não se sabe onde ele roda).
  */
-export function neuralWhere(backend: Backend | null, env: BrowserGpu): string | null {
+export function neuralWhere(backend: Backend | null, env: BrowserGpu, gpu: GpuProblem | null = null): string | null {
   if (backend === "webgpu") return "Rodando na placa de vídeo deste aparelho.";
   if (backend !== "wasm") return null;
-  if (env.gpu) return "Rodando no processador: a placa de vídeo deste aparelho não serviu para o acabamento.";
+  if (gpu === "falhou") return "Rodando no processador: a placa de vídeo deste aparelho falhou no acabamento.";
+  if (gpu === "simulada")
+    return "Rodando no processador: neste aparelho o navegador só oferece uma placa de vídeo simulada, mais lenta que o processador.";
+  if (gpu === "sem-adaptador")
+    return env.firefox
+      ? "Rodando no processador: o Firefox não liberou a placa de vídeo deste aparelho para sites. No Chrome, o acabamento pode levar bem menos."
+      : "Rodando no processador: o navegador não liberou a placa de vídeo deste aparelho para sites (no Android, o Chrome libera só em parte dos aparelhos).";
+  if (env.gpu && !gpu) return "Rodando no processador: a placa de vídeo deste aparelho não serviu para o acabamento.";
   if (env.firefox)
     return "Rodando no processador: o Firefox ainda não deixa sites usarem a placa de vídeo neste aparelho. No Chrome, o acabamento costuma levar bem menos.";
   return "Rodando no processador: este navegador ainda não deixa sites usarem a placa de vídeo.";
