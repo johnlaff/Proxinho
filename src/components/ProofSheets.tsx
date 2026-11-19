@@ -7,7 +7,8 @@
 import { fontsVersion } from "../engine/fonts";
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { displayName, outcomeOf, renderKey, selectedPrint, sideCount, toSheets, type Entry, type Side } from "../app/model";
-import { engineMisses, onEngineMiss, previewUrl } from "../app/preview";
+import { engineMisses, onEngineMiss, previewUrl, waitsForNeuralFill } from "../app/preview";
+import { NeuralStage } from "./NeuralStage";
 import { ColorBar, CropCorners, RegMark } from "./RegMark";
 import { OutcomeTag } from "./OutcomeTag";
 
@@ -155,7 +156,10 @@ export function Slot({
             {example ? "Exemplo indisponível agora." : "Não carregou. Toque para tentar de novo."}
           </span>
         ) : (
-          <span className="slot-msg">{name}</span>
+          <span className="slot-msg">
+            <span>{name}</span>
+            {!example && waitsForNeuralFill(entry, side) && <NeuralStage />}
+          </span>
         )}
         <CropCorners />
         {outcome !== "reescrita" && side === 0 && <OutcomeTag outcome={outcome} />}

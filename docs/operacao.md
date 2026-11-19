@@ -59,6 +59,8 @@ pnpm exec wrangler d1 execute proxinho --remote --command "SELECT count(*) FROM 
 | Importar do Archidekt falha | Deck privado ou API mudou | Testar `GET /api/import?url=...`; ver `worker/importers.ts` |
 | Busca vazia por alguns segundos às 04h17 | Recarga do banco (apaga e reinsere) | Esperado; ver ADR 0004 |
 | Planeswalker com mancha borrada na caixa de texto | O LaMa não carregou e o motor usou o preenchimento simples | Ver o console do navegador ("preenchimento por rede neural indisponível"); conferir se `/modelos/` foi publicado (o build avisa se o download falhou) |
+| Prévia de planeswalker ou de arte sem borda parada em "Montando a prévia…" | A rede neural travou (uma thread do WebAssembly que não sobe, como no Firefox do celular) | O vigia troca a worker por uma com uma thread em até 2 min (o console diz "a rede neural travou ou falhou"); se travar de novo, a carta sai do jeito simples. Ver `LIMITS` e `MODES` em `src/engine/lama.ts` e `pnpm test` (`tests/unit/lama.test.ts`) |
+| Arte sem borda sai na original e a gaveta diz "O apagador de texto não rodou neste navegador" | A rede neural falhou duas vezes na página | Esperado: sem ela a caixa sairia borrada. Recarregar a página tenta de novo; em outro navegador costuma rodar |
 | Primeiro planeswalker demora | Download único do modelo (~66 MB) e, sem placa de vídeo, ~6 s por carta na CPU | Esperado; ver ADR 0008 |
 | Ficha sai em inglês com texto em PT disponível | A barra de tipo não foi achada (moldura diferente) | Ver `findTokenBar` em `src/engine/token.ts`; a ficha sai como está de propósito |
 | Ficha de 2003 sai em inglês | A placa do nome não foi achada (filete dourado apagado ou outro desenho) | Ver `findPlaque2003` e `plaqueRimEnd` em `src/engine/token.ts` |

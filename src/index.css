@@ -856,6 +856,42 @@ button.slot:focus-visible .slot-card {
 .slot-msg--error {
   color: #7d0041;
 }
+/* andamento da rede neural sob o aviso da prévia (ver NeuralStage.tsx) */
+.slot-msg {
+  align-content: center;
+  gap: 0.5em;
+}
+.slot-stage {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  width: 100%;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.slot-stage progress {
+  width: min(100%, 180px);
+  height: 6px;
+  appearance: none;
+  border: 0;
+  border-radius: 3px;
+  background: var(--sheet);
+  overflow: hidden;
+}
+.slot-stage progress::-webkit-progress-bar {
+  background: var(--sheet);
+}
+.slot-stage progress::-webkit-progress-value {
+  background: var(--cyan-ink);
+}
+.slot-stage progress::-moz-progress-bar {
+  background: var(--cyan-ink);
+}
+.slot-stage-note {
+  font-size: 0.85em;
+  font-weight: 400;
+  font-stretch: 100%;
+}
 .slot-card .tag {
   position: absolute;
   top: 6%;

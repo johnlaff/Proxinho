@@ -7,7 +7,7 @@
  * travar o navegador, e cada resultado fica em cache pela chave da imagem.
  */
 import { fontsVersion } from "../engine/fonts";
-import { renderCard } from "../engine/render";
+import { renderCard, usesNeuralFill } from "../engine/render";
 import type { PrintRecord } from "../engine/types";
 import { flavorApplies, hasPtText, missKey, renderKey, selectedPrint, sideCount, type Entry, type Side } from "./model";
 
@@ -114,4 +114,10 @@ export function previewUrl(entry: Entry, side: Side = 0): Promise<string> {
     cache.set(key, p);
   }
   return p;
+}
+
+/** A prévia desta face espera pela rede neural (ver `usesNeuralFill`): a interface mostra o andamento. */
+export function waitsForNeuralFill(entry: Entry, side: Side = 0): boolean {
+  const input = renderInput(entry, side);
+  return Boolean(input && usesNeuralFill(input.print, input.face, side, input.typeLine));
 }

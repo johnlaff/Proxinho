@@ -332,6 +332,69 @@ describe("borderlessStamp com letra colada na arte simétrica", () => {
   });
 });
 
+describe("borderlessStamp com aro de duas cores", () => {
+  /** Miolo do selo, simétrico em volta do meio da carta (x = 372), subindo do pé da caixa. */
+  const core = (img: ImageData) => {
+    for (let y = 935; y < 955; y++)
+      for (let x = 350; x < 396; x++)
+        if (Math.abs(x - 372) < (y - 935) * 1.2) {
+          const i = (y * W + x) * 4;
+          [img.data[i], img.data[i + 1], img.data[i + 2]] = [200, 170, 60];
+        }
+  };
+
+  it("o aro fica dos dois lados quando muda de cor no meio; a letra encostada nele, não (Pteranodonte, REX 44)", () => {
+    const { img, fill } = frame();
+    const box = { x0: 57, y0: 648, x1: 684, y1: 955 };
+    // haste de uma letra da última linha, que desce até encostar no aro do lado esquerdo
+    fill(360, 922, 364, 947, [245, 245, 245]);
+    // aro do pé da caixa, que sobe em arco em volta do selo, vermelho à esquerda e branco à
+    // direita, com grão
+    for (let y = 925; y < 955; y++)
+      for (let x = 290; x < 455; x++) {
+        const r = Math.hypot(x - 372, y - 966);
+        const i = (y * W + x) * 4;
+        const g = 10 * hash(Math.abs(x - 372), y);
+        if ((r >= 20 && r <= 24) || (r > 24 && y >= 950)) {
+          const c = x < 372 ? [200, 60, 50] : [235, 235, 235];
+          for (let ch = 0; ch < 3; ch++) img.data[i + ch] = c[ch] + g;
+        } else if (r < 20) img.data[i] = img.data[i + 1] = img.data[i + 2] = 150 + 4 * g;
+      }
+    const rects = borderlessStamp(img, { x0: 300, y0: 925, x1: 445, y1: 955 }, box);
+    const covers = (x: number, y: number) => rects.some((r) => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
+    expect(covers(372, 955 - 6)).toBe(true);
+    // o aro dos dois lados, por fora da folga do miolo
+    for (const [x, y] of [
+      [356, 949],
+      [388, 949],
+      [366, 943],
+      [378, 943],
+    ])
+      expect(covers(x, y)).toBe(true);
+    // a haste da letra, acima do aro
+    expect(covers(361, 930)).toBe(false);
+    expect(covers(362, 938)).toBe(false);
+  });
+
+  it("o ponto final colado numa faixa clara da arte que sobe dos dois lados do selo não vira aro (Roaming Throne, LCI 344)", () => {
+    const { img, fill } = frame();
+    const box = { x0: 57, y0: 648, x1: 684, y1: 955 };
+    core(img);
+    // faixas rosa da arte, com grão, simétricas em volta do meio; a da direita é mais larga
+    const pink: Paint = (x, y, c) => [190, 110, 140][c] + 10 * hash(Math.abs(x - 372), y, c);
+    fill(321, 925, 331, 955, pink);
+    fill(414, 925, 429, 955, pink);
+    // ponto final da última linha, colado no lado de fora da faixa da esquerda: do outro lado
+    // do eixo, no mesmo lugar, está a faixa da direita, clara também
+    fill(316, 934, 321, 939, [245, 245, 245]);
+    const rects = borderlessStamp(img, { x0: 300, y0: 925, x1: 445, y1: 955 }, box);
+    const covers = (x: number, y: number) => rects.some((r) => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
+    expect(covers(372, 950)).toBe(true);
+    expect(covers(325, 945)).toBe(true);
+    for (const x of [316, 318, 320]) expect(covers(x, 936)).toBe(false);
+  });
+});
+
 describe("borderlessStamp com arte lisa entre o aro e a última linha", () => {
   it("a enchente não sobe pela arte lisa nem por uma beira de um lado só até as letras (Underworld Breach, SLD 2045)", () => {
     const { img, fill } = frame();

@@ -219,7 +219,8 @@ const roundRect = (r: Rect): Rect => ({ x0: Math.round(r.x0), y0: Math.round(r.y
  * na resolução da imagem (ver `lamaInpaint`); `grow` e `gap` são a folga da máscara e os
  * vãos entre pedaços dela que entram no buraco (ver `combineMasks`). A prévia e o PDF desenham a mesma arte: a
  * caixa limpa fica guardada por `key` para não rodar o modelo de novo. Sem o modelo, volta
- * para o preenchimento simples.
+ * para o preenchimento simples, salvo com `simple: false`: aí devolve `false` e a imagem fica
+ * como está (na arte sem borda o preenchimento simples deixa um borrão; a carta sai na original).
  */
 async function lamaBox(
   data: ImageData,
@@ -228,22 +229,23 @@ async function lamaBox(
   protect: Rect[],
   polarity: "dark" | "light",
   key: string,
-  { native = false, grow, gap }: { native?: boolean; grow?: number; gap?: number } = {},
-) {
+  { native = false, grow, gap, simple = true }: { native?: boolean; grow?: number; gap?: number; simple?: boolean } = {},
+): Promise<boolean> {
   const fx = data.width / BASE_W;
   const cached = cleanBoxes.get(key);
   if (cached && cached.width === area.x1 - area.x0 && cached.height === area.y1 - area.y0) {
     for (let y = 0; y < cached.height; y++)
       data.data.set(cached.data.subarray(y * cached.width * 4, (y + 1) * cached.width * 4), ((area.y0 + y) * data.width + area.x0) * 4);
-    return;
+    return true;
   }
   // máscara folgada: o LaMa espalha para dentro do buraco qualquer resto de borda das letras,
   // sem fios da imagem original entre dois pedaços do buraco
   const hole = combineMasks(data, masks, grow ?? Math.round(fx * 3) + 1, gap ?? Math.round(fx * 4));
   for (const r of protect.map(roundRect)) for (let y = r.y0; y < r.y1; y++) hole.fill(0, y * data.width + r.x0, y * data.width + r.x1);
   if (!(await lamaInpaint(data, area, hole, protect.map(roundRect), native))) {
+    if (!simple) return false;
     for (const m of masks) if (m.mask.length) inpaint(data, m.rect, m.mask);
-    return;
+    return true;
   }
   // na arte calma atrás da caixa sem borda o modelo às vezes inventa cor que não há em volta
   if (native) tameInvented(data, area, hole, protect.map(roundRect));
@@ -258,6 +260,7 @@ async function lamaBox(
     );
   cleanBoxes.set(key, box);
   if (cleanBoxes.size > 24) cleanBoxes.delete(cleanBoxes.keys().next().value!);
+  return true;
 }
 
 async function renderPlaneswalker(p: {
@@ -731,6 +734,21 @@ function paintPlaque(data: ImageData, pl: Plaque) {
 /** Impressões desenhadas na moldura de ficha (emblemas e cada face das fichas de duas faces também). */
 const TOKEN_LAYOUTS = new Set(["token", "emblem", "double_faced_token"]);
 
+/** Planeswalker de uma face (o tipo em PT, ou o em inglês quando falta). */
+const isPlaneswalker = (print: PrintRecord, face: PtFace | null, typeLine?: string | null) =>
+  !print.sides && /planeswalker/i.test(face?.type_pt ?? typeLine ?? "");
+
+/**
+ * A montagem passa pela rede neural (lama.ts): português a escrever num planeswalker ou numa arte
+ * sem borda. A prévia usa para mostrar o andamento enquanto espera por ela.
+ */
+export function usesNeuralFill(print: PrintRecord, face: PtFace | null, side: 0 | 1 = 0, typeLine?: string | null): boolean {
+  const supported = print.sides ? Boolean(print.sides[side]?.supported) : print.supported;
+  return (
+    Boolean(supported && face?.name_pt && face.text_pt !== null) && (print.border === "borderless" || isPlaneswalker(print, face, typeLine))
+  );
+}
+
 export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const { print, face } = opts;
   const side = opts.side ?? 0;
@@ -738,7 +756,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const scale = opts.scale ?? 1.6;
   // Planeswalker usa sempre o PNG, também na prévia: a rede neural limpa a caixa
   // melhor na imagem sem compressão JPEG, e a caixa limpa é reaproveitada no PDF.
-  const pw = !print.sides && /planeswalker/i.test(face?.type_pt ?? opts.typeLine ?? "");
+  const pw = isPlaneswalker(print, face, opts.typeLine);
   // A moldura sem borda também: a caixa é translúcida e vai para a mesma rede neural.
   const borderless = print.border === "borderless";
   const version = pw || borderless ? "png" : (opts.imageVersion ?? "png");
@@ -843,10 +861,13 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // Lair): o nome do alto é nome próprio e fica como impresso; o nome de jogo, em inglês na
   // aba logo abaixo da barra, é o que recebe o nome em PT. Sem a aba no lugar, sai a original.
   const subtitle = print.flavor_name ? subtitleLetters(data) : null;
-  if (blocked || (print.flavor_name && !subtitle)) {
+  // (também quando a rede neural não roda neste navegador: o preenchimento simples deixaria um
+  // borrão sobre a arte)
+  const original = (): RenderResult => {
     ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: false };
-  }
+  };
+  if (blocked || (print.flavor_name && !subtitle)) return original();
   // Algumas digitalizações e molduras (arte estendida) trazem o nome ou o tipo uns
   // pixels acima ou abaixo da medida padrão: mede onde as letras estão e acompanha,
   // para apagar tudo e escrever o português no mesmo lugar.
@@ -1005,10 +1026,12 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       x1: Math.max(...bars.map((r) => r.x1)),
       y1: Math.max(...bars.map((r) => r.y1)),
     };
-    await lamaBox(data, barMasks, barArea, guard, "light", `${print.id}:${data.width}:${side}:barras`, {
+    const clean = await lamaBox(data, barMasks, barArea, guard, "light", `${print.id}:${data.width}:${side}:barras`, {
       grow: Math.round(fx * 2),
       gap: 0,
+      simple: false,
     });
+    if (!clean) return original();
   }
   // A aba do nome de crossover vai à rede neural sozinha, na resolução da imagem e com o grão
   // de volta (sobre ela também aparece a arte: Awesome Android da Marvel, MSC; a retícula da
@@ -1021,15 +1044,16 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       { x0: rect.x0, y0: rect.y1, x1: rect.x1, y1: rect.y1 + Math.round(3 * fy) },
     ];
     const guard = [...opaque, ...capGuard, ...rims];
-    await lamaBox(
+    const clean = await lamaBox(
       data,
       [{ rect, mask: whiteTextMask(data, rect, guard, subtitle.ink), polarity: "light" }],
       rect,
       guard,
       "light",
       `${print.id}:${data.width}:${side}:aba`,
-      { native: true, grow: Math.round(fx * 2), gap: 0 },
+      { native: true, grow: Math.round(fx * 2), gap: 0, simple: false },
     );
+    if (!clean) return original();
   }
   if (frameBox && measuredBox && !keepBox) {
     const mask = whiteTextMask(data, measuredBox, opaque, 110, true);
@@ -1044,11 +1068,13 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     // (máscara justa: entre as letras fica a arte, que o modelo usa de modelo; com os vãos
     // fechados, cada linha virava uma faixa inteira para inventar, e na gravura do Shivan
     // Dragon da Secret Lair as faixas saíam borradas)
-    await lamaBox(data, masks, measuredBox, opaque, "light", `${print.id}:${data.width}:${side}`, {
+    const clean = await lamaBox(data, masks, measuredBox, opaque, "light", `${print.id}:${data.width}:${side}`, {
       native: true,
       grow: Math.round(fx * 2),
       gap: 0,
+      simple: false,
     });
+    if (!clean) return original();
   }
   // (sem a região do nome, apagada à parte, as cores medidas começam pela do tipo)
   const measured: ("dark" | "light" | undefined)[] = subtitle ? [undefined, ...inks] : inks;

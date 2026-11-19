@@ -1,7 +1,7 @@
 # ADR 0008: Preenchimento por rede neural nas caixas translúcidas
 
 - Status: aceito
-- Data: 17/11/2026
+- Data: 17/11/2026 (vigia e andamento: 19/11/2026)
 
 ## Contexto
 
@@ -23,10 +23,13 @@ Opção 3, com o **LaMa** numa versão quantizada (pesos int4/int8, 37 MB, Apach
 - **Pingos inventados:** o modelo às vezes desenha um pingo de tinta no meio do papel liso, fantasma de uma letra apagada (acima do "Quando" do Niko Aris). Depois do LaMa, `dropSpecks` tira os pingos pequenos (até ~80 px e 14 px de lado na escala-base), bem mais escuros que o papel em volta e cercados de buraco por todos os lados, e põe no lugar a cor média da vizinhança. Um pingo que encosta na borda do buraco pode ser a arte de fora continuando, e fica.
 - **Imagem:** planeswalker usa o PNG também na prévia; o JPEG da prévia deixava restos de letra. A caixa limpa fica guardada e o PDF a reaproveita.
 - **Hospedagem:** o modelo e o runtime passam do limite de 25 MiB por arquivo dos assets do Cloudflare, então `scripts/modelo.mjs` os divide em partes no build (fora do git) e a worker junta. Não há chamada a serviço de terceiros: tudo sai do próprio domínio.
-- **Falha:** sem rede, navegador antigo ou erro no modelo, volta para o push-pull.
+- **Falha:** sem rede, navegador antigo ou erro no modelo, o planeswalker volta para o push-pull.
+- **Vigia (19/11/2026):** no Firefox do celular a rede neural travava sem erro. Uma thread do WebAssembly que não sobe deixa o carregamento do ONNX Runtime esperando para sempre, e a prévia da Konia sem borda (DSK 358) ficava em "Montando a prévia…". Agora cada etapa tem limite (`LIMITS` em `lama.ts`): 60 s sem um byte novo no download, 120 s do fim do download ao modelo pronto e 180 s por quadro, bem acima do que um celular comum leva. Travada ou com erro, a worker é encerrada e trocada por uma na CPU com uma thread (`MODES`), que refaz o mesmo quadro; se essa também falhar, o modelo fica indisponível na página. O planeswalker usa o push-pull; a arte sem borda sai na original, com a etiqueta "Em inglês" e a explicação na gaveta, porque ali o push-pull deixaria o borrão sobre a arte (ADR 0012). O `env.wasm.initTimeout` do próprio ONNX Runtime não serve de plano B: depois do tempo esgotado o runtime fica num estado que não se recupera, e só uma worker nova volta a funcionar.
+- **Andamento (19/11/2026):** a worker conta os bytes baixados e avisa quando terminou de baixar e quando o modelo ficou pronto. `lamaStatus` dá a etapa ("Baixando o apagador de texto: 42%", "Preparando…", "Apagando o inglês…"), e a prévia de cada carta que espera a rede neural mostra essa linha; a gaveta mostra também a barra de progresso e o tamanho do download. Sem o andamento, a espera da primeira carta (o download de ~66 MB num celular) parecia travada.
 
 ## Consequências
 
 - A mancha some: a textura da arte continua por trás do texto em português.
 - O primeiro planeswalker da sessão baixa cerca de 66 MB (modelo e runtime; o navegador guarda). Cada carta leva menos de 1 s na placa de vídeo e cerca de 6 s na CPU com 4 threads.
+- Num navegador em que a rede neural não roda, a primeira carta que precisa dela espera até os limites do vigia (cerca de 2 min) antes de sair do jeito simples; as seguintes, na hora.
 - `COEP credentialless` exige que recursos de outra origem venham por CORS (as imagens do Scryfall já vêm) e não existe no Safari, que então roda o LaMa com uma thread na CPU ou na placa de vídeo.

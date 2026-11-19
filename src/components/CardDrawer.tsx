@@ -18,7 +18,9 @@ import {
   type Entry,
   type Side,
 } from "../app/model";
-import { engineMisses, onEngineMiss, previewUrl } from "../app/preview";
+import { engineMisses, onEngineMiss, previewUrl, waitsForNeuralFill } from "../app/preview";
+import { NeuralStage } from "./NeuralStage";
+import { lamaStatus, onLamaStatus } from "../engine/lama";
 import { printImage, scryfallImage, type PrintRecord } from "../engine/types";
 import { OUTCOME_LABEL } from "../app/labels";
 import { OutcomeTag } from "./OutcomeTag";
@@ -78,6 +80,9 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
   const url = preview?.key === imageKey ? preview.url : null;
   const misses = useSyncExternalStore(onEngineMiss, engineMisses);
   const outcome = outcomeOf(entry, misses);
+  // a rede neural não rodou (travou ou falhou duas vezes): as artes que dependem dela saem na original
+  const neural = useSyncExternalStore(onLamaStatus, lamaStatus);
+  const neuralFailed = neural.stage === "failed" && waitsForNeuralFill(entry, side);
   // arte que o motor já tentou e não reconheceu (Garruk espelhado da Secret Lair) sai em inglês
   const rewritable = (p: PrintRecord) => p.supported && !misses.has(missKey(p.id, 0));
   const name = displayName(entry.card);
@@ -119,7 +124,10 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
             {url ? (
               <img src={url} alt={`Prévia de ${name}${twoSided ? (side === 0 ? ", frente" : ", verso") : ""}`} />
             ) : (
-              <span className="slot-msg">Montando a prévia…</span>
+              <span className="slot-msg">
+                <span>Montando a prévia…</span>
+                {waitsForNeuralFill(entry, side) && <NeuralStage long />}
+              </span>
             )}
           </div>
           <div className="drawer-facts">
@@ -127,7 +135,9 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
             <p className="drawer-note">{sourceNote(entry)}</p>
             {outcome === "moldura" && (
               <p className="drawer-note">
-                Escolha uma arte marcada “Sai em português” para reescrever o texto, ou a imagem oficial em português, se houver.
+                {neuralFailed
+                  ? "O apagador de texto não rodou neste navegador, então esta arte saiu na original. Escolha uma arte de moldura comum, ou tente em outro navegador."
+                  : "Escolha uma arte marcada “Sai em português” para reescrever o texto, ou a imagem oficial em português, se houver."}
               </p>
             )}
             {face?.type_pt && translatable && <p className="drawer-type">{face.type_pt}</p>}

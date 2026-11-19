@@ -27,6 +27,7 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 - [x] As cartas aparecem montadas em folhas de 9, na ordem de impressão, comandante primeiro.
 - [x] Cada carta mostra coleção e número e, quando não sai reescrita, uma etiqueta em texto.
 - [x] Um resumo conta quantas saem reescritas, com imagem oficial em PT ou em inglês (e por quê).
+- [x] Enquanto a rede neural prepara uma carta, a prévia diz a etapa (baixando, com a porcentagem; preparando; apagando o inglês). Se ela travar ou falhar no navegador, a carta não fica presa: sai do jeito simples ou na original, e a gaveta diz por quê (desde 19/11/2026).
 
 ### H5. Trocar a arte e a quantidade
 - [x] Tocar numa carta abre a gaveta com todas as impressões (coleção, número, ano, artista) e diz se cada uma sai em português.

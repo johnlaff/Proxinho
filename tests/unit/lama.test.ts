@@ -180,3 +180,123 @@ describe("lamaInpaint", () => {
     expect(mask[(area.y0 + 100) * W + area.x0]).toBe(1);
   });
 });
+
+describe("vigia da rede neural", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  type Msg = { type: string; id: number; gpu: boolean; threads: number };
+  /** Workers de mentira: `script[i]` diz o que a i-ésima faz com cada quadro que recebe. */
+  async function setup(script: ((w: { reply: (data: unknown) => void }, msg: Msg) => void)[]) {
+    const made: { msgs: Msg[]; terminated: boolean }[] = [];
+    class FakeWorker {
+      onmessage: ((ev: { data: unknown }) => void) | null = null;
+      onerror: ((ev: Event) => void) | null = null;
+      private log = { msgs: [] as Msg[], terminated: false };
+      private act = script[made.length] ?? (() => undefined);
+      constructor() {
+        made.push(this.log);
+      }
+      postMessage(msg: Msg) {
+        this.log.msgs.push(msg);
+        this.act({ reply: (data) => this.onmessage?.({ data }) }, msg);
+      }
+      terminate() {
+        this.log.terminated = true;
+      }
+    }
+    vi.stubGlobal("Worker", FakeWorker);
+    vi.useFakeTimers();
+    vi.resetModules();
+    const lama = await import("../../src/engine/lama");
+    const W = 512;
+    const img = { width: W, height: W, data: new Uint8ClampedArray(W * W * 4).fill(200), colorSpace: "srgb" } as ImageData;
+    const mask = new Uint8Array(W * W);
+    for (let y = 100; y < 120; y++) mask.fill(1, y * W + 100, y * W + 300);
+    const run = () => lama.lamaInpaint(img, { x0: 0, y0: 0, x1: W, y1: W }, mask);
+    return { lama, made, img, run };
+  }
+  const answer = (w: { reply: (data: unknown) => void }, msg: Msg) =>
+    setTimeout(() => {
+      w.reply({ type: "loaded" });
+      w.reply({ type: "ready" });
+      w.reply({ type: "done", id: msg.id, output: new Float32Array(3 * 512 * 512).fill(90) });
+    }, 1000);
+
+  it("a worker que nunca responde é trocada por uma na CPU com uma thread (Firefox do celular, Konia DSK 358)", async () => {
+    const { lama, made, img, run } = await setup([() => undefined, answer]);
+    const result = run();
+    await vi.advanceTimersByTimeAsync(lama.LIMITS.stall - 1);
+    expect(made).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(await result).toBe(true);
+    expect(made[0].terminated).toBe(true);
+    expect(made[0].msgs[0]).toMatchObject({ gpu: true, threads: 0 });
+    // o mesmo quadro, inteiro, vai para a segunda
+    expect(made[1].msgs[0]).toMatchObject({ gpu: false, threads: 1 });
+    expect(made[1].msgs[0].id).toBe(made[0].msgs[0].id);
+    expect(img.data[(110 * 512 + 200) * 4]).toBe(90);
+    expect(lama.lamaStatus().stage).toBe("idle");
+  });
+
+  it("download lento que segue chegando não é travamento, e a etapa acompanha", async () => {
+    const stages: string[] = [];
+    const { lama, made, run } = await setup([
+      (w, msg) => {
+        // seis minutos de download, um pedaço a cada 50 s
+        for (let i = 1; i <= 7; i++) setTimeout(() => w.reply({ type: "progress", loaded: i * 10, total: 70 }), i * 50_000);
+        setTimeout(() => answer(w, msg), 7 * 50_000);
+      },
+    ]);
+    lama.onLamaStatus(() => {
+      const s = lama.lamaStatus();
+      const label = s.stage === "download" && s.total ? `download ${Math.round((100 * s.loaded) / s.total)}%` : s.stage;
+      if (stages.at(-1) !== label) stages.push(label);
+    });
+    const result = run();
+    await vi.advanceTimersByTimeAsync(8 * 50_000);
+    expect(await result).toBe(true);
+    expect(made).toHaveLength(1);
+    expect(made[0].terminated).toBe(false);
+    expect(stages).toEqual([
+      "download",
+      "download 14%",
+      "download 29%",
+      "download 43%",
+      "download 57%",
+      "download 71%",
+      "download 86%",
+      "download 100%",
+      "prepare",
+      "run",
+      "idle",
+    ]);
+  });
+
+  it("travada na hora de rodar o quadro, também troca; se a segunda travar, desiste e não tenta de novo", async () => {
+    const hangAfterReady = (w: { reply: (data: unknown) => void }) =>
+      setTimeout(() => {
+        w.reply({ type: "loaded" });
+        w.reply({ type: "ready" });
+      }, 1000);
+    const { lama, made, run } = await setup([hangAfterReady, hangAfterReady]);
+    const result = run();
+    await vi.advanceTimersByTimeAsync(1000 + lama.LIMITS.run + 1000 + lama.LIMITS.run + 10);
+    expect(await result).toBe(false);
+    expect(made.map((m) => m.terminated)).toEqual([true, true]);
+    expect(lama.lamaStatus().stage).toBe("failed");
+    // nas próximas cartas, nem cria worker: quem chama usa o plano B na hora
+    expect(await run()).toBe(false);
+    expect(made).toHaveLength(2);
+  });
+
+  it("erro do runtime na primeira passa para a segunda", async () => {
+    const { made, run } = await setup([(w, msg) => w.reply({ type: "error", id: msg.id, error: "RangeError: out of memory" }), answer]);
+    const result = run();
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(await result).toBe(true);
+    expect(made).toHaveLength(2);
+  });
+});

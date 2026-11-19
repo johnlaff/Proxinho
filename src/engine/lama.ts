@@ -11,7 +11,10 @@
  * Roda no navegador com o ONNX Runtime Web, numa worker (lamaWorker.ts) para
  * não travar a página: na placa de vídeo (WebGPU) quando há, senão na CPU. O modelo é uma versão quantizada de 37 MB
  * (pesos int4/int8, licença Apache 2.0), baixada só quando aparece o primeiro
- * planeswalker e guardada pelo navegador. Se não carregar, quem chama volta para o push-pull.
+ * planeswalker e guardada pelo navegador. Um vigia mede cada etapa (ver `MODES` e `LIMITS`):
+ * travada, a worker é trocada por uma mais simples; se essa também falhar, o modelo fica
+ * indisponível na página e quem chama decide (o planeswalker volta para o push-pull; a arte sem
+ * borda sai na original). `lamaStatus` diz em que etapa está, para a prévia mostrar o andamento.
  *
  * O modelo trabalha num quadro de 512 × 512. A caixa de texto (~600 px de
  * largura no PNG do Scryfall, ~400 px na imagem menor das prévias) é recortada
@@ -24,42 +27,145 @@ import type { Rect } from "./geometry";
 
 const SIZE = 512;
 
+/**
+ * Modos da worker, em ordem: o normal (placa de vídeo quando há; senão a CPU, com várias threads
+ * quando a página está isolada) e o mais simples (CPU, uma thread). Nas threads do WebAssembly,
+ * uma que não sobe deixa o carregamento esperando para sempre, sem erro (o Firefox do celular
+ * ficava em "Montando a prévia…" com a arte sem borda da Konia, DSK 358): o vigia troca de modo.
+ */
+const MODES = [
+  { gpu: true, threads: 0 },
+  { gpu: false, threads: 1 },
+];
+
+/**
+ * Limites do vigia, em ms: download sem um byte novo, do fim do download ao modelo pronto, e um
+ * quadro. Num celular comum o modelo fica pronto em menos de um minuto e cada quadro leva de
+ * 10 a 40 s; o dobro ou mais disso só acontece travado.
+ */
+export const LIMITS = { stall: 60_000, prepare: 120_000, run: 180_000 };
+
+/** Etapa da rede neural, para a interface mostrar o andamento da prévia. */
+export type LamaStatus = {
+  stage: "idle" | "download" | "prepare" | "run" | "failed";
+  /** bytes baixados e o total (0 quando o servidor não diz o tamanho) */
+  loaded: number;
+  total: number;
+};
+
+let status: LamaStatus = { stage: "idle", loaded: 0, total: 0 };
+const watchers = new Set<() => void>();
+
+export function lamaStatus(): LamaStatus {
+  return status;
+}
+
+export function onLamaStatus(listener: () => void): () => void {
+  watchers.add(listener);
+  return () => {
+    watchers.delete(listener);
+  };
+}
+
+function setStatus(next: Partial<LamaStatus>) {
+  status = { ...status, ...next };
+  for (const l of watchers) l();
+}
+
+type Job = { id: number; image: Float32Array; mask: Float32Array; done: (out: Float32Array | null) => void };
+type Reply = { type?: string; id?: number; output?: Float32Array; error?: string; loaded?: number; total?: number };
+
+/** Quadros esperando; o primeiro está na worker quando `busy`. Um de cada vez: o vigia mede um só. */
+const jobs: Job[] = [];
 let worker: Worker | null = null;
+let mode = 0;
+let ready = false;
+let busy = false;
 let broken = false;
 let seq = 0;
-const pending = new Map<number, (r: { output?: Float32Array; error?: string }) => void>();
+let timer: ReturnType<typeof setTimeout> | undefined;
 
-function getWorker(): Worker | null {
-  if (broken || typeof Worker === "undefined") return null;
-  if (!worker) {
-    worker = new Worker(new URL("./lamaWorker.ts", import.meta.url), { type: "module" });
-    worker.onmessage = (ev: MessageEvent<{ id: number; output?: Float32Array; error?: string }>) => {
-      pending.get(ev.data.id)?.(ev.data);
-      pending.delete(ev.data.id);
-    };
-    worker.onerror = () => {
-      broken = true;
-      for (const done of pending.values()) done({ error: "worker" });
-      pending.clear();
-    };
+function arm(ms: number) {
+  clearTimeout(timer);
+  timer = setTimeout(() => fail("tempo esgotado"), ms);
+}
+
+/** A worker travou ou falhou: descarta e manda o mesmo quadro para o modo seguinte. */
+function fail(reason: string) {
+  clearTimeout(timer);
+  worker?.terminate();
+  worker = null;
+  ready = false;
+  busy = false;
+  mode++;
+  if (mode >= MODES.length) {
+    // modelo indisponível (sem rede, navegador antigo): não tenta de novo nesta página
+    broken = true;
+    console.warn("Proxinho: preenchimento por rede neural indisponível.", reason);
+    setStatus({ stage: "failed" });
+    for (const job of jobs.splice(0)) job.done(null);
+    return;
   }
-  return worker;
+  console.warn("Proxinho: a rede neural travou ou falhou; tentando na CPU com uma thread.", reason);
+  pump();
+}
+
+function spawn(): Worker {
+  const w = new Worker(new URL("./lamaWorker.ts", import.meta.url), { type: "module" });
+  w.onmessage = (ev: MessageEvent<Reply>) => {
+    if (w !== worker) return;
+    const m = ev.data;
+    if (m.type === "progress") {
+      setStatus({ stage: "download", loaded: m.loaded ?? 0, total: m.total ?? 0 });
+      arm(LIMITS.stall);
+    } else if (m.type === "loaded") {
+      setStatus({ stage: "prepare" });
+      arm(LIMITS.prepare);
+    } else if (m.type === "ready") {
+      ready = true;
+      setStatus({ stage: "run" });
+      arm(LIMITS.run);
+    } else if (m.id !== undefined && m.id === jobs[0]?.id) {
+      if (m.error) return fail(m.error);
+      clearTimeout(timer);
+      busy = false;
+      jobs.shift()!.done(m.output ?? null);
+      pump();
+    }
+  };
+  w.onerror = (ev: Event) => {
+    if (w !== worker) return;
+    ev.preventDefault();
+    fail("worker");
+  };
+  return w;
+}
+
+function pump() {
+  if (busy) return;
+  const job = jobs[0];
+  if (!job) {
+    setStatus({ stage: "idle" });
+    return;
+  }
+  worker ??= spawn();
+  busy = true;
+  // (cópias, sem transferir: se a worker travar, o mesmo quadro vai para a seguinte)
+  worker.postMessage({ type: "run", id: job.id, image: job.image, mask: job.mask, ...MODES[mode] });
+  if (ready) {
+    setStatus({ stage: "run" });
+    arm(LIMITS.run);
+  } else {
+    setStatus({ stage: "download" });
+    arm(LIMITS.stall);
+  }
 }
 
 function infer(image: Float32Array, mask: Float32Array): Promise<Float32Array | null> {
-  const w = getWorker();
-  if (!w) return Promise.resolve(null);
-  const id = ++seq;
-  return new Promise((resolve) => {
-    pending.set(id, (r) => {
-      if (r.error) {
-        // modelo indisponível (sem rede, navegador antigo): não tenta de novo nesta página
-        broken = true;
-        console.warn("Proxinho: preenchimento por rede neural indisponível, usando o simples.", r.error);
-      }
-      resolve(r.output ?? null);
-    });
-    w.postMessage({ type: "run", id, image, mask }, [image.buffer, mask.buffer]);
+  if (broken || typeof Worker === "undefined") return Promise.resolve(null);
+  return new Promise((done) => {
+    jobs.push({ id: ++seq, image, mask, done });
+    pump();
   });
 }
 

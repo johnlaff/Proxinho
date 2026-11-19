@@ -702,6 +702,86 @@ export function borderlessStamp(img: ImageData, stamp: Rect, box: Rect): Rect[] 
     if (kept.every((v, k) => v === inside[k])) break;
     inside = kept;
   }
+  // O fio claro do alto do aro em volta do selo pode mudar de cor de um lado para o outro
+  // (vermelho à esquerda e branco à direita no Pteranodonte, REX 44; vermelho e cinza no Adult
+  // Gold Dragon, AFR 297; prata e cinza no Squall, PSS5 2): sem par da mesma cor, ele ficava
+  // fora da enchente, entrava na máscara das letras por ser claro e a rede neural o apagava aos
+  // pedaços, um degrau de 1 a 3 mm no aro. O formato do aro é simétrico; a cor, nem sempre. Um
+  // trecho claro (30 tons acima da arte acima do selo, na mesma coluna, e sem ser liso: a faixa
+  // vinho lisa entre o aro e a última linha do Underworld Breach, SLD 2045, ligava as letras ao
+  // aro) que encosta no selo ou no pé da caixa e tem, na maior parte, trecho claro ou selo no
+  // lugar espelhado é aro; dele fica só o que tem esse par (a letra encostada no aro não tem:
+  // do outro lado, no mesmo lugar, há arte).
+  const lighter = (x: number, y: number) =>
+    luminance(img.data, ((y0 + y) * img.width + x0 + x) * 4) > 0.299 * local[x][0] + 0.587 * local[x][1] + 0.114 * local[x][2] + 30;
+  const bright = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) if (!inside[y * w + x] && lighter(x, y) && !flat(x0 + x, y0 + y)) bright[y * w + x] = 1;
+  const twin = (set: (k: number) => boolean, x: number, y: number) => {
+    for (let d = -slack; d <= slack; d++) {
+      const xx = mid - (x0 + x) + d - x0;
+      if (xx >= 0 && xx < w && set(y * w + xx)) return true;
+    }
+    return false;
+  };
+  const shaped = (k: number) => bright[k] === 1 || inside[k] === 1;
+  const touching = morph(inside, w, h, Math.max(1, Math.round(2 * unit)), true);
+  let rim = new Uint8Array(w * h);
+  const seenRim = new Uint8Array(w * h);
+  const thick = Math.round(10 * unit);
+  const wide = Math.round(6 * unit);
+  for (let s0 = 0; s0 < w * h; s0++) {
+    if (!bright[s0] || seenRim[s0]) continue;
+    const comp = [s0];
+    seenRim[s0] = 1;
+    let attached = false;
+    let paired = 0;
+    for (let j = 0; j < comp.length; j++) {
+      const k = comp[j];
+      const x = k % w;
+      const y = (k - x) / w;
+      if (touching[k] || y === h - 1) attached = true;
+      if (twin(shaped, x, y)) paired++;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          const q = ny * w + nx;
+          if (nx < 0 || nx >= w || ny < 0 || ny >= h || seenRim[q] || !bright[q]) continue;
+          seenRim[q] = 1;
+          comp.push(q);
+        }
+    }
+    // (e é um fio: fino, até 10 px de altura em quase toda a largura, porque letra tem 15 px ou
+    // mais; e comprido, 6 px ou mais de largura: o ponto final do "time." do Roaming Throne,
+    // LCI 344, encostado na faixa rosa da arte que sobe simétrica dos dois lados do selo, tinha
+    // par nela e ficava como um pingo branco)
+    const tops = new Map<number, [number, number]>();
+    for (const k of comp) {
+      const x = k % w;
+      const y = (k - x) / w;
+      const t = tops.get(x);
+      tops.set(x, t ? [Math.min(t[0], y), Math.max(t[1], y)] : [y, y]);
+    }
+    let thin = 0;
+    for (const [a, b] of tops.values()) if (b - a < thick) thin++;
+    if (!attached || paired < comp.length * 0.6 || thin < tops.size * 0.7 || tops.size < wide) continue;
+    for (const k of comp) if (twin(shaped, k % w, Math.floor(k / w))) rim[k] = 1;
+  }
+  // e o par tem de ser aro também, não um pedaço claro solto do outro lado
+  for (let round = 0; round < 10; round++) {
+    const kept = rim.map((v, k) => (v && twin((q) => rim[q] === 1 || inside[q] === 1, k % w, Math.floor(k / w)) ? 1 : 0));
+    if (kept.every((v, k) => v === rim[k])) break;
+    rim = kept;
+  }
+  // (e o claro logo abaixo do fio, colado nele na mesma coluna, é o corpo do aro: a ponta
+  // em diagonal do aro do Squall, clara só do lado esquerdo)
+  const span = Math.round(10 * unit);
+  for (let x = 0; x < w; x++)
+    for (let y = 0; y < h; y++) {
+      if (rim[y * w + x] !== 1) continue;
+      for (let e = y + 1; e < h && e - y <= span && !inside[e * w + x] && lighter(x, e) && !rim[e * w + x]; e++) rim[e * w + x] = 2;
+    }
   // O brilho holográfico de dentro do selo não é simétrico: o que o contorno do selo cerca
   // (sem saída pelo alto nem pelos lados do retângulo; embaixo o selo continua) é selo.
   const open = new Uint8Array(w * h);
@@ -800,6 +880,16 @@ export function borderlessStamp(img: ImageData, stamp: Rect, box: Rect): Rect[] 
       });
     }
   }
+  // O aro achado pela forma entra com a borda suavizada do fio, mas sem o pé de uma letra
+  // encostada nele.
+  const rimGrown = morph(
+    rim.map((v) => (v ? 1 : 0)),
+    w,
+    h,
+    1,
+    true,
+  );
+  for (let k = 0; k < w * h; k++) if (rimGrown[k] && !(bright[k] && !rim[k])) grown[k] = 1;
   const out: Rect[] = [];
   for (let y = 0; y < h; y++) {
     let a = -1;

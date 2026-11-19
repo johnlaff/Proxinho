@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { neuralStage } from "../../src/app/labels";
 import {
   buildOrder,
   countOutcomes,
@@ -250,5 +251,21 @@ describe("flavorApplies (o flavor em PT de outra arte)", () => {
   });
   it("sem impressão do texto, nunca vale", () => {
     expect(flavorApplies(card(), print("e", { text_flavor: true }))).toBe(false);
+  });
+});
+
+describe("neuralStage", () => {
+  it("diz a etapa da rede neural, com a porcentagem do download só quando o tamanho é conhecido", () => {
+    expect(neuralStage({ stage: "download", loaded: 33e6, total: 66e6 })).toEqual({
+      text: "Baixando o apagador de texto: 50%",
+      percent: 50,
+    });
+    // (no fim do download, para no 99 até a rede ficar pronta)
+    expect(neuralStage({ stage: "download", loaded: 66e6, total: 66e6 })?.percent).toBe(99);
+    expect(neuralStage({ stage: "download", loaded: 1e6, total: 0 })).toEqual({ text: "Baixando o apagador de texto…", percent: null });
+    expect(neuralStage({ stage: "prepare", loaded: 0, total: 0 })?.text).toBe("Preparando o apagador de texto…");
+    expect(neuralStage({ stage: "run", loaded: 0, total: 0 })?.text).toBe("Apagando o inglês…");
+    expect(neuralStage({ stage: "idle", loaded: 0, total: 0 })).toBeNull();
+    expect(neuralStage({ stage: "failed", loaded: 0, total: 0 })).toBeNull();
   });
 });

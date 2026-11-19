@@ -77,6 +77,26 @@ Nas artes sem borda as barras e a caixa inteiras são translúcidas, e a arte at
 
 Escolha: LaMa em quadros na resolução da imagem, com a máscara só das letras brancas e o grão da vizinhança de volta depois (ADR 0012).
 
+### Rede neural no navegador do celular (19/11/2026)
+
+A prévia de uma arte sem borda ficou parada em "Montando a prévia…" no Firefox do celular. O que se faz hoje para rodar um modelo de imagem no navegador, e onde o Proxinho está:
+
+| Prática | Quem faz | Proxinho |
+|---|---|---|
+| Modelo numa worker, fora da página | transformers.js, ONNX Runtime Web, inpaint-web | Sim, desde o começo (ADR 0008) |
+| Placa de vídeo (WebGPU) com a CPU (WebAssembly) de reserva | transformers.js, ONNX Runtime Web | Sim |
+| Modelo guardado pelo navegador depois do primeiro download | transformers.js e os removedores de objeto no navegador | Sim |
+| Andamento do download na tela | transformers.js (`progress_callback`) e as demonstrações do Hugging Face | Não havia; agora a prévia mostra a etapa e a porcentagem |
+| Tempo-limite e plano B quando o runtime trava | o ONNX Runtime Web tem `env.wasm.initTimeout`; os apps põem tempo-limite e trocam de backend | Não havia; agora um vigia troca a worker por uma com uma thread e, por fim, desiste do jeito certo para cada moldura |
+| Modelo leve para celular | MI-GAN (ICCV 2023): cerca de um décimo da conta do LaMa, com qualidade parecida em 512 px, 29 MB em ONNX; usado pelo inpaint-web e pelo WatermarkOut | Não: LaMa quantizado (37 MB) |
+| Kernels próprios em WebGPU | wipe.photos: o LaMa em shaders próprios, menos de 1 s, também no Android e no iPhone | Não: ONNX Runtime Web |
+
+Entre os geradores de proxy, o Card Anvil também usa o LaMa para limpar a arte.
+
+A trava: no ONNX Runtime Web, uma thread do WebAssembly que não sobe deixa o carregamento do modelo esperando para sempre, sem erro. O `initTimeout` dele não resolve sozinho, porque depois do tempo esgotado o runtime não se recupera; só uma worker nova volta a funcionar. Por isso o vigia encerra a worker e cria outra, mais simples (ADR 0008).
+
+Conclusão: no essencial o Proxinho segue a prática do mercado (worker, WebGPU com a CPU de reserva, modelo guardado), e passou a seguir também no andamento e no tempo-limite. A diferença que sobra é a velocidade na CPU dos celulares sem WebGPU, como o Firefox do Android: ali cada quadro leva dezenas de segundos, e a arte sem borda tem três. O Chrome do Android usa a placa de vídeo. O próximo passo, se a espera incomodar, é o MI-GAN só na prévia (roadmap).
+
 ## Lado legal e o caminho seguro
 
 | Ponto | O que diz | Risco |
