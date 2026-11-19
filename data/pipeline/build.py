@@ -213,6 +213,7 @@ def load_arena(offline: bool) -> dict[str, dict]:
             "type_pt": type_pt,
             "text_pt": clean_rules("\n".join(join_keywords(lines))),
             "flavor_pt": fix_breaks(text(br, card.get("flavorId")), flavor=True),
+            "_flavor_en": text(en, card.get("flavorId")),
             "mana_cost": arena_cost(card.get("castingcost")),
         }
 
@@ -243,8 +244,17 @@ def load_arena(offline: bool) -> dict[str, dict]:
                 f["name_en"] = text(en, other.get("titleId"))
                 faces.append(f)
         front["name_en"] = name_en
-        # O texto de ambientação (flavor) é de cada impressão: guardamos de qual veio.
-        result[name_en] = {"faces": faces, "print": {"set": (card.get("set") or "").lower(), "number": str(card.get("collectorNumber") or "")}}
+        # O texto de ambientação (flavor) é de cada impressão: guardamos de qual veio e o
+        # flavor em inglês do próprio Arena, para achar as artes de papel com o mesmo flavor
+        # (nas coleções digitais, como Kaladesh Remastered, o Scryfall não tem o flavor)
+        flavor_en = tuple(flavor_key(f.pop("_flavor_en", None) if f["flavor_pt"] else None) for f in faces)
+        for f in faces:
+            f.pop("_flavor_en", None)
+        result[name_en] = {
+            "faces": faces,
+            "print": {"set": (card.get("set") or "").lower(), "number": str(card.get("collectorNumber") or "")},
+            "flavor_en": flavor_en,
+        }
     log(f"Arena: {len(result)} cartas com texto PT-BR")
     return result
 
@@ -727,7 +737,10 @@ def flavor_key(text: str | None) -> str:
     """Flavor comparável entre impressões: aspas, travessões e espaços de um tipo só."""
     if not text:
         return ""
-    s = text.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
+    # o Scryfall marca o trecho em letra comum dentro do itálico com *…* ("the *Dragon's
+    # Smile*", na Kari Zev); o Arena, com <i>…</i> ou sem marca nenhuma
+    s = re.sub(r"</?i>|\*", "", text)
+    s = s.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
     s = re.sub(r"\s*[—–]\s*", "—", s)
     return re.sub(r"\s+", " ", s).strip()
 
@@ -752,16 +765,20 @@ def mark_text_flavor(rows: list[dict], prints: list[dict], flavors: dict[tuple[s
     flavor em inglês (a promo de arte estendida do Spock, Logical Choice) leva o mesmo
     flavor em PT; uma com outro flavor, ou sem flavor, não leva nenhum.
     """
-    ref: dict[str, tuple[str, ...]] = {}
+    ref: dict[str, set[tuple[str, ...]]] = {}
     for r in rows:
+        # o flavor em inglês da impressão em inglês de mesma coleção e número e, no texto do
+        # Arena, o do próprio Arena (nas coleções digitais o Scryfall não tem flavor)
         tp = r.get("text_print")
-        f = flavors.get((ARENA_SETS.get(tp["set"].lower(), tp["set"].lower()), str(tp["number"]))) if tp else None
-        if f and any(f):
-            ref[r["oracle_id"]] = f
+        refs = {r.pop("_flavor_ref", None)}
+        if tp:
+            refs.add(flavors.get((ARENA_SETS.get(tp["set"].lower(), tp["set"].lower()), str(tp["number"]))))
+        refs = {f for f in refs if f and any(f)}
+        if refs:
+            ref[r["oracle_id"]] = refs
     n = 0
     for p in prints:
-        f = ref.get(p["oracle_id"])
-        p["text_flavor"] = bool(f) and p.get("_flavor") == f
+        p["text_flavor"] = p.get("_flavor") in ref.get(p["oracle_id"], ())
         n += p["text_flavor"]
     return n
 
@@ -925,6 +942,7 @@ def build(offline: bool) -> list[dict]:
                 "search_pt": " | ".join(sorted(aliases)) or None,
                 "source": source,
                 "text_print": text_print,
+                "_flavor_ref": a["flavor_en"] if source == "arena" else None,
                 "faces": [
                     {**f, "name_en": f.get("name_en") or faces_en[min(i, len(faces_en) - 1)].get("name")}
                     for i, f in enumerate(faces)

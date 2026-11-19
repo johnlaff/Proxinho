@@ -310,8 +310,18 @@ class FlavorDeOutraArte(unittest.TestCase):
         mark_text_flavor(rows, prints, {("dom", "1"): ("A.",)})
         self.assertTrue(prints[0]["text_flavor"])
 
+    def test_flavor_em_ingles_do_arena(self):
+        # Kari Zev: o texto do Arena é da Kaladesh Remastered (KLR 133), coleção digital em
+        # que o Scryfall não tem flavor; a comparação usa o flavor em inglês do próprio Arena
+        rows = [{"oracle_id": "o", "text_print": {"set": "klr", "number": "133"}, "_flavor_ref": ("Aboard her ship, the Dragon's Smile, Kari follows no one's rules but her own.",)}]
+        prints = [{"oracle_id": "o", "_flavor": (flavor_key("Aboard her ship, the *Dragon's Smile*, Kari follows no one's rules but her own."),)}]
+        mark_text_flavor(rows, prints, {("klr", "133"): ("",)})
+        self.assertTrue(prints[0]["text_flavor"])
+        self.assertNotIn("_flavor_ref", rows[0])
+
     def test_aspas_e_travessao_de_um_tipo_so(self):
         self.assertEqual(flavor_key("“Run.”\n—Jace"), flavor_key('"Run." — Jace'))
+        self.assertEqual(flavor_key("the *Dragon's Smile*"), flavor_key("the <i>Dragon's Smile</i>"))
         self.assertEqual(flavor_key(None), "")
 
     def test_flavor_de_cada_face(self):

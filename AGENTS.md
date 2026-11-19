@@ -42,7 +42,7 @@ Sem download de navegador? `PW_CHROMIUM_PATH=/caminho/do/chrome pnpm test:e2e`.
 ## Erros que já aconteceram (não repita)
 
 - Regex de símbolos do Arena casava "Co" em `{oCoC}`: o token é `o(\([^)]+\)|\d+|Si|[A-Z])`.
-- Flavor do Arena pode ser de outra impressão: só use na arte de `text_print` ou numa com o mesmo flavor em inglês (`text_flavor`, marcado por `mark_text_flavor` no pipeline; sem isso a promo de arte estendida do Spock, PMEI, saía sem flavor). Dominaria é "DAR" no Arena e "dom" no Scryfall (`ARENA_SETS`).
+- Flavor do Arena pode ser de outra impressão: só use na arte de `text_print` ou numa com o mesmo flavor em inglês (`text_flavor`, marcado por `mark_text_flavor` no pipeline; sem isso a promo de arte estendida do Spock, PMEI, saía sem flavor). Compare também com o flavor em inglês do próprio Arena: nas coleções digitais (KLR, PIO) o Scryfall não tem flavor (Kari Zev). Dominaria é "DAR" no Arena e "dom" no Scryfall (`ARENA_SETS`).
 - Retângulos com coordenadas fracionárias como índice de pixel apagavam a caixa de P/R: arredonde. E a proteção da caixa segue o canto arredondado dela (`ptProtect`): um retângulo só protegia o ponto final do flavor no canto vazio.
 - Sangria grande no PDF passa da área imprimível das impressoras caseiras: 2 mm (A4) e 1 mm (Carta).
 - O bulk do Scryfall não tem mais `download_uri`; use `jsonl_download_uri`.
