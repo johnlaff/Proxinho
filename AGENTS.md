@@ -52,7 +52,7 @@ Sem download de navegador? `PW_CHROMIUM_PATH=/caminho/do/chrome pnpm test:e2e`.
 - As threads do WebAssembly do ONNX reabrem o arquivo da worker com o nome "em-pthread": o handler de mensagens só pode existir fora delas.
 - Fichas têm nomes iguais a cartas ("Adorned Pouncer" eternizado) e cartas de apoio com `layout: token` ("Copy", "The Monarch"): o Arena só casa fichas com `isToken`, e só entra ficha cujo tipo começa por "Token ".
 - Nas fichas de duas faces a face de trás tem id `<id>#1` no banco: use `printImage`, nunca `scryfallImage(print.id)`.
-- Emblemas não existem no Arena de papel: o texto vem das aspas do planeswalker ("emblema com \"…\""); nunca traduza.
+- Emblemas não existem no Arena de papel: o texto vem das aspas do planeswalker ("emblema com \"…\""); nunca traduza. As aspas podem vir depois de "com:", seguidas de outra frase (Kiora) ou sem fecho (Jaya Ballard): `emblem_text` tem os três casos.
 - Emblemas e fichas sem P/R não têm a caixa de P/R: proteger o canto deixava o fim do texto em inglês aparecendo (`tokenPtBox`).
 - O .wasm do ONNX (28 MiB) não cabe nos assets do Cloudflare: o Vite não pode copiá-lo (plugin em `vite.config.ts`); ele vai em partes por `scripts/modelo.mjs`.
 - A moldura real muda uns pixels entre coleções: apagar só a medida fixa deixava fio, sombra e pé de letra. Mede na imagem (`insideBoxSides`, `typeBarTop`, `ptBoxTop`, `findStamp`) e use a medida fixa como limite (ADR 0011).

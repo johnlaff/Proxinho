@@ -962,7 +962,22 @@ def build(offline: bool) -> list[dict]:
     return rows
 
 
-EMBLEM_TEXT = re.compile(r'emblema com [“"](.+)[”"]\.?\s*$')
+EMBLEM_TEXT = (
+    # o emblema fecha a linha
+    re.compile(r'emblema com:? [“"](.+)[”"]\.?\s*$'),
+    # depois do emblema vem outra frase ("… lute contra a criatura alvo." Depois, coloque…, Kiora)
+    re.compile(r'emblema com:? [“"]([^“”"]+)[”"]\.?\s+(?=[A-ZÀ-Ú])'),
+    # as aspas nunca fecham (Jaya Ballard, no texto impresso)
+    re.compile(r'emblema com:? [“"]([^“”"]+)$'),
+)
+
+
+def emblem_text(line: str) -> str | None:
+    """O texto entre aspas de "Você recebe um emblema com "…"" numa linha de texto em PT."""
+    for rx in EMBLEM_TEXT:
+        if m := rx.search(line):
+            return m.group(1)
+    return None
 
 
 def emblem_face(t: dict, cards: dict[str, dict], print_oracle: dict[str, str]) -> dict | None:
@@ -976,7 +991,7 @@ def emblem_face(t: dict, cards: dict[str, dict], print_oracle: dict[str, str]) -
         if not src or not src.get("name_pt"):
             continue
         for f in src["faces"]:
-            found = [m.group(1) for line in (f.get("text_pt") or "").split("\n") if (m := EMBLEM_TEXT.search(line))]
+            found = [e for line in (f.get("text_pt") or "").split("\n") if (e := emblem_text(line))]
             if len(found) != 1:
                 continue
             sub = (f.get("type_pt") or "").partition(" — ")[2]

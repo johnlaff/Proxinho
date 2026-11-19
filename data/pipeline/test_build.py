@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, arena_symbols, balance_parens, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, mark_text_flavor, print_flavor, pick_printed, printed_faces, printed_has_text, pw_costs, token_face_key, token_key
+from build import ability_word_lines, arena_symbols, balance_parens, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, mark_text_flavor, print_flavor, pick_printed, printed_faces, printed_has_text, pw_costs, token_face_key, token_key
 
 
 class CitesAltName(unittest.TestCase):
@@ -329,6 +329,30 @@ class FlavorDeOutraArte(unittest.TestCase):
         # aventura: as faces sem flavor e o flavor no topo
         self.assertEqual(print_flavor({"flavor_text": "B.", "card_faces": [{}, {}]}), ("B.",))
         self.assertEqual(print_flavor({"flavor_text": "C."}), ("C.",))
+
+
+class TextoDoEmblema(unittest.TestCase):
+    """O texto do emblema vem das aspas do planeswalker, nunca de tradução."""
+
+    def test_emblema_no_fim_da_linha(self):
+        self.assertEqual(emblem_text('−7: Você recebe um emblema com "Você tem resistência a magia."'), "Você tem resistência a magia.")
+
+    def test_outra_frase_depois(self):
+        # Kiora, Mestra das Profundezas: o emblema saía em inglês
+        line = '−8: Você recebe um emblema com "Toda vez que uma criatura entra no campo de batalha sob o seu controle, você pode fazer com que ela lute contra a criatura alvo." Depois, coloque no campo de batalha três fichas.'
+        self.assertEqual(emblem_text(line), "Toda vez que uma criatura entra no campo de batalha sob o seu controle, você pode fazer com que ela lute contra a criatura alvo.")
+
+    def test_dois_pontos_depois_de_com(self):
+        # Zariel, Nissa (Força Vital), Huatli, Tezzeret e Jace: "emblema com: “…”."
+        self.assertEqual(emblem_text("−6: Você recebe um emblema com: “Toda vez que um terreno que você controla entra, você pode comprar um card”."), "Toda vez que um terreno que você controla entra, você pode comprar um card")
+
+    def test_aspas_que_nunca_fecham(self):
+        # Jaya Ballard: o texto impresso esqueceu o fecho das aspas
+        line = '−8: Você recebe um emblema com "Você pode conjurar mágicas instantâneas e feitiços de seu cemitério. Se uma mágica conjurada desta forma seria colocada em seu cemitério, em vez disso, exile-a.'
+        self.assertTrue(emblem_text(line).endswith("exile-a."))
+
+    def test_sem_emblema(self):
+        self.assertIsNone(emblem_text("Voar"))
 
 
 if __name__ == "__main__":
