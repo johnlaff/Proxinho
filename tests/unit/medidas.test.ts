@@ -12,6 +12,7 @@ import {
   insideBoxSides,
   liftShadedBands,
   maskRegions,
+  notM15Frame,
   ptBoxLeft,
   ptBoxTop,
   textBandCenter,
@@ -1160,6 +1161,38 @@ describe("darkTextBox", () => {
     fill(68, 656, 677, 944, (x, y, ch) => [40, 60, 90][ch] + Math.round(30 * Math.sin(x / 40) * Math.cos(y / 30)));
     for (let y = 680; y < 900; y += 34) fill(80, y, 640, y + 18, [240, 240, 240]);
     expect(darkTextBox(img, box)).toBe(true);
+  });
+});
+
+describe("notM15Frame", () => {
+  const box = { x0: 68, y0: 656, x1: 677, y1: 944 };
+  it("caixa clara e os dois fios da barra de tipo: é a M15", () => {
+    const { img, fill } = canvas([20, 20, 20]);
+    fill(40, 589, 705, 592, [230, 225, 215]);
+    fill(40, 592, 705, 642, [200, 195, 185]);
+    fill(68, 656, 677, 944, [225, 218, 205]);
+    expect(notM15Frame(img, box)).toBe(false);
+  });
+
+  it("papel solto com o desenho onde seria a barra (Shivan Dragon da MSCHF, SLZ 380): não é", () => {
+    // sem barra: o papel vai de ponta a ponta, o nome solto no alto e o dragão preto, de
+    // contorno irregular, atravessando a altura da barra de tipo
+    const { img, fill } = canvas([232, 228, 220]);
+    for (let x = 40; x < 600; x += 46) fill(x, 50, x + 30, 95, [30, 30, 30]);
+    for (let y = 540; y < 780; y++) {
+      const end = 430 + Math.round(120 * Math.sin(y / 17) + 60 * Math.cos(y / 7));
+      fill(30 + Math.round(20 * Math.sin(y / 9)), y, end, y + 1, [25, 25, 25]);
+    }
+    expect(darkTextBox(img, box)).toBe(false);
+    expect(notM15Frame(img, box)).toBe(true);
+  });
+
+  it("caixa escura (Crucible of Worlds, NAC): não é, mesmo com os fios", () => {
+    const { img, fill } = canvas([20, 20, 20]);
+    fill(40, 589, 705, 592, [230, 225, 215]);
+    fill(40, 592, 705, 642, [200, 195, 185]);
+    fill(68, 656, 677, 944, [50, 60, 80]);
+    expect(notM15Frame(img, box)).toBe(true);
   });
 });
 

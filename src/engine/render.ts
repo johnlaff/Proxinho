@@ -14,7 +14,6 @@ import {
   centralSpan,
   coloredInk,
   combineMasks,
-  darkTextBox,
   dropSpecks,
   eraseRegions,
   findSetSymbolLeft,
@@ -26,6 +25,7 @@ import {
   eraseBackPtNotch,
   symbolRowsLeft,
   maskRegions,
+  notM15Frame,
   ptBoxLeft,
   ptBoxTop,
   textBandCenter,
@@ -737,8 +737,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     mdfcStrip: print.layout === "modal_dfc",
     typeShift,
   });
-  // caixa escura: arte atrás de uma caixa translúcida, não o papel da M15 (ver darkTextBox)
-  if (darkTextBox(data, toImg(layout.box))) {
+  // caixa escura ou sem os fios da barra de tipo: não é a moldura da M15 (ver notM15Frame)
+  if (notM15Frame(data, toImg(layout.box))) {
     ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: false };
   }

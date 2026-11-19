@@ -828,6 +828,19 @@ export function darkTextBox(img: ImageData, rect: Rect): boolean {
 }
 
 /**
+ * A imagem não tem a moldura da M15, embora o Scryfall diga que tem? Duas pistas: a caixa
+ * escura (`darkTextBox`) e a falta dos dois fios da barra de tipo (`typeBarEdges`). Nas
+ * 1.559 cartas comuns das amostras (fora planeswalkers e fichas, que têm outra medida) os
+ * fios só faltaram em duas: o Crucible of Worlds da NAC, já pego pela caixa escura, e o
+ * Shivan Dragon da Secret Lair com a MSCHF (SLZ 380), sem moldura nenhuma: nome e custo
+ * soltos no papel e o dragão onde seria a barra. O motor apagava e escrevia nos lugares
+ * da M15 e a carta saía borrada. Sem a moldura, ela sai na original.
+ */
+export function notM15Frame(img: ImageData, box: Rect): boolean {
+  return darkTextBox(img, box) || typeBarEdges(img) === null;
+}
+
+/**
  * Papel de retícula grossa (Dragonskull Summit, C16): de um pixel a outro a cor muda 15 a
  * 35 tons, e há pingos claros soltos. A pirâmide parte do pixel exato da borda do buraco,
  * e cada pingo ou ponto da retícula ali virava uma mancha clara ou colorida de 3 a 5 px no
