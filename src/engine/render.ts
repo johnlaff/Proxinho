@@ -10,6 +10,7 @@
 import { bodyFont, loadCardFonts, titleFont } from "./fonts";
 import { BACK_PT_NOTCH, BASE_H, BASE_W, costLeft, hasLeftIcon, m15Layout, ptProtect, type FrameLayout, type Rect } from "./geometry";
 import {
+  barCapGuard,
   centralSpan,
   coloredInk,
   combineMasks,
@@ -221,14 +222,23 @@ async function renderPlaneswalker(p: {
   if (boxBottom !== null) lastErase.y1 = Math.max(lastErase.y1, Math.min(boxBottom - 2, PW.area.bottom + 12));
   const protect = [toImg(PW.loyaltyBox)];
   // nome e tipo ficam em barras opacas: preenchimento linha a linha, que segue o degradê da barra
+  const titleBar = toImg({ x0: 50, y0: PW.title.erase.y0, x1: cost - 6, y1: PW.title.erase.y1 });
+  const typeBar = toImg({ x0: 50, y0: tb.y0, x1: face.type_pt ? setLeft - 6 : 50, y1: tb.y1 });
   const barInks = eraseRegions(
     data,
     [
-      { rect: toImg({ x0: 50, y0: PW.title.erase.y0, x1: cost - 6, y1: PW.title.erase.y1 }), threshold: 28, fill: "rows" },
+      { rect: titleBar, threshold: 28, fill: "rows" },
       // sem o tipo em português, a linha de tipo em inglês fica
-      { rect: toImg({ x0: 50, y0: tb.y0, x1: face.type_pt ? setLeft - 6 : 50, y1: tb.y1 }), threshold: 28, fill: "rows" },
+      { rect: typeBar, threshold: 28, fill: "rows" },
     ],
     protect,
+    [],
+    // a ponta arredondada das barras fica como está (ver barCapGuard)
+    [
+      ...barCapGuard(data, titleBar, "left"),
+      ...barCapGuard(data, typeBar, "left"),
+      ...(print.mana_cost ? [] : barCapGuard(data, titleBar, "right")),
+    ],
   );
   // a caixa de texto é translúcida, com a arte aparecendo por trás: rede neural (ver lama.ts)
   // As faixas de uma mesma caixa têm a mesma cor de letra. Medida faixa a faixa, uma
@@ -568,6 +578,9 @@ async function renderToken(p: {
     ],
     [...protect, ...ends],
     opaque,
+    // a ponta arredondada da barra de tipo fica como está (ver barCapGuard); a moldura de
+    // 2003 apaga só depois do fio da ponta
+    face.type_pt && layout.type.x0 <= 50 ? barCapGuard(data, toImg(layout.type), "left") : [],
   );
   // ficha sem caixa mas com texto em PT: não há onde escrever
   if (!layout.box && text.trim()) return false;
@@ -807,6 +820,16 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const boxGuard = [...stampGuard, ...layout.protect.map(toImg)];
   const centered =
     measuredBox && !keepBox && (face.text_pt ?? "").trim() ? measureCentered(data, measuredBox, boxGuard, fx) === true : false;
+  // a ponta arredondada das barras (o contorno e o relevo da curva) fica como está; sem
+  // custo de mana, a do fim da barra de nome também (ver barCapGuard). Com o ícone das
+  // duas faces ou o indicador de cor, o retângulo começa depois deles: ali não há ponta
+  const capGuard = [
+    ...layout.erase
+      .slice(0, 2)
+      .filter((e) => e.rect.x0 <= 50)
+      .flatMap((e) => barCapGuard(data, toImg(e.rect), "left")),
+    ...(!manaCost && !rightIcon ? barCapGuard(data, toImg(layout.erase[0].rect), "right") : []),
+  ];
   const [titleInk, typeInk, boxInk] = eraseRegions(
     data,
     // (abaixo da medida fixa, só o pé das letras: a medida do terço da esquerda pode
@@ -828,6 +851,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     // P/R sobem para dentro da caixa de texto: ficam, e a cor deles não entra no
     // preenchimento ao lado (a caixa de P/R dourada deixava um brilho dourado acima dela)
     [...stampGuard, ...layout.protect.map(toImg), ...symbolGuard],
+    capGuard,
   );
   // o lembrete do verso pode passar do lado da caixa, no canto que avança para a moldura (SOI)
   if (backPt && measuredBox && !keepBox) {

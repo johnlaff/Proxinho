@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  barCapGuard,
   centralSpan,
   coloredInk,
   darkTextBox,
@@ -500,6 +501,30 @@ describe("findSetSymbolLeft com lacuna entre letras quase igual à do símbolo",
     fill(642, 601, 697, 627, [235, 120, 30]);
     fill(700, 594, 711, 634, [30, 30, 30]);
     expect(findSetSymbolLeft(img, 594, 632)).toBe(626);
+  });
+});
+
+describe("findSetSymbolLeft com o símbolo da 30th Edition numa barra cinza", () => {
+  it("o traço do E e o D fraco ficam com o resto do símbolo (Demonic Tutor, 30A)", () => {
+    // barra cinza (200); "Sorcery" longe, à esquerda. O símbolo: traço do "E" (588 a 592,
+    // tinta de verdade), braços finos e o "D" quase da cor da barra (só "fracos"), uma
+    // coluna de barra pura no meio, e o resto do símbolo em tinta a partir de 614
+    const { img, fill } = canvas([200, 200, 200]);
+    fill(80, 600, 200, 626, [20, 20, 20]);
+    fill(588, 600, 593, 627, [140, 140, 140]);
+    for (const y of [600, 611, 622]) fill(593, y, 603, y + 5, [172, 172, 172]);
+    fill(604, 600, 613, 627, [172, 172, 172]);
+    fill(614, 598, 650, 630, [60, 60, 60]);
+    expect(findSetSymbolLeft(img, 594, 632)).toBe(588);
+  });
+  it("no fim de uma linha de tipo, colado na palavra de antes, o bloco não se junta ao símbolo", () => {
+    // mesma lacuna fraca, mas o bloco da esquerda é o fim de "Sorcery", colado no resto
+    const { img, fill } = canvas([200, 200, 200]);
+    fill(470, 600, 580, 626, [20, 20, 20]);
+    fill(584, 600, 593, 627, [20, 20, 20]);
+    fill(593, 611, 613, 616, [172, 172, 172]);
+    fill(614, 598, 650, 630, [60, 60, 60]);
+    expect(findSetSymbolLeft(img, 594, 632)).toBe(614);
   });
 });
 
@@ -1328,5 +1353,123 @@ describe("faixas da tabela de d20", () => {
         n++;
       }
     expect(Math.abs(sum / n - 222)).toBeLessThanOrEqual(8);
+  });
+});
+
+describe("barCapGuard (a ponta arredondada das barras)", () => {
+  /**
+   * Barra de nome falsa como a da Konia (DSK): moldura verde, ponta em arco raso (meia
+   * elipse de 14 px de fundo e 27 de altura), contorno preto de 3 px, relevo de 5 px que
+   * clareia até o papel e uma letra a partir de x = 66 (onde começa o nome). `side`
+   * escolhe de que lado fica a ponta. Devolve também a distância de cada pixel até a borda
+   * (0 a 2 é contorno, 3 a 7 relevo).
+   */
+  function bar(side: "left" | "right" = "left", paperAt: (x: number) => number = () => 215) {
+    const c = canvas([40, 120, 70]);
+    const cy = 82;
+    const edge = (y: number) => 14 * Math.sqrt(Math.max(0, 1 - ((y - cy) / 27) ** 2));
+    const dist = (x: number, y: number) => {
+      const dy = Math.min(y - 55, 108 - y);
+      if (dy < 0) return -1;
+      const dx = side === "left" ? x - (60 - edge(y)) : 680 + edge(y) - x;
+      const inner = side === "left" ? x > 60 : x < 680;
+      return inner ? dy : Math.min(dx, dy);
+    };
+    c.fill(30, 50, 720, 115, (x, y, ch) => {
+      const d = dist(x, y);
+      if (d < 0) return [40, 120, 70][ch];
+      if (d < 3) return 25;
+      const p = paperAt(x);
+      if (d < 8) return Math.round(120 + ((p - 120) * (d - 3)) / 5);
+      return p;
+    });
+    // primeira letra (um "I" grosso) no começo do nome, longe da ponta
+    if (side === "left") c.fill(66, 66, 78, 98, [20, 20, 20]);
+    return { ...c, dist };
+  }
+  const covered = (guard: { x0: number; y0: number; x1: number; y1: number }[], x: number, y: number) =>
+    guard.some((g) => x >= g.x0 && x < g.x1 && y >= g.y0 && y < g.y1);
+  const lum = (img: ImageData, x: number, y: number) => img.data[(y * img.width + x) * 4 + 1];
+
+  it("cobre o contorno e o relevo da curva, linha a linha, sem chegar à letra", () => {
+    const { img, dist } = bar();
+    const rect = { x0: 50, y0: 58, x1: 688, y1: 106 };
+    const guard = barCapGuard(img, rect, "left");
+    let checked = 0;
+    for (let y = 63; y < 101; y++)
+      for (let x = 50; x < 66; x++)
+        if (dist(x, y) >= 0 && dist(x, y) < 5) {
+          expect(covered(guard, x, y), `(${x}, ${y})`).toBe(true);
+          checked++;
+        }
+    expect(checked).toBeGreaterThan(60);
+    for (const g of guard) expect(g.x1).toBeLessThanOrEqual(62);
+  });
+
+  it("do lado direito (barra de nome sem custo de mana) também", () => {
+    const { img, dist } = bar("right");
+    const rect = { x0: 50, y0: 58, x1: 692, y1: 106 };
+    const guard = barCapGuard(img, rect, "right");
+    let checked = 0;
+    for (let y = 63; y < 101; y++)
+      for (let x = 676; x < 692; x++)
+        if (dist(x, y) >= 0 && dist(x, y) < 5) {
+          expect(covered(guard, x, y), `(${x}, ${y})`).toBe(true);
+          checked++;
+        }
+    expect(checked).toBeGreaterThan(40);
+    for (const g of guard) expect(g.x0).toBeGreaterThanOrEqual(681);
+  });
+
+  it("papel com degradê forte: para antes da letra que começa perto da ponta (o R do Rumble, PSTX)", () => {
+    // papel mais escuro na ponta (160) que no meio da barra (220), e uma letra em x = 58
+    const { img, fill } = bar("left", (x) => (x < 100 ? 160 : 220));
+    fill(58, 70, 63, 95, [20, 20, 20]);
+    const guard = barCapGuard(img, { x0: 50, y0: 58, x1: 688, y1: 106 }, "left");
+    for (let y = 70; y < 95; y++) for (let x = 58; x < 63; x++) expect(covered(guard, x, y), `(${x}, ${y})`).toBe(false);
+  });
+
+  it("linha de sombra no pé da barra: o contorno logo depois da primeira coluna (Espectrolume Errante, CLU)", () => {
+    // papel 200 e, na última linha, a sombra do pé (97) com o contorno da curva em 51 e 52
+    const { img, fill } = canvas([200, 200, 200]);
+    fill(40, 104, 700, 106, [97, 97, 97]);
+    fill(50, 104, 51, 106, [84, 84, 84]);
+    fill(51, 104, 53, 106, [10, 10, 10]);
+    const guard = barCapGuard(img, { x0: 50, y0: 58, x1: 688, y1: 106 }, "left");
+    expect(covered(guard, 51, 104)).toBe(true);
+    expect(covered(guard, 52, 104)).toBe(true);
+  });
+
+  it("apagando a barra, a ponta fica como está (Konia, Monstrinha de Resgate, DSK)", () => {
+    const { img } = bar();
+    const rect = { x0: 50, y0: 58, x1: 688, y1: 106 };
+    const guard = barCapGuard(img, rect, "left");
+    eraseRegions(img, [{ rect, threshold: 28, fill: "rows" }], [], [], guard);
+    // contorno nos cantos de cima e de baixo da curva, ainda escuros
+    expect(lum(img, 50, 64)).toBeLessThan(60);
+    expect(lum(img, 50, 100)).toBeLessThan(60);
+    // e a letra saiu
+    expect(lum(img, 72, 82)).toBeGreaterThan(180);
+  });
+
+  it("sem a proteção, o contorno dos cantos vira papel (o defeito antigo)", () => {
+    const { img } = bar();
+    const rect = { x0: 50, y0: 58, x1: 688, y1: 106 };
+    eraseRegions(img, [{ rect, threshold: 28, fill: "rows" }], []);
+    expect(Math.max(lum(img, 50, 64), lum(img, 50, 100))).toBeGreaterThan(120);
+  });
+
+  it("a ponta não semeia a máscara: a folga dela não passa da proteção", () => {
+    const { img } = bar();
+    const rect = { x0: 50, y0: 58, x1: 688, y1: 106 };
+    const guard = barCapGuard(img, rect, "left");
+    const y = 66;
+    const end = Math.max(...guard.filter((g) => g.y0 === y).map((g) => g.x1));
+    const w = rect.x1 - rect.x0;
+    const seeded = textMask(img, rect, 28, guard, 0, "dark", true);
+    const unseeded = textMask(img, rect, 28, guard, 0, "dark", true, true, guard);
+    // só protegida, a folga do contorno entra no papel logo depois da ponta
+    expect(seeded[(y - rect.y0) * w + end - rect.x0]).toBe(1);
+    expect(unseeded[(y - rect.y0) * w + end - rect.x0]).toBe(0);
   });
 });

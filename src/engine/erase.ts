@@ -181,6 +181,7 @@ export function textMask(
   polarity: "dark" | "light" = "dark",
   rowBackground = false,
   tiles = true,
+  seedless: Rect[] = [],
 ): Uint8Array {
   const w = rect.x1 - rect.x0;
   const h = rect.y1 - rect.y0;
@@ -265,6 +266,16 @@ export function textMask(
   }
   const mask = new Uint8Array(n);
   for (let k = 0; k < n; k++) if (lum[k] < bg[k] - (tAt ? tAt[k] : tLum)) mask[k] = 1;
+  // o que nunca é letra (a ponta arredondada das barras, ver barCapGuard) não semeia a
+  // máscara: a histerese e a folga que partiam do contorno dela passavam da proteção e
+  // deixavam um risco claro no relevo, logo depois da ponta
+  const unseed = () => {
+    for (const p of seedless)
+      for (let y = Math.max(Math.round(p.y0), rect.y0); y < Math.min(Math.round(p.y1), rect.y1); y++)
+        for (let x = Math.max(Math.round(p.x0), rect.x0); x < Math.min(Math.round(p.x1), rect.x1); x++)
+          mask[(y - rect.y0) * w + x - rect.x0] = 0;
+  };
+  unseed();
   if (tAt) {
     // e onde o ladrilho é mais ruidoso que a caixa só fica o pedaço com miolo bem escuro
     // (o dobro do limiar dali): letra sempre tem; a pinta da textura que mal passa do
@@ -376,6 +387,7 @@ export function textMask(
     }
   }
 
+  unseed();
   if (rowBackground) dropArtBelowText(mask, w, h, unit);
 
   // letras claras numa barra (nome das fichas, verso das cartas de duas faces) têm sombra
@@ -1518,10 +1530,39 @@ export function findSetSymbolLeft(
     for (let x = a + 1; x < b; x++) if (!faint(x) && ++clean > Math.max(2, Math.round(2 * k))) return false;
     return true;
   };
+  // Começo do bloco de colunas de tinta que acaba em cols[j] (lacunas de letra só) e se
+  // ele está solto: 20 px sem tinta antes dele, como o "E" do símbolo da 30th Edition.
+  const blockStart = (j: number) => {
+    while (j > 0 && cols[j] - cols[j - 1] <= Math.max(3, 8 * k)) j--;
+    return j;
+  };
+  const loose = (j: number) => (j > 0 ? cols[j] - cols[j - 1] : cols[j] - x0) >= 20 * k;
+  // traço de letra: oito linhas seguidas de tinta numa coluna (o grão de uma barra
+  // granulada dá pontos soltos, nunca um traço)
+  const stroke = (a: number, b: number) => {
+    for (let x = a; x <= b; x++) {
+      let run = 0;
+      for (let y = y0; y < y1; y++) {
+        run = Math.abs(luminance(img.data, (y * img.width + x) * 4) - mean) > 45 ? run + 1 : 0;
+        if (run >= Math.round(8 * k)) return true;
+      }
+    }
+    return false;
+  };
   let start = end;
   for (let i = last; i > 0; i--) {
     const gap = cols[i] - cols[i - 1];
-    if (gap > Math.max(3, 8 * k) && !(gap <= 16 * k && bridged(cols[i - 1], cols[i]))) break;
+    if (gap > Math.max(3, 8 * k) && !(gap <= 16 * k && bridged(cols[i - 1], cols[i]))) {
+      // Numa barra cinza o dourado do símbolo da 30th Edition quase não passa por tinta: só
+      // o traço do "E" conta, e o "D" inteiro é "fraco". A lacuna até o resto chega a 25 px
+      // e a primeira letra e meia era apagada (Demonic Tutor, 30A). Uma lacuna maior, toda
+      // de colunas fracas, ainda une os dois quando o bloco da esquerda está solto (não é o
+      // fim de uma linha de tipo, que vem colado na palavra de antes), tem um traço de letra
+      // (não é o grão de uma barra granulada) e o símbolo cabe.
+      const b = blockStart(i - 1);
+      const ok = gap <= 32 * k && loose(b) && end - cols[b] <= maxWidth * k && bridged(cols[i - 1], cols[i]);
+      if (!(ok && stroke(cols[b], cols[i - 1]))) break;
+    }
     start = cols[i - 1];
   }
   // Bloco solto, com 20 px vazios antes dele (mais que o espaço entre duas palavras): não
@@ -1758,6 +1799,8 @@ export function maskRegions(
     tiles?: boolean;
   }[],
   protect: Rect[],
+  /** dentro de `protect`, o que nem semeia a máscara (ver `textMask`) */
+  seedless: Rect[] = [],
 ): RegionMask[] {
   return regions.map(({ rect, threshold, colorThreshold, polarity: forced, stains, fill, tiles }) => {
     const r = {
@@ -1768,7 +1811,7 @@ export function maskRegions(
     };
     if (r.x1 <= r.x0 || r.y1 <= r.y0) return { rect: r, mask: new Uint8Array(0), polarity: "dark" };
     const polarity = forced ?? textPolarity(img, r);
-    let mask = textMask(img, r, threshold, protect, colorThreshold ?? 0, polarity, fill === "rows", tiles ?? true);
+    let mask = textMask(img, r, threshold, protect, colorThreshold ?? 0, polarity, fill === "rows", tiles ?? true, seedless);
     if (stains) {
       mask = growStains(img, r, mask);
       // a proteção vale também para o que a mancha alcançou
@@ -1779,6 +1822,102 @@ export function maskRegions(
     }
     return { rect: r, mask, polarity };
   });
+}
+
+/**
+ * A ponta arredondada de uma barra (nome ou tipo) dentro do retângulo de apagamento, linha
+ * a linha (escala da imagem), para ficar intacta e não servir de fonte do preenchimento.
+ * O retângulo começa num x fixo (50), que cai dentro da curva da ponta: o contorno escuro
+ * nos cantos de cima e de baixo e o relevo (o degradê cinza até o papel, mais escuro no
+ * pé) entravam na máscara e saíam pintados da cor lisa do papel, um remendo claro que
+ * ainda passava por cima do contorno (Konia, Monstrinha de Resgate, DSK). Em cada linha,
+ * a ponta é o que vem colado na borda do retângulo e foge do papel daquela linha: vai até
+ * o primeiro pixel de papel, ou até onde o degradê para de clarear perto dele, e nunca
+ * passa de 11 px. Uma letra logo depois, sem papel no meio, é uma queda forte depois de um
+ * trecho liso, e para ali também. Quem chama passa as pontas a `eraseRegions` como `caps`:
+ * opacas e também sem semente da máscara, para a folga das letras não passar por cima.
+ */
+export function barCapGuard(img: ImageData, rect: Rect, side: "left" | "right"): Rect[] {
+  const x0 = Math.round(rect.x0);
+  const x1 = Math.round(rect.x1);
+  const y0 = Math.max(0, Math.round(rect.y0));
+  const y1 = Math.min(img.height, Math.round(rect.y1));
+  const k = img.width / 745;
+  const margin = Math.round(20 * k);
+  // a ponta nunca passa de 11 px para dentro (o nome começa em x = 66; o contorno e o
+  // relevo, nas linhas mais curvas, chegam a uns 8)
+  const maxRun = Math.round(11 * k);
+  if (x1 - x0 < 3 * margin || x0 < 0 || x1 + 4 > img.width || y1 <= y0) return [];
+  const at = (x: number, y: number) => luminance(img.data, (y * img.width + x) * 4);
+  // papel de cada linha: o percentil 70 dela (30 com letra clara), que fica no papel mesmo
+  // numa linha cheia de letra. A mediana caía nas letras, e a da barra inteira, nas linhas
+  // de moldura abaixo da barra, que o retângulo também pega: a ponta ia por cima da
+  // primeira letra (o "V" da Vivien, PIKO)
+  const light = textPolarity(img, { x0, y0, x1, y1 }) === "light";
+  const papers = new Float32Array(y1 - y0);
+  const row = new Float32Array(x1 - x0 - 2 * margin);
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0 + margin; x < x1 - margin; x++) row[x - x0 - margin] = at(x, y);
+    row.sort();
+    papers[y - y0] = row[Math.floor(row.length * (light ? 0.3 : 0.7))];
+  }
+  const dir = side === "left" ? 1 : -1;
+  const start = side === "left" ? x0 : x1 - 1;
+  const widths = new Int32Array(y1 - y0);
+  for (let y = y0; y < y1; y++) {
+    const paper = papers[y - y0];
+    let n = 0;
+    let low = 256;
+    let flat = 0;
+    let level = 0;
+    for (; n < maxRun; n++) {
+      const v = at(start + dir * n, y);
+      // nas primeiras colunas, o contorno escuro logo adiante: ainda é a ponta. Na linha
+      // de sombra do pé da barra o papel da linha é a própria sombra, e o contorno da curva,
+      // logo depois, entrava na máscara (um risco claro no pé do Espectrolume Errante, CLU)
+      let outlineAhead = false;
+      if (n < Math.round(4 * k))
+        for (let j = 1; j <= 3; j++) if (at(start + dir * (n + j), y) < Math.min(v, paper) - 50) outlineAhead = true;
+      if (!outlineAhead) {
+        if (Math.abs(v - paper) <= 18) break;
+        // uma letra: a queda forte depois de um trecho liso de papel. A borda suavizada
+        // dela, que já tinha começado a cair, fica de fora também (papel com degradê forte,
+        // mais escuro na ponta: o "R" do Rumble, PSTX)
+        if (flat >= 3 && v < level - 50) {
+          while (n > 0 && at(start + dir * (n - 1), y) < level - 12) n--;
+          break;
+        }
+        // o degradê acabou: os próximos pixels já não clareiam. A ponta da barra costuma ser
+        // um pouco mais escura que o meio dela, de onde vem o papel da linha: é papel da
+        // ponta o que fica perto do papel (45 tons abaixo, 25 acima) ou o que subiu bem
+        // depois do contorno escuro. Um trecho liso longe do papel é a moldura de fora,
+        // antes do contorno, nas linhas do alto e do pé da barra
+        let ahead = 0;
+        for (let j = 1; j <= 4; j++) ahead = Math.max(ahead, at(start + dir * (n + j), y));
+        const nearPaper = v >= paper - 45 && v <= paper + 25;
+        const climbed = low < paper - 80 && v > low + 40 && v >= paper - 90;
+        if (v >= ahead - 12 && (nearPaper || climbed)) break;
+      }
+      const prev = n > 0 ? at(start + dir * (n - 1), y) : v;
+      if (!outlineAhead && Math.abs(v - prev) <= 20 && v >= paper - 90) {
+        level = flat ? (level * flat + v) / (flat + 1) : v;
+        flat++;
+      } else flat = 0;
+      low = Math.min(low, v);
+    }
+    widths[y - y0] = n;
+  }
+  // a ponta é uma curva: uma linha sozinha muito mais larga que as vizinhas é outra coisa
+  // (um pingo, o começo de uma letra) e fica com a largura delas
+  const out: Rect[] = [];
+  for (let i = 0; i < widths.length; i++) {
+    const near = Math.max(i > 0 ? widths[i - 1] : 0, i + 1 < widths.length ? widths[i + 1] : 0);
+    const n = Math.min(widths[i], near + Math.round(4 * k));
+    if (!n) continue;
+    const y = y0 + i;
+    out.push(side === "left" ? { x0, y0: y, x1: x0 + n, y1: y + 1 } : { x0: x1 - n, y0: y, x1, y1: y + 1 });
+  }
+  return out;
 }
 
 /**
@@ -1809,11 +1948,17 @@ export function eraseRegions(
   }[],
   protect: Rect[],
   /** áreas protegidas que também não servem de fonte para o preenchimento */
-  opaque: Rect[] = [],
+  opaqueAreas: Rect[] = [],
+  /**
+   * pontas arredondadas das barras (ver `barCapGuard`): opacas como as de cima e, além
+   * disso, sem semear a máscara (a folga dela não passa da ponta)
+   */
+  caps: Rect[] = [],
 ): ("dark" | "light")[] {
+  const opaque = [...opaqueAreas, ...caps];
   // uma região de cada vez: a máscara da seguinte é medida já sem o texto da anterior
   return regions.map((region) => {
-    const [m] = maskRegions(img, [region], [...protect, ...opaque]);
+    const [m] = maskRegions(img, [region], [...protect, ...opaque], caps);
     if (!m.mask.length) return m.polarity;
     // (a ligação é medida acima da folga da máscara: dilatada, a do fio subia além da linha)
     if (region.attachedBelow !== undefined) keepAttachedBelow(m, region.attachedBelow, Math.round((8 * img.height) / 1040));
