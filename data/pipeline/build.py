@@ -667,6 +667,66 @@ def saga_reminder(oracle_text: str | None, text_pt: str | None, reminders: dict[
     return text_pt
 
 
+# lembrete entre parênteses no fim de uma linha do Oracle ("Amass Orcs 1. (Put a +1/+1 counter…)")
+_LINE_REMINDER = re.compile(r"\(([^()]+)\)$")
+# números, P/R e símbolos de um lembrete: os dois idiomas têm de trazer os mesmos
+_REMINDER_MARKS = re.compile(r"\{[^}]+\}|[+-]?\d+(?:/[+-]?\d+)?")
+
+
+def reminder_texts(prints, oracle: dict[str, dict]) -> dict[str, str]:
+    """
+    Os lembretes de palavra-chave em PT, pelo lembrete em inglês do Oracle, tirados das
+    impressões em português (todas, não só a mais nova de cada carta): os parênteses do Oracle
+    e os do texto impresso são casados pela ordem quando a quantidade bate, e só com os mesmos
+    números e símbolos ("+1/+1", "0/0", "{2}{W}"). O Arena não traz os lembretes, e a carta
+    física traz (o "Arregimentar Orcs 1." do Book of Mazarbul sem a explicação). Fica o texto da
+    impressão mais nova de cada lembrete: as antigas usam termos velhos ("jogar", "remova do
+    jogo"). Só lembrete idêntico ao de uma carta impressa, nunca montado.
+    """
+    best: dict[str, tuple[str, str]] = {}
+    for card in prints:
+        oid = card.get("oracle_id") or (card.get("card_faces") or [{}])[0].get("oracle_id")
+        o = oracle.get(oid)
+        if not o:
+            continue
+        faces, faces_en = card.get("card_faces") or [card], o.get("card_faces") or [o]
+        if len(faces) != len(faces_en):
+            continue
+        for f, g in zip(faces, faces_en):
+            en = re.findall(r"\(([^()]+)\)", g.get("oracle_text") or "")
+            pt = re.findall(r"\(([^()]+)\)", clean_rules(fix_breaks(f.get("printed_text"))) or "")
+            if not en or len(en) != len(pt):
+                continue
+            for a, b in zip(en, pt):
+                if sorted(_REMINDER_MARKS.findall(a)) != sorted(_REMINDER_MARKS.findall(b)):
+                    continue
+                key = (card.get("released_at") or "", b)
+                if a not in best or key > best[a]:
+                    best[a] = key
+    return {a: b for a, (_, b) in best.items()}
+
+
+def add_reminders(oracle_text: str | None, text_pt: str | None, reminders: dict[str, str]) -> str | None:
+    """
+    Põe no fim de cada linha do texto em PT o lembrete oficial da mesma linha do Oracle (ver
+    `reminder_texts`), como na carta física: "I — Arregimentar Orcs 1. (Coloque um marcador
+    +1/+1…)". As linhas têm de bater uma a uma; linha com mais de um lembrete, linha que já tem
+    parênteses e lembrete que nunca saiu impresso em PT ficam como estão.
+    """
+    if text_pt is None:
+        return None
+    en = [x.strip() for x in (oracle_text or "").split("\n") if x.strip()]
+    pt = text_pt.split("\n")
+    if len(en) != len(pt):
+        return text_pt
+    out = []
+    for e, p in zip(en, pt):
+        m = _LINE_REMINDER.search(e)
+        pt_reminder = reminders.get(m.group(1)) if m and e.count("(") == 1 and not e.startswith("(") else None
+        out.append(f"{p.rstrip()} ({pt_reminder})" if pt_reminder and "(" not in p else p)
+    return "\n".join(out)
+
+
 # Parágrafo que começa com um nome e um travessão, com texto depois na mesma linha
 # ("Landfall — Whenever…", "Aterragem — Toda vez…"). O custo de uma palavra-chave
 # ("Ward—Pay 2 life") não tem espaço em volta do travessão no Oracle, e "Choose one —"
@@ -1090,6 +1150,9 @@ def build(offline: bool) -> list[dict]:
     ITALIC_WORDS.update(load_italic_words(offline))
     reminders = saga_reminders(printed)
     log(f"lembretes de Saga em PT (das impressas): {len(reminders)}")
+    with open(CACHE / "scryfall_pt.jsonl") as fh:
+        keyword_reminders = reminder_texts((json.loads(line) for line in fh), {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle})
+    log(f"lembretes de palavra-chave em PT (das impressas): {len(keyword_reminders)}")
 
     rows = []
     stats = {"arena": 0, "impresso": 0, "sem": 0}
@@ -1130,7 +1193,9 @@ def build(offline: bool) -> list[dict]:
                     if text_pt is None:
                         SAGA_MISMATCH.add(oid)
                     else:
-                        f["text_pt"] = saga_reminder(en_face.get("oracle_text"), text_pt, reminders)
+                        text_pt = saga_reminder(en_face.get("oracle_text"), text_pt, reminders)
+                        # e o lembrete de cada capítulo ("Arregimentar Orcs 1. (Coloque…)")
+                        f["text_pt"] = add_reminders(en_face.get("oracle_text"), text_pt, keyword_reminders)
 
         for i, f in enumerate(faces):
             aw = ability_word_lines(faces_en[min(i, len(faces_en) - 1)].get("oracle_text"), f.get("text_pt"))

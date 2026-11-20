@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, saga_chapters, saga_reminder, saga_reminders, saga_supported, token_face_key, token_key
+from build import ability_word_lines, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, reminder_texts, saga_chapters, saga_reminder, saga_reminders, saga_supported, token_face_key, token_key
 
 
 class CitesAltName(unittest.TestCase):
@@ -460,6 +460,62 @@ class SagaReminder(unittest.TestCase):
         self.assertEqual(saga_reminder(en, "Adiantar leitura\nI — Compre um card.", {self.LER_EN: self.LER_PT}), self.LER_PT + "\nI — Compre um card.")
         # palavra-chave diferente da impressa: não mistura
         self.assertEqual(saga_reminder(en, "Ler adiante\nI — Compre um card.", {self.LER_EN: self.LER_PT}), "Ler adiante\nI — Compre um card.")
+
+
+class KeywordReminders(unittest.TestCase):
+    """O lembrete de palavra-chave vem das cartas impressas em PT; o Arena não o traz."""
+
+    AMASS = "Put a +1/+1 counter on an Army you control. It's also an Orc. If you don't control an Army, create a 0/0 black Orc Army creature token first."
+    ARREG = "Coloque um marcador +1/+1 em um Exército que você controla. Ele também é um Orc. Se você não controlar um Exército, crie antes uma ficha de criatura Orc Exército preta 0/0."
+
+    def print_(self, oid: str, pt: str, released: str) -> dict:
+        return {"oracle_id": oid, "printed_text": pt, "released_at": released}
+
+    def test_lembrete_das_impressas(self):
+        oracle = {
+            "a": {"oracle_text": f"Amass Orcs 1. ({self.AMASS})"},
+            "b": {"oracle_text": "Flashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"},
+            "c": {"oracle_text": "Scry 1. (Look at the top card of your library.)\nCycling {2} ({2}, Discard this card: Draw a card.)"},
+        }
+        prints = [
+            self.print_("a", f"Arregimente Orcs 1. ({self.ARREG})", "2023-06-23"),
+            # a impressão mais nova ganha: a antiga usa "jogar"
+            self.print_("b", "Recapitular {2}{R} (Você pode jogar este card de seu cemitério pagando seu custo de recapitular. Depois, remova-o do jogo.)", "2006-01-01"),
+            self.print_("b", "Recapitular {2}{R} (Você pode conjurar este card de seu cemitério pagando seu custo de recapitular. Depois, exile-o.)", "2021-09-24"),
+            # quantidade de parênteses diferente: não casa nenhum
+            self.print_("c", "Use vidência 1.\nCiclagem {2} ({2}, descarte este card: Compre um card.)", "2020-01-01"),
+        ]
+        self.assertEqual(
+            reminder_texts(prints, oracle),
+            {
+                self.AMASS: self.ARREG,
+                "You may cast this card from your graveyard for its flashback cost. Then exile it.": "Você pode conjurar este card de seu cemitério pagando seu custo de recapitular. Depois, exile-o.",
+            },
+        )
+
+    def test_numeros_e_simbolos_iguais(self):
+        # o texto impresso com outro número é de outra versão do lembrete: não casa
+        oracle = {"a": {"oracle_text": "Equip {2} ({2}: Attach to target creature you control.)"}}
+        prints = [self.print_("a", "Equipar {3} ({3}: Anexe à criatura alvo que você controla.)", "2020-01-01")]
+        self.assertEqual(reminder_texts(prints, oracle), {})
+
+    def test_vai_no_fim_da_linha_do_capitulo(self):
+        # Book of Mazarbul: a carta física explica o "Arregimentar Orcs 1." do capítulo I
+        en = f"(As this Saga enters…)\nI — Amass Orcs 1. ({self.AMASS})\nII — Amass Orcs 2.\nIII — Creatures you control get +1/+0."
+        pt = "(Conforme esta Saga entra…)\nI — Arregimentar Orcs 1.\nII — Arregimente Orcs 2.\nIII — As criaturas que você controla recebem +1/+0."
+        out = add_reminders(en, pt, {self.AMASS: self.ARREG})
+        self.assertEqual(out.split("\n")[1], f"I — Arregimentar Orcs 1. ({self.ARREG})")
+        self.assertEqual(out.split("\n")[2:], pt.split("\n")[2:])
+
+    def test_fica_como_esta(self):
+        lembretes = {self.AMASS: self.ARREG}
+        en = f"I — Amass Orcs 1. ({self.AMASS})\nII — Draw a card."
+        # linhas que não batem, lembrete desconhecido e linha que já tem parênteses
+        self.assertEqual(add_reminders(en, "I — Arregimente Orcs 1.", lembretes), "I — Arregimente Orcs 1.")
+        self.assertEqual(add_reminders(en, "I — Arregimente Orcs 1.\nII — Compre um card.", {}), "I — Arregimente Orcs 1.\nII — Compre um card.")
+        ja = f"I — Arregimente Orcs 1. ({self.ARREG})\nII — Compre um card."
+        self.assertEqual(add_reminders(en, ja, lembretes), ja)
+        self.assertIsNone(add_reminders(en, None, lembretes))
 
 
 class SagaChapters(unittest.TestCase):
