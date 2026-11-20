@@ -152,6 +152,26 @@ Depois de feitos (ADR 0014), no mesmo deck de 100 cartas, num build local:
 | Página durante o adiantado (30 s, celular emulado) | 27 tarefas longas, a maior de 646 ms, 14,7 s ocupados: por isso o adiantado só monta depois de 1,5 s sem toque, rolagem ou tecla |
 | Segunda visita com a mesma lista (Konia sem borda, Sol Ring, Arcane Signet) | As três acabadas em 0,2 s, sem baixar a rede neural; PDF em 0,1 s; 0,9 MB guardados |
 
+## Molduras especiais
+
+### Sagas (20/11/2026)
+
+Como as ferramentas existentes fazem: o Proxyshop (Photoshop) refaz a Saga a partir do próprio modelo. Ele encolhe os textos dos capítulos até caberem na coluna (`scale_text_layers_to_height`), espalha os capítulos por igual (`spread_layers_over_reference`), desenha os fios entre eles e alinha cada marcador ao seu texto (`align_vertical`). O Magic Set Editor pede as coordenadas dos marcadores e dos fios à mão. Os dois desenham os marcadores; aqui eles fazem parte da imagem escolhida, então o Proxinho faz o inverso: os marcadores ficam, e os fios e o texto se ajustam a eles (ADR 0016).
+
+Medidas nas imagens do Scryfall (745 × 1040), em 16 coleções de DOM a TRK:
+
+| Medida | Valor |
+|---|---|
+| Coluna de texto | x ≈ 58 a 368, do pé da barra do nome (119) ao fio de baixo (867) |
+| Fio preto entre a coluna e a arte | x ≈ 370 a 374 |
+| Fio entre faixas | sombra de ~8 px e degrau de 10 a 30 tons na largura toda; o primeiro em ~308 (356 em DMU, com "Read ahead") |
+| Marcadores | hexágonos dourados em x ≈ 30 a 84, ~60 px de altura, número romano de 19 a 27 px no meio (x ≈ 57) |
+| Barra de tipo | fio de cima em ~870 a 873, ~291 px abaixo do da carta comum |
+
+O que o texto em PT pede: o Arena não tem o lembrete do alto e traz o texto dos capítulos agrupados repetido (o Long List of the Ents, um parágrafo seis vezes); o número de cada capítulo vem do Oracle. Com as faixas do inglês, a do alto ficava vazia e o texto dos capítulos, pequeno; com os fios no lugar novo, a letra dos capítulos fica perto do corpo do inglês (~30).
+
+Digitalizações: nas cartas de Theros e nas promos de pré-estreia, o degrau do fio se espalha por duas linhas e não passa de 6 tons em nenhuma; medido em duas linhas, entram. Em 12 promos de pré-estreia (sobretudo de Kaldheim e Theros) o papel sai quase branco (249) e o fio é uma queda de 2 tons: não há como achá-lo sem confundir com o grão, e elas saem na original (a versão da coleção sai em PT).
+
 ## Lado legal e o caminho seguro
 
 | Ponto | O que diz | Risco |

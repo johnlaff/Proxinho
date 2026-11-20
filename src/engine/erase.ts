@@ -1459,16 +1459,17 @@ export function typeBarTop(img: ImageData): number | null {
 /**
  * Os dois fios da barra de tipo (escala-base): `top` como em `typeBarTop` e `bottom`,
  * o fio de baixo (~639 na moldura padrão; ~649 em algumas molduras escuras de BRO, em
- * que as letras descem mais e o pé do "y" ficava fora do apagamento).
+ * que as letras descem mais e o pé do "y" ficava fora do apagamento). `from` e `to` limitam a
+ * busca do fio de cima: na Saga a barra fica no pé da carta (ver saga.ts).
  */
-export function typeBarEdges(img: ImageData): { top: number; bottom: number } | null {
+export function typeBarEdges(img: ImageData, from = 570, to = 780): { top: number; bottom: number } | null {
   const fx = img.width / 745;
   const fy = img.height / 1040;
   const x0 = Math.round(80 * fx);
   const x1 = Math.round(660 * fx);
   const d = Math.max(2, Math.round(3 * fy));
   const edge: boolean[] = [];
-  for (let b = 570; b < 780; b++) {
+  for (let b = from; b < Math.min(to, Math.floor(img.height / fy) - 1); b++) {
     const y = Math.round(b * fy);
     let off = 0;
     for (let x = x0; x < x1; x++)
@@ -1480,7 +1481,7 @@ export function typeBarEdges(img: ImageData): { top: number; bottom: number } | 
   for (let i = 0; i + 70 < edge.length; i++) {
     if (!edge[i]) continue;
     const j = edge.slice(i + 45, i + 71).indexOf(true);
-    if (j >= 0) return { top: 570 + i, bottom: 570 + i + 45 + j };
+    if (j >= 0) return { top: from + i, bottom: from + i + 45 + j };
   }
   return null;
 }

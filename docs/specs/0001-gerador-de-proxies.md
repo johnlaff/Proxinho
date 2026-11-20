@@ -59,7 +59,7 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 
 Molduras além da 2015 normal, edição manual do texto, tradução não oficial assistida, fichas. Ver [roadmap](../roadmap.md).
 
-Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008). Em 19/11/2026: artes sem borda na moldura padrão, com o nome de crossover mantido no alto e o nome em PT na linha de baixo, e a sangria do PDF com a própria arte (ADR 0012).
+Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008). Em 19/11/2026: artes sem borda na moldura padrão, com o nome de crossover mantido no alto e o nome em PT na linha de baixo, e a sangria do PDF com a própria arte (ADR 0012). Em 20/11/2026: Sagas na moldura padrão (ADR 0016).
 
 ### H8. Fichas (entregue em 17/11/2026, ADR 0009)
 Como jogador, quero imprimir as fichas que o meu deck cria, em português, junto com as cartas.
@@ -76,3 +76,10 @@ Como jogador, quero usar as artes sem borda (Secret Lair, Commander, Marvel) com
 - [x] A arte padrão de cada carta continua sendo a com borda; a sem borda aparece na gaveta para escolher.
 - [x] Nas artes com nome de crossover (sem borda e com borda), o nome do alto fica como impresso e o nome em PT vai na linha pequena logo abaixo.
 - [x] No PDF com sangria, a sangria das artes sem borda é a própria arte, sem filete preto.
+
+### H10. Sagas (entregue em 20/11/2026, ADR 0016)
+Como jogador, quero imprimir as Sagas em português na arte que eu escolher.
+- [x] As Sagas na moldura padrão saem em português, com o texto de cada capítulo ao lado do seu marcador, em letra do mesmo corpo nos capítulos todos.
+- [x] Os fios entre os capítulos mudam de lugar para o português caber; os marcadores não mudam.
+- [x] Sem lembrete em inglês no alto: a faixa do alto só fica quando o texto em PT tem algo ali ("Adiantar leitura").
+- [x] Quando o motor não acha os fios ou os marcadores na imagem, ou o texto não cabe, a carta sai na original e a etiqueta diz que sai em inglês.

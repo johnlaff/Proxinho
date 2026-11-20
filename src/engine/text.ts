@@ -296,6 +296,8 @@ export interface TextRow {
   width: number;
   height: number;
   notch?: Notch;
+  /** linhas da faixa que começam com palavra de habilidade (ver `buildParagraphs`) */
+  italic?: readonly number[];
 }
 
 /**
@@ -303,11 +305,16 @@ export interface TextRow {
  * Todas usam o mesmo corpo, como nas cartas impressas.
  */
 export function fitRows(rows: TextRow[], m: Measurer, max = 32, min = 15): LayoutResult[] {
-  const paragraphs = rows.map((r) => buildParagraphs(r.text, null));
+  const paragraphs = rows.map((r) => buildParagraphs(r.text, null, r.italic));
   const at = (size: number) => rows.map((r, i) => layoutAround(paragraphs[i], size, r.width, r.height, m, r.notch));
   for (let size = max; size >= min; size -= 0.5) {
     const res = at(size);
     if (res.every((l, i) => l.height <= rows[i].height)) return res;
   }
   return at(min);
+}
+
+/** Diagrama cada faixa no corpo `size`, sem procurar o corpo (a Saga mede as faixas com ele, ver saga.ts). */
+export function rowsAt(rows: TextRow[], m: Measurer, size: number): LayoutResult[] {
+  return rows.map((r) => layoutAround(buildParagraphs(r.text, null, r.italic), size, r.width, r.height, m, r.notch));
 }

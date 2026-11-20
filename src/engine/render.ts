@@ -62,8 +62,22 @@ import {
   rowRects,
   splitAbilities,
 } from "./planeswalker";
+import {
+  DIVIDER_SPAN,
+  SAGA,
+  dividerProfile,
+  drawDivider,
+  sagaArtLeft,
+  sagaBands,
+  sagaBoxes,
+  sagaDividers,
+  sagaNumerals,
+  sagaPlan,
+  sagaText,
+  sagaTopFrame,
+} from "./saga";
 import { preloadSymbols } from "./symbols";
-import { SYMBOL_EM, TABLE_ROW, chunkWidth, fitRows, fitText, lineText, type LayoutResult, type Measurer } from "./text";
+import { SYMBOL_EM, TABLE_ROW, chunkWidth, fitRows, fitText, lineText, rowsAt, type LayoutResult, type Measurer } from "./text";
 import {
   findPlaque2003,
   findBoxHighlight,
@@ -432,6 +446,175 @@ async function renderPlaneswalker(p: {
   });
   return true;
 }
+
+/**
+ * Saga (ver saga.ts): nome no alto como na carta comum, barra de tipo no pé e a coluna de
+ * texto à esquerda da arte, com uma faixa por capítulo entre os fios medidos na imagem. O
+ * papel da coluna é opaco (com a marca-d'água de algumas, como em Dominaria): o apagamento
+ * é o da caixa comum, faixa por faixa, sem a tira dos marcadores. Cada capítulo vai na faixa
+ * dele, centrado nos seus marcadores, todos no mesmo corpo, como na carta impressa; a faixa do
+ * alto leva o que vem antes dos capítulos (o "Ler adiante"; o lembrete das Sagas não está no
+ * Arena e não é escrito, e sem nada para o alto o fio de cima sai). O português é mais
+ * comprido e cada capítulo muda de tamanho de um jeito: os fios mudam de lugar, entre os
+ * marcadores, para o texto caber no maior corpo possível (ver `sagaPlan`), e são redesenhados
+ * com a sombra medida no original. Sem achar os números dos marcadores, os fios ficam onde
+ * estão. Devolve `false` (a carta sai na original) quando a moldura ou o número de faixas não
+ * batem, ou quando o texto não cabe nem no menor corpo.
+ */
+async function renderSaga(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  sctx: CanvasRenderingContext2D;
+  data: ImageData;
+  toImg: (r: Rect) => Rect;
+  face: PtFace;
+  print: PrintRecord;
+  W: number;
+  H: number;
+}): Promise<boolean> {
+  const { ctx, data, toImg, face, print } = p;
+  const parts = sagaText(face.text_pt);
+  if (!parts) return false;
+  const fx = data.width / BASE_W;
+  const fy = data.height / BASE_H;
+  const artLeft = sagaArtLeft(data);
+  const bar = typeBarEdges(data, 850, 960);
+  if (artLeft === null || !bar || bar.top < SAGA.type.y0 || bar.top > SAGA.type.y1) return false;
+  // uma faixa por grupo de capítulos, mais a do alto
+  const dividers = sagaDividers(data, artLeft);
+  if (dividers.length !== parts.chapters.length) return false;
+  const bands = sagaBands(dividers, artLeft);
+  // os números dos marcadores de cada capítulo, conferidos com o grupo ("I, II" são dois)
+  const numerals = sagaNumerals(data, dividers[0], SAGA.column.y1);
+  const edges = [...dividers, SAGA.column.y1];
+  const markers = parts.chapters.map((c, i) => {
+    const inBand = numerals.filter((y) => y > edges[i] && y < edges[i + 1]);
+    return inBand.length === c.numerals.split(", ").length ? { first: inBand[0], last: inBand[inBand.length - 1] } : null;
+  });
+  const found = markers.every((x): x is { first: number; last: number } => x !== null) ? markers : null;
+
+  // a barra de tipo é a da carta comum, mais abaixo (o fio de baixo fica em ~639 na comum)
+  const typeShift = bar.bottom - 639;
+  const symbolInfo: { colored: number; lim: number; tight?: boolean } = { colored: -1, lim: 0 };
+  const setLeft =
+    findSetSymbolLeft(data, Math.round((594 + typeShift) * fy), Math.round((632 + typeShift) * fy), undefined, 100, symbolInfo) / fx;
+  const layout = m15Layout(print.mana_cost, false, setLeft, { typeShift, leftIcon: hasLeftIcon(print.effects, false, false) });
+  alignBar(data, layout, 0, { x0: 70, y0: 45, x1: 420, y1: 120 }, BAR_CENTER.title, fx, fy);
+  alignBar(data, layout, 1, { x0: 70, y0: bar.top + 6, x1: 420, y1: bar.bottom - 1 }, BAR_CENTER.type + typeShift, fx, fy);
+  const r = layout.erase[1].rect;
+  if (bar.bottom - 3 > r.y1) layout.erase[1] = { ...layout.erase[1], rect: { ...r, y1: bar.bottom - 3 } };
+
+  // o texto: a faixa do alto só entra quando tem texto; as linhas de palavra de habilidade (o
+  // nome do capítulo nas Invocações de Final Fantasy) saem em itálico
+  const k = p.W / BASE_W;
+  const m = measurer(ctx, k);
+  const italic = new Set(face.ability_words ?? []);
+  const hasTop = parts.top.length > 0;
+  const rows = [
+    ...(hasTop
+      ? [{ band: 0, text: parts.top.map((t) => t.text).join("\n"), italic: parts.top.flatMap((t, i) => (italic.has(t.line) ? [i] : [])) }]
+      : []),
+    ...parts.chapters.map((c, i) => ({ band: i + 1, text: c.text, italic: italic.has(c.line) ? [0] : [] })),
+  ];
+  const width = (row: { band: number }) => artLeft - 10 - (row.band === 0 ? SAGA.text.topX0 : SAGA.text.chapterX0);
+  let plan: number[] | null = null;
+  let layouts: LayoutResult[] = [];
+  if (found) {
+    for (let size = SAGA_MAX_SIZE; size >= SAGA_MIN_SIZE && !plan; size -= 0.5) {
+      layouts = rowsAt(
+        rows.map((row) => ({ text: row.text, width: width(row), height: Infinity, italic: row.italic })),
+        m,
+        size,
+      );
+      plan = sagaPlan(
+        layouts.map((l) => l.height),
+        hasTop,
+        found,
+      );
+    }
+  }
+  // sem os números, ou sem lugar para os fios: as faixas ficam como estão
+  const boxes = plan ? sagaBoxes(plan, hasTop, artLeft) : rows.map((row) => bands[row.band].text);
+  if (!plan) {
+    layouts = fitRows(
+      rows.map((row, i) => ({ text: row.text, width: boxes[i].x1 - boxes[i].x0, height: boxes[i].y1 - boxes[i].y0, italic: row.italic })),
+      m,
+      SAGA_MAX_SIZE,
+      SAGA_MIN_SIZE,
+    );
+    // nem no menor corpo coube: melhor a original que texto por cima do fio
+    if (layouts.some((l, i) => l.height > boxes[i].y1 - boxes[i].y0)) return false;
+  }
+
+  const capGuard = [
+    ...layout.erase.slice(0, 2).flatMap((e) => barCapGuard(data, toImg(e.rect), "left")),
+    ...(print.mana_cost ? [] : barCapGuard(data, toImg(layout.erase[0].rect), "right")),
+  ];
+  const orig = plan ? new ImageData(new Uint8ClampedArray(data.data), data.width, data.height) : null;
+  // os fios que mudam de lugar saem junto: a faixa de cada um entra inteira na máscara, com
+  // papel em cima e embaixo para o preenchimento
+  const lineX0 = SAGA.chapterX0 - 2;
+  const lineX1 = artLeft - 4;
+  // (sem texto no alto, o fio de cima sai e os outros vêm depois dele no plano)
+  const next = (i: number) => (plan ? (hasTop ? plan[i] : i ? plan[i - 1] : null) : dividers[i]);
+  const moved = dividers.filter((d, i) => next(i) !== d);
+  const drawn = dividers.map((_, i) => next(i)).filter((y, i): y is number => y !== null && y !== dividers[i]);
+  // a curva da tira dos marcadores, no pé da faixa do alto, é moldura (ver sagaTopFrame)
+  const topFrame = sagaTopFrame(data, bands[0].erase.y0 * fy, dividers[0], artLeft);
+  const inks = eraseRegions(
+    data,
+    [
+      ...layout.erase.slice(0, 2).map((e) => ({ rect: toImg(e.rect), threshold: e.threshold, fill: e.fill })),
+      // sem crescer a mancha: a marca-d'água de algumas coleções (o redemoinho de Dominaria,
+      // o brasão de Benália) atravessa as faixas, e cada faixa levava o pedaço dela; o resto
+      // ficava cortado. As letras saem e a marca-d'água fica inteira
+      ...bands.map((b) => ({ rect: roundRect(toImg(b.erase)), threshold: 14, colorThreshold: 34 })),
+      ...moved.map((d) => ({
+        rect: roundRect(toImg({ x0: lineX0, y0: d - DIVIDER_SPAN.above - 10, x1: lineX1, y1: d + DIVIDER_SPAN.below + 8 })),
+        threshold: 255,
+        force: [roundRect(toImg({ x0: lineX0, y0: d - DIVIDER_SPAN.above - 1, x1: lineX1, y1: d + DIVIDER_SPAN.below + 1 }))],
+      })),
+    ],
+    [],
+    topFrame,
+    capGuard,
+  );
+  if (plan && orig) {
+    // a sombra do fio, medida num fio entre capítulos (o de cima pode ter o texto do alto colado)
+    const ref = Math.round(dividers[dividers.length > 1 ? 1 : 0] * fy);
+    const profile = dividerProfile(orig, data, ref, lineX0 * fx, lineX1 * fx);
+    for (const y of drawn) drawDivider(data, Math.round(y * fy), profile, lineX0 * fx, lineX1 * fx);
+  }
+  p.sctx.putImageData(data, 0, 0);
+  ctx.drawImage(p.src, 0, 0, p.W, p.H);
+
+  drawLine(
+    ctx,
+    face.name_pt ?? face.name_en,
+    layout.title.x,
+    layout.title.centerY,
+    layout.title.maxWidth,
+    layout.title.size,
+    k,
+    INK[inks[0]],
+  );
+  if (face.type_pt)
+    drawLine(ctx, face.type_pt, layout.type.x, layout.type.centerY, layout.type.maxWidth, layout.type.size, k, INK[inks[1]]);
+  const symbols = await preloadSymbols(face.text_pt);
+  layouts.forEach((res, i) => {
+    const row = rows[i];
+    // na faixa de capítulo o texto fica na altura dos marcadores, se couber
+    const mk = found && row.band > 0 ? found[row.band - 1] : null;
+    const box = mk ? alignOnIcon(boxes[i], res.height, (mk.first + mk.last) / 2, false) : boxes[i];
+    drawLayout(ctx, res, box, k, inks[2 + row.band], symbols, m);
+  });
+  return true;
+}
+
+/** Maior corpo do texto da Saga (o inglês fica em ~30). */
+const SAGA_MAX_SIZE = 30;
+/** Menor corpo do texto da Saga: abaixo disso, a carta sai na original. */
+const SAGA_MIN_SIZE = 18;
 
 /**
  * Faixas cinza atrás das linhas da tabela de d20, alternadas a partir da primeira, como na
@@ -816,7 +999,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const pw = isPlaneswalker(print, face, opts.typeLine);
   // A moldura sem borda também: a caixa é translúcida e vai para a mesma rede neural.
   const borderless = print.border === "borderless";
-  const version = pw || borderless ? "png" : (opts.imageVersion ?? "png");
+  // Saga também: os fios entre os capítulos são degraus de uma linha, que o JPEG reduzido espalha
+  const saga = print.layout === "saga" && !borderless;
+  const version = pw || borderless || saga ? "png" : (opts.imageVersion ?? "png");
   const [img] = await Promise.all([opts.source ?? loadImage(printImage(print, version, side)), loadCardFonts()]);
 
   const W = Math.round(BASE_W * scale);
@@ -875,6 +1060,12 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
 
   if (pw) {
     const done = await renderPlaneswalker({ ctx, src, sctx, data, toImg, face, print, W, H, neural, plan });
+    if (!done) ctx.drawImage(img, 0, 0, W, H);
+    return { canvas: out, translated: done };
+  }
+
+  if (saga) {
+    const done = await renderSaga({ ctx, src, sctx, data, toImg, face, print, W, H });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: done };
   }

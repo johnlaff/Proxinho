@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, token_face_key, token_key
+from build import ability_word_lines, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, saga_chapters, saga_supported, token_face_key, token_key
 
 
 class CitesAltName(unittest.TestCase):
@@ -423,6 +423,65 @@ class TextoDoEmblema(unittest.TestCase):
 
     def test_sem_emblema(self):
         self.assertIsNone(emblem_text("Voar"))
+
+
+class SagaChapters(unittest.TestCase):
+    """O Arena traz um parágrafo por capítulo, sem o número; o número e os grupos vêm do Oracle."""
+
+    LEMBRETE = "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\n"
+
+    def test_um_capitulo_por_paragrafo(self):
+        en = self.LEMBRETE + "I — Draw a card.\nII — Scry 2.\nIII — You gain 3 life."
+        pt = "Compre um card.\nUse vidência 2.\nVocê ganha 3 pontos de vida."
+        self.assertEqual(saga_chapters(en, pt), "I — Compre um card.\nII — Use vidência 2.\nIII — Você ganha 3 pontos de vida.")
+
+    def test_grupo_repetido_no_arena(self):
+        # Long List of the Ents: o mesmo parágrafo seis vezes no Arena, um grupo só no Oracle
+        en = "I, II, III, IV, V, VI — Note a creature type."
+        self.assertEqual(saga_chapters(en, "\n".join(["Anote um tipo."] * 6)), "I, II, III, IV, V, VI — Anote um tipo.")
+        # e o grupo com um parágrafo só (o número de linhas bate com o de grupos)
+        self.assertEqual(saga_chapters("I, II — Draw a card.\nIII — Scry 1.", "Compre um card.\nUse vidência 1."), "I, II — Compre um card.\nIII — Use vidência 1.")
+
+    def test_ler_adiante_fica_no_alto(self):
+        en = "Read ahead (Choose a chapter and start with that many lore counters.)\nI — Draw a card.\nII — Scry 1."
+        pt = "Adiantar leitura\nCompre um card.\nUse vidência 1."
+        self.assertEqual(saga_chapters(en, pt), "Adiantar leitura\nI — Compre um card.\nII — Use vidência 1.")
+
+    def test_nao_bate(self):
+        self.assertIsNone(saga_chapters("I — Draw a card.\nII — Scry 1.", "Compre um card."))
+        # parágrafos diferentes no mesmo grupo
+        self.assertIsNone(saga_chapters("I, II — Draw a card.", "Compre um card.\nUse vidência 1."))
+        self.assertIsNone(saga_chapters("Flying", "Voar"))
+
+    def test_travessao_solto_no_capitulo(self):
+        # Roads Go Ever, Ever On (HOB): o Arena traz "— Procure…" no primeiro capítulo
+        en = "I — Search your library for up to two basic Plains cards.\nII, III — Put a card exiled with this Saga into its owner's hand."
+        pt = "— Procure em seu grimório até dois cards de Planície básicos.\nColoque um card exilado.\nColoque um card exilado."
+        self.assertEqual(saga_chapters(en, pt), "I — Procure em seu grimório até dois cards de Planície básicos.\nII, III — Coloque um card exilado.")
+
+    def test_nome_do_capitulo_em_italico(self):
+        # Invocações de Final Fantasy: o nome do capítulo é palavra de ambientação
+        en = "I — Gungnir — Destroy target creature.\nII — Zantetsuken — Draw a card."
+        pt = "I — Gungnir — Destrua a criatura alvo.\nII — Zantetsuken — Compre um card."
+        self.assertEqual(ability_word_lines(en, pt, {"gungnir", "zantetsuken"}), [0, 1])
+
+
+class SagaSupported(unittest.TestCase):
+    base = {"frame": "2015", "layout": "saga", "border_color": "black", "type_line": "Enchantment — Saga", "frame_effects": []}
+
+    def test_moldura_padrao(self):
+        self.assertTrue(saga_supported(self.base))
+        self.assertTrue(saga_supported({**self.base, "frame_effects": ["legendary"], "type_line": "Legendary Enchantment — Saga"}))
+        self.assertTrue(saga_supported({**self.base, "frame_effects": ["enchantment"]}))
+
+    def test_fora(self):
+        self.assertFalse(saga_supported({**self.base, "border_color": "borderless"}))
+        self.assertFalse(saga_supported({**self.base, "frame_effects": ["showcase"]}))
+        self.assertFalse(saga_supported({**self.base, "full_art": True}))
+        self.assertFalse(saga_supported({**self.base, "frame": "2003"}))
+        # criatura Saga (Invocações de Final Fantasy): outra moldura
+        self.assertFalse(saga_supported({**self.base, "type_line": "Enchantment Creature — Saga Knight"}))
+        self.assertFalse(saga_supported({**self.base, "layout": "transform"}))
 
 
 if __name__ == "__main__":

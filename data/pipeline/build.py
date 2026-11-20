@@ -573,11 +573,53 @@ def pw_costs(oracle_text: str | None, text_pt: str | None) -> str | None:
     return "\n".join(out)
 
 
+# capítulo de Saga no Oracle: "I — …", "I, II — …"
+_CHAPTER = re.compile(r"^((?:[IVX]+)(?:, [IVX]+)*) — (.+)$")
+
+
+def saga_chapters(oracle_text: str | None, text_pt: str | None) -> str | None:
+    """
+    Texto de Saga com o número de cada capítulo na frente ("I — …", "I, II — …"), como na
+    carta impressa: o motor põe cada capítulo na faixa dele (src/engine/saga.ts). O Arena traz
+    um parágrafo por capítulo, sem o número, e repete o texto dos capítulos agrupados (o Long
+    List of the Ents tem o mesmo parágrafo seis vezes); o número e os grupos vêm do Oracle, pela
+    ordem (o travessão solto na frente de um capítulo sai). As linhas que não são capítulo
+    ("Ler adiante", a palavra-chave das criaturas Saga) ficam onde o Oracle as põe. O lembrete
+    do Oracle ("(As this Saga enters…)") não está no Arena e não entra. Devolve None quando as
+    linhas não batem, ou quando os parágrafos de um mesmo grupo diferem.
+    """
+    en = [x.strip() for x in (oracle_text or "").split("\n") if x.strip() and not x.strip().startswith("(")]
+    pt = [x.strip() for x in (text_pt or "").split("\n") if x.strip()]
+    plan = [m.group(1) if (m := _CHAPTER.match(x)) else None for x in en]
+    if not any(plan):
+        return None
+    sizes = [len(g.split(", ")) if g else 1 for g in plan]
+    if len(pt) == sum(sizes):
+        take = sizes
+    elif len(pt) == len(plan):
+        take = [1] * len(plan)
+    else:
+        return None
+    out: list[str] = []
+    j = 0
+    for group, n in zip(plan, take):
+        # alguns capítulos vêm do Arena com o travessão do número na frente ("— Procure…" no
+        # Roads Go Ever, Ever On): sai só o travessão, o número já vem do Oracle
+        part = [re.sub(r"^—\s*", "", x) if group else x for x in pt[j : j + n]]
+        j += n
+        if len(set(part)) != 1:
+            return None
+        out.append(f"{group} — {part[0]}" if group else part[0])
+    return "\n".join(out)
+
+
 # Parágrafo que começa com um nome e um travessão, com texto depois na mesma linha
 # ("Landfall — Whenever…", "Aterragem — Toda vez…"). O custo de uma palavra-chave
 # ("Ward—Pay 2 life") não tem espaço em volta do travessão no Oracle, e "Choose one —"
 # não tem texto depois.
 _ABILITY_WORD = re.compile(r"^([^—{}:•(\n]{1,40}) — \S")
+
+_CHAPTER_PREFIX = re.compile(r"^(?:[IVX]+)(?:, [IVX]+)* — ")
 
 # Palavras de habilidade e de ambientação (minúsculas), que a carta impressa traz em
 # itálico. Vêm dos catálogos do Scryfall (ver `load_italic_words`).
@@ -612,10 +654,11 @@ def ability_word_lines(oracle_text: str | None, text_pt: str | None, italic: set
     vale quando o número delas bate; senão, nenhuma.
     """
     italic = ITALIC_WORDS if italic is None else italic
-    en = [m.group(1) for x in (oracle_text or "").split("\n") if (m := _ABILITY_WORD.match(x.strip()))]
+    # (o número do capítulo da Saga não conta: o nome que vem depois dele é que é a palavra)
+    en = [m.group(1) for x in (oracle_text or "").split("\n") if (m := _ABILITY_WORD.match(_CHAPTER_PREFIX.sub("", x.strip())))]
     if not en or not text_pt:
         return None
-    pt = [i for i, x in enumerate(text_pt.split("\n")) if _ABILITY_WORD.match(x.strip())]
+    pt = [i for i, x in enumerate(text_pt.split("\n")) if _ABILITY_WORD.match(_CHAPTER_PREFIX.sub("", x.strip()))]
     if len(pt) != len(en):
         return None
     out = [i for i, prefix in zip(pt, en) if italic_prefix(prefix, italic)]
@@ -728,6 +771,33 @@ def borderless_supported(card: dict) -> bool:
         and not any(t in type_line for t in UNSUPPORTED_TYPES)
         and "Station" not in (card.get("keywords") or [])
         and "draculaseries" not in (card.get("promo_types") or [])
+    )
+
+
+# efeitos que não mudam o desenho da Saga: coroa de lendária (DSK) e o brilho de encantamento
+# das bordas (desde TDM)
+SAGA_EFFECTS_OK = {"legendary", "enchantment"}
+
+
+def saga_supported(card: dict) -> bool:
+    """Saga na moldura de 2018 em diante: a coluna de texto à esquerda da arte, com uma faixa por
+    capítulo (src/engine/saga.ts). O motor mede os fios entre as faixas na imagem e confere que
+    batem com os capítulos do texto em PT; se não baterem, a arte sai como está.
+
+    As criaturas Saga (as Invocações de Final Fantasy) têm outra moldura, com o lembrete na
+    largura toda e a caixa de P/R embaixo, e ficam de fora, como as Sagas de duas faces, as sem
+    borda e as de vitrine (showcase).
+    """
+    effects = set(card.get("frame_effects") or [])
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "saga"
+        and card.get("border_color") == "black"
+        and effects <= SAGA_EFFECTS_OK
+        and not card.get("full_art")
+        and not card.get("textless")
+        and "Saga" in card.get("type_line", "")
+        and "Creature" not in card.get("type_line", "")
     )
 
 
@@ -874,7 +944,11 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         "mana_cost": face.get("mana_cost") or c.get("mana_cost"),
         "has_pt": face.get("power") is not None or c.get("power") is not None,
         "two_sided": bool(c.get("card_faces") and not c.get("image_uris")) and c.get("layout") != "double_faced_token",
-        "supported": frame_supported(c) or borderless_supported(c) or token_supported(c) or bool(sides and sides[0]["supported"]),
+        "supported": frame_supported(c)
+        or borderless_supported(c)
+        or token_supported(c)
+        or saga_supported(c)
+        or bool(sides and sides[0]["supported"]),
         "sides": sides,
         # nome de crossover no alto (o nome de jogo vai numa linha pequena abaixo da barra)
         "flavor_name": c.get("flavor_name") or face.get("flavor_name"),
@@ -949,6 +1023,8 @@ def load_prints(offline: bool) -> list[dict]:
 
 # planeswalkers cujo texto em PT tem outro número de habilidades que o inglês
 PW_MISMATCH: set[str] = set()
+# Sagas cujo texto do Arena não casa com os capítulos do Oracle
+SAGA_MISMATCH: set[str] = set()
 
 
 def build(offline: bool) -> list[dict]:
@@ -988,6 +1064,17 @@ def build(offline: bool) -> list[dict]:
                 PW_MISMATCH.add(oid)
             else:
                 faces[0]["text_pt"] = text_pt
+
+        # Saga: o número de cada capítulo na frente, para o motor casar capítulo e faixa
+        if source == "arena":
+            for i, f in enumerate(faces):
+                en_face = faces_en[min(i, len(faces_en) - 1)]
+                if "Saga" in en_face.get("type_line", ""):
+                    text_pt = saga_chapters(en_face.get("oracle_text"), f.get("text_pt"))
+                    if text_pt is None:
+                        SAGA_MISMATCH.add(oid)
+                    else:
+                        f["text_pt"] = text_pt
 
         for i, f in enumerate(faces):
             aw = ability_word_lines(faces_en[min(i, len(faces_en) - 1)].get("oracle_text"), f.get("text_pt"))
@@ -1188,9 +1275,10 @@ def main() -> None:
     known = {r["oracle_id"] for r in rows}
     prints = [p for p in all_prints if p["oracle_id"] in known]
     for p in prints:
-        if p["oracle_id"] in PW_MISMATCH:
+        if p["oracle_id"] in PW_MISMATCH or (p["oracle_id"] in SAGA_MISMATCH and p["layout"] == "saga"):
             p["supported"] = False
     log(f"planeswalkers com habilidades que não batem (saem como estão): {len(PW_MISMATCH)}")
+    log(f"Sagas com capítulos que não batem (saem como estão): {len(SAGA_MISMATCH)}")
     log(f"artes com o flavor da impressão do texto em PT: {mark_text_flavor(rows, prints, FLAVORS)}")
     write(rows, prints)
 

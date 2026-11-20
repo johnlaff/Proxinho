@@ -35,7 +35,7 @@ Pegar qualquer carta, em qualquer arte, e entregar um PDF pronto para imprimir n
 
 ## Capabilities and Constraints
 
-- Moldura moderna (2015+) é reescrita em português nas cartas normais, de duas faces, planeswalkers, fichas (tokens, também na moldura de 2003) e emblemas; outras molduras (saga, aventura, showcase, antigas) mostram a imagem oficial em português quando existe, ou a original em inglês com aviso. Novas molduras entram por etapas.
+- Moldura moderna (2015+) é reescrita em português nas cartas normais, de duas faces, planeswalkers, fichas (tokens, também na moldura de 2003), emblemas, Sagas e artes sem borda; outras molduras (aventura, classe, showcase, antigas) mostram a imagem oficial em português quando existe, ou a original em inglês com aviso. Novas molduras entram por etapas.
 - Tradução oficial cobre 92% das cartas legais no Commander (Arena + impressões em português). O restante aparece em inglês, marcado, até existir tradução.
 - Tudo é gerado no navegador da pessoa: o servidor não guarda nem distribui imagens de cartas.
 - Gratuito, sem venda de impressão, aviso de conteúdo de fã da Wizards no site e no PDF.
