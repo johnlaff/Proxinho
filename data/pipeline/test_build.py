@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, adventure_supported, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, reminder_texts, saga_chapters, saga_reminder, saga_reminders, saga_supported, token_face_key, token_key
+from build import ability_word_lines, adventure_supported, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_reminder, saga_reminders, saga_supported, token_face_key, token_key, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -467,48 +467,76 @@ class KeywordReminders(unittest.TestCase):
 
     AMASS = "Put a +1/+1 counter on an Army you control. It's also an Orc. If you don't control an Army, create a 0/0 black Orc Army creature token first."
     ARREG = "Coloque um marcador +1/+1 em um Exército que você controla. Ele também é um Orc. Se você não controlar um Exército, crie antes uma ficha de criatura Orc Exército preta 0/0."
+    FLASH = "You may cast this card from your graveyard for its flashback cost. Then exile it."
+    RECAP = "Você pode conjurar este card de seu cemitério pagando seu custo de recapitular. Depois, exile-o."
+    SHIELD = "If it would be dealt damage or destroyed, remove a shield counter from it instead."
 
-    def print_(self, oid: str, pt: str, released: str) -> dict:
+    def print_(self, oid: str, pt: str, released: str = "2023-06-23") -> dict:
         return {"oracle_id": oid, "printed_text": pt, "released_at": released}
 
     def test_lembrete_das_impressas(self):
         oracle = {
-            "a": {"oracle_text": f"Amass Orcs 1. ({self.AMASS})"},
-            "b": {"oracle_text": "Flashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"},
-            "c": {"oracle_text": "Scry 1. (Look at the top card of your library.)\nCycling {2} ({2}, Discard this card: Draw a card.)"},
+            "a": {"oracle_text": f"Amass Orcs 1. ({self.AMASS})", "type_line": "Sorcery"},
+            "b": {"oracle_text": f"Flashback {{2}}{{R}} ({self.FLASH})", "type_line": "Instant"},
         }
         prints = [
-            self.print_("a", f"Arregimente Orcs 1. ({self.ARREG})", "2023-06-23"),
-            # a impressão mais nova ganha: a antiga usa "jogar"
-            self.print_("b", "Recapitular {2}{R} (Você pode jogar este card de seu cemitério pagando seu custo de recapitular. Depois, remova-o do jogo.)", "2006-01-01"),
-            self.print_("b", "Recapitular {2}{R} (Você pode conjurar este card de seu cemitério pagando seu custo de recapitular. Depois, exile-o.)", "2021-09-24"),
-            # quantidade de parênteses diferente: não casa nenhum
-            self.print_("c", "Use vidência 1.\nCiclagem {2} ({2}, descarte este card: Compre um card.)", "2020-01-01"),
+            self.print_("a", f"Arregimente Orcs 1. ({self.ARREG})"),
+            # a impressão mais nova ganha; antes do Magic 2010 nem conta ("jogar", "remova do jogo")
+            self.print_("b", "Recapitular {2}{R} (Você pode jogar este card de seu cemitério pagando seu custo de recapitular. Depois, remova-o do jogo.)", "2008-01-01"),
+            self.print_("b", "Recapitular {2}{R} (Você pode conjurar este card de seu cemitério pagando seu custo de recapitular. Depois, exile-o do jogo.)", "2012-02-03"),
+            self.print_("b", f"Recapitular {{2}}{{R}} ({self.RECAP})", "2021-09-24"),
         ]
-        self.assertEqual(
-            reminder_texts(prints, oracle),
-            {
-                self.AMASS: self.ARREG,
-                "You may cast this card from your graveyard for its flashback cost. Then exile it.": "Você pode conjurar este card de seu cemitério pagando seu custo de recapitular. Depois, exile-o.",
-            },
-        )
+        by_group, by_card = reminder_texts(prints, oracle)
+        self.assertEqual(by_group["*"], {self.AMASS: self.ARREG, self.FLASH: self.RECAP})
+        self.assertEqual(by_card["b"], {self.FLASH: self.RECAP})
 
-    def test_numeros_e_simbolos_iguais(self):
-        # o texto impresso com outro número é de outra versão do lembrete: não casa
-        oracle = {"a": {"oracle_text": "Equip {2} ({2}: Attach to target creature you control.)"}}
-        prints = [self.print_("a", "Equipar {3} ({3}: Anexe à criatura alvo que você controla.)", "2020-01-01")]
-        self.assertEqual(reminder_texts(prints, oracle), {})
+    def test_casa_linha_a_linha(self):
+        oracle = {
+            # linhas a mais no texto impresso: não casa nenhuma
+            "a": {"oracle_text": "Scry 1. (Look at the top card of your library.)\nDraw a card.", "type_line": "Sorcery"},
+            # outro número no lembrete ou no resto da linha: é outra versão da carta
+            "b": {"oracle_text": "Equip {2} ({2}: Attach to target creature you control.)", "type_line": "Artifact"},
+            "c": {"oracle_text": "Amass Orcs 2. (Put two +1/+1 counters on an Army you control.)", "type_line": "Sorcery"},
+            "d": {"oracle_text": "When this enters, mill a card. (To mill a card, put the top card of your library into your graveyard.)", "type_line": "Artifact"},
+        }
+        prints = [
+            self.print_("a", "Use vidência 1. (Olhe o card do topo.)\nCompre\num card."),
+            self.print_("b", "Equipar {3} ({3}: Anexe à criatura alvo que você controla.)"),
+            self.print_("c", "Arregimente Orcs 1. (Coloque dois marcadores +1/+1 em um Exército que você controla.)"),
+            # erro de digitação do Scryfall (Inverted Iceberg, LCI): letra repetida e sem ponto final
+            self.print_("d", "Quando entrar, triture um card. (P Para triturar um card, coloque o card do topo de seu grimório em seu cemitério)"),
+        ]
+        self.assertEqual(reminder_texts(prints, oracle), ({}, {}))
 
-    def test_vai_no_fim_da_linha_do_capitulo(self):
+    def test_ela_ou_ele_pelo_tipo(self):
+        # o escudo diz "ela" da criatura e "ele" do artefato: cada grupo fica com o seu
+        oracle = {
+            "a": {"oracle_text": f"Shield counter ({self.SHIELD})", "type_line": "Creature — Human"},
+            "b": {"oracle_text": f"Shield counter ({self.SHIELD})", "type_line": "Artifact — Vehicle"},
+        }
+        ela = "Se ela sofreria dano ou seria destruída, em vez disso, remova um marcador de escudo dela."
+        ele = "Se ele sofreria dano ou seria destruído, em vez disso, remova um marcador de escudo dele."
+        by_group, by_card = reminder_texts([self.print_("a", f"Marcador de escudo ({ela})"), self.print_("b", f"Marcador de escudo ({ele})", "2022-01-01")], oracle)
+        self.assertEqual(by_group["criatura"][self.SHIELD], ela)
+        self.assertEqual(by_group["artefato"][self.SHIELD], ele)
+        # uma criatura artefato sem impressão em PT usa a de criatura; a própria carta ganha de todos
+        self.assertEqual(face_reminders("x", "Artifact Creature — Golem", by_group, by_card)[self.SHIELD], ela)
+        self.assertEqual(face_reminders("b", "Creature — Human", by_group, by_card)[self.SHIELD], ele)
+        self.assertEqual(type_group("Legendary Enchantment Creature — God"), "criatura")
+        self.assertEqual(type_group("Kindred Instant — Elf"), "mágica")
+
+    def test_vai_no_fim_da_linha(self):
         # Book of Mazarbul: a carta física explica o "Arregimentar Orcs 1." do capítulo I
         en = f"(As this Saga enters…)\nI — Amass Orcs 1. ({self.AMASS})\nII — Amass Orcs 2.\nIII — Creatures you control get +1/+0."
         pt = "(Conforme esta Saga entra…)\nI — Arregimentar Orcs 1.\nII — Arregimente Orcs 2.\nIII — As criaturas que você controla recebem +1/+0."
         out = add_reminders(en, pt, {self.AMASS: self.ARREG})
         self.assertEqual(out.split("\n")[1], f"I — Arregimentar Orcs 1. ({self.ARREG})")
         self.assertEqual(out.split("\n")[2:], pt.split("\n")[2:])
+        # e numa carta comum
+        self.assertEqual(add_reminders(f"Flashback {{2}}{{R}} ({self.FLASH})", "Recapitular {2}{R}", {self.FLASH: self.RECAP}), f"Recapitular {{2}}{{R}} ({self.RECAP})")
 
     def test_fica_como_esta(self):
-        lembretes = {self.AMASS: self.ARREG}
+        lembretes = {self.AMASS: self.ARREG, self.FLASH: self.RECAP}
         en = f"I — Amass Orcs 1. ({self.AMASS})\nII — Draw a card."
         # linhas que não batem, lembrete desconhecido e linha que já tem parênteses
         self.assertEqual(add_reminders(en, "I — Arregimente Orcs 1.", lembretes), "I — Arregimente Orcs 1.")
@@ -516,6 +544,8 @@ class KeywordReminders(unittest.TestCase):
         ja = f"I — Arregimente Orcs 1. ({self.ARREG})\nII — Compre um card."
         self.assertEqual(add_reminders(en, ja, lembretes), ja)
         self.assertIsNone(add_reminders(en, None, lembretes))
+        # outro custo na linha em PT: não é a mesma linha
+        self.assertEqual(add_reminders(f"Flashback {{2}}{{R}} ({self.FLASH})", "Recapitular {3}{R}", lembretes), "Recapitular {3}{R}")
 
 
 class SagaChapters(unittest.TestCase):

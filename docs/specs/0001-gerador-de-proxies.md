@@ -45,6 +45,7 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 ### H7. Honestidade e regras
 - [x] A origem do texto aparece na gaveta (Arena ou impressão PT).
 - [x] Sem tradução oficial, a carta sai em inglês e a interface diz.
+- [x] A explicação das palavras-chave (o lembrete entre parênteses) sai onde a carta física tem, ou seja, onde o Oracle traz, com o texto oficial das cartas impressas em PT; a que nunca saiu impressa em PT fica de fora (ADR 0018).
 - [x] Se o motor não reconhece a moldura de uma impressão e ela sai na imagem original, a etiqueta, a legenda e o resumo dizem que sai em inglês.
 - [x] Aviso de conteúdo de fã no site e no PDF; nenhuma marca da Wizards como marca do produto.
 

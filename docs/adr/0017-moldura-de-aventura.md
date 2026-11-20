@@ -33,5 +33,5 @@ As 270 impressões na moldura de livro com texto em PT, no banco local, montadas
 ## Consequências
 
 - As Aventuras com texto em PT saem reescritas em qualquer arte da moldura de livro, inclusive as 35 sem imagem em PT nenhuma até aqui.
-- O lembrete em inglês da página da esquerda ("Then exile this card…") não vem do Arena e some; quando o texto impresso em PT traz o lembrete, ele fica.
+- O lembrete da página da esquerda ("Then exile this card…") não vem do Arena: entra o texto oficial das cartas impressas em PT ("Depois, exile este card…"), onde o Oracle o traz (ADR 0018).
 - O flavor segue a regra de sempre: só na arte de onde veio o texto em PT, ou numa de mesmo flavor em inglês. Nas outras, a página da direita fica só com as regras.

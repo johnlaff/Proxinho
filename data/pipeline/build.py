@@ -668,23 +668,76 @@ def saga_reminder(oracle_text: str | None, text_pt: str | None, reminders: dict[
 
 
 # lembrete entre parênteses no fim de uma linha do Oracle ("Amass Orcs 1. (Put a +1/+1 counter…)")
-_LINE_REMINDER = re.compile(r"\(([^()]+)\)$")
-# números, P/R e símbolos de um lembrete: os dois idiomas têm de trazer os mesmos
+_LINE_REMINDER = re.compile(r"^([^()]*)\(([^()]+)\)$")
+# números, P/R e símbolos: os dois idiomas têm de trazer os mesmos, no lembrete e no resto da linha
 _REMINDER_MARKS = re.compile(r"\{[^}]+\}|[+-]?\d+(?:/[+-]?\d+)?")
+# a terminologia atual em PT ("conjurar", "exilar") vem do Magic 2010: antes, "jogar" e "remova do jogo"
+_REMINDER_SINCE = "2009-07-17"
+# o lembrete fala da carta por "ela" ou "ele" conforme o tipo (a criatura, o artefato, a mágica)
+_TYPE_GROUPS = (("Creature", "criatura"), ("Planeswalker", "planeswalker"), ("Battle", "batalha"), ("Land", "terreno"), ("Artifact", "artefato"), ("Enchantment", "encantamento"), ("Instant", "mágica"), ("Sorcery", "mágica"))
 
 
-def reminder_texts(prints, oracle: dict[str, dict]) -> dict[str, str]:
+def type_group(type_line: str | None) -> str:
+    """O grupo do tipo da face, pelo gênero da palavra em PT ("Artifact Creature" é criatura)."""
+    types = (type_line or "").split("—")[0].split()
+    return next((g for t, g in _TYPE_GROUPS if t in types), "outro")
+
+
+def line_reminder(line: str) -> tuple[str, str] | None:
+    """O começo da linha e o lembrete do fim dela, quando a linha tem um lembrete só, no fim."""
+    m = _LINE_REMINDER.match(line.strip())
+    return (m.group(1).strip(), m.group(2)) if m and m.group(1).strip() else None
+
+
+def same_marks(a: str, b: str) -> bool:
+    return sorted(_REMINDER_MARKS.findall(a)) == sorted(_REMINDER_MARKS.findall(b))
+
+
+def ends_like(en: str, pt: str) -> bool:
+    """
+    O lembrete impresso termina como o do Oracle (com ponto final ou sem) e não começa com a
+    letra repetida: o texto do Scryfall tem erros de digitação ("P Para triturar um card…",
+    sem o ponto, no Inverted Iceberg de LCI), e um lembrete errado passava para as outras cartas.
+    """
+    period = lambda x: "." in x.rstrip()[-2:]  # noqa: E731
+    return period(en) == period(pt) and not re.match(r"^(\w) \1\w", pt)
+
+
+def printed_reminders(oracle_text: str | None, printed_text: str | None) -> list[tuple[str, str]]:
+    """
+    Os pares (lembrete do Oracle, lembrete impresso em PT) de uma face, linha a linha: as duas
+    têm o mesmo número de linhas, e em cada par as duas linhas acabam num lembrete só, com os
+    mesmos números e símbolos no lembrete e no resto da linha.
+    """
+    en = [x.strip() for x in (oracle_text or "").split("\n") if x.strip()]
+    pt = [x.strip() for x in (clean_rules(fix_breaks(printed_text)) or "").split("\n") if x.strip()]
+    if not en or len(en) != len(pt):
+        return []
+    pairs = []
+    for e, p in zip(en, pt):
+        a, b = line_reminder(e), line_reminder(p)
+        if a and b and same_marks(a[0], b[0]) and same_marks(a[1], b[1]) and ends_like(a[1], b[1]):
+            pairs.append((a[1], b[1]))
+    return pairs
+
+
+def reminder_texts(prints, oracle: dict[str, dict]) -> tuple[dict[str, dict[str, str]], dict[str, dict[str, str]]]:
     """
     Os lembretes de palavra-chave em PT, pelo lembrete em inglês do Oracle, tirados das
-    impressões em português (todas, não só a mais nova de cada carta): os parênteses do Oracle
-    e os do texto impresso são casados pela ordem quando a quantidade bate, e só com os mesmos
-    números e símbolos ("+1/+1", "0/0", "{2}{W}"). O Arena não traz os lembretes, e a carta
-    física traz (o "Arregimentar Orcs 1." do Book of Mazarbul sem a explicação). Fica o texto da
-    impressão mais nova de cada lembrete: as antigas usam termos velhos ("jogar", "remova do
-    jogo"). Só lembrete idêntico ao de uma carta impressa, nunca montado.
+    impressões em português desde o Magic 2010 (todas, não só a mais nova de cada carta; ver
+    `printed_reminders`). O Arena não traz os lembretes, e a carta física traz (o "Arregimentar
+    Orcs 1." do Book of Mazarbul sem a explicação). Devolve dois mapas, lembrete em inglês →
+    texto em PT: por grupo de tipo (`type_group`, porque o lembrete diz "ela" da criatura e
+    "ele" do artefato; "*" junta todos) e por carta (`oracle_id`, o texto impresso da própria
+    carta, que ganha dos outros). Em cada um fica a impressão mais nova. Só lembrete idêntico
+    ao de uma carta impressa, nunca montado.
     """
-    best: dict[str, tuple[str, str]] = {}
+    by_group: dict[str, dict[str, tuple[str, str]]] = {}
+    by_card: dict[str, dict[str, tuple[str, str]]] = {}
     for card in prints:
+        released = card.get("released_at") or ""
+        if released < _REMINDER_SINCE:
+            continue
         oid = card.get("oracle_id") or (card.get("card_faces") or [{}])[0].get("oracle_id")
         o = oracle.get(oid)
         if not o:
@@ -693,25 +746,27 @@ def reminder_texts(prints, oracle: dict[str, dict]) -> dict[str, str]:
         if len(faces) != len(faces_en):
             continue
         for f, g in zip(faces, faces_en):
-            en = re.findall(r"\(([^()]+)\)", g.get("oracle_text") or "")
-            pt = re.findall(r"\(([^()]+)\)", clean_rules(fix_breaks(f.get("printed_text"))) or "")
-            if not en or len(en) != len(pt):
-                continue
-            for a, b in zip(en, pt):
-                if sorted(_REMINDER_MARKS.findall(a)) != sorted(_REMINDER_MARKS.findall(b)):
-                    continue
-                key = (card.get("released_at") or "", b)
-                if a not in best or key > best[a]:
-                    best[a] = key
-    return {a: b for a, (_, b) in best.items()}
+            group = type_group(g.get("type_line") or o.get("type_line"))
+            for en, pt in printed_reminders(g.get("oracle_text"), f.get("printed_text")):
+                for table in (by_group.setdefault(group, {}), by_group.setdefault("*", {}), by_card.setdefault(oid, {})):
+                    if en not in table or (released, pt) > table[en]:
+                        table[en] = (released, pt)
+    flat = lambda tables: {k: {en: pt for en, (_, pt) in t.items()} for k, t in tables.items()}  # noqa: E731
+    return flat(by_group), flat(by_card)
+
+
+def face_reminders(oid: str, type_line: str | None, by_group: dict[str, dict[str, str]], by_card: dict[str, dict[str, str]]) -> dict[str, str]:
+    """Os lembretes para uma face: o da própria carta, senão o do mesmo grupo de tipo, senão qualquer um."""
+    return {**by_group.get("*", {}), **by_group.get(type_group(type_line), {}), **by_card.get(oid, {})}
 
 
 def add_reminders(oracle_text: str | None, text_pt: str | None, reminders: dict[str, str]) -> str | None:
     """
     Põe no fim de cada linha do texto em PT o lembrete oficial da mesma linha do Oracle (ver
     `reminder_texts`), como na carta física: "I — Arregimentar Orcs 1. (Coloque um marcador
-    +1/+1…)". As linhas têm de bater uma a uma; linha com mais de um lembrete, linha que já tem
-    parênteses e lembrete que nunca saiu impresso em PT ficam como estão.
+    +1/+1…)". As linhas têm de bater uma a uma, com os mesmos números e símbolos antes do
+    lembrete; linha com mais de um lembrete, linha que já tem parênteses e lembrete que nunca
+    saiu impresso em PT ficam como estão.
     """
     if text_pt is None:
         return None
@@ -721,9 +776,9 @@ def add_reminders(oracle_text: str | None, text_pt: str | None, reminders: dict[
         return text_pt
     out = []
     for e, p in zip(en, pt):
-        m = _LINE_REMINDER.search(e)
-        pt_reminder = reminders.get(m.group(1)) if m and e.count("(") == 1 and not e.startswith("(") else None
-        out.append(f"{p.rstrip()} ({pt_reminder})" if pt_reminder and "(" not in p else p)
+        found = line_reminder(e)
+        pt_reminder = reminders.get(found[1]) if found and "(" not in p and same_marks(found[0], p) else None
+        out.append(f"{p.rstrip()} ({pt_reminder})" if pt_reminder else p)
     return "\n".join(out)
 
 
@@ -1174,8 +1229,9 @@ def build(offline: bool) -> list[dict]:
     reminders = saga_reminders(printed)
     log(f"lembretes de Saga em PT (das impressas): {len(reminders)}")
     with open(CACHE / "scryfall_pt.jsonl") as fh:
-        keyword_reminders = reminder_texts((json.loads(line) for line in fh), {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle})
-    log(f"lembretes de palavra-chave em PT (das impressas): {len(keyword_reminders)}")
+        by_group, by_card = reminder_texts((json.loads(line) for line in fh), {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle})
+    log(f"lembretes de palavra-chave em PT (das impressas): {len(by_group.get('*', {}))}")
+    added = 0
 
     rows = []
     stats = {"arena": 0, "impresso": 0, "sem": 0}
@@ -1216,9 +1272,13 @@ def build(offline: bool) -> list[dict]:
                     if text_pt is None:
                         SAGA_MISMATCH.add(oid)
                     else:
-                        text_pt = saga_reminder(en_face.get("oracle_text"), text_pt, reminders)
-                        # e o lembrete de cada capítulo ("Arregimentar Orcs 1. (Coloque…)")
-                        f["text_pt"] = add_reminders(en_face.get("oracle_text"), text_pt, keyword_reminders)
+                        f["text_pt"] = saga_reminder(en_face.get("oracle_text"), text_pt, reminders)
+            # o lembrete de palavra-chave de cada linha, como na carta física ("Arregimentar Orcs 1. (Coloque…)")
+            for i, f in enumerate(faces):
+                en_face = faces_en[min(i, len(faces_en) - 1)]
+                before = f.get("text_pt")
+                f["text_pt"] = add_reminders(en_face.get("oracle_text"), before, face_reminders(oid, en_face.get("type_line"), by_group, by_card))
+                added += f["text_pt"] != before
 
         for i, f in enumerate(faces):
             aw = ability_word_lines(faces_en[min(i, len(faces_en) - 1)].get("oracle_text"), f.get("text_pt"))
@@ -1261,6 +1321,7 @@ def build(offline: bool) -> list[dict]:
             }
         )
     log(f"cartas: {len(rows)} | texto do Arena: {stats['arena']} | impresso: {stats['impresso']} | sem PT: {stats['sem']}")
+    log(f"faces do Arena com lembrete de palavra-chave das impressas: {added}")
     return rows
 
 
