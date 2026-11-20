@@ -1,5 +1,6 @@
 # Atualiza o banco de cartas todo dia: baixa os dados públicos (Scryfall e
-# arquivos do Arena publicados pela Untapped), gera o SQL e carrega no D1.
+# arquivos do Arena publicados pela Untapped) e as dicas das palavras-chave
+# guardadas no KV (ADR 0021), gera o SQL e carrega no D1.
 name: Dados diários
 
 on:
@@ -33,9 +34,33 @@ jobs:
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.segredos.outputs.ok == 'true'
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - if: steps.segredos.outputs.ok == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - if: steps.segredos.outputs.ok == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.segredos.outputs.ok == 'true'
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
+      # as explicações das palavras-chave nunca impressas em PT (ADR 0021): ficam no KV, fora do repositório
+      - if: steps.segredos.outputs.ok == 'true'
+        name: Baixa as dicas das palavras-chave do Arena
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          mkdir -p data/cache
+          if pnpm exec wrangler kv key get --remote --binding FONTES arena-dicas.json --text > dicas.tmp \
+            && python3 -c "import json, sys; assert len(json.load(open(sys.argv[1]))) > 500" dicas.tmp; then
+            mv dicas.tmp data/cache/arena_dicas.json
+          else
+            echo "::warning::Sem as dicas do Arena no KV: as explicações das palavras-chave nunca impressas em PT ficam de fora (ver docs/operacao.md)."
+            rm -f dicas.tmp
+          fi
       - if: steps.segredos.outputs.ok == 'true'
         name: Gera o banco (só biblioteca padrão do Python)
         run: python3 data/pipeline/build.py
@@ -45,15 +70,6 @@ jobs:
           n=$(wc -l < data/out/cards.jsonl)
           echo "cartas: $n"
           [ "$n" -gt 30000 ] || { echo "::error::Poucas cartas ($n). Não publiquei para não estragar o banco."; exit 1; }
-      - if: steps.segredos.outputs.ok == 'true'
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-      - if: steps.segredos.outputs.ok == 'true'
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - if: steps.segredos.outputs.ok == 'true'
-        run: pnpm install --frozen-lockfile
       - if: steps.segredos.outputs.ok == 'true'
         name: Carrega no D1
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3

@@ -814,7 +814,7 @@ async function renderClass(p: {
 }
 
 /**
- * Caixa das naves e planetas com Estacionar (ver station.ts), depois de o nome e o tipo serem
+ * Caixa das naves e planetas com Posicionar (ver station.ts), depois de o nome e o tipo serem
  * medidos como na carta comum (`layout`, com o símbolo da coleção protegido em `symbolGuard`).
  * As faixas dos níveis mudam de lugar para o português: o escurecimento delas sai, as letras,
  * os selos e a caixa de P/R saem com a rede neural (a moldura dos lados é refeita na vertical),
@@ -867,6 +867,17 @@ async function renderStation(p: {
     const x1 = i === parts.levels.length ? lastRight : right;
     return { text, width: x1 - x0, height: Infinity, italic: lines.flatMap((l, j) => (italic.has(l) ? [j] : [])) };
   });
+  // (o selo da coleção sobe para dentro da caixa: a última linha que passa por cima dele acaba
+  // acima do aro, como no inglês, e não encostada nele, The Eternity Elevator)
+  const stampFound = findCardStamp(data);
+  const below = (res: LayoutResult) => {
+    const last = res.lines[res.lines.length - 1];
+    if (!stampFound || !last) return 0;
+    const space = m.text(" ", res.size, false);
+    const x0 = levelX + (last.indent ?? 0);
+    const x1 = x0 + last.chunks.reduce((w, c, i) => w + chunkWidth(c, res.size, m) + (i ? space : 0), 0);
+    return x1 <= stampFound.x0 || x0 >= stampFound.x1 ? 0 : bottom - (stampFound.y0 - STATION.stampClear);
+  };
   let plan: ReturnType<typeof stationPlan> = null;
   let layouts: LayoutResult[] = [];
   for (let size = STATION_MAX_SIZE; size >= STATION_MIN_SIZE && !plan; size -= 0.5) {
@@ -876,6 +887,7 @@ async function renderStation(p: {
       layouts.slice(1).map((l) => l.height),
       top,
       bottom,
+      below(layouts[layouts.length - 1]),
     );
   }
   if (!plan) return "original";
@@ -910,7 +922,6 @@ async function renderStation(p: {
   const ptPiece = pt ? cutPiece(data, toImg(pt), ptCut!) : null;
   // (o selo da coleção seguindo o contorno, como na carta comum: o ponto final da última linha
   // em inglês fica logo acima dele)
-  const stampFound = findCardStamp(data);
   const skip = stampFound ? stampShape(data, toImg({ ...stampFound, y0: stampFound.y0 + 3 })) : [];
   // (e uma faixa de papel logo acima dele fica fora do buraco, à vista da rede neural: o selo
   // semeava a máscara, o buraco descia até ele e virava um buraco só com o selo escondido, e
@@ -1043,7 +1054,7 @@ async function renderStation(p: {
   return "ok";
 }
 
-/** Maior corpo do texto das naves com Estacionar (as artes estendidas, sem a explicação, ficam em ~30). */
+/** Maior corpo do texto das naves com Posicionar (as artes estendidas, sem a explicação, ficam em ~30). */
 const STATION_MAX_SIZE = 30;
 /** Menor corpo: abaixo disso, a carta sai na original. */
 const STATION_MIN_SIZE = 18;
@@ -1477,7 +1488,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const saga = print.layout === "saga" && !borderless;
   // e Classe: as barras de nível são recortadas e coladas em outra altura
   const klass = print.layout === "class" && !borderless;
-  // e as naves com Estacionar: a caixa translúcida vai para a rede neural
+  // e as naves com Posicionar: a caixa translúcida vai para a rede neural
   const stationParts = !borderless && print.layout === "normal" ? stationText(face?.text_pt) : null;
   const version = pw || borderless || saga || klass || stationParts ? "png" : (opts.imageVersion ?? "png");
   const [img] = await Promise.all([opts.source ?? loadImage(printImage(print, version, side)), loadCardFonts()]);
@@ -1684,7 +1695,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     layout.erase[1] = { ...layout.erase[1], rect: { ...r, x1: BASE_W * 0.955 } };
     symbolGuard.push(...symbolRowsFrom(data, Math.round(setLeft * fx), Math.round(r.y0 * fy), Math.round(r.y1 * fy)));
   }
-  // naves e planetas com Estacionar: as faixas dos níveis mudam de lugar (ver renderStation)
+  // naves e planetas com Posicionar: as faixas dos níveis mudam de lugar (ver renderStation)
   if (stationParts) {
     const done = await renderStation({
       ctx,

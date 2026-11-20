@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
+from build import says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -493,7 +493,7 @@ class ClassText(unittest.TestCase):
 
 
 class StationText(unittest.TestCase):
-    """Estacionar: o Arena marca cada nível com "#StationLevelInstrinsic_NoTranslation" (em inglês,
+    """Posicionar (Station): o Arena marca cada nível com "#StationLevelInstrinsic_NoTranslation" (em inglês,
     "STATIONLEVEL [9+] [3/4] [Flying]…") antes das habilidades do nível."""
 
     def test_nivel_do_marcador(self):
@@ -543,7 +543,7 @@ class StationSupported(unittest.TestCase):
     def test_moldura_padrao(self):
         self.assertTrue(station_supported(self.base))
         self.assertTrue(station_supported({**self.base, "frame_effects": ["legendary"]}))
-        # arte estendida: a mesma caixa, sem a explicação do Estacionar
+        # arte estendida: a mesma caixa, sem a explicação do Posicionar
         self.assertTrue(station_supported({**self.base, "frame_effects": ["extendedart"]}))
 
     def test_outras_molduras(self):
@@ -614,6 +614,28 @@ class KeywordReminders(unittest.TestCase):
         ]
         self.assertEqual(reminder_texts(prints, oracle), ({}, {}))
 
+    def test_impresso_antigo_que_nao_diz_o_mesmo(self):
+        # o Oracle mudou o lembrete e a impressão ficou com o antigo: o atropelar dos Fractius
+        # (Groundshaker Sliver, M14) ia para as cartas com atropelar, e o arregimentar de WAR não
+        # diz "Ele também é um Zumbi"
+        trample = "A creature with trample can deal excess combat damage to the player or planeswalker it's attacking."
+        amass = "Put a +1/+1 counter on an Army you control. It's also a Zombie. If you don't control an Army, create a 0/0 black Zombie Army creature token first."
+        oracle = {
+            "a": {"oracle_text": f"Sliver creatures you control have trample. ({trample})", "type_line": "Creature — Sliver"},
+            "b": {"oracle_text": f"Amass Zombies 1. ({amass})", "type_line": "Sorcery"},
+        }
+        prints = [
+            self.print_("a", "As criaturas do tipo Fractius que você controla têm atropelar. (Se um Fractius que você controla for atribuir dano suficiente para destruir seus bloqueadores, você poderá fazer com que ele atribua o resto de seu dano ao planeswalker ou jogador defensor.)", "2013-07-19"),
+            self.print_("b", "Arregimente 1. (Coloque um marcador +1/+1 em um Exército que você controla. Se você não controlar um, crie antes uma ficha de criatura Zumbi Exército preta 0/0.)", "2019-05-03"),
+        ]
+        by_group, by_card = reminder_texts(prints, oracle)
+        self.assertEqual(by_group, {})
+        # a própria carta fica com o da impressão dela, que é o da carta física
+        self.assertEqual(set(by_card), {"a", "b"})
+        self.assertTrue(by_card["a"][trample].startswith("Se um Fractius"))
+        # frase a mais no PT ("Depois, …") é o mesmo texto
+        self.assertTrue(says_all("Look at the top two cards of your library, then put any number of them on the bottom.", "Olhe os dois cards do topo do seu grimório. Depois, coloque qualquer número deles no fundo."))
+
     def test_ela_ou_ele_pelo_tipo(self):
         # o escudo diz "ela" da criatura e "ele" do artefato: cada grupo fica com o seu
         oracle = {
@@ -652,6 +674,106 @@ class KeywordReminders(unittest.TestCase):
         self.assertIsNone(add_reminders(en, None, lembretes))
         # outro custo na linha em PT: não é a mesma linha
         self.assertEqual(add_reminders(f"Flashback {{2}}{{R}} ({self.FLASH})", "Recapitular {3}{R}", lembretes), "Recapitular {3}{R}")
+
+
+class ArenaHints(unittest.TestCase):
+    """O lembrete nunca impresso em PT vem da dica do Arena com as mesmas palavras do Oracle (ADR 0021)."""
+
+    STATION = "Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 12+."
+    # a dica do Arena tem outra ordem ("on this Spacecraft equal to its power") e não tem o ponto final
+    HINT = {
+        "key": "AbilityHanger/Keyword/Station_Body",
+        "en": "Tap another creature you control: Put charge counters on this Spacecraft equal to its power. Station only as a sorcery. It's an artifact creature at {chargeRequirement}+",
+        "pt": "Vire outra criatura que você controla: Coloque uma quantidade de marcadores de carga nesta Espaçonave igual ao poder dela. Posicione somente como um feitiço. Ela é uma criatura artefato em {chargeRequirement}+",
+    }
+    PT = "Vire outra criatura que você controla: Coloque uma quantidade de marcadores de carga nesta Espaçonave igual ao poder dela. Posicione somente como um feitiço. Ela é uma criatura artefato em 12+."
+    PLANET = {
+        "key": "AbilityHanger/Keyword/Station_Planet_Body",
+        "en": "Tap another creature you control: Put charge counters on this Planet equal to its power. Station only as a sorcery.",
+        "pt": "Vire outra criatura que você controla: Coloque uma quantidade de marcadores de carga neste Planeta igual ao poder dela. Posicione somente como um feitiço.",
+    }
+
+    def test_mesmas_palavras_em_outra_ordem(self):
+        self.assertEqual(hint_reminder(self.STATION, self.HINT["en"], self.HINT["pt"]), self.PT)
+        planet = "Tap another creature you control: Put charge counters equal to its power on this Planet. Station only as a sorcery."
+        self.assertEqual(hint_reminder(planet, self.PLANET["en"], self.PLANET["pt"]), self.PLANET["pt"])
+
+    def test_palavras_diferentes(self):
+        # a dica do planeta não serve para a nave, nem a da nave para outro nível sem o número
+        self.assertIsNone(hint_reminder(self.STATION, self.PLANET["en"], self.PLANET["pt"]))
+        self.assertIsNone(hint_reminder("Tap another creature you control: Put charge counters equal to its power on this Spacecraft.", self.HINT["en"], self.HINT["pt"]))
+        # número por extenso não é variável ("three"), e duas variáveis com números diferentes não casam
+        bushido = {"en": "When this blocks or becomes blocked, it gets +{numeral}/+{numeral} until end of turn.", "pt": "Quando esta criatura bloquear ou for bloqueada, ela recebe +{numeral}/+{numeral} até o final do turno."}
+        self.assertEqual(hint_reminder("When this blocks or becomes blocked, it gets +2/+2 until end of turn.", bushido["en"], bushido["pt"]), "Quando esta criatura bloquear ou for bloqueada, ela recebe +2/+2 até o final do turno.")
+        self.assertIsNone(hint_reminder("When this blocks or becomes blocked, it gets +2/+1 until end of turn.", bushido["en"], bushido["pt"]))
+        self.assertIsNone(hint_reminder("When this blocks or becomes blocked, it gets +three/+three until end of turn.", bushido["en"], bushido["pt"]))
+
+    def test_so_onde_nao_ha_impresso(self):
+        oracle = [
+            {"oracle_id": "a", "name": "Nave", "oracle_text": f"Station ({self.STATION})\nSTATION 12+\nFlying", "type_line": "Artifact — Spacecraft"},
+            {"oracle_id": "b", "card_faces": [{"name": "Raio", "oracle_text": f"Flashback {{2}}{{R}} ({KeywordReminders.FLASH})"}, {"name": "Outro", "oracle_text": "Draw a card."}]},
+        ]
+        flash = {"key": "AbilityHanger/Keyword/Flashback_Body", "en": KeywordReminders.FLASH, "pt": "Outro texto."}
+        self.assertEqual(arena_reminders(oracle, [self.HINT, flash], set(), skip={}), {"a": {self.STATION: self.PT}, "b": {KeywordReminders.FLASH: "Outro texto."}})
+        # o lembrete impresso em PT ganha, e as dicas com a tradução errada ficam de fora
+        self.assertEqual(arena_reminders(oracle, [self.HINT, flash], {KeywordReminders.FLASH}, skip={}), {"a": {self.STATION: self.PT}})
+        self.assertEqual(arena_reminders(oracle, [self.HINT, flash], set(), skip={flash["key"]: "errada"}), {"a": {self.STATION: self.PT}})
+
+    def test_diferencas_que_nao_mudam_o_sentido(self):
+        # o custo vai para o {abilityCost} e "token" pode faltar na dica (Offspring, Rust-Shield Rampager)
+        offspring = {
+            "en": "You may pay an additional {abilityCost} as you cast this spell. If you do, when this creature enters, create a 1/1 copy of it.",
+            "pt": "Você pode pagar mais {abilityCost} ao conjurar esta mágica. Se fizer isso, quando esta criatura entrar, crie uma cópia 1/1 dela.",
+        }
+        rem = "You may pay an additional {1}{U} as you cast this spell. If you do, when this creature enters, create a 1/1 token copy of it."
+        self.assertEqual(hint_reminder(rem, offspring["en"], offspring["pt"]), "Você pode pagar mais {1}{U} ao conjurar esta mágica. Se fizer isso, quando esta criatura entrar, crie uma cópia 1/1 dela.")
+        # "this creature" na carta e "it" na dica do Warp; símbolos do Arena ("{o1}") e o ")" a mais do Ninjutsu
+        warp = {"en": "You may cast this card from your hand for its warp cost. Exile it at the beginning of the next end step.", "pt": "Você pode conjurar este card. Exile-o no início da próxima etapa final."}
+        self.assertEqual(hint_reminder("You may cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step.", warp["en"], warp["pt"]), "Você pode conjurar este card. Exile-o no início da próxima etapa final.")
+        affinity = {"en": "This spell costs {o1} less to cast for each creature you control.", "pt": "Esta mágica custa {o1} a menos."}
+        self.assertEqual(hint_reminder("This spell costs {1} less to cast for each creature you control.", affinity["en"], affinity["pt"]), "Esta mágica custa {1} a menos.")
+        ninjutsu = {"en": "{abilityCost}, Return an unblocked attacker you control to hand: Put this card onto the battlefield.", "pt": "{abilityCost}, devolva um atacante: Coloque este card no campo de batalha.)."}
+        self.assertEqual(hint_reminder("{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield.", ninjutsu["en"], ninjutsu["pt"]), "{B}, devolva um atacante: Coloque este card no campo de batalha.")
+        # a dica que começa por "To manifest dread," vale para o lembrete sem esse começo
+        dread = {"en": "To manifest dread, look at the top two cards of your library.", "pt": "Para Manifestar Pavor, olhe os dois cards no topo de seu grimório."}
+        self.assertEqual(hint_reminder("Look at the top two cards of your library.", dread["en"], dread["pt"]), "Olhe os dois cards no topo de seu grimório.")
+        # dica em PT ainda em inglês (DiscoverN) não serve
+        self.assertIsNone(hint_reminder("Look at the top two cards of your library.", dread["en"], dread["en"]))
+
+    def test_it_so_quando_e_a_propria_carta(self):
+        # "It deals damage…" vira "Este card causa dano…" no Wither da própria carta, nunca no da criatura equipada (Fists of the Demigod)
+        wither = {"key": "AbilityHanger/Keyword/Wither_Body", "en": "This deals damage to creatures in the form of -1/-1 counters.", "pt": "Este card causa dano a criaturas na forma de marcadores -1/-1."}
+        rem = "It deals damage to creatures in the form of -1/-1 counters."
+        oracle = [
+            {"oracle_id": "a", "name": "Corvo", "oracle_text": f"Flying, wither ({rem})"},
+            {"oracle_id": "b", "name": "Punhos", "oracle_text": f"Equipped creature gets +1/+1 and has wither. ({rem})"},
+        ]
+        self.assertEqual(arena_reminders(oracle, [wither], set(), skip={}), {"a": {rem: wither["pt"]}})
+        self.assertTrue(refers_to_self("This creature enters prepared.", "Adventurous Eater"))
+        self.assertTrue(refers_to_self("Whenever a land you control enters, Tam becomes prepared.", "Tam, Observant Sequencer"))
+        self.assertFalse(refers_to_self("When this Equipment enters, create a 1/1 colorless Shapeshifter creature token with changeling.", "Stalactite Dagger"))
+        self.assertFalse(refers_to_self("{1}{R}, {T}: Target creature you control gains firebending 4 until end of turn.", "Fire Nation Palace"))
+
+    def test_vai_para_a_linha_do_posicionar(self):
+        en = f"Station ({self.STATION})\nSTATION 12+\nFlying\n5/5"
+        self.assertEqual(add_reminders(en, "Posicionar\nPOSICIONAR 12+\nVoar\n5/5", {self.STATION: self.PT}).split("\n")[0], f"Posicionar ({self.PT})")
+
+    def test_le_o_banco_da_interface(self):
+        import sqlite3
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "Raw_ClientLocalization.mtga"
+            con = sqlite3.connect(db)
+            con.execute("CREATE TABLE Loc (Key TEXT, Bundle TEXT, enUS TEXT, ptBR TEXT)")
+            con.executemany(
+                "INSERT INTO Loc VALUES (?, ?, ?, ?)",
+                [(self.HINT["key"], "b", self.HINT["en"], self.HINT["pt"]), ("AbilityHanger/Keyword/Nada_Body", "b", "Only English.", None), ("MainNav/Home", "b", "Home", "Início")],
+            )
+            con.commit()
+            con.close()
+            self.assertEqual(extract_hints(db), [self.HINT])
 
 
 class SagaChapters(unittest.TestCase):

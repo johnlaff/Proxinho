@@ -1,5 +1,5 @@
 /**
- * Moldura das naves e planetas com Estacionar (Station, desde Edge of Eternities, 2025).
+ * Moldura das naves e planetas com Posicionar (Station, desde Edge of Eternities, 2025).
  *
  * A caixa de texto é a da carta comum, translúcida, com a arte aparecendo por trás. Embaixo do
  * texto principal vem uma faixa por nível ("2+", "8+"), cada uma mais escura que a de cima, com
@@ -53,6 +53,12 @@ export const STATION = {
    * última linha em inglês acaba 8 px ou mais acima do aro dele)
    */
   stampGap: 5,
+  /**
+   * o fim do texto da última faixa (a caixa da linha, que já tem o pé das letras) fica até aqui
+   * acima do retângulo do selo da coleção (que começa 4 px acima do aro): a linha de base fica uns
+   * 13 px acima do aro, como no inglês
+   */
+  stampClear: 4,
   /**
    * a mancha da máscara a partir de `area` px que fica de fora se não tem tinta (`inkOnly`), e a
    * folga em volta dela onde se mede o papel
@@ -622,20 +628,26 @@ export interface StationPlan {
  * (`levelH`), como o Proxyshop e as artes estendidas: a mesma folga acima e abaixo de cada
  * texto, e cada faixa começa no meio da folga entre o texto de cima e o dela. Faixa mais baixa
  * que `STATION.minBand` fica com essa altura, com o texto no meio, e a folga das outras é
- * refeita. `null` quando a folga fica menor que `STATION.minGap` (não cabe).
+ * refeita. `below` é o mínimo entre o fim do texto da última faixa e o pé da caixa: o selo da
+ * coleção sobe para dentro da caixa, e a última linha que passa por cima dele ficava encostada
+ * no aro (The Eternity Elevator, The Seriema). Com ele maior que a folga, a última faixa fica com
+ * `below` embaixo do texto e a folga das outras é refeita. `null` quando a folga fica menor que
+ * `STATION.minGap` (não cabe).
  */
-export function stationPlan(mainH: number, levelH: number[], top: number, bottom: number): StationPlan | null {
+export function stationPlan(mainH: number, levelH: number[], top: number, bottom: number, below = 0): StationPlan | null {
   const n = levelH.length;
   const fixed = new Array<boolean>(n).fill(false);
   let gap = 0;
+  const height = (i: number) => levelH[i] + gap + (i === n - 1 ? Math.max(gap, below) : gap);
   for (let pass = 0; pass <= n; pass++) {
     const fixedH = fixed.filter(Boolean).length * STATION.minBand;
     const freeH = mainH + levelH.reduce((s, h, i) => s + (fixed[i] ? 0 : h), 0);
     const blocks = 1 + fixed.filter((f) => !f).length;
     gap = (bottom - top - fixedH - freeH) / (2 * blocks);
+    if (!fixed[n - 1] && below > gap) gap = (bottom - top - fixedH - freeH - below) / (2 * blocks - 1);
     let changed = false;
-    levelH.forEach((h, i) => {
-      if (!fixed[i] && h + 2 * gap < STATION.minBand) fixed[i] = changed = true;
+    levelH.forEach((_, i) => {
+      if (!fixed[i] && height(i) < STATION.minBand) fixed[i] = changed = true;
     });
     if (!changed) break;
   }
@@ -643,10 +655,15 @@ export function stationPlan(mainH: number, levelH: number[], top: number, bottom
   const mainTop = top + gap;
   let y = mainTop + mainH + gap;
   const bands = levelH.map((h, i) => {
-    const height = fixed[i] ? STATION.minBand : h + 2 * gap;
-    const band = { top: Math.round(y), textTop: Math.round(y + (height - h) / 2) };
-    y += height;
+    const size = fixed[i] ? STATION.minBand : height(i);
+    // (a última faixa com a altura mínima: o texto no meio dela, ou mais acima, longe do selo)
+    let textTop = fixed[i] ? y + (size - h) / 2 : y + gap;
+    if (fixed[i] && i === n - 1) textTop = Math.min(textTop, bottom - below - h);
+    if (textTop - y < STATION.minGap) return null;
+    const band = { top: Math.round(y), textTop: Math.round(textTop) };
+    y += size;
     return band;
   });
-  return { mainTop: Math.round(mainTop), bands };
+  if (bands.some((b) => !b)) return null;
+  return { mainTop: Math.round(mainTop), bands: bands as StationPlan["bands"] };
 }

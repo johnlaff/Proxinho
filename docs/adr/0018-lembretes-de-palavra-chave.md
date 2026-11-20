@@ -25,6 +25,6 @@ O motor já escreve o que está entre parênteses em itálico, como na carta imp
 ## Consequências
 
 - 3.933 faces de 3.879 cartas ganham o lembrete (1.121 lembretes em inglês com texto oficial em PT), entre elas o "Arregimentar Orcs 1." do Livro de Mazarbul, o Tesouro, a Comida, o vigiar, a recapitular e o lembrete da Aventura ("Depois, exile este card…").
-- As mecânicas que nunca saíram impressas em PT (a Wizards parou em 2024, depois de Modern Horizons 3: station, warp, max speed, gift) ficam sem lembrete, como antes.
+- As mecânicas que nunca saíram impressas em PT (a Wizards parou em 2024, depois de Modern Horizons 3: station, warp, max speed, gift) ficam sem lembrete, como antes. (Desde o ADR 0021, recebem a explicação oficial que o Arena mostra ao lado da carta, e o lembrete impresso antigo, que não diz o mesmo que o de hoje, deixa de ir para as outras cartas.)
 - Uma arte antiga, impressa antes de o lembrete existir, sai com ele. É o mesmo texto da carta física atual.
 - O texto fica mais comprido e a letra encolhe nas cartas mais cheias, como na carta impressa em PT.

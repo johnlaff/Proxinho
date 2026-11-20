@@ -65,7 +65,7 @@ function ptBox(c: ReturnType<typeof canvas>, cy: number, digitsTo = 668) {
   for (let x = 622; x < digitsTo; x += 12) c.fill(x, cy - 14, x + 7, cy + 14, gray(240));
 }
 
-describe("texto das naves com Estacionar", () => {
+describe("texto das naves com Posicionar", () => {
   it("separa o texto principal das habilidades de cada nível", () => {
     const parts = stationText("Quando esta Espaçonave entrar, crie uma ficha.\nPosicionar\n9+ | Voar, iniciativa");
     expect(parts).toEqual({
@@ -92,7 +92,7 @@ describe("texto das naves com Estacionar", () => {
   });
 });
 
-describe("moldura das naves com Estacionar", () => {
+describe("moldura das naves com Posicionar", () => {
   it("acha o pé da caixa pela borda preta abaixo dela", () => {
     const c = canvas(gray(200));
     c.fill(0, 964, W, H, gray(15));
@@ -363,5 +363,27 @@ describe("faixas no lugar do texto em português", () => {
 
   it("sem folga mínima, não cabe", () => {
     expect(stationPlan(250, [40], 656, 956)).toBeNull();
+  });
+
+  it("a última linha acaba acima do selo da coleção", () => {
+    // sem o selo, a folga é 20 e o texto da última faixa acabaria em 936; com 30 embaixo dele,
+    // a folga das outras é refeita: (300 - 180 - 30) / 5 = 18
+    const free = stationPlan(60, [30, 90], 656, 956)!;
+    expect(free.bands[1].textTop + 90).toBe(936);
+    const plan = stationPlan(60, [30, 90], 656, 956, 30)!;
+    expect(plan.mainTop).toBe(656 + 18);
+    expect(plan.bands[1].textTop).toBe(656 + 60 + 30 + 5 * 18);
+    expect(plan.bands[1].textTop + 90).toBe(956 - 30);
+    // com a folga já maior que o mínimo, nada muda
+    expect(stationPlan(60, [30, 90], 656, 956, 12)).toEqual(free);
+  });
+
+  it("a última faixa com a altura mínima sobe o texto para longe do selo", () => {
+    // a faixa teria 24 + 13,3 + 26 = 63,3: fica com 66, e o texto, no meio dela, acabaria em 935
+    const plan = stationPlan(210, [24], 656, 956, 26)!;
+    expect(plan.bands[0].top).toBe(956 - STATION.minBand);
+    expect(plan.bands[0].textTop).toBe(956 - 26 - 24);
+    // sem folga acima do texto, não cabe
+    expect(stationPlan(230, [24], 656, 956, 40)).toBeNull();
   });
 });

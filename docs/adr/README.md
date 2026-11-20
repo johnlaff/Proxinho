@@ -23,4 +23,5 @@ Cada arquivo registra uma decisão de arquitetura: o contexto, o que foi decidid
 | [0017](0017-moldura-de-aventura.md) | Moldura de Aventura: o livro conferido na imagem, a criatura na página da direita e a aventura na da esquerda, com a sombra da lombada tirada antes de apagar | Aceita |
 | [0018](0018-lembretes-de-palavra-chave.md) | Lembretes de palavra-chave onde o Oracle os traz, com o texto oficial das cartas impressas em PT | Aceita |
 | [0019](0019-moldura-de-classe.md) | Moldura de Classe: coluna, fio do lembrete e barras de nível medidos na imagem, barras recortadas e coladas onde o português pede | Aceita |
-| [0020](0020-moldura-de-estacionar.md) | Moldura das naves e planetas com Estacionar: selos, faixas e P/R medidos na imagem, escurecimento das faixas tirado e posto de novo onde o português pede, rede neural em duas metades | Aceita |
+| [0020](0020-moldura-de-posicionar.md) | Moldura das naves e planetas com Posicionar: selos, faixas e P/R medidos na imagem, escurecimento das faixas tirado e posto de novo onde o português pede, rede neural em duas metades | Aceita |
+| [0021](0021-explicacoes-das-dicas-do-arena.md) | Explicação das palavras-chave nunca impressas em PT pelas dicas oficiais do Arena instalado, só quando dizem o mesmo que a carta; o lembrete impresso antigo deixa de ir para as outras cartas | Aceita |

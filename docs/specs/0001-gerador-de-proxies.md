@@ -45,7 +45,7 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 ### H7. Honestidade e regras
 - [x] A origem do texto aparece na gaveta (Arena ou impressão PT).
 - [x] Sem tradução oficial, a carta sai em inglês e a interface diz.
-- [x] A explicação das palavras-chave (o lembrete entre parênteses) sai onde a carta física tem, ou seja, onde o Oracle traz, com o texto oficial das cartas impressas em PT; a que nunca saiu impressa em PT fica de fora (ADR 0018).
+- [x] A explicação das palavras-chave (o lembrete entre parênteses) sai onde a carta física tem, ou seja, onde o Oracle traz, com o texto oficial das cartas impressas em PT; a que nunca saiu impressa em PT vem da explicação oficial que o Arena mostra ao lado da carta, quando ela diz o mesmo que a carta (ADRs 0018 e 0021).
 - [x] Se o motor não reconhece a moldura de uma impressão e ela sai na imagem original, a etiqueta, a legenda e o resumo dizem que sai em inglês.
 - [x] Aviso de conteúdo de fã no site e no PDF; nenhuma marca da Wizards como marca do produto.
 
@@ -99,9 +99,9 @@ Como jogador, quero imprimir as Classes em português na arte que eu escolher, i
 - [x] O lembrete do alto sai com o texto oficial das Classes impressas ("(Ganhe o próximo nível como um feitiço para adicionar sua habilidade.)").
 - [x] Quando o motor não acha a coluna, o fio do lembrete ou as barras na imagem, ou o texto não cabe, a carta sai na original e a etiqueta diz que sai em inglês. As promos com o "&" de D&D em alto-relevo ficam de fora.
 
-### H13. Naves e planetas com Estacionar (entregue em 20/11/2026, ADR 0020)
+### H13. Naves e planetas com Posicionar (entregue em 20/11/2026, ADR 0020)
 Como jogador, quero imprimir as naves e os planetas de Edge of Eternities e de Star Trek em português na arte que eu escolher, mesmo sem nenhuma impressão em PT.
 - [x] As naves e os planetas na moldura padrão e na arte estendida saem em português, com o texto principal e o de cada nível no mesmo corpo de letra.
 - [x] As faixas de cada nível mudam de lugar para o texto em PT, com o selo do nível e a caixa de P/R no meio da faixa, a arte por trás e o mesmo escurecimento de cada faixa da carta original.
-- [x] A explicação do Estacionar, que nunca saiu impressa em PT, não deixa buraco: o texto se espalha com a mesma folga em volta de cada parte, como nas artes estendidas.
+- [x] A explicação do Posicionar, que nunca saiu impressa em PT, sai com o texto oficial da dica do Arena, como na carta física (ADR 0021), e o texto se espalha com a mesma folga em volta de cada parte, como nas artes estendidas.
 - [x] Quando o motor não acha os selos, a caixa de P/R ou o pé da caixa na imagem, quando o texto não cabe ou quando a rede neural não roda, a carta sai na original e a etiqueta diz que sai em inglês. As sem borda e as de vitrine ficam de fora.

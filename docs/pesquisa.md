@@ -212,9 +212,9 @@ O que o texto em PT pede: o Arena não tem o lembrete do alto, que vem das Class
 
 Promos de loja (AFR) com o "&" de D&D em alto-relevo: o relevo atravessa a coluna e as barras. Recortar as barras levava pedaços dele, e o resto ficava pela metade no papel apagado; elas saem na original.
 
-### Naves e planetas com Estacionar (20/11/2026)
+### Naves e planetas com Posicionar (20/11/2026)
 
-Como as ferramentas existentes fazem: o Proxyshop monta a Station a partir do próprio modelo, com uma camada de texto por nível, o selo e as faixas desenhados por cima, e espalha os textos com a mesma folga acima e abaixo de cada um, como na Classe. As artes estendidas da própria coleção, que vêm sem a explicação do Estacionar, fazem igual: faixas mais altas e a mesma folga em volta de cada texto. Aqui as faixas fazem parte da imagem escolhida, com a arte por trás: o Proxinho tira o escurecimento delas, apaga as letras, os selos e a caixa de P/R com a rede neural e escurece de novo onde o texto em PT pede (ADR 0020).
+Como as ferramentas existentes fazem: o Proxyshop monta a Station a partir do próprio modelo, com uma camada de texto por nível, o selo e as faixas desenhados por cima, e espalha os textos com a mesma folga acima e abaixo de cada um, como na Classe. As artes estendidas da própria coleção, que vêm sem a explicação do Posicionar, fazem igual: faixas mais altas e a mesma folga em volta de cada texto. Aqui as faixas fazem parte da imagem escolhida, com a arte por trás: o Proxinho tira o escurecimento delas, apaga as letras, os selos e a caixa de P/R com a rede neural e escurece de novo onde o texto em PT pede (ADR 0020).
 
 Medidas nas imagens do Scryfall (745 × 1040), em EOE, EOC, TRK, TRC e nas promos:
 
@@ -226,9 +226,32 @@ Medidas nas imagens do Scryfall (745 × 1040), em EOE, EOC, TRK, TRC e nas promo
 | Caixa de P/R | na última faixa, na altura do selo: miolo escuro de x ≈ 597 a 698 no meio, mais curto no alto e no pé (as pontas abauladas), ~42 px de altura; anel de ~6 px, que dos lados, com a beira cinza, vai até 7 px depois do miolo e embaixo, com a sombra, até 8 |
 | Selo da coleção | holográfico, no meio do pé da caixa |
 
-O que o texto em PT pede: o Arena marca cada nível com uma linha interna antes das habilidades dele (em inglês "STATIONLEVEL [9+] [3/4] [Flying] [First strike]", em PT "#StationLevelInstrinsic_NoTranslation"); o pipeline lê o nível no inglês e escreve como o Oracle ("9+ | Voar, iniciativa"). A explicação do Estacionar nunca saiu impressa em PT e os arquivos públicos do Arena não têm lembrete nenhum (nenhum dos 54.581 textos em PT tem parênteses): em PT, o "Posicionar" fica sozinho. 23 naves de Star Trek e de Commander não estão no Arena e seguem em inglês.
+O que o texto em PT pede: o Arena marca cada nível com uma linha interna antes das habilidades dele (em inglês "STATIONLEVEL [9+] [3/4] [Flying] [First strike]", em PT "#StationLevelInstrinsic_NoTranslation"); o pipeline lê o nível no inglês e escreve como o Oracle ("9+ | Voar, iniciativa"). A explicação do Posicionar nunca saiu impressa em PT e os arquivos públicos do Arena não têm lembrete nenhum (nenhum dos 54.581 textos em PT tem parênteses); ela vem da dica do jogo instalado (ver a seção seguinte e o ADR 0021). 23 naves de Star Trek e de Commander não estão no Arena e seguem em inglês.
 
 A rede neural: num quadro só, com a caixa inteira (697 px com o espelho) reduzida aos 512 px do modelo, as palavras densas da explicação em inglês viravam um borrão cinza no lugar delas (Lumen-Class Frigate, EOE 25). Em duas metades, cada uma na resolução da imagem, o borrão some. Na sem borda valeu o contrário (ADR 0015): ali as letras são brancas, finas e esparsas.
+
+### Explicações das palavras-chave pelas dicas do Arena (20/11/2026)
+
+De onde vem: o Arena mostra, ao lado da carta, a explicação de cada palavra-chave, traduzida oficialmente. O texto fica no banco da interface do jogo instalado, `MTGA_Data/Downloads/Raw/Raw_ClientLocalization_*.mtga`: um SQLite com a tabela `Loc` (`Key`, `Bundle` e uma coluna por idioma: `enUS`, `ptBR`…). As dicas têm chaves `AbilityHanger/Keyword/<Nome>_Body` e `AbilityHanger/AbilityWord/<Nome>_Body`, com o título em `_Title`. Na versão 2026.65 do cliente são 1.099 dicas com inglês e português. Os arquivos públicos da Untapped têm só o texto das cartas, sem as dicas.
+
+Ninguém publica essas dicas em PT: os sites de cartas mostram o lembrete em inglês do Oracle, e as listas da comunidade traduzem por conta própria.
+
+Como a dica se compara ao lembrete da carta (comparação com os lembretes do Oracle das cartas de papel):
+
+| O que muda | Exemplo | O que o pipeline faz |
+|---|---|---|
+| Ordem das palavras | "Put charge counters on this Spacecraft equal to its power" na dica do Posicionar, "…equal to its power on this Spacecraft" na carta | Compara as palavras sem a ordem, com variáveis só de número |
+| Variáveis | "{chargeRequirement}", "{numeral}", "{abilityCost}", "{mana}" | Recebem o número (em algarismos) ou o custo da carta |
+| Jeito de falar da carta | "it" na dica da Dobra Espacial, "this creature" na carta; "its" no Power-up, "his" na carta do Shang-Chi | Aceito; o "it" da carta só quando é a própria carta |
+| "token" | "create a 1/1 copy" na dica da Cria, "a 1/1 token copy" na carta | Aceito: o que se cria é sempre uma ficha |
+| Começo de definição | "To manifest dread, look at…" na dica, "Look at…" na carta | A dica em PT perde o "Para Manifestar Pavor," |
+| Símbolos | "{o2}" e "o2" | Viram "{2}" |
+| Tradução errada | Enweb e Web-slinging sem o "virada"; Mayhem do terreno com "conjurar" | Fora (`HINT_SKIP`) |
+| Sem tradução | Discover N, com o PT igual ao inglês | Fora |
+
+Qualidade: dos 194 lembretes que as cartas impressas em PT já traziam e que uma dica também cobre, 81 são idênticos ao impresso e a semelhança mediana é de 98,7% (a diferença típica é "para cada" contra "por cada"). As diferenças grandes eram o impresso antigo: o atropelar dos Fractius da M14 e o toque mortífero de antes de 2010, que não dizem o mesmo que o lembrete de hoje.
+
+Resultado: 164 lembretes em inglês ganham texto em PT, em 643 cartas (632 de papel). Os maiores grupos: Posicionar (as naves e planetas), Preparar (61 cartas de Secrets of Strixhaven), "Liguem seus motores!" (39), Exaustão (33), Dobra Espacial (29), Definhar (29), Bushido (26), Manifestar Pavor (22) e Cria (20). Ficam de fora as cartas com número por extenso ("Mobilize 2" diz "two", e a dica sairia "2"), as dicas que dizem outra coisa (Prototype, Suspend sem o "it has haste", Partner com "Parceiro" onde a carta diz "this ability") e a "it" que não é a própria carta (o Changeling da ficha do Stalactite Dagger).
 
 ## Lado legal e o caminho seguro
 
@@ -237,11 +260,11 @@ A rede neural: num quadro só, com a caixa inteira (697 px com o espelho) reduzi
 | Política de Conteúdo de Fãs da Wizards | Permite conteúdo de fã gratuito; proíbe vender, usar logos e tirar avisos de copyright; exige o aviso de "não aprovado" | Baixo, se grátis |
 | Posição da Wizards sobre proxies (2016) | O foco é falsificação e eventos oficiais; não fiscalizam cartas de teste para uso pessoal | Baixo no uso pessoal |
 | Card Conjurer (2022) | Gerador web recebeu notificação; a Wizards citou cópia literal de texto e arte | Médio num site público |
-| Termos do Arena | Proíbem engenharia reversa | Alto se extrair do cliente: não fazemos |
+| Termos do Arena | Proíbem engenharia reversa | Alto se extrair do programa: não fazemos. Desde 20/11/2026 lemos só as dicas das palavras-chave no banco da interface (SQLite) da instalação do dono do projeto, com o ok dele, fora do repositório (ADR 0021): rever antes de abrir ao público |
 | Dados da Untapped | Arquivos públicos, sem termos claros de reuso | Médio: pedir autorização antes de divulgar |
 | Regras de imagem do Scryfall | Não cortar artista e copyright, não distorcer, não pôr marca d'água | Médio: avisar o Scryfall |
 | Fontes das cartas | Beleren e Plantin são de terceiros | Arquivos fornecidos pelo dono do projeto, servidos do KV e fora do repositório; reserva livre: Eczar e Splentinex (OFL). Rever antes de abrir ao público |
 
-**O que o Proxinho faz para ficar no caminho seguro:** é grátis, não vende impressão, gera tudo no navegador (o servidor não guarda nem distribui imagens de cartas, e não há galeria pública), não extrai nada do cliente do Arena, mantém artista e copyright, mostra o aviso de conteúdo de fã no site e no PDF e não usa nomes ou logos da Wizards como marca.
+**O que o Proxinho faz para ficar no caminho seguro:** é grátis, não vende impressão, gera tudo no navegador (o servidor não guarda nem distribui imagens de cartas, e não há galeria pública), não extrai nada do cliente do Arena além das dicas das palavras-chave (ADR 0021), mantém artista e copyright, mostra o aviso de conteúdo de fã no site e no PDF e não usa nomes ou logos da Wizards como marca.
 
 **Pendente antes de divulgar amplamente:** pedir autorização à Untapped e avisar o Scryfall.

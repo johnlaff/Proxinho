@@ -24,6 +24,7 @@ import re
 import sys
 import time
 import unicodedata
+from collections import Counter
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -166,7 +167,7 @@ _STATION_LEVEL = re.compile(r"STATIONLEVEL \[(\d+\+)\]")
 
 
 def station_level(en_text: str | None) -> str | None:
-    """O nível de um marcador de Estacionar do Arena ("STATIONLEVEL [9+] [3/4] [Flying]…" → "9+").
+    """O nível de um marcador de Posicionar (Station) do Arena ("STATIONLEVEL [9+] [3/4] [Flying]…" → "9+").
 
     Em PT o marcador é "#StationLevelInstrinsic_NoTranslation" e sai do texto; as habilidades
     que vêm depois dele, até o próximo marcador, são as do nível.
@@ -176,7 +177,7 @@ def station_level(en_text: str | None) -> str | None:
 
 
 def join_station(groups: list[tuple[str | None, list[str]]]) -> list[str]:
-    """Junta as palavras-chave de cada nível de Estacionar à parte e marca o começo de cada nível
+    """Junta as palavras-chave de cada nível de Posicionar à parte e marca o começo de cada nível
     como o Oracle ("9+ | Voar, iniciativa"). Sem isso, o "Posicionar" e as palavras-chave do
     nível viravam uma linha só ("Posicionar, voar, iniciativa", Nave-aríete Cuneilux)."""
     out: list[str] = []
@@ -266,7 +267,7 @@ def load_arena(offline: bool) -> dict[str, dict]:
         if sub:
             type_pt = f"{type_pt} — {sub}"
         type_en, sub_en = en.get(card.get("cardTypeTextId")), en.get(card.get("subtypeTextId"))
-        # cada nível de Estacionar começa num marcador (ver station_level)
+        # cada nível de Posicionar começa num marcador (ver station_level)
         groups: list[tuple[str | None, list[str]]] = [(None, [])]
         for a in card.get("abilities", []):
             if level := station_level(en.get(a.get("TextId"))):
@@ -741,6 +742,22 @@ def ends_like(en: str, pt: str) -> bool:
     return period(en) == period(pt) and not re.match(r"^(\w) \1\w", pt)
 
 
+def _sentences(text: str) -> int:
+    return len(re.findall(r"[.!?](?:\s|$)", re.sub(r'["“”]', "", text.strip())))
+
+
+def says_all(en: str, pt: str) -> bool:
+    """
+    O lembrete impresso diz tudo o que o do Oracle diz: o Oracle muda o lembrete com o tempo e a
+    carta impressa fica com o antigo. Com menos frases pode faltar uma regra ("It's also a
+    Zombie." no arregimentar de WAR), e com quase o dobro do tamanho é outro texto (o atropelar
+    dos Fractius da M14, que ia para as cartas com atropelar; o toque mortífero antigo, "Você
+    pode dividir o dano de combate…"). A própria carta fica com o da impressão dela, que é o da
+    carta física; só as outras deixam de recebê-lo (ver `reminder_texts`).
+    """
+    return _sentences(pt) >= _sentences(en) and len(pt) <= 1.85 * len(en)
+
+
 def printed_reminders(oracle_text: str | None, printed_text: str | None) -> list[tuple[str, str]]:
     """
     Os pares (lembrete do Oracle, lembrete impresso em PT) de uma face, linha a linha: as duas
@@ -788,11 +805,207 @@ def reminder_texts(prints, oracle: dict[str, dict]) -> tuple[dict[str, dict[str,
         for f, g in zip(faces, faces_en):
             group = type_group(g.get("type_line") or o.get("type_line"))
             for en, pt in printed_reminders(g.get("oracle_text"), f.get("printed_text")):
-                for table in (by_group.setdefault(group, {}), by_group.setdefault("*", {}), by_card.setdefault(oid, {})):
+                # a própria carta fica com o que a impressão dela diz; as outras, só com o que diz tudo
+                tables = [by_card.setdefault(oid, {})]
+                if says_all(en, pt):
+                    tables += [by_group.setdefault(group, {}), by_group.setdefault("*", {})]
+                for table in tables:
                     if en not in table or (released, pt) > table[en]:
                         table[en] = (released, pt)
     flat = lambda tables: {k: {en: pt for en, (_, pt) in t.items()} for k, t in tables.items()}  # noqa: E731
     return flat(by_group), flat(by_card)
+
+
+# As dicas das palavras-chave do Arena (o texto que o jogo mostra ao lado da carta), do banco da
+# interface do Arena instalado do João (`Raw_ClientLocalization_*.mtga`, tabela Loc), com o ok
+# dele em 20/11/2026 (ADR 0021). O banco fica fora do repositório: `--dicas` grava só as dicas
+# em data/cache, e a cópia fica no KV do Proxinho (ver docs/operacao.md).
+ARENA_HINTS = CACHE / "arena_dicas.json"
+# dicas que dizem o mesmo que o lembrete em inglês, mas com a tradução errada no Arena: ficam de fora
+HINT_SKIP: dict[str, str] = {
+    "AbilityHanger/Keyword/Enweb_Body": 'sem o "virada" de "return a tapped creature"',
+    "AbilityHanger/Keyword/Web-Slinging_Body": 'sem o "virada" de "return a tapped creature"',
+    "AbilityHanger/Keyword/Mayhem_Body_Land": '"conjurar" para o terreno, que se joga ("play")',
+}
+# o lembrete fala da própria carta quando o resto da linha é ela ("This creature enters prepared.")
+_SELF_PHRASE = r"this (?:creature|card|permanent|artifact|enchantment|land|spell|vehicle|spacecraft|planet|equipment|saga)"
+# e não fala dela quando a linha cita outra coisa ("target creature", "equipped creature", a ficha)
+_OTHER_THING = re.compile(r"\b(?:target|token|tokens|equipped|enchanted|another|other|that|those|each|all|a|an|the)\b", re.IGNORECASE)
+# palavras, números, "+" e símbolos; a variável da dica é um nome entre chaves ("{chargeRequirement}")
+_HINT_TOKEN = re.compile(r"\{[^}]+\}|[\w'’]+|\+")
+_HINT_VAR = re.compile(r"^\{[a-z][A-Za-z]+\}$")
+# variáveis de custo ("{abilityCost}", "{mana}") viram símbolos de mana; as outras, um número
+_HINT_COST_VARS = {"{abilitycost}", "{mana}"}
+# jeitos de a explicação falar da própria carta: trocar um pelo outro não muda o sentido
+# ("Exile this creature" na carta e "Exile it" na dica do Warp; "his" e "its" no Power-up)
+_HINT_SELF = {
+    "it", "its", "this", "he", "his", "him", "she", "her",
+    *(f"this {t}" for t in ("creature", "card", "permanent", "artifact", "enchantment", "land", "spell", "vehicle", "spacecraft", "planet")),
+}
+_SYMBOL = re.compile(r"^\{[^}]+\}$")
+
+
+def extract_hints(mtga: Path) -> list[dict[str, str]]:
+    """As dicas das palavras-chave (chave, inglês e português) do banco da interface do Arena."""
+    import sqlite3
+
+    con = sqlite3.connect(f"file:{mtga}?mode=ro", uri=True)
+    try:
+        rows = con.execute("SELECT Key, enUS, ptBR FROM Loc WHERE Key LIKE 'AbilityHanger/%' ORDER BY Key").fetchall()
+    finally:
+        con.close()
+    return [{"key": k, "en": en, "pt": pt} for k, en, pt in rows if en and pt]
+
+
+def load_hints() -> list[dict[str, str]]:
+    if not ARENA_HINTS.exists():
+        log(f"sem {ARENA_HINTS.name}: as explicações das palavras-chave nunca impressas em PT ficam de fora (ver docs/operacao.md)")
+        return []
+    return json.loads(ARENA_HINTS.read_text())
+
+
+def refers_to_self(prefix: str, name: str) -> bool:
+    """
+    O "it" do lembrete é a própria carta: a linha é só a palavra-chave ("Wither", "Flying,
+    wither", "Firebending 2") ou acaba com a carta fazendo algo ("This creature enters prepared.",
+    "Tam becomes prepared.", "if this creature isn't prepared, it becomes prepared."). Sem isso o
+    "it" pode ser outra coisa (a ficha do Stalactite Dagger, a criatura equipada do Aegis of the
+    Legion), e a dica que fala "esta criatura" diria outra coisa que a carta.
+    """
+    text = prefix.strip().rstrip(".")
+    parts = [p.strip() for p in text.split(",")]
+    if all(re.fullmatch(r"[A-Za-z][\w'’-]*(?: [\w'’-]+){0,2}(?: \d+| X)?", p) for p in parts) and parts[0][:1].isupper() and not _OTHER_THING.search(text):
+        return True
+    names = {name, name.split(",")[0]}
+    last = re.split(r"[.,;:—]\s*", text)[-1].strip()
+    subject = re.match(rf"(?:{_SELF_PHRASE}|{'|'.join(map(re.escape, names))}|it)\b", last, re.IGNORECASE)
+    if not subject:
+        return False
+    return subject.group(0).lower() != "it" or (bool(re.search(_SELF_PHRASE, text, re.IGNORECASE)) and not re.search(r"\b(?:target|token|equipped|enchanted|another|that)\b", text, re.IGNORECASE))
+
+
+def hint_text(text: str) -> str:
+    """Os símbolos do Arena na dica ("{o2}", e "o2" solto na do Cloak) como os do Oracle ("{2}")."""
+    return re.sub(r"(?<![\w{])o(\d+|X)\b", r"{\1}", arena_symbols(text))
+
+
+def _hint_words(text: str) -> list[str]:
+    # "it's" é "it is", para "it's prepared" casar com "this is prepared" (Prepare, SOS)
+    return [w for t in _HINT_TOKEN.findall(text) for w in (["it", "is"] if t.lower() in {"it's", "it’s"} else [t if t.startswith("{") else t.lower()])]
+
+
+def _hint_fill_ordered(rem: list[str], hint: list[str], own: bool) -> dict[str, str] | None:
+    """
+    As variáveis da dica, alinhando as duas na mesma ordem: fora delas, só o jeito de falar da
+    própria carta (`_HINT_SELF`) e a palavra "token" podem mudar ("create a 1/1 token copy" na
+    carta, "create a 1/1 copy" na dica do Offspring: o que se cria é sempre uma ficha). O "it"
+    da carta só vira "esta criatura" da dica quando é a própria carta (`own`, `refers_to_self`).
+    """
+    import difflib
+
+    values: dict[str, str] = {}
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, rem, hint, autojunk=False).get_opcodes():
+        a, b = rem[i1:i2], hint[j1:j2]
+        if tag == "equal":
+            continue
+        if len(b) == 1 and _HINT_VAR.match(b[0]):
+            cost = b[0].lower() in _HINT_COST_VARS
+            if not a or not all(_SYMBOL.match(t) if cost else t.isdigit() for t in a) or (not cost and len(a) > 1):
+                return None
+            if values.setdefault(b[0], "".join(a)) != "".join(a):
+                return None
+        elif a and b and {" ".join(a), " ".join(b)} <= _HINT_SELF and (own or " ".join(a) not in {"it", "its"}):
+            continue
+        elif (not a and b == ["token"]) or (not b and a == ["token"]):
+            continue
+        else:
+            return None
+    return values
+
+
+def _hint_fill_bag(rem: list[str], hint: list[str]) -> dict[str, str] | None:
+    """
+    As variáveis da dica com as mesmas palavras do lembrete em outra ordem ("Put charge
+    counters on this Spacecraft equal to its power" contra "Put charge counters equal to its
+    power on this Spacecraft" na carta): o que sobra do lembrete é um número só, de cada variável.
+    """
+    names = [t for t in hint if _HINT_VAR.match(t)]
+    left = Counter(rem)
+    left.subtract(t for t in hint if not _HINT_VAR.match(t))
+    if any(n < 0 for n in left.values()):
+        return None
+    rest = [t for t, n in left.items() for _ in range(n)]
+    if len(rest) != len(names) or not all(t.isdigit() for t in rest) or len(set(rest)) > 1:
+        return None
+    return {name: rest[0] for name in names}
+
+
+def hint_reminder(reminder: str, en: str, pt: str, own: bool = False) -> str | None:
+    """
+    O lembrete em PT de um lembrete do Oracle, pela dica do Arena que diz o mesmo em inglês (ver
+    `_hint_fill_ordered` e `_hint_fill_bag`): cada variável da dica ("{abilityCost}",
+    "{chargeRequirement}") recebe o custo ou o número do lembrete, na dica em PT. Dica que
+    começa por "To manifest dread," vale para o lembrete sem esse começo, e a dica em PT perde o
+    "Para Manifestar Pavor," dela. A dica não tem o ponto final do lembrete: ele volta. Dica em
+    PT igual à em inglês não está traduzida (DiscoverN). Sem dizer o mesmo, nada. O ")" a mais no
+    fim da dica em PT do Ninjutsu ("virado e atacando.).") sai.
+    """
+    en, pt = hint_text(en), hint_text(pt)
+    if pt.count(")") > pt.count("("):
+        pt = re.sub(r"\)+\.?$", "", pt.rstrip())
+    if pt.strip() == en.strip():
+        return None
+    rem = _hint_words(reminder)
+    variants = [(en, pt)]
+    lead_en, lead_pt = re.match(r"To [^,.]+, (\w)", en), re.match(r"Para [^,.]+, (\w)", pt)
+    if lead_en and lead_pt:
+        variants.append((lead_en.group(1).upper() + en[lead_en.end() :], lead_pt.group(1).upper() + pt[lead_pt.end() :]))
+    for e, p in variants:
+        hint = _hint_words(e)
+        values = _hint_fill_ordered(rem, hint, own)
+        if values is None:
+            values = _hint_fill_bag(rem, hint)
+        if values is None:
+            continue
+        for name, value in values.items():
+            p = re.sub(re.escape(name), value, p, flags=re.IGNORECASE)
+        if any(_HINT_VAR.match(t) for t in _HINT_TOKEN.findall(p)):
+            continue
+        if reminder.rstrip().endswith(".") and not p.rstrip().endswith("."):
+            p = p.rstrip() + "."
+        if same_marks(reminder, p):
+            return p
+    return None
+
+
+def arena_reminders(oracle, hints: list[dict[str, str]], known: set[str], skip: dict[str, str] = HINT_SKIP) -> dict[str, dict[str, str]]:
+    """
+    Por carta (`oracle_id`), os lembretes do Oracle (em inglês) que ganham o texto em PT de uma
+    dica do Arena (ver `hint_reminder`), só onde nenhuma carta impressa em PT traz o lembrete
+    (`known`): o impresso ganha. Por carta porque o mesmo lembrete pode falar da própria carta
+    numa e de outra coisa noutra (`refers_to_self`). A explicação do Posicionar nunca saiu
+    impressa, e sem ela a faixa do alto das naves ficava com "Posicionar" sozinho, diferente da
+    carta física. As dicas de `skip` têm a tradução errada no Arena e ficam de fora.
+    """
+    chosen = [(h, set(_hint_words(hint_text(h["en"])))) for h in hints if h["key"] not in skip]
+    memo: dict[tuple[str, bool], str | None] = {}
+    out: dict[str, dict[str, str]] = {}
+    for card in oracle:
+        oid = card.get("oracle_id") or (card.get("card_faces") or [{}])[0].get("oracle_id")
+        for f in card.get("card_faces") or [card]:
+            for line in (f.get("oracle_text") or "").split("\n"):
+                found = line_reminder(line)
+                if not found or found[1] in known:
+                    continue
+                key = (found[1], refers_to_self(found[0], f.get("name") or card.get("name", "")))
+                if key not in memo:
+                    words = set(_hint_words(found[1]))
+                    # só as dicas com quase todas as palavras do lembrete passam pela comparação inteira
+                    near = (h for h, hw in chosen if len(words & hw) >= 0.6 * max(len(words), len(hw)))
+                    memo[key] = next((x for h in near if (x := hint_reminder(found[1], h["en"], h["pt"], key[1]))), None)
+                if memo[key]:
+                    out.setdefault(oid, {})[found[1]] = memo[key]
+    return out
 
 
 def face_reminders(oid: str, type_line: str | None, by_group: dict[str, dict[str, str]], by_card: dict[str, dict[str, str]]) -> dict[str, str]:
@@ -952,7 +1165,7 @@ def frame_supported(card: dict) -> bool:
         and not card.get("textless")
         and not effects & UNSUPPORTED_EFFECTS
         and not any(t in type_line for t in UNSUPPORTED_TYPES_NORMAL)
-        # naves e planetas com "Estacionar" têm caixas de nível próprias (2+, 12+)
+        # naves e planetas com "Posicionar" têm caixas de nível próprias (2+, 12+)
         and "Station" not in (card.get("keywords") or [])
     )
 
@@ -1046,7 +1259,7 @@ STATION_EFFECTS_OK = {"legendary", "extendedart"}
 
 
 def station_supported(card: dict) -> bool:
-    """Naves e planetas com Estacionar na moldura comum (Edge of Eternities em diante): a caixa
+    """Naves e planetas com Posicionar na moldura comum (Edge of Eternities em diante): a caixa
     translúcida com uma faixa por nível, o selo do nível à esquerda e o P/R na última
     (src/engine/station.ts). O motor confere os selos na imagem; com outro número de selos, a arte
     sai como está. Ficam de fora as sem borda e as de vitrine.
@@ -1325,6 +1538,13 @@ def build(offline: bool) -> list[dict]:
     with open(CACHE / "scryfall_pt.jsonl") as fh:
         by_group, by_card = reminder_texts((json.loads(line) for line in fh), {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle})
     log(f"lembretes de palavra-chave em PT (das impressas): {len(by_group.get('*', {}))}")
+    # e os das dicas do Arena, onde nenhuma impressa traz o lembrete (o Posicionar, ADR 0021)
+    hints = arena_reminders(oracle, load_hints(), set(by_group.get("*", {})))
+    for oid, table in hints.items():
+        for en, pt in table.items():
+            # o texto impresso da própria carta ganha da dica
+            by_card.setdefault(oid, {}).setdefault(en, pt)
+    log(f"lembretes de palavra-chave em PT (das dicas do Arena): {len({en for t in hints.values() for en in t})}, em {len(hints)} cartas")
     added = 0
 
     rows = []
@@ -1559,7 +1779,14 @@ def write(rows: list[dict], prints: list[dict]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--offline", action="store_true", help="reaproveita downloads em data/cache")
+    parser.add_argument("--dicas", type=Path, metavar="MTGA", help="grava as dicas das palavras-chave do Raw_ClientLocalization_*.mtga em data/cache e sai")
     args = parser.parse_args()
+    if args.dicas:
+        CACHE.mkdir(parents=True, exist_ok=True)
+        hints = extract_hints(args.dicas)
+        ARENA_HINTS.write_text(json.dumps(hints, ensure_ascii=False, indent=0))
+        log(f"{len(hints)} dicas do Arena em {ARENA_HINTS}")
+        return
     rows = build(args.offline)
     all_prints = load_prints(args.offline)
     # fichas que cada carta cria, pelo oracle_id da ficha
