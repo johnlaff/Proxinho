@@ -162,6 +162,32 @@ def join_keywords(lines: list[str]) -> list[str]:
     return [line.rstrip("\u0000") for line in out]
 
 
+_STATION_LEVEL = re.compile(r"STATIONLEVEL \[(\d+\+)\]")
+
+
+def station_level(en_text: str | None) -> str | None:
+    """O nível de um marcador de Estacionar do Arena ("STATIONLEVEL [9+] [3/4] [Flying]…" → "9+").
+
+    Em PT o marcador é "#StationLevelInstrinsic_NoTranslation" e sai do texto; as habilidades
+    que vêm depois dele, até o próximo marcador, são as do nível.
+    """
+    m = _STATION_LEVEL.match(en_text or "")
+    return m.group(1) if m else None
+
+
+def join_station(groups: list[tuple[str | None, list[str]]]) -> list[str]:
+    """Junta as palavras-chave de cada nível de Estacionar à parte e marca o começo de cada nível
+    como o Oracle ("9+ | Voar, iniciativa"). Sem isso, o "Posicionar" e as palavras-chave do
+    nível viravam uma linha só ("Posicionar, voar, iniciativa", Nave-aríete Cuneilux)."""
+    out: list[str] = []
+    for level, lines in groups:
+        joined = join_keywords(lines)
+        if level is not None and joined:
+            joined[0] = f"{level} | {joined[0]}"
+        out += joined
+    return out
+
+
 def cites_alt_name(text_pt: str, alt_names: list[str | None]) -> bool:
     """O texto cita o nome alternativo da carta (inteiro ou só antes da vírgula)?"""
     for name in alt_names:
@@ -240,15 +266,17 @@ def load_arena(offline: bool) -> dict[str, dict]:
         if sub:
             type_pt = f"{type_pt} — {sub}"
         type_en, sub_en = en.get(card.get("cardTypeTextId")), en.get(card.get("subtypeTextId"))
-        lines = [
-            arena_symbols(t)
-            for a in card.get("abilities", [])
-            if (t := text(br, a.get("TextId"))) and not is_intrinsic_mana(type_en, sub_en, en.get(a.get("TextId")))
-        ]
+        # cada nível de Estacionar começa num marcador (ver station_level)
+        groups: list[tuple[str | None, list[str]]] = [(None, [])]
+        for a in card.get("abilities", []):
+            if level := station_level(en.get(a.get("TextId"))):
+                groups.append((level, []))
+            elif (t := text(br, a.get("TextId"))) and not is_intrinsic_mana(type_en, sub_en, en.get(a.get("TextId"))):
+                groups[-1][1].append(arena_symbols(t))
         return {
             "name_pt": name_pt,
             "type_pt": type_pt,
-            "text_pt": clean_rules("\n".join(join_keywords(lines))),
+            "text_pt": clean_rules("\n".join(join_station(groups))),
             "flavor_pt": fix_breaks(text(br, card.get("flavorId")), flavor=True),
             "_flavor_en": text(en, card.get("flavorId")),
             "mana_cost": arena_cost(card.get("castingcost")),
@@ -717,7 +745,9 @@ def printed_reminders(oracle_text: str | None, printed_text: str | None) -> list
     """
     Os pares (lembrete do Oracle, lembrete impresso em PT) de uma face, linha a linha: as duas
     têm o mesmo número de linhas, e em cada par as duas linhas acabam num lembrete só, com os
-    mesmos números e símbolos no lembrete e no resto da linha.
+    mesmos números e símbolos no lembrete e no resto da linha. Lembrete igual ao do Oracle não é
+    tradução: o Scryfall tem impressões em PT com linhas em inglês (Chimil, the Inner Sun, LCI
+    249), e o lembrete em inglês ia para as outras cartas com a palavra (U.S.S. Discovery, TRK).
     """
     en = [x.strip() for x in (oracle_text or "").split("\n") if x.strip()]
     pt = [x.strip() for x in (clean_rules(fix_breaks(printed_text)) or "").split("\n") if x.strip()]
@@ -726,7 +756,7 @@ def printed_reminders(oracle_text: str | None, printed_text: str | None) -> list
     pairs = []
     for e, p in zip(en, pt):
         a, b = line_reminder(e), line_reminder(p)
-        if a and b and same_marks(a[0], b[0]) and same_marks(a[1], b[1]) and ends_like(a[1], b[1]):
+        if a and b and a[1] != b[1] and same_marks(a[0], b[0]) and same_marks(a[1], b[1]) and ends_like(a[1], b[1]):
             pairs.append((a[1], b[1]))
     return pairs
 
@@ -1010,6 +1040,29 @@ def adventure_supported(card: dict) -> bool:
     )
 
 
+# efeitos que não mudam a caixa das naves: a coroa de lendária e a arte estendida (que já vem
+# sem a explicação do "Station", com as faixas mais altas)
+STATION_EFFECTS_OK = {"legendary", "extendedart"}
+
+
+def station_supported(card: dict) -> bool:
+    """Naves e planetas com Estacionar na moldura comum (Edge of Eternities em diante): a caixa
+    translúcida com uma faixa por nível, o selo do nível à esquerda e o P/R na última
+    (src/engine/station.ts). O motor confere os selos na imagem; com outro número de selos, a arte
+    sai como está. Ficam de fora as sem borda e as de vitrine.
+    """
+    effects = set(card.get("frame_effects") or [])
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "normal"
+        and card.get("border_color") == "black"
+        and "Station" in (card.get("keywords") or [])
+        and effects <= STATION_EFFECTS_OK
+        and not card.get("full_art")
+        and not card.get("textless")
+    )
+
+
 def class_supported(card: dict) -> bool:
     """Classe na moldura de Adventures in the Forgotten Realms em diante: a arte à esquerda e a
     coluna de texto à direita, com o lembrete no alto e uma barra por nível (src/engine/classCard.ts).
@@ -1180,6 +1233,7 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or saga_supported(c)
         or adventure_supported(c)
         or class_supported(c)
+        or station_supported(c)
         or bool(sides and sides[0]["supported"]),
         "sides": sides,
         # nome de crossover no alto (o nome de jogo vai numa linha pequena abaixo da barra)

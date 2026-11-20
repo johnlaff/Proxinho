@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
+from build import ability_word_lines, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -492,6 +492,33 @@ class ClassText(unittest.TestCase):
         self.assertFalse(is_arena_marker("Você pode jogar cards exilados com esta Classe."))
 
 
+class StationText(unittest.TestCase):
+    """Estacionar: o Arena marca cada nível com "#StationLevelInstrinsic_NoTranslation" (em inglês,
+    "STATIONLEVEL [9+] [3/4] [Flying]…") antes das habilidades do nível."""
+
+    def test_nivel_do_marcador(self):
+        self.assertEqual(station_level("STATIONLEVEL [9+] [3/4] [Flying] [First strike]"), "9+")
+        self.assertEqual(station_level("STATIONLEVEL [12+] [] [{3}{W}, {T}: Create a token…]"), "12+")
+        self.assertIsNone(station_level("Station"))
+        self.assertIsNone(station_level(None))
+
+    def test_palavras_chave_de_cada_nivel_a_parte(self):
+        # Nave-aríete Cuneilux: saía "Posicionar, voar, iniciativa" numa linha só
+        groups = [(None, ["Quando esta Espaçonave entrar, crie uma ficha.", "Posicionar"]), ("9+", ["Voar", "Iniciativa"])]
+        self.assertEqual(join_station(groups), ["Quando esta Espaçonave entrar, crie uma ficha.", "Posicionar", "9+ | Voar, iniciativa"])
+
+    def test_nivel_com_varias_linhas(self):
+        # Cruzador de Batalha Entrópico: o nível 8+ tem as palavras-chave e uma habilidade
+        groups = [(None, ["Posicionar"]), ("1+", ["Toda vez que um oponente descarta um card, ele perde 3 pontos de vida."]), ("8+", ["Voar", "Toque mortífero", "Toda vez que esta Espaçonave ataca, cada oponente descarta um card."])]
+        self.assertEqual(
+            join_station(groups),
+            ["Posicionar", "1+ | Toda vez que um oponente descarta um card, ele perde 3 pontos de vida.", "8+ | Voar, toque mortífero", "Toda vez que esta Espaçonave ataca, cada oponente descarta um card."],
+        )
+
+    def test_sem_niveis_fica_como_antes(self):
+        self.assertEqual(join_station([(None, ["Voar", "Vigilância"])]), ["Voar, vigilância"])
+
+
 class ClassSupported(unittest.TestCase):
     base = {"frame": "2015", "layout": "class", "border_color": "black", "type_line": "Enchantment — Class"}
 
@@ -508,6 +535,23 @@ class ClassSupported(unittest.TestCase):
         self.assertFalse(class_supported({**self.base, "layout": "normal"}))
         # promo de loja com o "&" em alto-relevo atravessando a coluna (Ranger Class, PAFR 202a)
         self.assertFalse(class_supported({**self.base, "promo_types": ["embossed", "instore"]}))
+
+
+class StationSupported(unittest.TestCase):
+    base = {"frame": "2015", "layout": "normal", "border_color": "black", "keywords": ["Station", "Flying"], "type_line": "Artifact — Spacecraft"}
+
+    def test_moldura_padrao(self):
+        self.assertTrue(station_supported(self.base))
+        self.assertTrue(station_supported({**self.base, "frame_effects": ["legendary"]}))
+        # arte estendida: a mesma caixa, sem a explicação do Estacionar
+        self.assertTrue(station_supported({**self.base, "frame_effects": ["extendedart"]}))
+
+    def test_outras_molduras(self):
+        self.assertFalse(station_supported({**self.base, "keywords": ["Flying"]}))
+        self.assertFalse(station_supported({**self.base, "border_color": "borderless"}))
+        self.assertFalse(station_supported({**self.base, "frame_effects": ["showcase"]}))
+        self.assertFalse(station_supported({**self.base, "full_art": True}))
+        self.assertFalse(station_supported({**self.base, "textless": True}))
 
 
 class KeywordReminders(unittest.TestCase):
@@ -553,6 +597,20 @@ class KeywordReminders(unittest.TestCase):
             self.print_("c", "Arregimente Orcs 1. (Coloque dois marcadores +1/+1 em um Exército que você controla.)"),
             # erro de digitação do Scryfall (Inverted Iceberg, LCI): letra repetida e sem ponto final
             self.print_("d", "Quando entrar, triture um card. (P Para triturar um card, coloque o card do topo de seu grimório em seu cemitério)"),
+        ]
+        self.assertEqual(reminder_texts(prints, oracle), ({}, {}))
+
+    def test_impressa_com_o_texto_em_ingles(self):
+        # impressões em PT com linhas em inglês no Scryfall (Chimil, the Inner Sun, LCI 249): o
+        # lembrete em inglês ia para as outras cartas com a palavra (U.S.S. Discovery, TRK)
+        discover = "Exile cards from the top of your library until you exile a nonland card with mana value 5 or less. Cast it without paying its mana cost or put it into your hand. Put the rest on the bottom in a random order."
+        oracle = {
+            "a": {"oracle_text": f"At the beginning of your end step, discover 5. ({discover})", "type_line": "Legendary Artifact"},
+            "b": {"oracle_text": f"When this enters, discover 5. ({discover})", "type_line": "Creature"},
+        }
+        prints = [
+            self.print_("a", f"At the beginning of your end step, discover 5. ({discover})"),
+            self.print_("b", f"Quando entrar, descubra 5. ({discover})"),
         ]
         self.assertEqual(reminder_texts(prints, oracle), ({}, {}))
 

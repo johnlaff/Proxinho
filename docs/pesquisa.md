@@ -212,6 +212,24 @@ O que o texto em PT pede: o Arena não tem o lembrete do alto, que vem das Class
 
 Promos de loja (AFR) com o "&" de D&D em alto-relevo: o relevo atravessa a coluna e as barras. Recortar as barras levava pedaços dele, e o resto ficava pela metade no papel apagado; elas saem na original.
 
+### Naves e planetas com Estacionar (20/11/2026)
+
+Como as ferramentas existentes fazem: o Proxyshop monta a Station a partir do próprio modelo, com uma camada de texto por nível, o selo e as faixas desenhados por cima, e espalha os textos com a mesma folga acima e abaixo de cada um, como na Classe. As artes estendidas da própria coleção, que vêm sem a explicação do Estacionar, fazem igual: faixas mais altas e a mesma folga em volta de cada texto. Aqui as faixas fazem parte da imagem escolhida, com a arte por trás: o Proxinho tira o escurecimento delas, apaga as letras, os selos e a caixa de P/R com a rede neural e escurece de novo onde o texto em PT pede (ADR 0020).
+
+Medidas nas imagens do Scryfall (745 × 1040), em EOE, EOC, TRK, TRC e nas promos:
+
+| Medida | Valor |
+|---|---|
+| Caixa de texto | translúcida, de x ≈ 55 a 687 (fio da esquerda de 49 a 54, beira sombreada de 684 a 687, fio da direita de 688 a 693) e de y ≈ 656 ao pé (~956, o fio claro 8 px acima da borda preta) |
+| Faixas dos níveis | da largura da caixa, cada uma mais escura que a de cima (~0,87 nas molduras brancas; nas coloridas, cada canal de um jeito), com a arte atrás; o limite é uma rampa de ~4 px; a última vai até o pé da caixa |
+| Selo do nível | redondo, centro em x ≈ 49,5, anel claro de raio ~29 e miolo escuro de raio ~23 com o nível em branco ("9+", "10+"), meio para fora da caixa, no meio da altura da faixa |
+| Caixa de P/R | na última faixa, na altura do selo: miolo escuro de x ≈ 597 a 698 no meio, mais curto no alto e no pé (as pontas abauladas), ~42 px de altura; anel de ~6 px, que dos lados, com a beira cinza, vai até 7 px depois do miolo e embaixo, com a sombra, até 8 |
+| Selo da coleção | holográfico, no meio do pé da caixa |
+
+O que o texto em PT pede: o Arena marca cada nível com uma linha interna antes das habilidades dele (em inglês "STATIONLEVEL [9+] [3/4] [Flying] [First strike]", em PT "#StationLevelInstrinsic_NoTranslation"); o pipeline lê o nível no inglês e escreve como o Oracle ("9+ | Voar, iniciativa"). A explicação do Estacionar nunca saiu impressa em PT e os arquivos públicos do Arena não têm lembrete nenhum (nenhum dos 54.581 textos em PT tem parênteses): em PT, o "Posicionar" fica sozinho. 23 naves de Star Trek e de Commander não estão no Arena e seguem em inglês.
+
+A rede neural: num quadro só, com a caixa inteira (697 px com o espelho) reduzida aos 512 px do modelo, as palavras densas da explicação em inglês viravam um borrão cinza no lugar delas (Lumen-Class Frigate, EOE 25). Em duas metades, cada uma na resolução da imagem, o borrão some. Na sem borda valeu o contrário (ADR 0015): ali as letras são brancas, finas e esparsas.
+
 ## Lado legal e o caminho seguro
 
 | Ponto | O que diz | Risco |

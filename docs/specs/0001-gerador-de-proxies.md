@@ -98,3 +98,10 @@ Como jogador, quero imprimir as Classes em português na arte que eu escolher, i
 - [x] As barras de nível mudam de lugar quando o texto em PT pede, com o custo e o "Nível N" no lugar do "Level N", como na Classe impressa em PT.
 - [x] O lembrete do alto sai com o texto oficial das Classes impressas ("(Ganhe o próximo nível como um feitiço para adicionar sua habilidade.)").
 - [x] Quando o motor não acha a coluna, o fio do lembrete ou as barras na imagem, ou o texto não cabe, a carta sai na original e a etiqueta diz que sai em inglês. As promos com o "&" de D&D em alto-relevo ficam de fora.
+
+### H13. Naves e planetas com Estacionar (entregue em 20/11/2026, ADR 0020)
+Como jogador, quero imprimir as naves e os planetas de Edge of Eternities e de Star Trek em português na arte que eu escolher, mesmo sem nenhuma impressão em PT.
+- [x] As naves e os planetas na moldura padrão e na arte estendida saem em português, com o texto principal e o de cada nível no mesmo corpo de letra.
+- [x] As faixas de cada nível mudam de lugar para o texto em PT, com o selo do nível e a caixa de P/R no meio da faixa, a arte por trás e o mesmo escurecimento de cada faixa da carta original.
+- [x] A explicação do Estacionar, que nunca saiu impressa em PT, não deixa buraco: o texto se espalha com a mesma folga em volta de cada parte, como nas artes estendidas.
+- [x] Quando o motor não acha os selos, a caixa de P/R ou o pé da caixa na imagem, quando o texto não cabe ou quando a rede neural não roda, a carta sai na original e a etiqueta diz que sai em inglês. As sem borda e as de vitrine ficam de fora.

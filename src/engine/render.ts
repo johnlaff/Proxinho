@@ -91,6 +91,31 @@ import {
   TOP_CURVE_CLEAR,
   topAligned,
 } from "./saga";
+import {
+  STATION,
+  applyShade,
+  cutPiece,
+  clipMasks,
+  disk,
+  holdPixels,
+  inkOnly,
+  mirrorSides,
+  pastePiece,
+  restoreFrame,
+  ptCore,
+  ptShape,
+  shadeProfile,
+  shadeRatio,
+  stationBadges,
+  stationBands,
+  stationBottom,
+  stationPlan,
+  stationPt,
+  stationText,
+  type Piece,
+  withoutFrame,
+  type StationText,
+} from "./station";
 import { preloadSymbols } from "./symbols";
 import { SYMBOL_EM, TABLE_ROW, chunkWidth, fitRows, fitText, lineText, rowsAt, type LayoutResult, type Measurer } from "./text";
 import {
@@ -280,7 +305,7 @@ type Neural = { enabled: boolean; tick: (frames?: number) => void };
  * imagem, inteiro); `protect` fica como está e escondido do modelo. Cada caixa é um quadro do
  * modelo (ver `lamaInpaint`). `art` diz que há arte atrás da caixa (sem borda): a cor que o
  * modelo inventa volta à da vizinhança e o grão da arte volta ao remendo (`tameInvented`,
- * `regrain`). `grow` e `gap` são a folga da máscara e os
+ * `regrain`). `keep` fica como está, sem sair do buraco nem do que o modelo vê. `grow` e `gap` são a folga da máscara e os
  * vãos entre pedaços dela que entram no buraco (ver `combineMasks`). A prévia e o PDF desenham a mesma arte: a
  * caixa limpa fica guardada por `key` para não rodar o modelo de novo (e, se as duas pedem ao
  * mesmo tempo, a segunda espera a primeira). Sem o modelo, volta
@@ -295,7 +320,14 @@ async function lamaBox(
   protect: Rect[],
   polarity: "dark" | "light",
   key: string,
-  { art = false, grow, gap, simple = true, neural }: { art?: boolean; grow?: number; gap?: number; simple?: boolean; neural?: Neural } = {},
+  {
+    art = false,
+    grow,
+    gap,
+    simple = true,
+    neural,
+    keep = [],
+  }: { art?: boolean; grow?: number; gap?: number; simple?: boolean; neural?: Neural; keep?: Rect[] } = {},
 ): Promise<boolean> {
   const fx = data.width / BASE_W;
   const quick = () => {
@@ -319,7 +351,8 @@ async function lamaBox(
     // máscara folgada: o LaMa espalha para dentro do buraco qualquer resto de borda das letras,
     // sem fios da imagem original entre dois pedaços do buraco
     const hole = combineMasks(data, masks, grow ?? Math.round(fx * 3) + 1, gap ?? Math.round(fx * 4));
-    for (const r of protect.map(roundRect)) for (let y = r.y0; y < r.y1; y++) hole.fill(0, y * data.width + r.x0, y * data.width + r.x1);
+    for (const r of [...protect, ...keep].map(roundRect))
+      for (let y = r.y0; y < r.y1; y++) hole.fill(0, y * data.width + r.x0, y * data.width + r.x1);
     if (!(await lamaInpaint(data, area, hole, protect.map(roundRect), () => neural?.tick()))) {
       if (!simple) return false;
       quick();
@@ -780,6 +813,241 @@ async function renderClass(p: {
   return true;
 }
 
+/**
+ * Caixa das naves e planetas com Estacionar (ver station.ts), depois de o nome e o tipo serem
+ * medidos como na carta comum (`layout`, com o símbolo da coleção protegido em `symbolGuard`).
+ * As faixas dos níveis mudam de lugar para o português: o escurecimento delas sai, as letras,
+ * os selos e a caixa de P/R saem com a rede neural (a moldura dos lados é refeita na vertical),
+ * as faixas escurecem de novo onde o texto pede e selos e P/R voltam no meio delas. Devolve
+ * "original" quando a moldura não bate com o texto ou o texto não cabe, e "neural" quando a
+ * rede neural não roda (o preenchimento simples deixaria um borrão sobre a arte).
+ */
+async function renderStation(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  sctx: CanvasRenderingContext2D;
+  data: ImageData;
+  toImg: (r: Rect) => Rect;
+  face: PtFace;
+  print: PrintRecord;
+  W: number;
+  H: number;
+  neural: Neural;
+  plan: (frames: number) => void;
+  layout: FrameLayout;
+  symbolGuard: Rect[];
+  parts: StationText;
+  manaCost: string | null;
+}): Promise<"ok" | "original" | "neural"> {
+  const { ctx, data, toImg, face, print, layout, parts } = p;
+  const fx = data.width / BASE_W;
+  const fy = data.height / BASE_H;
+  const bottom = stationBottom(data);
+  if (bottom === null || Math.abs(bottom - STATION.box.y1) > 8) return "original";
+  const top = STATION.box.y0;
+  const centers = stationBadges(data, top, bottom);
+  if (centers.length !== parts.levels.length) return "original";
+  const oldTops = stationBands(centers, bottom, top);
+  if (!oldTops) return "original";
+  const pt = stationPt(data, centers[centers.length - 1]);
+  if (print.has_pt && !pt) return "original";
+
+  // o texto: tudo no mesmo corpo, o maior em que a folga em volta de cada texto cabe
+  const k = p.W / BASE_W;
+  const m = measurer(ctx, k);
+  const italic = new Set(face.ability_words ?? []);
+  const { main: mainX, level: levelX, right } = STATION.text;
+  const lastRight = pt ? pt.x0 - 8 : right;
+  let line = 0;
+  const rows = [parts.main, ...parts.levels.map((l) => l.text)].map((text, i) => {
+    const count = text.split("\n").length;
+    const lines = Array.from({ length: count }, (_, j) => line + j);
+    line += count;
+    const x0 = i === 0 ? mainX : levelX;
+    const x1 = i === parts.levels.length ? lastRight : right;
+    return { text, width: x1 - x0, height: Infinity, italic: lines.flatMap((l, j) => (italic.has(l) ? [j] : [])) };
+  });
+  let plan: ReturnType<typeof stationPlan> = null;
+  let layouts: LayoutResult[] = [];
+  for (let size = STATION_MAX_SIZE; size >= STATION_MIN_SIZE && !plan; size -= 0.5) {
+    layouts = rowsAt(rows, m, size);
+    plan = stationPlan(
+      layouts[0].height,
+      layouts.slice(1).map((l) => l.height),
+      top,
+      bottom,
+    );
+  }
+  if (!plan) return "original";
+  const newTops = plan.bands.map((b) => b.top);
+  const middle = (tops: number[], i: number) => (tops[i] + (tops[i + 1] ?? bottom)) / 2;
+
+  // a letra da caixa é escura (a moldura não tem caixa escura nas naves de borda preta)
+  const boxRect = roundRect(toImg({ x0: STATION.band.x0, y0: top, x1: STATION.band.x1, y1: bottom }));
+  if (textPolarity(data, boxRect) !== "dark") return "original";
+
+  // 1. o nome e o tipo, como na carta comum
+  const capGuard = [
+    ...layout.erase.slice(0, 2).flatMap((e) => barCapGuard(data, toImg(e.rect), "left")),
+    ...(p.manaCost ? [] : barCapGuard(data, toImg(layout.erase[0].rect), "right")),
+  ];
+  const inks = eraseRegions(
+    data,
+    layout.erase.slice(0, 2).map((e) => ({ rect: toImg(e.rect), threshold: e.threshold, fill: e.fill })),
+    [],
+    p.symbolGuard,
+    capGuard,
+  );
+
+  // 2. selos e P/R recortados da imagem original; a máscara das letras, também antes de mexer
+  const r = STATION.badge.r;
+  const badgeRect = (c: number) => ({ x0: STATION.badge.cx - r - 2, y0: c - r - 2, x1: STATION.badge.cx + r + 2, y1: c + r + 2 });
+  const badgeShapes = centers.map((c) => disk(STATION.badge.cx * fx, c * fy, (r - 0.5) * fx));
+  const badges: Piece[] = centers.map((c, i) => cutPiece(data, toImg(badgeRect(c)), badgeShapes[i]));
+  const ptCut = pt
+    ? withoutFrame(data, toImg(pt), ptShape(pt, fx, fy), ptCore(pt, fx, fy), Math.round(STATION.pt.frame * fx), STATION.pt.near)
+    : null;
+  const ptPiece = pt ? cutPiece(data, toImg(pt), ptCut!) : null;
+  // (o selo da coleção seguindo o contorno, como na carta comum: o ponto final da última linha
+  // em inglês fica logo acima dele)
+  const stampFound = findCardStamp(data);
+  const skip = stampFound ? stampShape(data, toImg({ ...stampFound, y0: stampFound.y0 + 3 })) : [];
+  // (e uma faixa de papel logo acima dele fica fora do buraco, à vista da rede neural: o selo
+  // semeava a máscara, o buraco descia até ele e virava um buraco só com o selo escondido, e
+  // a rede neural puxava o escuro da borda preta para cima, uma mancha acima do selo,
+  // Sledge-Class Seedship)
+  const above = Math.round(STATION.stampGap * fy);
+  const stampGuard = skip.map((q) => ({ x0: q.x0, y0: q.y0 - above, x1: q.x1, y1: q.y0 }));
+  const bounds = [top, ...oldTops, bottom];
+  const masks = maskRegions(
+    data,
+    bounds.slice(0, -1).map((y, i) => ({
+      rect: toImg({ x0: STATION.band.x0 + 1, y0: y + (i ? 3 : 0), x1: STATION.band.x1 - 1, y1: bounds[i + 1] - 3 }),
+      threshold: 14,
+      colorThreshold: 34,
+      polarity: "dark" as const,
+      tiles: false,
+    })),
+    [...skip, ...stampGuard],
+    [...skip, ...stampGuard],
+  ).map((m) => inkOnly(data, m, Math.round(STATION.ink.area * fx * fy), Math.round(STATION.ink.pad * fx)));
+  // o buraco também leva o miolo da caixa embaixo dos selos e da caixa de P/R, e os limites das
+  // faixas antigas (a emenda do escurecimento tirado)
+  const full = (rect: Rect, inside: (x: number, y: number) => boolean = () => true): RegionMask => {
+    const rr = roundRect(rect);
+    const w = rr.x1 - rr.x0;
+    const mask = new Uint8Array(w * (rr.y1 - rr.y0));
+    for (let y = rr.y0; y < rr.y1; y++)
+      for (let x = rr.x0; x < rr.x1; x++) if (inside(x + 0.5, y + 0.5)) mask[(y - rr.y0) * w + x - rr.x0] = 1;
+    return { rect: rr, mask, polarity: "dark" };
+  };
+  const extra = [
+    ...centers.map((c) => {
+      const d = disk(STATION.badge.cx * fx, c * fy, (r + 2) * fx);
+      return full(toImg({ x0: STATION.band.x0, y0: c - r - 3, x1: STATION.badge.cx + r + 3, y1: c + r + 3 }), (x, y) => d(x, y) > 0);
+    }),
+    ...(pt ? [full(toImg({ x0: pt.x0 - 2, y0: pt.y0 - 2, x1: STATION.frame.right, y1: pt.y1 + 2 }))] : []),
+    ...oldTops.map((t) => full(toImg({ x0: STATION.band.x0, y0: t - 4, x1: STATION.band.x1, y1: t + 4 }))),
+  ];
+
+  // 3. a moldura dos lados onde estavam os selos e a caixa de P/R, refeita na vertical, só onde
+  // estava o recorte (a arte de algumas molduras desce pelo lado e não é vertical: refeita num
+  // retângulo, ela virava um bloco escuro ao lado do P/R, Entropic Battlecruiser)
+  const [lx0, lx1] = STATION.frame.left;
+  centers.forEach((c, i) => {
+    const b = roundRect(toImg(badgeRect(c)));
+    restoreFrame(data, b.y0, b.y1, Math.round(lx0 * fx), Math.round(lx1 * fx), badgeShapes[i]);
+  });
+  if (pt) {
+    const b = roundRect(toImg(pt));
+    restoreFrame(data, b.y0 - 2, b.y1 + 2, Math.round(STATION.frame.right * fx), b.x1 + 2, ptCut!);
+  }
+
+  // 4. o escurecimento das faixas sai (a razão de cada uma sobre a de cima, medida no limite)
+  const y0 = Math.round(top * fy);
+  const y1 = Math.round(bottom * fy);
+  const bx0 = Math.round(STATION.band.x0 * fx);
+  const bx1 = Math.round(STATION.band.x1 * fx);
+  const ratios = oldTops.map((t) => shadeRatio(data, Math.round(t * fy), Math.round(90 * fx), Math.round(580 * fx)));
+  const rel = (tops: number[]) => tops.map((t) => Math.round(t * fy) - y0);
+  // (a faixa de papel acima do selo volta como era no fim: o alto do aro branco dele passa de 255
+  // sem o escurecimento e voltava cinza)
+  const restoreGuard = holdPixels(data, stampGuard);
+  applyShade(data, y0, y1, bx0, bx1, shadeProfile(y1 - y0, rel(oldTops), ratios), true, skip);
+
+  // 5. a rede neural apaga as letras, os selos e a caixa de P/R
+  p.plan(2);
+  // (com a caixa espelhada para os lados: o buraco dos selos e do P/R encosta na beira dela)
+  const xr = Math.round(STATION.frame.right * fx);
+  const pad = Math.round(32 * fx);
+  const mirrored = mirrorSides(data, [...masks, ...extra], boxRect.y0, boxRect.y1, bx0, xr, pad);
+  const area = { ...boxRect, x0: bx0 - pad, x1: xr + pad };
+  // (em dois quadros, cada metade na resolução da imagem: num quadro só, a caixa inteira reduzida
+  // aos 512 px do modelo, as palavras densas do lembrete em inglês viravam um borrão cinza no
+  // lugar delas, Lumen-Class Frigate, EOE 25; a segunda metade vê a primeira já limpa)
+  const mid = Math.round((area.x0 + area.x1) / 2);
+  let clean = true;
+  for (const [x0, tag] of [
+    [area.x0, "a"],
+    [mid, "b"],
+  ] as const) {
+    clean &&= await lamaBox(
+      mirrored.img,
+      clipMasks(mirrored.masks, x0, area.x1),
+      { ...area, x0, x1: tag === "a" ? mid : area.x1 },
+      skip,
+      "dark",
+      `${print.id}:${data.width}:estacionar:${tag}`,
+      { art: true, simple: false, neural: p.neural, keep: stampGuard },
+    );
+  }
+  if (!clean) return "neural";
+  for (let y = boxRect.y0; y < boxRect.y1; y++)
+    data.data.set(mirrored.img.data.subarray((y * data.width + bx0) * 4, (y * data.width + xr) * 4), (y * data.width + bx0) * 4);
+  // (o pingo de tinta que o modelo inventa na emenda das duas metades fica na beira de cada uma,
+  // e a limpeza de cada metade não o tira: a caixa inteira passa por ela de novo, Dawnsire)
+  // (sem o selo da coleção, como na rede neural: o contorno escuro dele passava por pingo e o
+  // alto do aro saía como um bloco claro, The Eternity Elevator)
+  const hole = combineMasks(data, [...masks, ...extra], Math.round(fx * 3) + 1, Math.round(fx * 4));
+  for (const r of [...skip, ...stampGuard].map(roundRect))
+    for (let y = r.y0; y < r.y1; y++) hole.fill(0, y * data.width + r.x0, y * data.width + r.x1);
+  dropSpecks(data, { x0: bx0, y0: boxRect.y0, x1: xr, y1: boxRect.y1 }, hole, "dark");
+
+  // 6. as faixas escurecem de novo onde o texto pede, e selos e P/R voltam no meio delas
+  applyShade(data, y0, y1, bx0, bx1, shadeProfile(y1 - y0, rel(newTops), ratios), false, skip);
+  restoreGuard();
+  badges.forEach((b, i) => pastePiece(data, b, Math.round((middle(newTops, i) - centers[i]) * fy)));
+  if (ptPiece) pastePiece(data, ptPiece, Math.round((middle(newTops, newTops.length - 1) - centers[centers.length - 1]) * fy));
+  p.sctx.putImageData(data, 0, 0);
+  ctx.drawImage(p.src, 0, 0, p.W, p.H);
+
+  drawLine(
+    ctx,
+    face.name_pt ?? face.name_en,
+    layout.title.x,
+    layout.title.centerY,
+    layout.title.maxWidth,
+    layout.title.size,
+    k,
+    INK[inks[0]],
+  );
+  if (face.type_pt)
+    drawLine(ctx, face.type_pt, layout.type.x, layout.type.centerY, layout.type.maxWidth, layout.type.size, k, INK[inks[1]]);
+  const symbols = await preloadSymbols(face.text_pt);
+  drawLayout(ctx, layouts[0], { x0: mainX, y0: plan.mainTop, x1: right, y1: plan.mainTop + layouts[0].height }, k, "dark", symbols, m);
+  layouts.slice(1).forEach((res, i) => {
+    const x1 = i === parts.levels.length - 1 ? lastRight : right;
+    const t = plan.bands[i].textTop;
+    drawLayout(ctx, res, { x0: levelX, y0: t, x1, y1: t + res.height }, k, "dark", symbols, m);
+  });
+  return "ok";
+}
+
+/** Maior corpo do texto das naves com Estacionar (as artes estendidas, sem a explicação, ficam em ~30). */
+const STATION_MAX_SIZE = 30;
+/** Menor corpo: abaixo disso, a carta sai na original. */
+const STATION_MIN_SIZE = 18;
+
 /** Maior corpo do texto da Classe (o inglês fica em ~30). */
 const CLASS_MAX_SIZE = 30;
 /** Menor corpo do texto da Classe: abaixo disso, a carta sai na original. */
@@ -1209,7 +1477,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const saga = print.layout === "saga" && !borderless;
   // e Classe: as barras de nível são recortadas e coladas em outra altura
   const klass = print.layout === "class" && !borderless;
-  const version = pw || borderless || saga || klass ? "png" : (opts.imageVersion ?? "png");
+  // e as naves com Estacionar: a caixa translúcida vai para a rede neural
+  const stationParts = !borderless && print.layout === "normal" ? stationText(face?.text_pt) : null;
+  const version = pw || borderless || saga || klass || stationParts ? "png" : (opts.imageVersion ?? "png");
   const [img] = await Promise.all([opts.source ?? loadImage(printImage(print, version, side)), loadCardFonts()]);
 
   const W = Math.round(BASE_W * scale);
@@ -1413,6 +1683,28 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     const r = layout.erase[1].rect;
     layout.erase[1] = { ...layout.erase[1], rect: { ...r, x1: BASE_W * 0.955 } };
     symbolGuard.push(...symbolRowsFrom(data, Math.round(setLeft * fx), Math.round(r.y0 * fy), Math.round(r.y1 * fy)));
+  }
+  // naves e planetas com Estacionar: as faixas dos níveis mudam de lugar (ver renderStation)
+  if (stationParts) {
+    const done = await renderStation({
+      ctx,
+      src,
+      sctx,
+      data,
+      toImg,
+      face,
+      print,
+      W,
+      H,
+      neural,
+      plan,
+      layout,
+      symbolGuard,
+      parts: stationParts,
+      manaCost,
+    });
+    if (done === "ok") return { canvas: out, translated: true };
+    return original(done === "neural" ? "neural" : undefined);
   }
   // terreno básico sem texto: o símbolo de mana grande na caixa é desenho, não texto
   const keepBox = /Básic/.test(face.type_pt ?? "") && !(face.text_pt ?? "").trim();
