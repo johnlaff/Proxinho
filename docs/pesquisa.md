@@ -172,6 +172,24 @@ O que o texto em PT pede: o Arena não tem o lembrete do alto (nem a explicaçã
 
 Digitalizações: nas cartas de Theros e nas promos de pré-estreia, o degrau do fio se espalha por duas linhas e não passa de 6 tons em nenhuma; medido em duas linhas, entram. Em 12 promos de pré-estreia (sobretudo de Kaldheim e Theros) o papel sai quase branco (249) e o fio é uma queda de 2 tons: não há como achá-lo sem confundir com o grão, e elas saem na original (a versão da coleção sai em PT).
 
+### Aventuras (20/11/2026)
+
+Como as ferramentas existentes fazem: o Proxyshop tem, para a Aventura (`AdventureMod`), camadas próprias para o nome, o custo, o tipo e as regras da aventura. O nome encolhe até não encostar no custo (`ScaledTextField` com o custo de referência) e as regras ocupam a caixa da página da esquerda (`FormattedTextArea` com uma caixa de referência própria, sem centralizar); a caixa principal é a página da direita. O Proxinho segue a mesma divisão sobre a imagem escolhida: cada página encaixa o próprio corpo (ADR 0017).
+
+Medidas nas imagens do Scryfall (745 × 1040), em ELD, WOE, CLB, HOB, MOC, FIN e TDM:
+
+| Medida | Valor |
+|---|---|
+| Barra do nome da aventura | y ≈ 652 a 697, x ≈ 44 até a lombada; letras em ~679; custo acabando em x ≈ 356, ~31,5 px por símbolo e ~35,5 nos híbridos (os quatro {G/W} do Bring Back começam em 213) |
+| Barra do tipo da aventura | y ≈ 700 a 746, letras em ~725; no Presságio (TDM), um filete até ~752 |
+| Página da esquerda | x ≈ 50 até a lombada; papel de ~747 (761 no Presságio) a ~956 |
+| Lombada | a coluna mais escura em x ≈ 372 a 375 |
+| Página da direita | da lombada a x ≈ 694, de ~655 a ~956; texto a partir de x ≈ 398 (388 no Presságio) |
+
+O papel escurece em direção à lombada: na página da direita, de ~210 tons no meio a ~95 colado nela, numa faixa de até 100 px; na da esquerda, só nos últimos 6 a 8 px. Sem tirar essa sombra antes de apagar, a beira do retângulo virava "letra" e o remendo deixava um degrau (ADR 0017). No Presságio as duas páginas são lisas.
+
+O que o texto em PT pede: o Arena traz a criatura e a aventura como duas faces, repete o flavor da criatura nas duas e não tem o lembrete "(Then exile this card…)". O nome da aventura em PT é quase sempre mais longo ("Mágica Instantânea — Aventura" contra "Instant — Adventure"), e as duas barras comprimem a letra antes de reduzir o corpo, como a impressão oficial em PT.
+
 ## Lado legal e o caminho seguro
 
 | Ponto | O que diz | Risco |

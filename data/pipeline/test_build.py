@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, reminder_texts, saga_chapters, saga_reminder, saga_reminders, saga_supported, token_face_key, token_key
+from build import ability_word_lines, adventure_supported, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, reminder_texts, saga_chapters, saga_reminder, saga_reminders, saga_supported, token_face_key, token_key
 
 
 class CitesAltName(unittest.TestCase):
@@ -575,6 +575,41 @@ class SagaSupported(unittest.TestCase):
         # criatura Saga (Invocações de Final Fantasy): outra moldura
         self.assertFalse(saga_supported({**self.base, "type_line": "Enchantment Creature — Saga Knight"}))
         self.assertFalse(saga_supported({**self.base, "layout": "transform"}))
+
+
+class AdventureSupported(unittest.TestCase):
+    faces = [{"name": "Bonecrusher Giant", "power": "4"}, {"name": "Stomp"}]
+    base = {"frame": "2015", "layout": "adventure", "border_color": "black", "frame_effects": [], "card_faces": faces}
+
+    def test_moldura_de_livro(self):
+        self.assertTrue(adventure_supported(self.base))
+        self.assertTrue(adventure_supported({**self.base, "frame_effects": ["legendary"]}))
+        # o Presságio de TDM tem o mesmo layout e as mesmas medidas
+        self.assertTrue(adventure_supported({**self.base, "promo_types": ["prerelease"]}))
+
+    def test_fora(self):
+        self.assertFalse(adventure_supported({**self.base, "frame_effects": ["showcase"]}))
+        self.assertFalse(adventure_supported({**self.base, "frame_effects": ["extendedart"]}))
+        self.assertFalse(adventure_supported({**self.base, "border_color": "borderless", "frame_effects": ["inverted"]}))
+        self.assertFalse(adventure_supported({**self.base, "promo_types": ["gameday"]}))
+        self.assertFalse(adventure_supported({**self.base, "layout": "normal"}))
+        self.assertFalse(adventure_supported({**self.base, "card_faces": self.faces[:1]}))
+
+    def test_impressao_marcada(self):
+        card = {
+            **self.base,
+            "id": "x",
+            "set": "eld",
+            "set_name": "Throne of Eldraine",
+            "collector_number": "115",
+            "image_uris": {"png": "https://cards.scryfall.io/png/front/x.png"},
+            "card_faces": [{"name": "Bonecrusher Giant", "power": "4", "toughness": "3", "mana_cost": "{2}{R}"}, {"name": "Stomp", "mana_cost": "{1}{R}"}],
+        }
+        row = print_row(card, "o", card["card_faces"][0], None)
+        self.assertTrue(row["supported"])
+        self.assertEqual(row["mana_cost"], "{2}{R}")
+        self.assertTrue(row["has_pt"])
+        self.assertFalse(row["two_sided"])
 
 
 if __name__ == "__main__":

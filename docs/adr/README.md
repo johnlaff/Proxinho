@@ -20,3 +20,4 @@ Cada arquivo registra uma decisão de arquitetura: o contexto, o que foi decidid
 | [0014](0014-pdf-adiantado-e-cartas-guardadas.md) | PDF montado em segundo plano enquanto a pessoa revisa, cartas prontas guardadas no navegador entre visitas e a gaveta dizendo onde a rede neural roda | Aceita |
 | [0015](0015-caixa-sem-borda-num-quadro-so.md) | Caixa da moldura sem borda num quadro só da rede neural, reduzido (30% mais rápido; igual na regressão das 260 artes) | Aceita |
 | [0016](0016-moldura-de-saga.md) | Moldura de Saga: capítulos remontados do Oracle, fios e marcadores medidos na imagem, fios que mudam de lugar para o português caber | Aceita |
+| [0017](0017-moldura-de-aventura.md) | Moldura de Aventura: o livro conferido na imagem, a criatura na página da direita e a aventura na da esquerda, com a sombra da lombada tirada antes de apagar | Aceita |

@@ -915,6 +915,28 @@ def saga_supported(card: dict) -> bool:
     )
 
 
+def adventure_supported(card: dict) -> bool:
+    """Aventura na moldura de livro (Throne of Eldraine em diante; o Presságio de Tarkir:
+    Dragonstorm tem as mesmas medidas): a criatura na página da direita, a aventura (nome, tipo
+    e regras) na da esquerda (src/engine/adventure.ts). O motor confere a lombada e as barras
+    da aventura na imagem; sem elas, a arte sai como está.
+
+    Ficam de fora as de vitrine (showcase), arte estendida, sem borda e as promos com a arte
+    atrás da caixa, que têm outro desenho.
+    """
+    effects = set(card.get("frame_effects") or [])
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "adventure"
+        and card.get("border_color") == "black"
+        and effects <= SAGA_EFFECTS_OK
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not art_behind_box(card)
+        and len(card.get("card_faces") or []) == 2
+    )
+
+
 DFC_LAYOUTS = {"transform", "modal_dfc"}
 # molduras de duas faces com desenho próprio (bússola de Ixalan, planeswalker de Magic Origins…)
 UNSUPPORTED_DFC_EFFECTS = UNSUPPORTED_EFFECTS | {"compasslanddfc", "originpwdfc", "fandfc", "convertdfc"}
@@ -1062,6 +1084,7 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or borderless_supported(c)
         or token_supported(c)
         or saga_supported(c)
+        or adventure_supported(c)
         or bool(sides and sides[0]["supported"]),
         "sides": sides,
         # nome de crossover no alto (o nome de jogo vai numa linha pequena abaixo da barra)

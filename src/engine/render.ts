@@ -19,6 +19,7 @@ import {
   subtitleLetters,
   whiteTextMask,
 } from "./borderless";
+import { ADVENTURE, adventureBook, adventureLayout, pageShade, shadePage } from "./adventure";
 import { bodyFont, loadCardFonts, titleFont } from "./fonts";
 import { BACK_PT_NOTCH, BASE_H, BASE_W, costLeft, hasLeftIcon, m15Layout, ptProtect, type FrameLayout, type Rect } from "./geometry";
 import {
@@ -115,6 +116,8 @@ export interface RenderOptions {
   imageVersion?: "png" | "normal";
   /** cartas de duas faces: 0 = frente, 1 = verso */
   side?: 0 | 1;
+  /** cartas de Aventura: o feitiço da página da esquerda (a segunda face da carta) */
+  adventure?: PtFace | null;
   /** linha de tipo em inglês da carta (reconhece planeswalkers mesmo sem o tipo em PT) */
   typeLine?: string | null;
   /**
@@ -939,6 +942,23 @@ async function renderToken(p: {
 /** Centro medido das letras do nome e do tipo numa carta M15 comum (escala-base). */
 const BAR_CENTER = { title: 81.5, type: 616 };
 
+/**
+ * Centro das letras das duas barras da aventura (escala-base): o medido no inglês, se perto do
+ * padrão (digitalizações com a moldura uns pixels acima ou abaixo); senão, o padrão.
+ */
+function advBarCenters(data: ImageData, adv: ReturnType<typeof adventureLayout>, fy: number): [number, number] {
+  const fx = data.width / BASE_W;
+  return ([adv.name, adv.type] as const).map((bar, i) => {
+    const expected = i === 0 ? ADVENTURE.name.center : ADVENTURE.type.center;
+    const r = bar.rect;
+    // (sem as beiradas da barra: com elas a faixa das letras passava da altura de uma linha)
+    const c = textBandCenter(data, { x0: 66 * fx, y0: (r.y0 + 3) * fy, x1: Math.min(r.x1, 300) * fx, y1: (r.y1 - 3) * fy });
+    // (o português é escrito 2 px acima do centro medido: com o corpo e o recuo da Beleren, assim
+    // as letras caem na mesma altura das em inglês, conferido em ELD, WOE e TDM)
+    return (c !== null && Math.abs(c / fy - expected) <= 6 ? c / fy : expected) - 2;
+  }) as [number, number];
+}
+
 /** Desloca a faixa `i` (0 = nome, 1 = tipo) do layout se as letras estão fora do lugar padrão. */
 function alignBar(
   data: ImageData,
@@ -1140,6 +1160,18 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     return reason ? { canvas: out, translated: false, reason } : { canvas: out, translated: false };
   };
   if (blocked || (print.flavor_name && !subtitle)) return original();
+  // Aventura: a caixa é um livro aberto, conferido na imagem (a lombada entre as páginas e as
+  // barras da aventura, ver adventureBook). A página da direita leva as regras e o flavor da
+  // criatura, no lugar da caixa; a da esquerda, as barras e as regras da aventura.
+  const adv = print.layout === "adventure" ? (opts.adventure ?? null) : null;
+  const book = adv?.name_pt && adv.text_pt !== null && !frameBox ? adventureBook(data) : null;
+  if (print.layout === "adventure" && !book) return original();
+  const advLayout = book && adv ? adventureLayout(book, adv.mana_cost) : null;
+  if (advLayout) {
+    const r = ADVENTURE.right;
+    layout.erase[2] = { ...layout.erase[2], rect: advLayout.right.erase };
+    layout.box = { x0: r.textX0, y0: r.textY0, x1: r.textX1, y1: layout.box.y1 };
+  }
   // Algumas digitalizações e molduras (arte estendida) trazem o nome ou o tipo uns
   // pixels acima ou abaixo da medida padrão: mede onde as letras estão e acompanha,
   // para apagar tudo e escrever o português no mesmo lugar.
@@ -1200,7 +1232,15 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const keepBox = /Básic/.test(face.type_pt ?? "") && !(face.text_pt ?? "").trim();
   // a caixa (com marca-d'água) termina no fio interno dela, que muda de lugar entre molduras
   const boxRect = (r: Rect) =>
-    keepBox ? { x0: 0, y0: 0, x1: 0, y1: 0 } : frameBox ? roundRect(toImg(frameBox)) : insideBoxSides(data, toImg(r), 30 * fx, true);
+    keepBox
+      ? { x0: 0, y0: 0, x1: 0, y1: 0 }
+      : frameBox
+        ? roundRect(toImg(frameBox))
+        : // (as páginas da Aventura já param antes da lombada e da moldura: a busca dos lados
+          // achava a sombra da lombada)
+          advLayout
+          ? roundRect(toImg(r))
+          : insideBoxSides(data, toImg(r), 30 * fx, true);
   const boxErase = layout.erase.find((e) => e.stains);
   const measuredBox = boxErase ? boxRect(boxErase.rect) : null;
   const found = findCardStamp(data, frameBox?.y1);
@@ -1248,31 +1288,45 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // a ponta arredondada das barras (o contorno e o relevo da curva) fica como está; sem
   // custo de mana, a do fim da barra de nome também (ver barCapGuard). Com o ícone das
   // duas faces ou o indicador de cor, o retângulo começa depois deles: ali não há ponta
+  const advBars = advLayout ? [advLayout.name.rect, advLayout.type.rect] : [];
+  const advLeft = advLayout ? roundRect(toImg(advLayout.left.erase)) : null;
+  const advCentered = advLeft && adv?.text_pt?.trim() ? measureCentered(data, advLeft, boxGuard, fx) === true : false;
+  // (as letras das barras da aventura, medidas antes de apagar)
+  const advCenters = advLayout ? advBarCenters(data, advLayout, fy) : null;
   const capGuard = [
-    ...layout.erase
-      .slice(0, 2)
-      .filter((e) => e.rect.x0 <= 50)
-      .flatMap((e) => barCapGuard(data, toImg(e.rect), "left", Boolean(frameBox))),
+    ...[...layout.erase.slice(0, 2).map((e) => e.rect), ...advBars]
+      .filter((r) => r.x0 <= 50)
+      .flatMap((r) => barCapGuard(data, toImg(r), "left", Boolean(frameBox))),
     ...(!manaCost && !rightIcon ? barCapGuard(data, toImg(layout.erase[0].rect), "right", Boolean(frameBox)) : []),
   ];
   const opaque = [...stampGuard, ...layout.protect.map(toImg), ...symbolGuard];
+  // as páginas da Aventura escurecem em direção à lombada: a sombra sai antes de apagar e volta
+  // depois (ver pageShade)
+  const shaded = advLeft && measuredBox ? [measuredBox, advLeft].map((rect) => ({ rect, shade: pageShade(data, rect) })) : [];
+  const unshade = shaded.map((p) => shadePage(data, p.rect, p.shade));
   // (a moldura sem borda vai inteira para a rede neural, logo abaixo)
   const inks = eraseRegions(
     data,
     // (abaixo da medida fixa, só o pé das letras: a medida do terço da esquerda pode
     // passar do fio de baixo nas outras partes da caixa)
-    layout.erase.slice(subtitle ? 1 : 0, frameBox ? 0 : 3).map((e) => ({
-      rect: e.stains && measuredBox ? measuredBox : toImg(e.rect),
-      threshold: e.threshold,
-      colorThreshold: e.colorThreshold,
-      fill: e.fill,
-      stains: e.stains,
-      attachedBelow: e.stains ? toImg(e.rect).y1 : undefined,
-      force:
-        e.stains && bands
-          ? bands.bands.map((b) => ({ x0: bands.x0 - 3 * fx, y0: b.y0 - 3 * fy, x1: bands.x1 + 3 * fx, y1: b.y1 + 3 * fy }))
-          : undefined,
-    })),
+    [
+      ...layout.erase.slice(subtitle ? 1 : 0, frameBox ? 0 : 3).map((e) => ({
+        rect: e.stains && measuredBox ? measuredBox : toImg(e.rect),
+        threshold: e.threshold,
+        colorThreshold: e.colorThreshold,
+        fill: e.fill,
+        stains: e.stains,
+        attachedBelow: e.stains ? (advLayout ? ADVENTURE.attachedBelow * fy : toImg(e.rect).y1) : undefined,
+        force:
+          e.stains && bands
+            ? bands.bands.map((b) => ({ x0: bands.x0 - 3 * fx, y0: b.y0 - 3 * fy, x1: bands.x1 + 3 * fx, y1: b.y1 + 3 * fy }))
+            : undefined,
+      })),
+      // (as barras da aventura como as do nome e do tipo; a página da esquerda como a caixa)
+      // (com o limiar mais baixo que o das barras do nome e do tipo, ver ADVENTURE.barThreshold)
+      ...advBars.map((r) => ({ rect: toImg(r), threshold: ADVENTURE.barThreshold, fill: "rows" as const })),
+      ...(advLeft ? [{ rect: advLeft, threshold: 14, colorThreshold: 34, stains: true, attachedBelow: ADVENTURE.attachedBelow * fy }] : []),
+    ],
     [],
     // o selo de promoção (oval holográfico), a aba das cartas de duas faces e a caixa de
     // P/R sobem para dentro da caixa de texto: ficam, e a cor deles não entra no
@@ -1280,6 +1334,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     opaque,
     capGuard,
   );
+  for (const back of unshade) back();
   // Sem borda: a arte aparece por trás das letras, e o preenchimento simples deixaria um
   // borrão. As letras brancas vão para a rede neural (ver lamaBox e whiteTextMask); selo,
   // caixa de P/R, símbolo da coleção e pontas das barras ficam escondidos dela, para a cor
@@ -1360,6 +1415,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const titleInk = frameBox ? "light" : (measured[0] ?? "light");
   const typeInk = frameBox ? "light" : (measured[1] ?? "light");
   const boxInk = measured[2] ?? boxPolarity ?? "light";
+  const advInks = advLayout ? inks.slice(-3) : [];
   // o lembrete do verso pode passar do lado da caixa, no canto que avança para a moldura (SOI)
   if (backPt && measuredBox && !keepBox) {
     const y1 = layout.box.y1;
@@ -1390,15 +1446,33 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   if (backPt) drawBackPt(ctx, backPt, layout.box.y1 - BACK_PT_NOTCH.height / 2, k, boxInk);
 
   const box = layout.box;
-  const symbols = await preloadSymbols(face.text_pt, opts.flavor);
+  const symbols = await preloadSymbols(face.text_pt, opts.flavor, adv?.text_pt);
   const m = measurer(ctx, k);
+  if (advLayout && adv && advCenters) {
+    const centers = advCenters;
+    drawLine(
+      ctx,
+      adv.name_pt ?? adv.name_en,
+      advLayout.name.x,
+      centers[0],
+      advLayout.name.maxWidth,
+      ADVENTURE.name.size,
+      k,
+      INK[advInks[0] ?? "light"],
+    );
+    if (adv.type_pt)
+      drawLine(ctx, adv.type_pt, advLayout.type.x, centers[1], advLayout.type.maxWidth, ADVENTURE.type.size, k, INK[advInks[1] ?? "light"]);
+    const page = advLayout.left.text;
+    const left = fitText(adv.text_pt, null, page.x1 - page.x0, page.y1 - page.y0, m, ADVENTURE.maxSize, 15, undefined, adv.ability_words);
+    drawLayout(ctx, left, page, k, advInks[2] ?? "dark", symbols, m, advCentered);
+  }
   const res = fitText(
     face.text_pt,
     opts.flavor ?? null,
     box.x1 - box.x0,
     box.y1 - box.y0,
     m,
-    34,
+    advLayout ? ADVENTURE.maxSize : 34,
     15,
     backPt ? BACK_PT_NOTCH : undefined,
     face.ability_words,

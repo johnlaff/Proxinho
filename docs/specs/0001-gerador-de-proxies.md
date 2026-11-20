@@ -59,7 +59,7 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 
 Molduras além da 2015 normal, edição manual do texto, tradução não oficial assistida, fichas. Ver [roadmap](../roadmap.md).
 
-Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008). Em 19/11/2026: artes sem borda na moldura padrão, com o nome de crossover mantido no alto e o nome em PT na linha de baixo, e a sangria do PDF com a própria arte (ADR 0012). Em 20/11/2026: Sagas na moldura padrão (ADR 0016).
+Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008). Em 19/11/2026: artes sem borda na moldura padrão, com o nome de crossover mantido no alto e o nome em PT na linha de baixo, e a sangria do PDF com a própria arte (ADR 0012). Em 20/11/2026: Sagas na moldura padrão (ADR 0016) e Aventuras na moldura de livro (ADR 0017).
 
 ### H8. Fichas (entregue em 17/11/2026, ADR 0009)
 Como jogador, quero imprimir as fichas que o meu deck cria, em português, junto com as cartas.
@@ -84,3 +84,9 @@ Como jogador, quero imprimir as Sagas em português na arte que eu escolher.
 - [x] O lembrete do alto sai em PT, com o texto oficial das Sagas impressas ("(Conforme esta Saga entra…)", "Adiantar leitura (Escolha um capítulo…)"), como na carta física; sem texto no alto, a faixa do alto sai.
 - [x] A explicação das palavras-chave dos capítulos sai como na carta física ("Arregimentar Orcs 1. (Coloque um marcador +1/+1…)" no Livro de Mazarbul), com o texto oficial das cartas impressas em PT; a que nunca saiu impressa em PT fica de fora.
 - [x] Quando o motor não acha os fios ou os marcadores na imagem, ou o texto não cabe, a carta sai na original e a etiqueta diz que sai em inglês.
+
+### H11. Aventuras (entregue em 20/11/2026, ADR 0017)
+Como jogador, quero imprimir as Aventuras em português na arte que eu escolher.
+- [x] As Aventuras na moldura de livro (e os Presságios de TDM) saem em português: a criatura na página da direita, o nome, o tipo e as regras da aventura na da esquerda, com o custo da aventura no lugar.
+- [x] A sombra do papel perto da lombada continua igual depois de apagar o inglês.
+- [x] Quando o motor não acha o livro na imagem, a carta sai na original e a etiqueta diz que sai em inglês.

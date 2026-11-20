@@ -188,7 +188,9 @@ export function renderInput(entry: Entry, side: Side = 0) {
   const translate = entry.choice.kind === "print" && hasPtText(entry.card);
   const face = translate ? (entry.card.faces[side] ?? null) : null;
   const flavor = flavorApplies(entry.card, print) ? (face?.flavor_pt ?? null) : null;
-  return { print, face, side, typeLine: entry.card.type_line, flavor };
+  // (Aventura: a segunda face é o feitiço da página da esquerda, na mesma imagem)
+  const adventure = face && print.layout === "adventure" ? (entry.card.faces[1] ?? null) : null;
+  return { print, face, side, typeLine: entry.card.type_line, flavor, ...(adventure ? { adventure } : {}) };
 }
 
 function toBlob(canvas: HTMLCanvasElement): Promise<Blob> {
