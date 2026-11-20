@@ -4,11 +4,14 @@ import {
   dividerProfile,
   drawDivider,
   sagaArtLeft,
+  sagaBands,
   sagaDividers,
   sagaNumerals,
   sagaPlan,
   sagaText,
   sagaTopFrame,
+  TOP_CURVE_CLEAR,
+  topAligned,
 } from "../../src/engine/saga";
 
 const W = 745;
@@ -122,6 +125,19 @@ describe("sagaPlan", () => {
     expect(sagaPlan([40, 100, 100], true, markers)).toEqual([285, 575]);
   });
 
+  it("o texto do alto acaba antes da curva da tira dos marcadores, no fio de cima original", () => {
+    // Urza's Saga e Book of Mazarbul com o lembrete em PT: o "S" de "Sacrifique-a" ia por baixo da curva
+    const markers = [
+      { first: 450, last: 450 },
+      { first: 700, last: 700 },
+    ];
+    expect(sagaPlan([200, 100, 100], true, markers)).not.toBeNull();
+    expect(sagaPlan([200, 100, 100], true, markers, 308 - TOP_CURVE_CLEAR)).toBeNull();
+    expect(sagaPlan([150, 100, 100], true, markers, 308 - TOP_CURVE_CLEAR)).not.toBeNull();
+    // sem mudar os fios, o texto do alto também para antes da curva
+    expect(sagaBands([308, 560], 370)[0].text.y1).toBe(308 - TOP_CURVE_CLEAR);
+  });
+
   it("um grupo só não tem fio; sem lugar, null", () => {
     const all = [{ first: 406, last: 748 }];
     expect(sagaPlan([300], false, all)).toEqual([]);
@@ -130,6 +146,16 @@ describe("sagaPlan", () => {
     expect(sagaPlan([100, 30, 400], false, dom)).toBeNull();
     // faixas e marcadores que não batem
     expect(sagaPlan([100, 30], false, dom)).toBeNull();
+  });
+});
+
+describe("topAligned", () => {
+  it("o lembrete fica no alto da faixa, sem descer até a curva da tira", () => {
+    // Book of Mazarbul (LTR 116): centrado na faixa de 129 a 330, o fim do lembrete passava de 283
+    const box = { x0: 66, y0: 129, x1: 362, y1: 330 };
+    expect(topAligned(box, 110)).toEqual({ x0: 66, y0: 129, x1: 362, y1: 239 });
+    // texto mais alto que a faixa: a faixa fica como está
+    expect(topAligned(box, 250)).toEqual(box);
   });
 });
 

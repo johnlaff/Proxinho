@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, saga_chapters, saga_supported, token_face_key, token_key
+from build import ability_word_lines, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, saga_chapters, saga_reminder, saga_reminders, saga_supported, token_face_key, token_key
 
 
 class CitesAltName(unittest.TestCase):
@@ -423,6 +423,43 @@ class TextoDoEmblema(unittest.TestCase):
 
     def test_sem_emblema(self):
         self.assertIsNone(emblem_text("Voar"))
+
+
+class SagaReminder(unittest.TestCase):
+    """O lembrete do alto das Sagas vem das Sagas impressas em PT; o Arena não o traz."""
+
+    EN = "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)"
+    PT = "(Conforme esta Saga entra e após sua etapa de compra, adicione um marcador de conhecimento. Sacrifique-a após III.)"
+    LER_EN = "Read ahead (Choose a chapter and start with that many lore counters. Add one after your draw step. Skipped chapters don't trigger. Sacrifice after III.)"
+    LER_PT = "Adiantar leitura (Escolha um capítulo e comece com aquela quantidade de marcadores de conhecimento. Adicione um após sua etapa de compra. Os capítulos pulados não são desencadeados. Sacrifique-a após III.)"
+
+    def saga(self, en: str, pt: str, type_line: str = "Enchantment — Saga") -> dict:
+        return {"type_line": type_line, "oracle_text": en, "printed_text": pt}
+
+    def test_lembrete_das_impressas(self):
+        printed = {
+            "a": self.saga(self.EN + "\nI — Draw a card.", self.PT + "\nI — Compre um card."),
+            "b": self.saga(self.LER_EN + "\nI — Scry 1.", self.LER_PT + "\nI — Use vidência 1."),
+            # carta que não é Saga e Saga sem lembrete na impressão não contam
+            "c": self.saga(self.EN, "(Outra coisa.)", "Enchantment"),
+            "d": self.saga(self.EN + "\nI — Draw a card.", "I — Compre um card."),
+        }
+        self.assertEqual(saga_reminders(printed), {self.EN: self.PT, self.LER_EN: self.LER_PT})
+
+    def test_vai_no_alto_do_texto_do_arena(self):
+        # Urza's Saga, Book of Mazarbul: sem o lembrete, a faixa do alto ficava vazia
+        texto = "I — Compre um card.\nII — Use vidência 2."
+        self.assertEqual(saga_reminder(self.EN + "\nI — Draw a card.\nII — Scry 2.", texto, {self.EN: self.PT}), self.PT + "\n" + texto)
+        # já com o lembrete, ou sem lembrete conhecido, fica como está
+        self.assertEqual(saga_reminder(self.EN, self.PT + "\n" + texto, {self.EN: self.PT}), self.PT + "\n" + texto)
+        self.assertEqual(saga_reminder("(Another reminder.)\nI — Draw a card.", texto, {self.EN: self.PT}), texto)
+
+    def test_adiantar_leitura_ganha_a_explicacao(self):
+        # The Phasing of Zhalfir (DMU): o Arena traz só "Adiantar leitura"
+        en = self.LER_EN + "\nI — Draw a card."
+        self.assertEqual(saga_reminder(en, "Adiantar leitura\nI — Compre um card.", {self.LER_EN: self.LER_PT}), self.LER_PT + "\nI — Compre um card.")
+        # palavra-chave diferente da impressa: não mistura
+        self.assertEqual(saga_reminder(en, "Ler adiante\nI — Compre um card.", {self.LER_EN: self.LER_PT}), "Ler adiante\nI — Compre um card.")
 
 
 class SagaChapters(unittest.TestCase):

@@ -585,7 +585,8 @@ def saga_chapters(oracle_text: str | None, text_pt: str | None) -> str | None:
     List of the Ents tem o mesmo parágrafo seis vezes); o número e os grupos vêm do Oracle, pela
     ordem (o travessão solto na frente de um capítulo sai). As linhas que não são capítulo
     ("Ler adiante", a palavra-chave das criaturas Saga) ficam onde o Oracle as põe. O lembrete
-    do Oracle ("(As this Saga enters…)") não está no Arena e não entra. Devolve None quando as
+    do Oracle ("(As this Saga enters…)") não está no Arena e entra depois, pelo texto das Sagas
+    impressas em PT (ver `saga_reminder`). Devolve None quando as
     linhas não batem, ou quando os parágrafos de um mesmo grupo diferem.
     """
     en = [x.strip() for x in (oracle_text or "").split("\n") if x.strip() and not x.strip().startswith("(")]
@@ -611,6 +612,59 @@ def saga_chapters(oracle_text: str | None, text_pt: str | None) -> str | None:
             return None
         out.append(f"{group} — {part[0]}" if group else part[0])
     return "\n".join(out)
+
+
+# lembrete do alto das Sagas no Oracle: "(As this Saga enters…)" ou "Read ahead (Choose…)"
+_SAGA_REMINDER = re.compile(r"^(?:Read ahead )?\(.+\)$")
+
+
+def saga_reminders(printed: dict[str, dict]) -> dict[str, str]:
+    """
+    O lembrete do alto das Sagas em PT, pelo lembrete em inglês do Oracle, tirado das Sagas
+    impressas em português (o texto oficial: "(Conforme esta Saga entra e após sua etapa de
+    compra, adicione um marcador de conhecimento. Sacrifique-a após III.)"). O Arena não traz o
+    lembrete nem a explicação do "Adiantar leitura", e sem eles a faixa do alto da carta ficava
+    vazia (Urza's Saga, Book of Mazarbul). Fica o texto mais comum de cada lembrete em inglês;
+    só lembrete idêntico ao de uma carta impressa, nunca montado.
+    """
+    votes: dict[str, dict[str, int]] = {}
+    for card in printed.values():
+        card = card.get("_text", card)
+        for f in card.get("card_faces") or [card]:
+            if "Saga" not in (f.get("type_line") or card.get("type_line") or ""):
+                continue
+            en = (f.get("oracle_text") or "").split("\n")[0].strip()
+            pt = (clean_rules(fix_breaks(f.get("printed_text"))) or "").split("\n")[0].strip()
+            if _SAGA_REMINDER.match(en) and _SAGA_REMINDER_PT.match(pt) and en.startswith("(") == pt.startswith("("):
+                votes.setdefault(en, {})
+                votes[en][pt] = votes[en].get(pt, 0) + 1
+    return {en: max(c.items(), key=lambda kv: (kv[1], kv[0]))[0] for en, c in votes.items()}
+
+
+# o lembrete em PT: a frase inteira entre parênteses, ou a palavra-chave e a explicação dela
+_SAGA_REMINDER_PT = re.compile(r"^[^()]*\([^()]+\)$")
+
+
+def saga_reminder(oracle_text: str | None, text_pt: str | None, reminders: dict[str, str]) -> str | None:
+    """
+    Põe no alto do texto de Saga do Arena (já com os capítulos numerados, ver `saga_chapters`)
+    o lembrete oficial em PT da primeira linha do Oracle (ver `saga_reminders`), como na carta
+    impressa: o "(Conforme esta Saga entra…)" vai antes dos capítulos e o "Adiantar leitura"
+    sozinho ganha a explicação dele. Sem lembrete conhecido, o texto fica como está.
+    """
+    if text_pt is None:
+        return None
+    en = (oracle_text or "").split("\n")[0].strip()
+    pt = reminders.get(en)
+    if not pt:
+        return text_pt
+    lines = text_pt.split("\n")
+    if en.startswith("("):
+        return text_pt if lines[0].startswith("(") else "\n".join([pt, *lines])
+    # "Read ahead": a palavra-chave do Arena tem de ser a mesma da carta impressa
+    if lines[0].strip() == pt.split(" (")[0].strip():
+        return "\n".join([pt, *lines[1:]])
+    return text_pt
 
 
 # Parágrafo que começa com um nome e um travessão, com texto depois na mesma linha
@@ -1034,6 +1088,8 @@ def build(offline: bool) -> list[dict]:
     printed = load_printed_pt(offline)
     oracle = load_oracle(offline)
     ITALIC_WORDS.update(load_italic_words(offline))
+    reminders = saga_reminders(printed)
+    log(f"lembretes de Saga em PT (das impressas): {len(reminders)}")
 
     rows = []
     stats = {"arena": 0, "impresso": 0, "sem": 0}
@@ -1074,7 +1130,7 @@ def build(offline: bool) -> list[dict]:
                     if text_pt is None:
                         SAGA_MISMATCH.add(oid)
                     else:
-                        f["text_pt"] = text_pt
+                        f["text_pt"] = saga_reminder(en_face.get("oracle_text"), text_pt, reminders)
 
         for i, f in enumerate(faces):
             aw = ability_word_lines(faces_en[min(i, len(faces_en) - 1)].get("oracle_text"), f.get("text_pt"))

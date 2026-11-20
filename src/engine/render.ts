@@ -75,6 +75,8 @@ import {
   sagaPlan,
   sagaText,
   sagaTopFrame,
+  TOP_CURVE_CLEAR,
+  topAligned,
 } from "./saga";
 import { preloadSymbols } from "./symbols";
 import { SYMBOL_EM, TABLE_ROW, chunkWidth, fitRows, fitText, lineText, rowsAt, type LayoutResult, type Measurer } from "./text";
@@ -453,8 +455,8 @@ async function renderPlaneswalker(p: {
  * papel da coluna é opaco (com a marca-d'água de algumas, como em Dominaria): o apagamento
  * é o da caixa comum, faixa por faixa, sem a tira dos marcadores. Cada capítulo vai na faixa
  * dele, centrado nos seus marcadores, todos no mesmo corpo, como na carta impressa; a faixa do
- * alto leva o que vem antes dos capítulos (o "Ler adiante"; o lembrete das Sagas não está no
- * Arena e não é escrito, e sem nada para o alto o fio de cima sai). O português é mais
+ * alto leva o que vem antes dos capítulos (o lembrete oficial, que o pipeline tira das Sagas
+ * impressas em PT, e o "Adiantar leitura"; sem nada para o alto, o fio de cima sai). O português é mais
  * comprido e cada capítulo muda de tamanho de um jeito: os fios mudam de lugar, entre os
  * marcadores, para o texto caber no maior corpo possível (ver `sagaPlan`), e são redesenhados
  * com a sombra medida no original. Sem achar os números dos marcadores, os fios ficam onde
@@ -530,6 +532,7 @@ async function renderSaga(p: {
         layouts.map((l) => l.height),
         hasTop,
         found,
+        dividers[0] - TOP_CURVE_CLEAR,
       );
     }
   }
@@ -605,7 +608,12 @@ async function renderSaga(p: {
     const row = rows[i];
     // na faixa de capítulo o texto fica na altura dos marcadores, se couber
     const mk = found && row.band > 0 ? found[row.band - 1] : null;
-    const box = mk ? alignOnIcon(boxes[i], res.height, (mk.first + mk.last) / 2, false) : boxes[i];
+    // (e o do alto fica encostado em cima, ver topAligned)
+    const box = mk
+      ? alignOnIcon(boxes[i], res.height, (mk.first + mk.last) / 2, false)
+      : row.band === 0
+        ? topAligned(boxes[i], res.height)
+        : boxes[i];
     drawLayout(ctx, res, box, k, inks[2 + row.band], symbols, m);
   });
   return true;

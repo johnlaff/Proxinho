@@ -144,7 +144,8 @@ export function sagaBands(dividers: number[], artLeft: number): { erase: Rect; t
         x0: top ? SAGA.text.topX0 : SAGA.text.chapterX0,
         y0: y0 + SAGA.text.gap,
         x1: artLeft - 10,
-        y1: y1 - SAGA.text.gap - (i + 2 < edges.length ? 6 : 0),
+        // (a do alto acaba antes da curva da tira dos marcadores, ver TOP_CURVE_CLEAR)
+        y1: top && edges.length > 2 ? edges[1] - TOP_CURVE_CLEAR : y1 - SAGA.text.gap - (i + 2 < edges.length ? 6 : 0),
       },
     });
   }
@@ -193,18 +194,34 @@ export const MARKER_HALF = 31;
 export const SAGA_PAD = { below: 9, above: 15, edge: 10 };
 
 /**
+ * Quanto acima do fio de cima original o texto do alto tem de acabar (escala-base): a tira dos
+ * marcadores sobe em curva até ele (`TOP_CURVE`) e, a 24 px dele, já passa de x = 65, onde o
+ * texto do alto começa. O lembrete comprido em PT descia até ali e o "S" de "Sacrifique-a"
+ * ficava por baixo da curva.
+ */
+export const TOP_CURVE_CLEAR = 26;
+
+/**
  * Onde ficam os fios entre as faixas, com o texto em PT de cada uma medindo `heights` (a do
  * alto primeiro, se houver, e uma por capítulo). Os marcadores não saem do lugar, mas os fios
  * podem: cada um fica entre o último marcador de um capítulo e o primeiro do seguinte (o
  * primeiro, abaixo do texto do alto e acima do primeiro marcador), e cada faixa tem de caber o
  * texto dela. Dentro do que cabe, cada fio fica no meio do caminho entre o texto de cima e o de
  * baixo, cada um centrado nos seus marcadores, como na carta impressa. `markers` traz, por
- * capítulo, o centro do primeiro e do último número. `null` quando não cabe.
+ * capítulo, o centro do primeiro e do último número. `topLimit` é onde o texto do alto tem de
+ * acabar: a curva da tira dos marcadores fica onde estava, no fio de cima original (ver
+ * `TOP_CURVE_CLEAR`). `null` quando não cabe.
  */
-export function sagaPlan(heights: number[], hasTop: boolean, markers: { first: number; last: number }[]): number[] | null {
+export function sagaPlan(
+  heights: number[],
+  hasTop: boolean,
+  markers: { first: number; last: number }[],
+  topLimit = Infinity,
+): number[] | null {
   const { y0: top, y1: bottom } = SAGA.column;
   const n = heights.length;
   if (n !== markers.length + (hasTop ? 1 : 0) || n < 1) return null;
+  if (hasTop && top + SAGA_PAD.edge + heights[0] > topLimit) return null;
   // um grupo só, sem nada no alto: nenhum fio, o texto na coluna inteira
   if (n === 1) return heights[0] + 2 * SAGA_PAD.edge <= bottom - top ? [] : null;
   // marcadores de cada faixa (a do alto não tem)
@@ -232,6 +249,15 @@ export function sagaPlan(heights: number[], hasTop: boolean, markers: { first: n
     out.push(Math.round(Math.min(Math.max(ideal, min), late[j])));
   }
   return out;
+}
+
+/**
+ * O retângulo do texto do alto, encostado em cima (escala-base): o lembrete fica no alto da
+ * faixa, como na carta impressa. Centrado numa faixa mais alta que ele, descia até a curva da
+ * tira dos marcadores (Book of Mazarbul, LTR 116), e `sagaPlan` conta com ele em cima.
+ */
+export function topAligned(box: Rect, height: number): Rect {
+  return { ...box, y1: Math.min(box.y1, box.y0 + height) };
 }
 
 /** Retângulos de texto das faixas (escala-base) entre os fios `dividers`, com as folgas de `SAGA_PAD`. */

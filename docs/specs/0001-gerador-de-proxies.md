@@ -81,5 +81,5 @@ Como jogador, quero usar as artes sem borda (Secret Lair, Commander, Marvel) com
 Como jogador, quero imprimir as Sagas em português na arte que eu escolher.
 - [x] As Sagas na moldura padrão saem em português, com o texto de cada capítulo ao lado do seu marcador, em letra do mesmo corpo nos capítulos todos.
 - [x] Os fios entre os capítulos mudam de lugar para o português caber; os marcadores não mudam.
-- [x] Sem lembrete em inglês no alto: a faixa do alto só fica quando o texto em PT tem algo ali ("Adiantar leitura").
+- [x] O lembrete do alto sai em PT, com o texto oficial das Sagas impressas ("(Conforme esta Saga entra…)", "Adiantar leitura (Escolha um capítulo…)"), como na carta física; sem texto no alto, a faixa do alto sai.
 - [x] Quando o motor não acha os fios ou os marcadores na imagem, ou o texto não cabe, a carta sai na original e a etiqueta diz que sai em inglês.
