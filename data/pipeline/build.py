@@ -210,6 +210,13 @@ def keep_earlier_flavor(entry: dict, prev: dict | None) -> bool:
     return True
 
 
+def is_arena_marker(value: str) -> bool:
+    """Texto interno do Arena, que não está na carta: os marcadores ("#NoTranslationNeeded",
+    "#StationLevelInstrinsic_NoTranslation"…) e o modelo de nível das Classes ("CLASSLEVEL [3]
+    […]", que repetia a habilidade do nível 3 na Classe: Ladino)."""
+    return bool(re.fullmatch(r"#\S+", value)) or value.startswith("CLASSLEVEL ")
+
+
 def load_arena(offline: bool) -> dict[str, dict]:
     """Devolve {nome em inglês: face(s) com texto em PT-BR} a partir do Arena."""
     cards = json.loads(fetch(UNTAPPED + "cards.json", CACHE / "arena_cards.json", offline).read_text())
@@ -218,8 +225,7 @@ def load_arena(offline: bool) -> dict[str, dict]:
 
     def text(table: dict[int, str], key: int | None) -> str | None:
         value = table.get(key) if key is not None else None
-        # marcadores internos do Arena ("#NoTranslationNeeded", "#StationLevelInstrinsic_NoTranslation"…)
-        if not value or re.fullmatch(r"#\S+", value):
+        if not value or is_arena_marker(value):
             return None
         return fix_arena_typos(drop_invisible(re.sub(r"</?nobr>", "", value)))
 
@@ -586,7 +592,7 @@ def saga_chapters(oracle_text: str | None, text_pt: str | None) -> str | None:
     ordem (o travessão solto na frente de um capítulo sai). As linhas que não são capítulo
     ("Ler adiante", a palavra-chave das criaturas Saga) ficam onde o Oracle as põe. O lembrete
     do Oracle ("(As this Saga enters…)") não está no Arena e entra depois, pelo texto das Sagas
-    impressas em PT (ver `saga_reminder`). Devolve None quando as
+    impressas em PT (ver `top_reminder`). Devolve None quando as
     linhas não batem, ou quando os parágrafos de um mesmo grupo diferem.
     """
     en = [x.strip() for x in (oracle_text or "").split("\n") if x.strip() and not x.strip().startswith("(")]
@@ -614,43 +620,47 @@ def saga_chapters(oracle_text: str | None, text_pt: str | None) -> str | None:
     return "\n".join(out)
 
 
-# lembrete do alto das Sagas no Oracle: "(As this Saga enters…)" ou "Read ahead (Choose…)"
-_SAGA_REMINDER = re.compile(r"^(?:Read ahead )?\(.+\)$")
+# lembrete do alto das Sagas e das Classes no Oracle: "(As this Saga enters…)", "Read ahead (Choose…)",
+# "(Gain the next level as a sorcery to add its ability.)"
+_TOP_REMINDER = re.compile(r"^(?:Read ahead )?\(.+\)$")
 
 
-def saga_reminders(printed: dict[str, dict]) -> dict[str, str]:
+def top_reminders(printed: dict[str, dict]) -> dict[str, str]:
     """
-    O lembrete do alto das Sagas em PT, pelo lembrete em inglês do Oracle, tirado das Sagas
-    impressas em português (o texto oficial: "(Conforme esta Saga entra e após sua etapa de
-    compra, adicione um marcador de conhecimento. Sacrifique-a após III.)"). O Arena não traz o
-    lembrete nem a explicação do "Adiantar leitura", e sem eles a faixa do alto da carta ficava
-    vazia (Urza's Saga, Book of Mazarbul). Fica o texto mais comum de cada lembrete em inglês;
-    só lembrete idêntico ao de uma carta impressa, nunca montado.
+    O lembrete do alto das Sagas e das Classes em PT, pelo lembrete em inglês do Oracle, tirado
+    das cartas impressas em português (o texto oficial: "(Conforme esta Saga entra e após sua
+    etapa de compra, adicione um marcador de conhecimento. Sacrifique-a após III.)", "(Ganhe o
+    próximo nível como um feitiço para adicionar sua habilidade.)"). O Arena não traz o lembrete
+    nem a explicação do "Adiantar leitura", e sem eles o alto da carta ficava vazio (Urza's Saga,
+    Book of Mazarbul, Classe: Mago). Fica o texto mais comum de cada lembrete em inglês; só
+    lembrete idêntico ao de uma carta impressa, nunca montado.
     """
     votes: dict[str, dict[str, int]] = {}
     for card in printed.values():
         card = card.get("_text", card)
         for f in card.get("card_faces") or [card]:
-            if "Saga" not in (f.get("type_line") or card.get("type_line") or ""):
+            type_line = f.get("type_line") or card.get("type_line") or ""
+            if "Saga" not in type_line and "Class" not in type_line:
                 continue
             en = (f.get("oracle_text") or "").split("\n")[0].strip()
-            pt = (clean_rules(fix_breaks(f.get("printed_text"))) or "").split("\n")[0].strip()
-            if _SAGA_REMINDER.match(en) and _SAGA_REMINDER_PT.match(pt) and en.startswith("(") == pt.startswith("("):
+            pt = (clean_rules(fix_breaks(drop_level_marks(f.get("printed_text")))) or "").split("\n")[0].strip()
+            if _TOP_REMINDER.match(en) and _TOP_REMINDER_PT.match(pt) and en.startswith("(") == pt.startswith("("):
                 votes.setdefault(en, {})
                 votes[en][pt] = votes[en].get(pt, 0) + 1
     return {en: max(c.items(), key=lambda kv: (kv[1], kv[0]))[0] for en, c in votes.items()}
 
 
 # o lembrete em PT: a frase inteira entre parênteses, ou a palavra-chave e a explicação dela
-_SAGA_REMINDER_PT = re.compile(r"^[^()]*\([^()]+\)$")
+_TOP_REMINDER_PT = re.compile(r"^[^()]*\([^()]+\)$")
 
 
-def saga_reminder(oracle_text: str | None, text_pt: str | None, reminders: dict[str, str]) -> str | None:
+def top_reminder(oracle_text: str | None, text_pt: str | None, reminders: dict[str, str]) -> str | None:
     """
-    Põe no alto do texto de Saga do Arena (já com os capítulos numerados, ver `saga_chapters`)
-    o lembrete oficial em PT da primeira linha do Oracle (ver `saga_reminders`), como na carta
-    impressa: o "(Conforme esta Saga entra…)" vai antes dos capítulos e o "Adiantar leitura"
-    sozinho ganha a explicação dele. Sem lembrete conhecido, o texto fica como está.
+    Põe no alto do texto do Arena o lembrete oficial em PT da primeira linha do Oracle (ver
+    `top_reminders`), como na carta impressa: o "(Conforme esta Saga entra…)" vai antes dos
+    capítulos (já numerados, ver `saga_chapters`), o "(Ganhe o próximo nível…)" antes da
+    habilidade do nível 1 da Classe, e o "Adiantar leitura" sozinho ganha a explicação dele. Sem
+    lembrete conhecido, o texto fica como está.
     """
     if text_pt is None:
         return None
@@ -834,6 +844,14 @@ def ability_word_lines(oracle_text: str | None, text_pt: str | None, italic: set
     return out or None
 
 
+def drop_level_marks(text: str | None) -> str | None:
+    """Tira as linhas "//Level_2//" do texto impresso das Classes: marcação do Scryfall entre a
+    barra de nível e a habilidade, que não está na carta."""
+    if text is None:
+        return None
+    return "\n".join(x for x in text.split("\n") if not re.fullmatch(r"//Level_\d+//", x.strip()))
+
+
 def printed_faces(card: dict) -> list[dict]:
     """Faces com o texto em PT da impressão mais nova (ver `pick_printed`)."""
     card = card.get("_text", card)
@@ -852,7 +870,7 @@ def printed_faces(card: dict) -> list[dict]:
                 "name_pt": f.get("printed_name"),
                 # impressões antigas separam o subtipo com hífen: é o travessão da carta
                 "type_pt": re.sub(r" - ", " — ", f["printed_type_line"]) if f.get("printed_type_line") else None,
-                "text_pt": clean_rules(fix_breaks(text)),
+                "text_pt": clean_rules(fix_breaks(drop_level_marks(text))),
                 "flavor_pt": fix_breaks(f.get("flavor_text"), flavor=True),
                 "mana_cost": f.get("mana_cost"),
             }
@@ -989,6 +1007,27 @@ def adventure_supported(card: dict) -> bool:
         and not card.get("textless")
         and not art_behind_box(card)
         and len(card.get("card_faces") or []) == 2
+    )
+
+
+def class_supported(card: dict) -> bool:
+    """Classe na moldura de Adventures in the Forgotten Realms em diante: a arte à esquerda e a
+    coluna de texto à direita, com o lembrete no alto e uma barra por nível (src/engine/classCard.ts).
+    O motor confere a coluna, o fio do lembrete e as barras na imagem; sem eles, ou com outro
+    número de barras, a arte sai como está. Ficam de fora as sem borda (pôster e Secret Lair) e
+    as promos com relevo das lojas (o "&" de D&D em alto-relevo atravessa a coluna: as barras que
+    mudam de lugar levavam pedaços dele, e o resto ficava pela metade no papel apagado).
+    """
+    effects = set(card.get("frame_effects") or [])
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "class"
+        and "embossed" not in (card.get("promo_types") or [])
+        and card.get("border_color") == "black"
+        and effects <= SAGA_EFFECTS_OK
+        and not card.get("full_art")
+        and not card.get("textless")
+        and "Class" in card.get("type_line", "")
     )
 
 
@@ -1140,6 +1179,7 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or token_supported(c)
         or saga_supported(c)
         or adventure_supported(c)
+        or class_supported(c)
         or bool(sides and sides[0]["supported"]),
         "sides": sides,
         # nome de crossover no alto (o nome de jogo vai numa linha pequena abaixo da barra)
@@ -1226,8 +1266,8 @@ def build(offline: bool) -> list[dict]:
     printed = load_printed_pt(offline)
     oracle = load_oracle(offline)
     ITALIC_WORDS.update(load_italic_words(offline))
-    reminders = saga_reminders(printed)
-    log(f"lembretes de Saga em PT (das impressas): {len(reminders)}")
+    reminders = top_reminders(printed)
+    log(f"lembretes do alto de Saga e Classe em PT (das impressas): {len(reminders)}")
     with open(CACHE / "scryfall_pt.jsonl") as fh:
         by_group, by_card = reminder_texts((json.loads(line) for line in fh), {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle})
     log(f"lembretes de palavra-chave em PT (das impressas): {len(by_group.get('*', {}))}")
@@ -1263,7 +1303,8 @@ def build(offline: bool) -> list[dict]:
             else:
                 faces[0]["text_pt"] = text_pt
 
-        # Saga: o número de cada capítulo na frente, para o motor casar capítulo e faixa
+        # Saga: o número de cada capítulo na frente, para o motor casar capítulo e faixa (e o
+        # lembrete do alto das Sagas e das Classes)
         if source == "arena":
             for i, f in enumerate(faces):
                 en_face = faces_en[min(i, len(faces_en) - 1)]
@@ -1272,7 +1313,10 @@ def build(offline: bool) -> list[dict]:
                     if text_pt is None:
                         SAGA_MISMATCH.add(oid)
                     else:
-                        f["text_pt"] = saga_reminder(en_face.get("oracle_text"), text_pt, reminders)
+                        f["text_pt"] = top_reminder(en_face.get("oracle_text"), text_pt, reminders)
+                # Classe: o lembrete "(Ganhe o próximo nível…)" no alto, como na carta impressa
+                elif "Class" in en_face.get("type_line", "") and f.get("text_pt") is not None:
+                    f["text_pt"] = top_reminder(en_face.get("oracle_text"), f["text_pt"], reminders)
             # o lembrete de palavra-chave de cada linha, como na carta física ("Arregimentar Orcs 1. (Coloque…)")
             for i, f in enumerate(faces):
                 en_face = faces_en[min(i, len(faces_en) - 1)]

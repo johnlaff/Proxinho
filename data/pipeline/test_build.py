@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import ability_word_lines, adventure_supported, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_reminder, saga_reminders, saga_supported, token_face_key, token_key, type_group
+from build import ability_word_lines, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -444,22 +444,70 @@ class SagaReminder(unittest.TestCase):
             "c": self.saga(self.EN, "(Outra coisa.)", "Enchantment"),
             "d": self.saga(self.EN + "\nI — Draw a card.", "I — Compre um card."),
         }
-        self.assertEqual(saga_reminders(printed), {self.EN: self.PT, self.LER_EN: self.LER_PT})
+        self.assertEqual(top_reminders(printed), {self.EN: self.PT, self.LER_EN: self.LER_PT})
 
     def test_vai_no_alto_do_texto_do_arena(self):
         # Urza's Saga, Book of Mazarbul: sem o lembrete, a faixa do alto ficava vazia
         texto = "I — Compre um card.\nII — Use vidência 2."
-        self.assertEqual(saga_reminder(self.EN + "\nI — Draw a card.\nII — Scry 2.", texto, {self.EN: self.PT}), self.PT + "\n" + texto)
+        self.assertEqual(top_reminder(self.EN + "\nI — Draw a card.\nII — Scry 2.", texto, {self.EN: self.PT}), self.PT + "\n" + texto)
         # já com o lembrete, ou sem lembrete conhecido, fica como está
-        self.assertEqual(saga_reminder(self.EN, self.PT + "\n" + texto, {self.EN: self.PT}), self.PT + "\n" + texto)
-        self.assertEqual(saga_reminder("(Another reminder.)\nI — Draw a card.", texto, {self.EN: self.PT}), texto)
+        self.assertEqual(top_reminder(self.EN, self.PT + "\n" + texto, {self.EN: self.PT}), self.PT + "\n" + texto)
+        self.assertEqual(top_reminder("(Another reminder.)\nI — Draw a card.", texto, {self.EN: self.PT}), texto)
 
     def test_adiantar_leitura_ganha_a_explicacao(self):
         # The Phasing of Zhalfir (DMU): o Arena traz só "Adiantar leitura"
         en = self.LER_EN + "\nI — Draw a card."
-        self.assertEqual(saga_reminder(en, "Adiantar leitura\nI — Compre um card.", {self.LER_EN: self.LER_PT}), self.LER_PT + "\nI — Compre um card.")
+        self.assertEqual(top_reminder(en, "Adiantar leitura\nI — Compre um card.", {self.LER_EN: self.LER_PT}), self.LER_PT + "\nI — Compre um card.")
         # palavra-chave diferente da impressa: não mistura
-        self.assertEqual(saga_reminder(en, "Ler adiante\nI — Compre um card.", {self.LER_EN: self.LER_PT}), "Ler adiante\nI — Compre um card.")
+        self.assertEqual(top_reminder(en, "Ler adiante\nI — Compre um card.", {self.LER_EN: self.LER_PT}), "Ler adiante\nI — Compre um card.")
+
+
+class ClassText(unittest.TestCase):
+    """Classes: o lembrete do alto vem das Classes impressas em PT; o Arena e o Scryfall têm marcações."""
+
+    EN = "(Gain the next level as a sorcery to add its ability.)"
+    PT = "(Ganhe o próximo nível como um feitiço para adicionar sua habilidade.)"
+
+    def test_lembrete_das_classes_impressas(self):
+        # o texto impresso do Scryfall traz "//Level_2//" entre a barra e a habilidade
+        impresso = self.PT + "\nNão há limite para o número máximo de cards em sua mão.\n{2}{U}: Nível 2\n//Level_2//\nQuando esta Classe chegar ao nível 2, compre dois cards."
+        printed = {"a": {"type_line": "Enchantment — Class", "oracle_text": self.EN + "\nYou have no maximum hand size.", "printed_text": impresso}}
+        self.assertEqual(top_reminders(printed), {self.EN: self.PT})
+
+    def test_vai_no_alto_do_texto_do_arena(self):
+        # Classe: Mago: o Arena começa direto pela habilidade do nível 1
+        texto = "Não há limite para o número máximo de cards em sua mão.\n{2}{U}: Nível 2\nQuando esta Classe chegar ao nível 2, compre dois cards."
+        en = self.EN + "\nYou have no maximum hand size.\n{2}{U}: Level 2\nWhen this Class becomes level 2, draw two cards."
+        self.assertEqual(top_reminder(en, texto, {self.EN: self.PT}), self.PT + "\n" + texto)
+
+    def test_tira_as_marcacoes_de_nivel(self):
+        self.assertEqual(drop_level_marks("{1}{U}: Nível 2\n//Level_2//\nQuando…"), "{1}{U}: Nível 2\nQuando…")
+        self.assertEqual(drop_level_marks("Transformar // Queimar causa 2 pontos de dano."), "Transformar // Queimar causa 2 pontos de dano.")
+        self.assertIsNone(drop_level_marks(None))
+
+    def test_modelo_de_nivel_do_arena_nao_e_texto(self):
+        # Classe: Ladino: "CLASSLEVEL [3] [Você pode jogar…]" repetia a habilidade do nível 3
+        self.assertTrue(is_arena_marker("CLASSLEVEL [3] [Você pode jogar cards exilados com esta Classe.]"))
+        self.assertTrue(is_arena_marker("#NoTranslationNeeded"))
+        self.assertFalse(is_arena_marker("Você pode jogar cards exilados com esta Classe."))
+
+
+class ClassSupported(unittest.TestCase):
+    base = {"frame": "2015", "layout": "class", "border_color": "black", "type_line": "Enchantment — Class"}
+
+    def test_moldura_padrao(self):
+        self.assertTrue(class_supported(self.base))
+        # as de Tartarugas Ninja têm o brilho de encantamento
+        self.assertTrue(class_supported({**self.base, "frame_effects": ["enchantment"]}))
+        self.assertTrue(class_supported({**self.base, "promo_types": ["prerelease", "datestamped"]}))
+
+    def test_outras_molduras(self):
+        # pôster e Secret Lair sem borda
+        self.assertFalse(class_supported({**self.base, "border_color": "borderless", "full_art": True}))
+        self.assertFalse(class_supported({**self.base, "frame_effects": ["showcase"]}))
+        self.assertFalse(class_supported({**self.base, "layout": "normal"}))
+        # promo de loja com o "&" em alto-relevo atravessando a coluna (Ranger Class, PAFR 202a)
+        self.assertFalse(class_supported({**self.base, "promo_types": ["embossed", "instore"]}))
 
 
 class KeywordReminders(unittest.TestCase):

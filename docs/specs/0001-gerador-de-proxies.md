@@ -91,3 +91,10 @@ Como jogador, quero imprimir as Aventuras em português na arte que eu escolher.
 - [x] As Aventuras na moldura de livro (e os Presságios de TDM) saem em português: a criatura na página da direita, o nome, o tipo e as regras da aventura na da esquerda, com o custo da aventura no lugar.
 - [x] A sombra do papel perto da lombada continua igual depois de apagar o inglês.
 - [x] Quando o motor não acha o livro na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
+
+### H12. Classes (entregue em 20/11/2026, ADR 0019)
+Como jogador, quero imprimir as Classes em português na arte que eu escolher, inclusive as que nunca saíram impressas em PT.
+- [x] As Classes na moldura padrão saem em português, com todas as habilidades no mesmo corpo de letra e cada uma no meio da faixa do seu nível.
+- [x] As barras de nível mudam de lugar quando o texto em PT pede, com o custo e o "Nível N" no lugar do "Level N", como na Classe impressa em PT.
+- [x] O lembrete do alto sai com o texto oficial das Classes impressas ("(Ganhe o próximo nível como um feitiço para adicionar sua habilidade.)").
+- [x] Quando o motor não acha a coluna, o fio do lembrete ou as barras na imagem, ou o texto não cabe, a carta sai na original e a etiqueta diz que sai em inglês. As promos com o "&" de D&D em alto-relevo ficam de fora.

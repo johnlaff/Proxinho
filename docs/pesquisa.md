@@ -192,6 +192,26 @@ O papel escurece em direção à lombada: na página da direita, de ~210 tons no
 
 O que o texto em PT pede: o Arena traz a criatura e a aventura como duas faces, repete o flavor da criatura nas duas e não tem o lembrete "(Then exile this card…)". O nome da aventura em PT é quase sempre mais longo ("Mágica Instantânea — Aventura" contra "Instant — Adventure"), e as duas barras comprimem a letra antes de reduzir o corpo, como a impressão oficial em PT.
 
+### Classes (20/11/2026)
+
+Como as ferramentas existentes fazem: o Proxyshop tem, para a Classe (`ClassMod`), uma camada de texto por nível. Ele encolhe todas até caberem na coluna (`scale_text_layers_to_height`), espalha-as com a mesma folga acima e abaixo de cada uma (`spread_layers_over_reference`) e põe uma barra de nível entre cada duas (`position_dividers`). A barra é desenho do modelo, com o custo e o "Level N" escritos por cima. Aqui a barra faz parte da imagem escolhida: o Proxinho a recorta com o custo, tira o "Level N" e a cola onde o plano do texto em PT pede, com a mesma folga do Proxyshop (ADR 0019).
+
+Medidas nas imagens do Scryfall (745 × 1040), em AFR, CLB, BLB, BLC, TMT, SOC e nas promos:
+
+| Medida | Valor |
+|---|---|
+| Coluna de texto | x ≈ 375 a 681, do fio do lembrete ao fio de cima da barra de tipo (~867) |
+| Fio preto entre a arte e a coluna | x ≈ 370 a 374 |
+| Bisel cinza e fio da direita | bisel de ~681 a 686, fio escuro de ~686 a 690 |
+| Lembrete do alto | caixa de altura fixa de ~121 a 203, fio fino cinza em ~206 em todas |
+| Barra de nível | linha preta de 2 a 4 px na largura toda da coluna, passando pelo bisel, com um chanfro em "v" no meio (x ≈ 520 a 540, até 14 px abaixo); um brilho claro ~4 px acima; degradê cinza até ~48 px abaixo da linha |
+| Rótulo da barra | custo à esquerda; "Level N" em Beleren, acabando em x ≈ 668 a 672, no meio do degradê |
+| Barra de tipo | como a da Saga, de ~862 a 900 |
+
+O que o texto em PT pede: o Arena não tem o lembrete do alto, que vem das Classes impressas em PT (o mesmo texto em inglês nas 28 Classes com texto oficial; 15 delas, de Bloomburrow e das Tartarugas Ninja, não têm imagem em PT nenhuma). O Arena traz uma linha "CLASSLEVEL [3] […]" que repete a habilidade do nível 3 da Classe: Ladino, e o texto impresso do Scryfall traz linhas "//Level_2//" entre a barra e a habilidade: as duas saem no pipeline. Na carta impressa em PT o lembrete ocupa três linhas na mesma caixa, e as barras mudam de lugar quando um nível cresce mais que os outros.
+
+Promos de loja (AFR) com o "&" de D&D em alto-relevo: o relevo atravessa a coluna e as barras. Recortar as barras levava pedaços dele, e o resto ficava pela metade no papel apagado; elas saem na original.
+
 ## Lado legal e o caminho seguro
 
 | Ponto | O que diz | Risco |
