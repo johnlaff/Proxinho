@@ -5,6 +5,7 @@ import unittest
 from unittest import mock
 
 import build
+import faltam
 from build import emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
 
 
@@ -1182,6 +1183,30 @@ class TraducaoNaoOficial(unittest.TestCase):
             subtype_mismatches(lines, subs, extra),
             [("Destroy target Wall.", "Wall", "Barreira"), ("Create a 2/2 green Beast creature token.", "Beast", "Besta")],
         )
+
+    def test_faltam_lista_o_subtipo_sem_nome_que_segura_a_carta(self) -> None:
+        # todas as linhas traduzidas e o subtipo sem nome em PT: a carta segue em inglês. O subtipo
+        # que só saiu em PT numa ficha também segura, porque o pipeline não lê os tipos das fichas
+        legal = {"commander": "legal"}
+        oracle = {
+            "a": {"oracle_id": "a", "name": "Arena Bird", "oracle_text": "Flying", "type_line": "Creature — Bird", "legalities": legal},
+            "t": {"oracle_id": "t", "name": "Germ", "oracle_text": "", "type_line": "Token Creature — Germ", "layout": "token", "legalities": legal},
+            "n": {"oracle_id": "n", "name": "Night Bird", "oracle_text": "Flying", "type_line": "Creature — Bird Nightstalker", "legalities": legal},
+            "g": {"oracle_id": "g", "name": "Space Germ", "oracle_text": "Flying", "type_line": "Creature — Germ", "legalities": legal},
+            "o": {"oracle_id": "o", "name": "Odd Bird", "oracle_text": "Flying\nSomething new.", "type_line": "Creature — Bird Nightstalker", "legalities": legal},
+        }
+        cards = [
+            {"oracle_id": "a", "source": "arena", "name_pt": "Ave do Arena", "faces": [{"name_pt": "Ave do Arena", "type_pt": "Criatura — Ave", "text_pt": "Voar"}]},
+            {"oracle_id": "t", "source": "arena", "layout": "token", "name_pt": "Germe", "faces": [{"name_pt": "Germe", "type_pt": "Ficha de Criatura — Germe", "text_pt": ""}]},
+            {"oracle_id": "n", "source": None, "faces": []},
+            {"oracle_id": "g", "source": None, "faces": []},
+            {"oracle_id": "o", "source": None, "faces": []},
+        ]
+        with mock.patch.object(build, "load_unofficial", return_value=({}, {})):
+            self.assertEqual(faltam.held_by_type(cards, oracle), [("Germ", ["Space Germ"]), ("Nightstalker", ["Night Bird"])])
+            self.assertEqual([t["en"] for t in faltam.missing(cards, oracle)], ["Something new."])
+        with mock.patch.object(build, "load_unofficial", return_value=({}, {"Nightstalker": "Espreitador Noturno", "Germ": "Germe"})):
+            self.assertEqual(faltam.held_by_type(cards, oracle), [])
 
     def test_so_a_carta_sem_texto_oficial_ganha_a_traducao(self) -> None:
         oracle = [
