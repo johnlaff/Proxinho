@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
+from build import says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -388,6 +388,44 @@ class FlavorDeOutraArte(unittest.TestCase):
         com = {"faces": [{"flavor_pt": "Outro."}], "print": {"set": "x", "number": "1"}, "flavor_en": ("Other.",)}
         self.assertFalse(keep_earlier_flavor(com, old))
         self.assertFalse(keep_earlier_flavor({"faces": [{"flavor_pt": None}], "print": {}, "flavor_en": ("",)}, None))
+
+    def test_flavor_de_outra_versao_do_arena(self):
+        # Birds of Paradise: o texto do Arena é da LTC 235; a BLC 81 tem outro flavor, também
+        # traduzido no Arena (a fala da Ms. Bumbleflower), e saía sem nenhum
+        blc = flavor_key("“How lovely! An ambassador from outside Valley arrived today in Three Tree City.”\n—Ms. Bumbleflower")
+        ltc = "The noise of bubbling waters came up from the foaming riverbed."
+        rows = [{"oracle_id": "o", "name_en": "Birds of Paradise", "text_print": {"set": "ltc", "number": "235"}}]
+        versions = {
+            "Birds of Paradise": [
+                {"print": {"set": "blc", "number": "81"}, "en": (blc,), "pt": ("“Que adorável!…”\n— Sra. Bumbleflower",)},
+                {"print": {"set": "ltc", "number": "235"}, "en": (ltc,), "pt": ("O som de águas borbulhantes…",)},
+            ]
+        }
+        prints = [
+            {"oracle_id": "o", "set_code": "blc", "number": "81", "_flavor": (blc,)},
+            {"oracle_id": "o", "set_code": "ltc", "number": "235", "_flavor": (ltc,)},
+            {"oracle_id": "o", "set_code": "m10", "number": "1", "_flavor": ("Outro flavor.",)},
+            {"oracle_id": "o", "set_code": "plst", "number": "9", "_flavor": ("",)},
+            {"oracle_id": "o", "set_code": "fdn", "number": "2", "_flavor": (ltc,), "text_flavor": True},
+        ]
+        n = mark_print_flavors(rows, prints, versions)
+        self.assertEqual([p["flavor_pt"] for p in prints], [["“Que adorável!…”\n— Sra. Bumbleflower"], None, None, None, None])
+        self.assertEqual(n, 1)
+
+    def test_flavor_de_outra_versao_sem_flavor_no_scryfall(self):
+        # coleção digital (Kaladesh Remastered): o Scryfall não tem o flavor; vale a mesma coleção e número
+        rows = [{"oracle_id": "o", "name_en": "Kari Zev", "text_print": {"set": "kld", "number": "1"}}]
+        versions = {"Kari Zev": [{"print": {"set": "klr", "number": "133"}, "en": ("Aboard…",), "pt": ("A bordo…",)}]}
+        prints = [{"oracle_id": "o", "set_code": "klr", "number": "133", "_flavor": ("",)}]
+        mark_print_flavors(rows, prints, versions)
+        self.assertEqual(prints[0]["flavor_pt"], ["A bordo…"])
+
+    def test_ficha_com_nome_de_carta_nao_leva_flavor(self):
+        rows = [{"oracle_id": "t", "name_en": "Adorned Pouncer", "layout": "token", "text_print": None}]
+        versions = {"Adorned Pouncer": [{"print": {"set": "hou", "number": "1"}, "en": ("A.",), "pt": ("B.",)}]}
+        prints = [{"oracle_id": "t", "set_code": "thou", "number": "1", "layout": "token", "_flavor": ("A.",)}]
+        mark_print_flavors(rows, prints, versions)
+        self.assertIsNone(prints[0]["flavor_pt"])
 
     def test_aspas_e_travessao_de_um_tipo_so(self):
         self.assertEqual(flavor_key("“Run.”\n—Jace"), flavor_key('"Run." — Jace'))

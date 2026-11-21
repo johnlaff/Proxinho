@@ -62,6 +62,12 @@ export interface PrintRecord {
    */
   text_flavor?: boolean;
   /**
+   * O flavor em PT desta arte, um por face, quando ela não leva o da impressão do texto: o da
+   * versão do Arena com o mesmo flavor em inglês (Birds of Paradise BLC 81, a fala da Ms.
+   * Bumbleflower; o texto vem da LTC 235).
+   */
+  flavor_pt?: (string | null)[] | null;
+  /**
    * Nome de crossover impresso no alto ("Skeletor, Lord of Destruction"); o nome de jogo vem
    * numa linha pequena logo abaixo da barra do nome, que recebe o nome em PT.
    */

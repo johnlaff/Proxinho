@@ -187,7 +187,8 @@ export function renderInput(entry: Entry, side: Side = 0) {
   if (!print) return null;
   const translate = entry.choice.kind === "print" && hasPtText(entry.card);
   const face = translate ? (entry.card.faces[side] ?? null) : null;
-  const flavor = flavorApplies(entry.card, print) ? (face?.flavor_pt ?? null) : null;
+  // o flavor da impressão do texto, ou o da versão do Arena desta arte (ver `flavor_pt`)
+  const flavor = !face ? null : flavorApplies(entry.card, print) ? (face.flavor_pt ?? null) : (print.flavor_pt?.[side] ?? null);
   // (Aventura: a segunda face é o feitiço da página da esquerda, na mesma imagem)
   const adventure = face && print.layout === "adventure" ? (entry.card.faces[1] ?? null) : null;
   return { print, face, side, typeLine: entry.card.type_line, flavor, ...(adventure ? { adventure } : {}) };
