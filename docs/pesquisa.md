@@ -274,7 +274,7 @@ Depois de tirar a falsa imagem em PT do Scryfall, 7.384 cartas ficavam sem texto
 
 - **Padrão de mercado.** O MtG Proxy Printer, o concorrente mais próximo, troca o texto por uma caixa lisa e usa tradução de máquina (um tradutor de IA, o Google ou a Microsoft), com um selo "MT" na carta. Erra a terminologia que o Arena escreve sempre igual ("terra" por "terreno", "lançar" por "conjurar").
 - **Estado da arte.** Tradução guiada por glossário e por exemplos aprovados (memória de tradução). Na tarefa de terminologia do WMT 2025, dar a terminologia certa melhorou a qualidade e o acerto dos termos, e os melhores sistemas chegaram perto de 100% de acerto por frase. Traduzir e depois revisar impondo os termos (DuTerm, 2025) e buscar exemplos aprovados na hora de traduzir são o que a localização de jogos usa hoje.
-- **A memória que já existe.** As 26.416 faces oficiais dão 29.629 linhas distintas pareadas com o Oracle. Nas 4.371 cartas que ganharam a tradução até agora, 38% das linhas já tinham saído iguais numa carta oficial e 4% só mudavam nos números (o molde da oficial serve); 58% precisaram de tradução.
+- **A memória que já existe.** As 26.416 faces oficiais dão 29.629 linhas distintas pareadas com o Oracle. Nas 4.565 cartas que ganharam a tradução até agora, 37% das linhas já tinham saído iguais numa carta oficial e 4% só mudavam nos números (o molde da oficial serve); 59% precisaram de tradução.
 
 A escolha (ADR 0025): a linha oficial igual, depois o molde, depois a tradução feita uma vez, com os pares oficiais parecidos à vista e o glossário das cartas oficiais, guardada no repositório e conferida nos números e símbolos. A carta só ganha a tradução quando todas as linhas e o tipo têm tradução, e a interface a marca como não oficial.
 
