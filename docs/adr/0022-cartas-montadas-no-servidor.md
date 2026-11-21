@@ -1,6 +1,6 @@
 # ADR 0022: Cartas montadas de antemão no servidor
 
-- Status: aceito; o depósito fica desligado em `wrangler.jsonc` até o R2 ser ativado na conta da Cloudflare (sem ele o deploy falha com o erro 10042). Até lá o Worker responde 503 nas rotas de gravação e 404 nas cartas, e o site monta tudo no aparelho, como antes. Para ligar: "Ligar o R2" em `docs/operacao.md`.
+- Status: aceito; o R2 foi ativado na conta e o depósito ligado em 21/11/2026.
 - Data: 21/11/2026
 - Complementa: ADR 0001 (motor da carta no navegador) e ADR 0014 (cartas guardadas no navegador)
 
