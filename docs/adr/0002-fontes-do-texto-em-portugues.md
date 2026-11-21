@@ -14,6 +14,6 @@ O nome em português só é aceito quando difere do inglês (algumas impressões
 
 ## Consequências
 
-- Cobertura medida em 17/11/2026: 92,4% das 31.597 cartas legais no Commander; 98,9% das 1.000 mais jogadas no EDHREC.
+- Cobertura medida em 17/11/2026: 92,4% das 31.597 cartas legais no Commander; 98,9% das 1.000 mais jogadas no EDHREC. Corrigida em 21/11/2026: 83,8% e 98,4%. A primeira medição contava as impressões em PT que o Scryfall tem sem imagem e sem texto (a carta em inglês com o selo "Localized Image Not Available"), que também não servem como imagem oficial em PT.
 - Nada é extraído do cliente do Arena: usamos arquivos publicados por terceiros. (Exceção desde 20/11/2026: as dicas das palavras-chave, do arquivo da instalação do João, para a explicação das que nunca saíram impressas em PT; ver ADR 0021.) Antes de divulgar amplamente, pedir autorização à Untapped e avisar o Scryfall (ver `docs/pesquisa.md`).
 - Quando o Arena receber cartas novas, o pipeline diário as pega sem mudança de código.

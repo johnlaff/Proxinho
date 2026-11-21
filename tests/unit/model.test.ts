@@ -92,6 +92,16 @@ describe("defaultChoice", () => {
     expect(defaultChoice(card(), [print("sem-borda", { border: "borderless" })])).toEqual({ kind: "print", printId: "sem-borda" });
   });
 
+  it("prefere a moldura atual à de 2003, mesmo sendo promo (ADR 0024)", () => {
+    const prints = [print("m03", { frame: "2003", released: "2009-01-01" }), print("promo", { promo: true, released: "2020-01-01" })];
+    expect(defaultChoice(card(), prints)).toEqual({ kind: "print", printId: "promo" });
+    // sem arte na moldura atual, a de 2003 sai em português no lugar da original em inglês
+    expect(defaultChoice(card(), [print("m03", { frame: "2003" }), print("antiga", { supported: false })])).toEqual({
+      kind: "print",
+      printId: "m03",
+    });
+  });
+
   it("sem moldura suportada, usa a imagem oficial em português", () => {
     const c = card({ pt_print: { id: "pt", set: "war", number: "1", hires: true } });
     expect(defaultChoice(c, [print("x", { supported: false })])).toEqual({ kind: "pt" });
@@ -104,6 +114,25 @@ describe("defaultChoice", () => {
       faces: [{ name_en: "X", name_pt: null, type_pt: null, text_pt: null, flavor_pt: null, mana_cost: null }],
     });
     expect(defaultChoice(c, [print("en")])).toEqual({ kind: "print", printId: "en" });
+  });
+
+  it("sem tradução, a arte em inglês segue a mesma ordem, com a moldura suportada na frente", () => {
+    // Phyrexian Altar: a mais nova é o pôster da Secret Lair (SLC 16), sem moldura suportada
+    const c = card({ source: null, name_pt: "Altar Phyrexiano", faces: [] });
+    const prints = [
+      print("poster", { set_code: "slc", supported: false, frame: "2015", released: "2025-01-01" }),
+      print("promo", { promo: true, released: "2024-01-01" }),
+      print("2x2", { set_code: "2x2", released: "2022-07-08" }),
+      print("uma", { set_code: "uma", released: "2018-12-07" }),
+    ];
+    expect(defaultChoice(c, prints)).toEqual({ kind: "print", printId: "2x2" });
+    // só com artes sem moldura suportada, a melhor delas
+    expect(
+      defaultChoice(c, [print("baixa", { supported: false, highres: false }), print("alta", { supported: false, released: "2000-01-01" })]),
+    ).toEqual({
+      kind: "print",
+      printId: "alta",
+    });
   });
 });
 

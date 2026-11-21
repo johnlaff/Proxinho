@@ -424,12 +424,22 @@ def load_printed_pt(offline: bool) -> dict[str, dict]:
     return best
 
 
+# A imagem que o Scryfall não tem: no lugar dela, a carta em inglês com o selo "Localized Image
+# Not Available" (9.819 das impressões em PT, quase todas de 1995 a 2001).
+NO_IMAGE = {"placeholder", "missing"}
+
+
+def real_image(card: dict) -> bool:
+    return card.get("image_status") not in NO_IMAGE
+
+
 def pick_printed(cards) -> dict[str, dict]:
     """
-    Escolhe, por carta, a impressão em PT da imagem (alta resolução primeiro, depois a
-    mais nova) e guarda em `_text` a do texto: a mais nova. O texto das impressões
-    antigas segue regras velhas ("Coloque em jogo uma ficha", "reserva de mana"), e a
-    alta resolução quase sempre é de uma coleção antiga, escaneada.
+    Escolhe, por carta, a impressão em PT da imagem (com imagem de verdade, depois alta
+    resolução, depois a mais nova) e guarda em `_text` a do texto: a mais nova. O texto das
+    impressões antigas segue regras velhas ("Coloque em jogo uma ficha", "reserva de mana"),
+    e a alta resolução quase sempre é de uma coleção antiga, escaneada. A impressão sem
+    imagem ainda serve pelo nome impresso, mas não vira "imagem oficial em PT" (`real_image`).
     """
     best: dict[str, dict] = {}
     newest: dict[str, dict] = {}
@@ -437,7 +447,7 @@ def pick_printed(cards) -> dict[str, dict]:
         oid = card.get("oracle_id") or (card.get("card_faces") or [{}])[0].get("oracle_id")
         if not oid:
             continue
-        score = (card.get("highres_image", False), card.get("released_at", ""))
+        score = (real_image(card), card.get("highres_image", False), card.get("released_at", ""))
         if oid not in best or score > best[oid]["_score"]:
             card["_score"] = score
             best[oid] = card
@@ -1179,7 +1189,8 @@ def drawn_frame(card: dict) -> bool:
 
 
 def frame_supported(card: dict) -> bool:
-    """O motor do Proxinho reescreve a moldura moderna (2015+) de layout normal.
+    """O motor do Proxinho reescreve a moldura moderna (2015+) e a de 2003 a 2014 (ADR 0024),
+    de layout normal.
 
     Outras molduras entram por etapas (docs/roadmap.md). Quando a impressão não é
     suportada, o site mostra a imagem oficial em PT (se houver) ou avisa.
@@ -1187,7 +1198,7 @@ def frame_supported(card: dict) -> bool:
     effects = set(card.get("frame_effects") or [])
     type_line = card.get("type_line", "")
     return (
-        card.get("frame") == "2015"
+        (card.get("frame") == "2015" or frame2003_supported(card))
         and card.get("layout") == "normal"
         and card.get("border_color") in {"black", "white"}
         and not card.get("full_art")
@@ -1199,6 +1210,36 @@ def frame_supported(card: dict) -> bool:
         # naves e planetas com "Posicionar" têm caixas de nível próprias (2+, 12+)
         and "Station" not in (card.get("keywords") or [])
     )
+
+
+def frame2003_supported(card: dict) -> bool:
+    """Moldura de 2003 a 2014 (ADR 0024): as barras e a caixa ficam quase onde estão na M15, e o
+    motor muda só a caixa e a ponta das barras (`frame2003` em `m15Layout`). Só a moldura comum:
+    com qualquer efeito (o céu estrelado de Theros, a lápide de Odyssey no canto da caixa, a faixa
+    do milagre, as cores trocadas de Planar Chaos) o desenho muda, e os planeswalkers de 2003
+    têm caixa própria. E duas coleções de promos (`SETS_2003_OFF`)."""
+    return (
+        card.get("frame") == "2003"
+        and not card.get("frame_effects")
+        and "Planeswalker" not in card.get("type_line", "")
+        and card.get("watermark") in WATERMARKS_2003_OK
+        and card.get("set") not in SETS_2003_OFF
+    )
+
+
+# Promos de 2003 com outro desenho, sem nada que o Scryfall marque: as de Champs and States (PCMP)
+# têm a arte atrás do tipo e da caixa de texto, translúcida (o motor desistia das 11: Rakdos
+# Guildmage, PCMP 3), e a única de 2003 da Secret Lair, a Viscera Seer espelhada (SLD VS), tem o
+# nome, o tipo e o texto da direita para a esquerda (sobravam pedaços do inglês ao contrário).
+SETS_2003_OFF = {"pcmp", "sld"}
+
+
+# Marcas-d'água na moldura de 2003 (ADR 0024): por enquanto só sem nenhuma. As das guildas de Ravnica
+# e das facções de Scars of Mirrodin são cinza-claras e sem cor, e o apagamento levava só os pedaços
+# que as letras cruzavam: o resto ficava em cacos no papel (Darksteel Relic NPH 134, Peace Strider
+# MBS 119). As das promos (FNM, DCI, Junior...) são logotipos grandes e brilhantes no meio da caixa,
+# e ficavam manchas claras onde as letras os cruzavam (Elvish Visionary F10 6, Counterspell F05 11).
+WATERMARKS_2003_OK = {None}
 
 
 # efeitos que não mudam o desenho da moldura sem borda padrão: "inverted" (letra clara sobre a
@@ -1701,9 +1742,10 @@ def build(offline: bool) -> list[dict]:
                     {**f, "name_en": f.get("name_en") or faces_en[min(i, len(faces_en) - 1)].get("name")}
                     for i, f in enumerate(faces)
                 ],
+                # a carta em inglês com o selo "Localized Image Not Available" não é imagem em PT
                 "pt_print": (
                     {"id": p["id"], "set": p["set"], "number": p["collector_number"], "hires": p.get("highres_image", False)}
-                    if p
+                    if p and real_image(p)
                     else None
                 ),
                 "layout": card.get("layout"),

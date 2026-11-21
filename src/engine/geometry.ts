@@ -68,6 +68,28 @@ export interface FrameExtras {
    * `findSetSymbolLeft`): o tipo vai até o fim da barra, como o nome sem custo
    */
   noSetSymbol?: boolean;
+  /**
+   * moldura de 2003 a 2014 (ADR 0024): as barras ficam onde estão na M15, mas a caixa é um pouco
+   * mais estreita (papel de x 61 a 679, contra 58 a 688) e acaba mais cedo (fio de baixo em ~936,
+   * com a caixa de P/R começando em ~927)
+   */
+  frame2003?: boolean;
+  /** data da impressão (moldura de 2003: onde começam o nome e o tipo, ver `frame2003Start`) */
+  released?: string | null;
+}
+
+/**
+ * Onde começa a primeira letra do nome e do tipo na moldura de 2003, pela data da impressão:
+ * medido em 6 cartas de cada coleção, de Eighth Edition a Magic 2010 (o tipo começava em
+ * x ≈ 64 em Mirrodin e em 75 a partir de Planar Chaos). As reimpressões de The List e afins
+ * usam a digitalização da original, mas a data é a delas: ficam com a medida mais nova.
+ */
+export function frame2003Start(released: string | null | undefined): { title: number; type: number } {
+  const date = released ?? "9999";
+  if (date < "2003-10-01") return { title: 65, type: 67 }; // Eighth Edition
+  if (date < "2004-10-01") return { title: 63, type: 64 }; // Mirrodin, Darksteel e Fifth Dawn
+  if (date < "2007-02-01") return { title: 63, type: 72 }; // de Kamigawa a Time Spiral (Ninth Edition: 73)
+  return { title: 67, type: 75 }; // de Planar Chaos em diante
 }
 
 /** Medidas das cartas de duas faces (Scryfall PNG, conferidas em MID, VOW, MOM, ZNR, KHM, TLA). */
@@ -125,17 +147,30 @@ export function hasLeftIcon(effects: string | null, twoSided: boolean, rightIcon
 export function m15Layout(manaCost: string | null, hasPt: boolean, setSymbolLeft: number, extras: FrameExtras = {}): FrameLayout {
   const cost = extras.rightIcon && !manaCost ? DFC.rightIconX : costLeft(manaCost);
   const setLeft = Math.min(Math.max(setSymbolLeft, 560), extras.noSetSymbol ? 694 : 660);
-  const titleX = extras.leftIcon ? DFC.iconTitleX : 66;
-  const typeX = extras.indicator ? DFC.indicatorTypeX : 66;
+  // (na de 2003, onde começava o inglês na época da impressão; a primeira letra da Matrix Bold
+  // fica 1 px depois da posição da linha)
+  const start = extras.frame2003 ? frame2003Start(extras.released) : null;
+  const titleX = extras.leftIcon ? DFC.iconTitleX : start ? start.title - 1 : 66;
+  const typeX = extras.indicator ? DFC.indicatorTypeX : start ? start.type - 1 : 66;
+  // A ponta das barras de 2003 é mais funda: o fio escuro de dentro fica em x ≈ 50 a 56 no
+  // meio da barra e em 54 a 60 no alto e no pé, com uns 5 px de degradê até o papel (a
+  // primeira letra começa em x ≈ 63). Começando em 50, como na M15, a curva passava dos
+  // 11 px de `barCapGuard` no alto e no pé e saía borrada (Divination M10, Azorius Signet DIS)
+  const barX0 = extras.frame2003 ? 60 : 50;
   const eraseBottom = extras.mdfcStrip ? DFC.mdfcEraseBottom : 954;
   // linha de tipo mais baixa (arte estendida de Innistrad: Voto Carmesim, com caixa curta)
   const dy = extras.typeShift ?? 0;
-  const boxBottom = extras.mdfcStrip ? DFC.mdfcBoxBottom : hasPt ? 916 : 944;
+  const boxBottom = extras.mdfcStrip ? DFC.mdfcBoxBottom : extras.frame2003 ? (hasPt ? 918 : 926) : hasPt ? 916 : 944;
+  // Na de 2003 as linhas ficam no centro das minúsculas medido nas cartas (88 e 617,5, onde a
+  // Matrix Bold é escrita); o apagamento do nome desce junto, até o pé das letras com perna
+  // ("p", "y"), como nas 154 cartas conferidas (lá descia pelo alinhamento, ver alignBar)
+  const nameY = extras.frame2003 ? { center: 88, y0: 64.5, y1: 112.5 } : { center: 82, y0: 58, y1: 106 };
+  const typeCenter = extras.frame2003 ? 617.5 : 613;
   return {
     erase: [
-      { rect: { x0: extras.leftIcon ? DFC.iconEraseX0 : 50, y0: 58, x1: cost - 6, y1: 106 }, threshold: 28, fill: "rows" },
+      { rect: { x0: extras.leftIcon ? DFC.iconEraseX0 : barX0, y0: nameY.y0, x1: cost - 6, y1: nameY.y1 }, threshold: 28, fill: "rows" },
       {
-        rect: { x0: extras.indicator ? DFC.indicatorEraseX0 : 50, y0: 590 + dy, x1: setLeft - 6, y1: 636 + dy },
+        rect: { x0: extras.indicator ? DFC.indicatorEraseX0 : barX0, y0: 590 + dy, x1: setLeft - 6, y1: 636 + dy },
         threshold: 28,
         fill: "rows",
       },
@@ -144,8 +179,8 @@ export function m15Layout(manaCost: string | null, hasPt: boolean, setSymbolLeft
     // começa no fio da caixa de P/R (~922): acima disso, letras cortadas pela proteção
     // deixavam meio pedaço que o preenchimento espalhava como mancha
     protect: hasPt ? [{ x0: 568, y0: 920, x1: BASE_W, y1: BASE_H }] : [],
-    title: { x: titleX, maxWidth: cost - 12 - titleX, centerY: 82, size: 35 },
-    type: { x: typeX, maxWidth: setLeft - 10 - typeX, centerY: 613 + dy, size: 30 },
-    box: { x0: 68, y0: 656 + dy, x1: 677, y1: boxBottom },
+    title: { x: titleX, maxWidth: cost - 12 - titleX, centerY: nameY.center, size: 35 },
+    type: { x: typeX, maxWidth: setLeft - 10 - typeX, centerY: typeCenter + dy, size: 30 },
+    box: extras.frame2003 ? { x0: 72, y0: 660 + dy, x1: 668, y1: boxBottom } : { x0: 68, y0: 656 + dy, x1: 677, y1: boxBottom },
   };
 }

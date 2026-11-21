@@ -91,9 +91,12 @@ export function outcomeOf(entry: Entry, misses?: ReadonlySet<string>): Outcome {
 /**
  * Escolhe a arte inicial:
  * 1. a impressão pedida na lista (coleção + número), se existir;
- * 2. a impressão suportada mais recente, sem promo, em alta resolução;
+ * 2. a impressão suportada mais recente, sem promo, em alta resolução, na moldura atual antes da
+ *    de 2003;
  * 3. sem moldura suportada: a imagem oficial em PT, se houver;
- * 4. senão, a impressão mais recente (sai a original em inglês).
+ * 4. senão, a original em inglês, pela mesma ordem, com a moldura suportada na frente: sem ela,
+ *    a carta sem texto em PT ficava com a mais nova, muitas vezes um pôster da Secret Lair
+ *    (Phyrexian Altar SLC 16).
  */
 export function defaultChoice(card: CardRecord, prints: PrintRecord[], wanted?: { set?: string; number?: string }): Choice {
   if (wanted?.set) {
@@ -103,24 +106,29 @@ export function defaultChoice(card: CardRecord, prints: PrintRecord[], wanted?: 
   }
   const translatable = hasPtText(card);
   if (translatable) {
-    const ranked = prints
-      .filter((p) => p.supported)
-      .sort(
-        (a, b) =>
-          Number(b.highres) - Number(a.highres) ||
-          // a arte sem borda só é escolhida pela pessoa: o apagamento da moldura comum é mais seguro
-          Number(a.border === "borderless") - Number(b.border === "borderless") ||
-          Number(a.promo) - Number(b.promo) ||
-          Number(isReprintList(a)) - Number(isReprintList(b)) ||
-          (b.released ?? "").localeCompare(a.released ?? ""),
-      );
+    const ranked = prints.filter((p) => p.supported).sort(byQuality);
     if (ranked[0]) return { kind: "print", printId: ranked[0].id };
     if (card.pt_print) return { kind: "pt" };
   } else if (card.pt_print) {
     return { kind: "pt" };
   }
-  const first = prints.find((p) => !p.promo) ?? prints[0];
+  const first = [...prints].sort((a, b) => Number(b.supported) - Number(a.supported) || byQuality(a, b))[0];
   return first ? { kind: "print", printId: first.id } : card.pt_print ? { kind: "pt" } : { kind: "print", printId: "" };
+}
+
+/** A ordem das artes na escolha inicial: a melhor primeiro. */
+function byQuality(a: PrintRecord, b: PrintRecord): number {
+  return (
+    Number(b.highres) - Number(a.highres) ||
+    // a arte sem borda só é escolhida pela pessoa: o apagamento da moldura comum é mais seguro
+    Number(a.border === "borderless") - Number(b.border === "borderless") ||
+    // a moldura de 2003 (ADR 0024) também: com uma arte na moldura atual, a padrão continua
+    // a mesma (e a carta já montada no servidor, ADR 0022, continua valendo)
+    Number(a.frame === "2003") - Number(b.frame === "2003") ||
+    Number(a.promo) - Number(b.promo) ||
+    Number(isReprintList(a)) - Number(isReprintList(b)) ||
+    (b.released ?? "").localeCompare(a.released ?? "")
+  );
 }
 
 /** "The List" e afins trazem um símbolo de coleção extra que atrapalha o apagamento. */

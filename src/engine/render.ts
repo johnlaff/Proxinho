@@ -33,7 +33,7 @@ import {
   pasteStrip,
   restoreBevel,
 } from "./classCard";
-import { bodyFont, loadCardFonts, titleFont } from "./fonts";
+import { bodyFont, loadCardFonts, titleFont, type TitleFont } from "./fonts";
 import { BACK_PT_NOTCH, BASE_H, BASE_W, costLeft, hasLeftIcon, m15Layout, ptProtect, type FrameLayout, type Rect } from "./geometry";
 import {
   barCapGuard,
@@ -226,8 +226,8 @@ function drawLine(
   size: number,
   k: number,
   color: string = INK.dark,
+  t: TitleFont = titleFont(),
 ) {
-  const t = titleFont();
   let s = size * t.scale;
   ctx.font = `${t.weight} ${s * k}px ${t.family}`;
   let w = ctx.measureText(text).width / k;
@@ -239,9 +239,9 @@ function drawLine(
   }
   const sx = w > maxWidth ? maxWidth / w : 1;
   ctx.save();
-  ctx.textBaseline = "middle";
+  ctx.textBaseline = t.baseline;
   ctx.fillStyle = color;
-  ctx.translate((x + t.dx) * k, (centerY + s * 0.06) * k);
+  ctx.translate((x + t.dx) * k, (centerY + s * t.rise) * k);
   ctx.scale(sx, 1);
   ctx.fillText(text, 0, 0);
   ctx.restore();
@@ -1399,6 +1399,12 @@ async function renderToken(p: {
 
 /** Centro medido das letras do nome e do tipo numa carta M15 comum (escala-base). */
 const BAR_CENTER = { title: 81.5, type: 616 };
+/**
+ * Na moldura de 2003, o centro das minúsculas medido nas cartas (40 impressões): o centro das
+ * linhas do layout (`frame2003` em `m15Layout`). Com o da M15, o nome de quase todas descia
+ * 6,5 px no alinhamento e o das outras não, porque ficavam abaixo dos 4 px.
+ */
+const BAR_CENTER_2003 = { title: 88, type: 617.5 };
 
 /**
  * Centro das letras das duas barras da aventura (escala-base): o medido no inglês, se perto do
@@ -1613,6 +1619,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     mdfcStrip: print.layout === "modal_dfc",
     typeShift,
     noSetSymbol: symbolInfo.none,
+    frame2003: print.frame === "2003",
+    released: print.released,
   });
   // caixa escura ou sem os fios da barra de tipo: não é a moldura da M15 (ver notM15Frame).
   // Na sem borda a caixa é escura de propósito: valem o aro da caixa e a barra do nome (com
@@ -1654,14 +1662,15 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // (na sem borda as letras brancas sobre uma barra clara quase não fogem da mediana da
   // linha: a faixa delas sai das viradas de tom, ver letterBandCenter)
   const bandCenter = frameBox ? letterBandCenter : textBandCenter;
-  alignBar(data, layout, 0, { x0: 70, y0: 45, x1: 420, y1: 120 }, BAR_CENTER.title, fx, fy, bandCenter);
+  const barCenter = print.frame === "2003" ? BAR_CENTER_2003 : BAR_CENTER;
+  alignBar(data, layout, 0, { x0: 70, y0: 45, x1: 420, y1: 120 }, barCenter.title, fx, fy, bandCenter);
   // (a busca das letras do tipo fica entre os fios da barra, sem o contorno dela: o
   // contorno contava como "letra" e escondia o tipo mais baixo das molduras escuras de BRO)
   const typeSearch =
     bar && !typeShift
       ? { x0: 70, y0: Math.max(585, bar.top + 6), x1: 420, y1: Math.min(645, bar.bottom - 1) }
       : { x0: 70, y0: 585 + typeShift, x1: 420, y1: 645 + typeShift };
-  alignBar(data, layout, 1, typeSearch, BAR_CENTER.type + typeShift, fx, fy, bandCenter);
+  alignBar(data, layout, 1, typeSearch, barCenter.type + typeShift, fx, fy, bandCenter);
   // a barra pode ir mais fundo que a medida (molduras escuras de BRO): o apagamento do
   // tipo desce até logo acima do fio de baixo dela, sem entrar na caixa
   if (bar) {
@@ -1932,6 +1941,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // 3. Escreve o português (k = pixels de saída por unidade da escala-base).
   const k = W / BASE_W;
   // (a aba de algumas fica uns pixels mais alta, ver subtitleShift)
+  // (na moldura de 2003, a Matrix Bold, ADR 0024)
+  const tf = titleFont(print.frame === "2003");
   if (subtitle) drawSubtitle(ctx, face.name_pt ?? face.name_en, SUBTITLE.baseline + subtitle.y0 - SUBTITLE.y0, k);
   else
     drawLine(
@@ -1943,9 +1954,10 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       layout.title.size,
       k,
       INK[titleInk],
+      tf,
     );
   if (face.type_pt)
-    drawLine(ctx, face.type_pt, layout.type.x, layout.type.centerY, layout.type.maxWidth, layout.type.size, k, INK[typeInk]);
+    drawLine(ctx, face.type_pt, layout.type.x, layout.type.centerY, layout.type.maxWidth, layout.type.size, k, INK[typeInk], tf);
   if (backPt) drawBackPt(ctx, backPt, layout.box.y1 - BACK_PT_NOTCH.height / 2, k, boxInk);
 
   const box = layout.box;

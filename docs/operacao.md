@@ -6,7 +6,7 @@
 |---|---|
 | Site e API | Cloudflare Worker `proxinho`, domínio `proxinho.johnlaff.com` |
 | Banco | Cloudflare D1 `proxinho` |
-| Fontes das cartas (Beleren, MPlantin) | Cloudflare KV `proxinho-fontes` (binding `FONTES`), servidas em `/api/fontes/*.ttf` |
+| Fontes das cartas (Beleren, Matrix Bold, MPlantin) | Cloudflare KV `proxinho-fontes` (binding `FONTES`), servidas em `/api/fontes/*.ttf` |
 | Dicas das palavras-chave do Arena | O mesmo KV, chave `arena-dicas.json` (não é servida pela API); o workflow "Dados diários" baixa antes do pipeline (ADR 0021) |
 | Modelo LaMa e runtimes do ONNX | Assets do site em `/modelos/`, gerados no build por `scripts/modelo.mjs` (baixa do Hugging Face numa revisão fixa, confere o SHA-256 e compacta em gzip): `lama-int4.onnx.gz.0` e `.1`, `ort-webgpu-<versão>.wasm.gz` (placa de vídeo) e `ort-cpu-<versão>.wasm.gz` (CPU) |
 | Cartas montadas no servidor | Cloudflare R2 `proxinho-cartas` (binding `CARTAS`, privado), servidas em `/api/cartas/<código>/<chave>.jpg`; gravadas pelo montador em lote (`scripts/montagem`), que roda no workflow "Montagem" com o token OIDC do GitHub ou à mão com o segredo `CARTAS_TOKEN` do Worker; até 5 GB (ADR 0022 e 0023) |
@@ -101,6 +101,7 @@ pnpm exec wrangler d1 execute proxinho --remote --command "SELECT count(*) FROM 
 | Lembrete sem itálico com um ")" solto, ou sem o fecho | Parêntese faltando no texto oficial (Scryfall ou Arena) | Ver `balance_parens` em `data/pipeline/build.py` e `pnpm test:data` |
 | Carta com o nome de outra versão no texto ("Keenser") | Versão com nome alternativo do Arena | Ver `cites_alt_name` em `data/pipeline/build.py` e `pnpm test:data` |
 | Texto com outra fonte | `/api/fontes/` sem os arquivos no KV | Recolocar com `wrangler kv key put` (acima) |
+| Nome e tipo da moldura de 2003 em Beleren, e o site montando tudo no aparelho | O KV sem `matrix-bold.ttf`: sem ela as chaves das cartas viram `b|o` e as do servidor não valem (o montador também recusa) | Recolocar com `wrangler kv key put --remote --binding FONTES matrix-bold.ttf --path arquivo.ttf` (acima) |
 | Primeira visita montando no aparelho cartas que deviam vir prontas | O montador não rodou depois da última publicação (o código mudou e as chaves também), o depósito chegou aos 5 GB (as cartas de fora do limite são montadas no aparelho), o R2 está sem o binding `CARTAS`, ou a pessoa usa fontes próprias | Rodar o workflow "Montagem" (acima); o log diz o código, o espaço no depósito e por que parou; conferir `GET /api/cartas/<código>/<chave>.jpg` de uma carta |
 | Workflow "Montagem" sem montar nada | O site no ar é de outro código ("o site no ar é do código …": a publicação na main pulou por falta dos segredos da Cloudflare), o depósito está cheio ou o repositório deixou de ser público | Publicar o commit da main e rodar o workflow de novo; conferir `codigo` em `/api/health` contra `node scripts/codigo.ts` |
 | Montagem no GitHub com 401 | O token OIDC não é aceito: workflow fora da main, arquivo com outro nome, repositório recriado (outro número) ou `MONTAGEM_REPO_ID`/`MONTAGEM_DONO_ID` errados | Conferir os números em `wrangler.jsonc` (`gh api repos/<dono>/<repo> --jq '.id, .owner.id'`) e publicar |
