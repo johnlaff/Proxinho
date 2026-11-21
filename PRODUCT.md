@@ -36,7 +36,7 @@ Pegar qualquer carta, em qualquer arte, e entregar um PDF pronto para imprimir n
 ## Capabilities and Constraints
 
 - Moldura moderna (2015+) é reescrita em português nas cartas normais (e a de 2003 a 2014 também, sem marca-d'água nem efeito de moldura), de duas faces, planeswalkers, fichas (tokens, também na moldura de 2003), emblemas, Sagas, Aventuras, Classes, naves e planetas com "Posicionar" e artes sem borda; outras molduras (showcase, antigas) mostram a imagem oficial em português quando existe, ou a original em inglês com aviso. Novas molduras entram por etapas.
-- Tradução oficial cobre 84% das cartas legais no Commander (Arena + impressões em português). A tradução não oficial (ADR 0025) leva a 98%, e a 100% das 10 mil mais jogadas; o restante aparece em inglês, marcado, até existir tradução.
+- Tradução oficial cobre 84% das cartas legais no Commander (Arena + impressões em português). A tradução não oficial (ADR 0025) leva a 99%, e a 100% das 10 mil mais jogadas; o restante aparece em inglês, marcado, até existir tradução.
 - O mesmo motor monta as cartas no navegador da pessoa e, de antemão, no servidor (ADR 0022): as cartas já montadas lá chegam prontas, num depósito privado, sem galeria nem listagem pública. Uso do dono do projeto e de amigos próximos (decisão de 20/11/2026).
 - Gratuito, sem venda de impressão, aviso de conteúdo de fã da Wizards no site e no PDF.
 - O texto usa as fontes das cartas reais (Beleren e MPlantin, e a Matrix Bold no nome e no tipo da moldura de 2003), servidas pelo próprio site e fora do repositório público; sem elas, fontes livres (OFL) parecidas.
