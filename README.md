@@ -25,7 +25,7 @@ Quem quer jogar "em português" costuma imprimir um proxy (uma cópia de papel) 
 
 O Proxinho pega **qualquer impressão em inglês**, apaga o nome, o tipo e o texto e escreve no lugar o **texto oficial em português**, vindo do MTG Arena ou das impressões oficiais (e, nas cartas que nunca saíram em PT, uma tradução não oficial, marcada como tal). A arte, a moldura, o custo de mana, o artista e o copyright continuam os da carta. No fim, entrega um PDF com as cartas no tamanho exato (63 × 88 mm), marcas de corte e uma régua para conferir a escala.
 
-- 83,8% das cartas legais no Commander têm tradução oficial; entre as 1.000 mais jogadas, 98,4%. Com a tradução não oficial (ADR 0025), 99,1% saem em português, e as 10 mil mais jogadas, todas (medido em 21/11/2026).
+- 83,8% das cartas legais no Commander têm tradução oficial; entre as 1.000 mais jogadas, 98,4%. Com a tradução não oficial (ADR 0025), 99,8% saem em português: todas, fora as 48 folhas de adesivos de Unfinity, que não vão no deck (medido em 21/11/2026).
 - Cola a lista de qualquer site (Archidekt, Moxfield, Liga Magic, MTGO, Arena), importa por link ou busca pelo nome em português.
 - As cartas mais jogadas chegam prontas: o mesmo motor que roda no navegador monta tudo de antemão no servidor (ADR 0022), e o que ainda não está lá é montado no aparelho, na hora.
 - Grátis, sem cadastro, sem anúncio.

@@ -23,19 +23,22 @@ import build as B
 
 ROOT = Path(__file__).resolve().parents[1]
 SKIP_LAYOUTS = {"token", "emblem", "art_series", "double_faced_token"}
+# as folhas de adesivos de Unfinity não vão no deck, e o tipo delas ("Stickers") nunca saiu em PT
+SKIP_TYPES = {"Stickers"}
 
 
 def pending(cards: list[dict], oracle: dict[str, dict]):
     """
-    As cartas legais no Commander sem texto oficial, cada uma com as faces do Oracle e as linhas
-    dela sem tradução (nem oficial, nem molde, nem traduzida), como (face, linha).
+    As cartas legais no Commander sem texto oficial (fora as fichas, os emblemas e as folhas de
+    adesivos), cada uma com as faces do Oracle e as linhas dela sem tradução (nem oficial, nem
+    molde, nem traduzida), como (face, linha).
     """
     official = [c for c in cards if c["source"] in ("arena", "impresso") and c.get("layout") != "token"]
     best, molds = B.official_lines(official, oracle)
     lines, _ = B.load_unofficial()
     for c in cards:
         o = oracle.get(c["oracle_id"])
-        if c["source"] is not None or not o or o.get("layout") in SKIP_LAYOUTS:
+        if c["source"] is not None or not o or o.get("layout") in SKIP_LAYOUTS or o.get("type_line") in SKIP_TYPES:
             continue
         if (o.get("legalities") or {}).get("commander") not in ("legal", "restricted"):
             continue

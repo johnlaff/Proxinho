@@ -1080,6 +1080,14 @@ class TraducaoNaoOficial(unittest.TestCase):
             line_key("Alexios, Deimos of Kosmos attacks each combat. Alexios can't be sacrificed.", ["Alexios", "Alexios, Deimos of Kosmos"]),
             "~ attacks each combat. ~ can't be sacrificed.",
         )
+        # depois de "a" ou "an", o nome é o de um tipo (Coward // Killer): fica, para sair "Covarde"
+        self.assertEqual(
+            line_key("Target creature can't block this turn and becomes a Coward in addition to its other types until end of turn.", ["Coward"]),
+            "Target creature can't block this turn and becomes a Coward in addition to its other types until end of turn.",
+        )
+        self.assertEqual(line_key("Coward deals 1 damage to any target.", ["Coward"]), "~ deals 1 damage to any target.")
+        # no PT o "a" é preposição e o nome sai
+        self.assertEqual(line_key("Previne todo o dano que seria causado a Leão Fulgente.", ["Leão Fulgente"], pt=True), "Previne todo o dano que seria causado a ~.")
 
     def test_molde_leva_o_plural(self) -> None:
         # "1 ponto de vida" e "3 pontos de vida": o molde de uma não serve à outra
@@ -1207,6 +1215,8 @@ class TraducaoNaoOficial(unittest.TestCase):
             "n": {"oracle_id": "n", "name": "Night Bird", "oracle_text": "Flying", "type_line": "Creature — Bird Nightstalker", "legalities": legal},
             "g": {"oracle_id": "g", "name": "Space Germ", "oracle_text": "Flying", "type_line": "Creature — Germ", "legalities": legal},
             "o": {"oracle_id": "o", "name": "Odd Bird", "oracle_text": "Flying\nSomething new.", "type_line": "Creature — Bird Nightstalker", "legalities": legal},
+            # folha de adesivos: não vai no deck e fica fora da lista
+            "s": {"oracle_id": "s", "name": "Odd Stickers", "oracle_text": "{TK}{TK} — Flying", "type_line": "Stickers", "legalities": legal},
         }
         cards = [
             {"oracle_id": "a", "source": "arena", "name_pt": "Ave do Arena", "faces": [{"name_pt": "Ave do Arena", "type_pt": "Criatura — Ave", "text_pt": "Voar"}]},
@@ -1214,6 +1224,7 @@ class TraducaoNaoOficial(unittest.TestCase):
             {"oracle_id": "n", "source": None, "faces": []},
             {"oracle_id": "g", "source": None, "faces": []},
             {"oracle_id": "o", "source": None, "faces": []},
+            {"oracle_id": "s", "source": None, "faces": []},
         ]
         with mock.patch.object(build, "load_unofficial", return_value=({}, {})):
             self.assertEqual(faltam.held_by_type(cards, oracle), [("Germ", ["Space Germ"]), ("Nightstalker", ["Night Bird"])])

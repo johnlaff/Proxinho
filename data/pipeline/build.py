@@ -1652,11 +1652,17 @@ _ANY_REMINDER = re.compile(r"\s*\([^()]*\)")
 _MOLD_MARK = re.compile(r"\{[^}]+\}|[+-]?\d+(?:/[+-]?\d+)?")
 
 
-def line_key(line: str, names: list[str | None]) -> str:
-    """A linha do Oracle sem o lembrete e com o nome da carta trocado por "~" (o nome mais comprido primeiro)."""
+def line_key(line: str, names: list[str | None], pt: bool = False) -> str:
+    """
+    A linha do Oracle sem o lembrete e com o nome da carta trocado por "~" (o nome mais comprido
+    primeiro). No inglês, depois de "a" ou "an" o nome é o de um tipo, não a carta: "becomes a
+    Coward" no Coward // Killer fica, para sair "Covarde" e não o nome da carta. No PT (`pt`) o "a"
+    é preposição ("causado a Leão Fulgente") e o nome sempre sai.
+    """
     s = _ANY_REMINDER.sub("", line).strip()
+    article = "" if pt else r"(?<!\ba )(?<!\ban )"
     for n in sorted({n for n in names if n}, key=len, reverse=True):
-        s = s.replace(n, "~")
+        s = re.sub(article + re.escape(n), "~", s)
     return s
 
 
@@ -1694,7 +1700,7 @@ def official_lines(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str,
             continue
         for e, p in zip(faces_en, r["faces"]):
             en = [x for x in (line_key(x, [e.get("name"), card["name"]]) for x in (e.get("oracle_text") or "").split("\n")) if x]
-            pt = [x for x in (line_key(x, [p.get("name_pt"), r.get("name_pt")]) for x in (p.get("text_pt") or "").split("\n")) if x]
+            pt = [x for x in (line_key(x, [p.get("name_pt"), r.get("name_pt")], pt=True) for x in (p.get("text_pt") or "").split("\n")) if x]
             if len(en) != len(pt) or not en:
                 continue
             for a, b in zip(en, pt):
