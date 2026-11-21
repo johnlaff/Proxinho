@@ -31,6 +31,7 @@ export interface Missing {
 /** Como a carta vai sair, para mostrar com honestidade na interface. */
 export type Outcome =
   | "reescrita" // texto em PT escrito por cima da arte escolhida
+  | "nao-oficial" // como a reescrita, mas com a tradução não oficial (ADR 0025)
   | "imagem-pt" // imagem oficial em português
   | "sem-traducao" // não há texto oficial em PT: sai em inglês
   | "moldura" // há texto em PT, mas esta moldura ainda não é suportada
@@ -85,7 +86,8 @@ export function outcomeOf(entry: Entry, misses?: ReadonlySet<string>): Outcome {
   const p = selectedPrint(entry);
   if (!p?.supported) return "moldura";
   if (misses?.has(neuralMissKey(p.id, 0))) return "apagador";
-  return misses?.has(missKey(p.id, 0)) ? "moldura" : "reescrita";
+  if (misses?.has(missKey(p.id, 0))) return "moldura";
+  return entry.card.source === "nao-oficial" ? "nao-oficial" : "reescrita";
 }
 
 /**
@@ -93,7 +95,8 @@ export function outcomeOf(entry: Entry, misses?: ReadonlySet<string>): Outcome {
  * 1. a impressão pedida na lista (coleção + número), se existir;
  * 2. a impressão suportada mais recente, sem promo, em alta resolução, na moldura atual antes da
  *    de 2003;
- * 3. sem moldura suportada: a imagem oficial em PT, se houver;
+ * 3. sem moldura suportada: a imagem oficial em PT, se houver; com a tradução não oficial
+ *    (ADR 0025), a imagem oficial em PT vem antes dela (as de Dragon's Maze só têm a imagem);
  * 4. senão, a original em inglês, pela mesma ordem, com a moldura suportada na frente: sem ela,
  *    a carta sem texto em PT ficava com a mais nova, muitas vezes um pôster da Secret Lair
  *    (Phyrexian Altar SLC 16).
@@ -104,7 +107,7 @@ export function defaultChoice(card: CardRecord, prints: PrintRecord[], wanted?: 
     const hit = prints.find((p) => p.set_code.toLowerCase() === set && (!wanted.number || p.number === wanted.number));
     if (hit) return { kind: "print", printId: hit.id };
   }
-  const translatable = hasPtText(card);
+  const translatable = hasPtText(card) && !(card.source === "nao-oficial" && card.pt_print);
   if (translatable) {
     const ranked = prints.filter((p) => p.supported).sort(byQuality);
     if (ranked[0]) return { kind: "print", printId: ranked[0].id };
@@ -248,7 +251,7 @@ export function buildOrder(
 }
 
 export function countOutcomes(entries: Entry[], misses?: ReadonlySet<string>): Record<Outcome, number> {
-  const out: Record<Outcome, number> = { reescrita: 0, "imagem-pt": 0, "sem-traducao": 0, moldura: 0, apagador: 0 };
+  const out: Record<Outcome, number> = { reescrita: 0, "nao-oficial": 0, "imagem-pt": 0, "sem-traducao": 0, moldura: 0, apagador: 0 };
   for (const e of entries) out[outcomeOf(e, misses)] += e.quantity;
   return out;
 }

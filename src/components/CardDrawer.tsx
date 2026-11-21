@@ -26,6 +26,13 @@ function sourceNote(entry: Entry): string {
   if (!hasPtText(c))
     return "Esta carta ainda não tem tradução oficial em português, então sai em inglês. Quando a tradução existir, ela aparece aqui sozinha.";
   if (c.source === "arena") return "Texto oficial em português do MTG Arena, com a terminologia mais atual.";
+  if (c.source === "nao-oficial") {
+    const name =
+      c.name_pt === c.name_en
+        ? "O nome fica em inglês, porque a carta nunca saiu em português."
+        : "O nome é o da impressão oficial em português.";
+    return `Esta carta não tem texto oficial em português. A tradução é não oficial: as frases que já existem em cartas oficiais vêm iguais, e as outras foram traduzidas no padrão do Arena. ${name}`;
+  }
   const tp = c.text_print;
   return tp
     ? `Texto oficial da impressão em português (${tp.set.toUpperCase()} ${tp.number}).`
@@ -80,6 +87,7 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
   const rewritable = (p: PrintRecord) => p.supported && !misses.has(missKey(p.id, 0)) && !(neuralFailed && p.border === "borderless");
   const name = displayName(entry.card);
   const translatable = hasPtText(entry.card);
+  const unofficial = entry.card.source === "nao-oficial";
 
   const pt = entry.card.pt_print;
   const selectedId = entry.choice.kind === "print" ? entry.choice.printId : "pt";
@@ -130,7 +138,8 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
             <p className="drawer-note">{sourceNote(entry)}</p>
             {outcome === "moldura" && (
               <p className="drawer-note">
-                Escolha uma arte marcada “Sai em português” para reescrever o texto, ou a imagem oficial em português, se houver.
+                Escolha uma arte marcada “{unofficial ? "Tradução não oficial" : "Sai em português"}” para reescrever o texto, ou a imagem
+                oficial em português, se houver.
               </p>
             )}
             {outcome === "apagador" && (
@@ -242,8 +251,8 @@ function DrawerBody({ entry, onClose, onChoice, onQuantity, onRemove }: Omit<Pro
                 thumb={printImage(p, "small")}
                 title={p.set_name}
                 meta={[`${p.set_code.toUpperCase()} ${p.number}`, yearOf(p), p.artist].filter(Boolean).join(" · ")}
-                tag={translatable && rewritable(p) ? "Sai em português" : "Sai em inglês"}
-                tagKind={translatable ? (rewritable(p) ? "reescrita" : "moldura") : "sem-traducao"}
+                tag={translatable && rewritable(p) ? (unofficial ? "Tradução não oficial" : "Sai em português") : "Sai em inglês"}
+                tagKind={translatable ? (rewritable(p) ? (unofficial ? "nao-oficial" : "reescrita") : "moldura") : "sem-traducao"}
               />
             ))}
           </div>

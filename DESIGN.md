@@ -130,6 +130,12 @@ components:
     typography: "{typography.tag}"
     rounded: "{rounded.tag}"
     padding: "2px 7px"
+  tag-nao-oficial:
+    backgroundColor: "{colors.cyan-wash}"
+    textColor: "{colors.cyan-ink-text}"
+    typography: "{typography.tag}"
+    rounded: "{rounded.tag}"
+    padding: "2px 7px"
   tag-sem-traducao:
     backgroundColor: "{colors.magenta-ink}"
     textColor: "{colors.sheet-white}"
@@ -288,11 +294,12 @@ Diretos e táteis, com descida de 1px ao pressionar.
 ### Outcome Tags
 Etiquetas curtas que dizem a origem do texto; nunca só cor.
 - **Reescrita (PT):** ciano escuro sólido, texto branco.
+- **Tradução não oficial (PT não oficial):** ciano lavado, texto ciano noturno, contorno tracejado de 1.5px em ciano escuro. Aparece na folha (a reescrita oficial não leva etiqueta), com a legenda "não oficial".
 - **Imagem PT (PT img):** branco com contorno interno de 1.5px em ciano escuro.
 - **Sem tradução (EN):** magenta sólido, texto branco.
 - **Moldura não suportada (EN):** branco com contorno interno de 1.5px em magenta.
 - **Exemplo:** amarelo com texto preto, presa na borda esquerda da carta.
-A legenda do resumo repete essas quatro formas em amostras de 14px.
+A legenda do resumo repete essas formas em amostras de 14px.
 
 ### Messages
 - **Erro:** magenta lavado, texto magenta profundo, contorno de 1.5px em magenta.

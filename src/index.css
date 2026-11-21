@@ -23,6 +23,7 @@
   /* papéis funcionais */
   --cyan-ink: #005b8a; /* ciano escuro: botões e links (contraste AA com branco) */
   --cyan-wash: #e2f3fb;
+  --cyan-ink-text: #003b5c; /* ciano noturno: texto sobre o ciano lavado */
   --magenta-ink: #c2186b;
   --magenta-wash: #fbe6f0;
   --rule: #c5ced7;
@@ -450,7 +451,7 @@ a:hover {
 }
 .msg--ok {
   background: var(--cyan-wash);
-  color: #003b5c;
+  color: var(--cyan-ink-text);
   border: 1.5px solid var(--cyan-ink);
 }
 
@@ -512,6 +513,10 @@ a:hover {
 }
 .swatch--reescrita {
   background: var(--cyan-ink);
+}
+.swatch--nao-oficial {
+  background: var(--cyan-wash);
+  border: 2.5px dashed var(--cyan-ink);
 }
 .swatch--imagem-pt {
   background: var(--sheet);
@@ -582,6 +587,12 @@ a:hover {
 .tag--reescrita {
   background: var(--cyan-ink);
   color: #fff;
+}
+.tag--nao-oficial {
+  background: var(--cyan-wash);
+  color: var(--cyan-ink-text);
+  outline: 1.5px dashed var(--cyan-ink);
+  outline-offset: -1.5px;
 }
 .tag--imagem-pt {
   background: var(--sheet);

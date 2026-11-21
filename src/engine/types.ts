@@ -15,8 +15,11 @@ export interface PtFace {
   ability_words?: number[];
 }
 
-/** De onde veio a tradução. */
-export type TextSource = "arena" | "impresso" | null;
+/**
+ * De onde veio a tradução: o Arena, uma impressão oficial em PT ou, sem nenhuma das duas, a
+ * tradução não oficial montada no pipeline com as frases das cartas oficiais (ADR 0025).
+ */
+export type TextSource = "arena" | "impresso" | "nao-oficial" | null;
 
 /** Uma carta (todas as impressões compartilham o mesmo `oracle_id`). */
 export interface CardRecord {

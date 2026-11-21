@@ -1,8 +1,11 @@
 """Testes do pipeline de dados: python3 -m unittest discover -s data/pipeline."""
 
+import re
 import unittest
+from unittest import mock
 
-from build import says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
+import build
+from build import emblem_face, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -1063,3 +1066,128 @@ class IndicadorDeCor(unittest.TestCase):
     def test_carta_sem_indicador(self):
         c = {**self.base, "mana_cost": "{G}"}
         self.assertFalse(print_row(c, "o", c, None)["indicator"])
+
+
+class TraducaoNaoOficial(unittest.TestCase):
+    """ADR 0025: carta sem texto oficial em PT, montada com as linhas das oficiais e as traduzidas."""
+
+    def test_chave_sem_lembrete_e_com_o_nome_como_til(self) -> None:
+        line = "Flying (This creature can't be blocked except by creatures with flying or reach.)"
+        self.assertEqual(line_key(line, ["X"]), "Flying")
+        # o nome mais comprido primeiro: "Alexios, Deimos of Kosmos" antes de "Alexios"
+        self.assertEqual(
+            line_key("Alexios, Deimos of Kosmos attacks each combat. Alexios can't be sacrificed.", ["Alexios", "Alexios, Deimos of Kosmos"]),
+            "~ attacks each combat. ~ can't be sacrificed.",
+        )
+
+    def test_molde_leva_o_plural(self) -> None:
+        # "1 ponto de vida" e "3 pontos de vida": o molde de uma não serve à outra
+        self.assertNotEqual(mold("You gain 1 life."), mold("You gain 3 life."))
+        self.assertEqual(mold("You gain 3 life."), mold("You gain 2 life."))
+        self.assertEqual(mold("{2}{W}, {T}: Draw a card."), mold("{1}{U}, {T}: Draw a card."))
+        self.assertEqual(fill_mold("You gain 4 life.", mold("Você ganha 2 pontos de vida.")), "Você ganha 4 pontos de vida.")
+        self.assertEqual(fill_mold("{1}{U}, {T}: Draw a card.", mold("{2}{W}, {T}: Compre um card.")), "{1}{U}, {T}: Compre um card.")
+
+    def oracle(self) -> dict[str, dict]:
+        return {
+            "a": {"name": "Arena Card", "oracle_text": "Flying\nWhen ~ enters, you gain 3 life.".replace("~", "Arena Card"), "type_line": "Creature — Bird"},
+            "i": {"name": "Printed Card", "oracle_text": "Flying", "type_line": "Creature — Bird Soldier"},
+            "x": {"name": "Odd Card", "oracle_text": "Flying\nVigilance", "type_line": "Creature — Bird"},
+        }
+
+    def rows(self) -> list[dict]:
+        def face(name: str, type_pt: str, text: str) -> dict:
+            return {"name_pt": name, "type_pt": type_pt, "text_pt": text}
+
+        return [
+            {"oracle_id": "a", "source": "arena", "name_pt": "Carta do Arena",
+             "faces": [face("Carta do Arena", "Criatura — Ave", "Voar\nQuando Carta do Arena entrar, você ganha 3 pontos de vida.")]},
+            {"oracle_id": "i", "source": "impresso", "name_pt": "Carta Impressa",
+             "faces": [face("Carta Impressa", "Criatura — Pássaro Soldado", "Voando")]},
+            # número de linhas diferente: não casa nada
+            {"oracle_id": "x", "source": "arena", "name_pt": "Carta Estranha", "faces": [face("Carta Estranha", "Criatura — Ave", "Voar e vigilância")]},
+        ]
+
+    def test_linhas_oficiais_com_o_arena_na_frente(self) -> None:
+        best, molds = official_lines(self.rows(), self.oracle())
+        self.assertEqual(best["Flying"], "Voar")  # o "Voando" da impressa perde
+        self.assertEqual(best["When ~ enters, you gain 3 life."], "Quando ~ entrar, você ganha 3 pontos de vida.")
+        self.assertNotIn("Vigilance", best)
+        self.assertEqual(molds[mold("When ~ enters, you gain 5 life.")], mold("Quando ~ entrar, você ganha 3 pontos de vida."))
+
+    def test_tipo_pelo_que_ja_saiu_oficial(self) -> None:
+        heads, subs = official_types(self.rows(), self.oracle())
+        self.assertEqual(heads["Creature"], "Criatura")
+        self.assertEqual(subs["Bird"], "Ave")  # o Arena pesa o dobro
+        self.assertEqual(subs["Soldier"], "Soldado")
+        extra = {"Time Lord": "Senhor do Tempo", "Cow": "Vaca"}
+        self.assertEqual(translate_type("Creature — Bird Soldier", heads, subs, extra), "Criatura — Ave Soldado")
+        self.assertEqual(translate_type("Creature — Time Lord Soldier", heads, subs, extra), "Criatura — Senhor do Tempo Soldado")
+        self.assertEqual(translate_type("Creature", heads, subs, extra), "Criatura")
+        # o tipo de planeswalker é nome próprio
+        self.assertEqual(translate_type("Planeswalker — Nissa", {"Planeswalker": "Planeswalker"}, subs, extra), "Planeswalker — Nissa")
+        # sem tradução de uma parte, nada
+        self.assertIsNone(translate_type("Creature — Wolf", heads, subs, extra))
+        self.assertIsNone(translate_type("Kindred Creature — Bird", heads, subs, extra))
+        self.assertIsNone(translate_type(None, heads, subs, extra))
+
+    def test_faces_pela_linha_oficial_pelo_molde_e_pela_traduzida(self) -> None:
+        best = {"Flying": "Voar"}
+        molds = {mold("You gain 2 life."): mold("Você ganha 2 pontos de vida.")}
+        lines = {"~ can't block.": "~ não pode bloquear."}
+        heads, subs = {"Creature": "Criatura"}, {"Bird": "Ave"}
+        card = {"name": "New Bird", "type_line": "Creature — Bird", "mana_cost": "{1}{W}",
+                "oracle_text": "Flying\nYou gain 4 life.\nNew Bird can't block.\n(Reminder alone.)"}
+        faces = unofficial_faces(card, [], best, molds, lines, heads, subs, {})
+        self.assertEqual(faces, [{"name_en": "New Bird", "name_pt": "New Bird", "type_pt": "Criatura — Ave",
+                                  "text_pt": "Voar\nVocê ganha 4 pontos de vida.\nNew Bird não pode bloquear.", "flavor_pt": None, "mana_cost": "{1}{W}"}])
+        # com o nome impresso em PT, ele entra no lugar do "~"
+        self.assertEqual(unofficial_faces(card, ["Ave Nova"], best, molds, lines, heads, subs, {})[0]["text_pt"].split("\n")[2], "Ave Nova não pode bloquear.")
+        # uma linha sem tradução: a carta fica em inglês
+        self.assertIsNone(unofficial_faces({**card, "oracle_text": "Flying\nTrample"}, [], best, molds, lines, heads, subs, {}))
+        # tipo sem tradução também
+        self.assertIsNone(unofficial_faces({**card, "type_line": "Creature — Wolf"}, [], best, molds, lines, heads, subs, {}))
+
+    def test_linhas_traduzidas_com_os_mesmos_numeros_e_simbolos(self) -> None:
+        # cada linha de data/traducao/linhas.json: os mesmos símbolos, números, "X" e "~" nos dois idiomas
+        mark = re.compile(r"\{[^}]+\}|[+-]?\d+/[+-]?\d+|[+-]?\d+|~|\bX\b")
+        lines, types = build.load_unofficial()
+        self.assertGreater(len(lines), 1000)
+        for en, pt in lines.items():
+            self.assertEqual(sorted(mark.findall(en)), sorted(mark.findall(pt)), en)
+            self.assertEqual(line_key(en, []), en, "a chave é a linha do Oracle sem lembrete")
+            self.assertTrue(pt.strip() and "\n" not in pt, en)
+        self.assertTrue(all(pt and pt[0].isupper() for pt in types.values()))
+
+    def test_so_a_carta_sem_texto_oficial_ganha_a_traducao(self) -> None:
+        oracle = [
+            {"oracle_id": "a", "name": "Arena Card", "oracle_text": "Flying", "type_line": "Creature — Bird"},
+            {"oracle_id": "n", "name": "New Bird", "oracle_text": "Flying\nNew Bird can't block.", "type_line": "Creature — Bird"},
+            {"oracle_id": "m", "name": "Named Bird", "oracle_text": "Flying", "type_line": "Creature — Bird"},
+            {"oracle_id": "z", "name": "Hard Bird", "oracle_text": "Flying\nSomething new.", "type_line": "Creature — Bird"},
+        ]
+        rows = [
+            {"oracle_id": "a", "source": "arena", "name_pt": "Ave do Arena",
+             "faces": [{"name_pt": "Ave do Arena", "type_pt": "Criatura — Ave", "text_pt": "Voar"}]},
+            {"oracle_id": "n", "source": None, "name_pt": None, "faces": []},
+            # só o nome impresso em PT (a imagem do Scryfall é a inglesa com o selo)
+            {"oracle_id": "m", "source": None, "name_pt": "Ave Nomeada", "faces": []},
+            {"oracle_id": "z", "source": None, "name_pt": None, "faces": []},
+        ]
+        with mock.patch.object(build, "load_unofficial", return_value=({"~ can't block.": "~ não pode bloquear."}, {})):
+            self.assertEqual(add_unofficial(rows, oracle, {}, {}, {}), 2)
+        self.assertEqual(rows[0]["source"], "arena")
+        self.assertEqual((rows[1]["source"], rows[1]["name_pt"]), ("nao-oficial", "New Bird"))
+        self.assertEqual(rows[1]["faces"][0]["text_pt"], "Voar\nNew Bird não pode bloquear.")
+        self.assertEqual((rows[2]["source"], rows[2]["name_pt"], rows[2]["faces"][0]["name_pt"]), ("nao-oficial", "Ave Nomeada", "Ave Nomeada"))
+        self.assertIsNone(rows[3]["source"])
+
+    def test_emblema_herda_a_marca_do_planeswalker(self) -> None:
+        # o emblema vem das aspas do planeswalker: com a tradução não oficial dele, sai marcado igual
+        pw = {"oracle_id": "p", "name_pt": "Teferi, Who Slows the Sunset", "source": "nao-oficial",
+              "faces": [{"name_pt": "Teferi, Who Slows the Sunset", "type_pt": "Planeswalker Lendário — Teferi",
+                         "text_pt": "−7: Você recebe um emblema com “Desvire todas as permanentes que você controla durante a etapa de desvirar de cada outro jogador.”"}]}
+        t = {"name": "Teferi Emblem", "type_line": "Emblem — Teferi", "all_parts": [{"id": "x"}]}
+        face = emblem_face(t, {"p": pw}, {"x": "p"})
+        self.assertEqual((face["source"], face["type_pt"]), ("nao-oficial", "Emblema — Teferi"))
+

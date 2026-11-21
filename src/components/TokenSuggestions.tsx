@@ -32,6 +32,7 @@ export function TokenSuggestions({ tokens, onAdd, onDismiss }: Props) {
                 <span className="token-meta">
                   {tokenDetails(card)}
                   {!pt && " · em inglês, sem tradução oficial"}
+                  {pt && card.source === "nao-oficial" && " · tradução não oficial"}
                 </span>
               </span>
               <button

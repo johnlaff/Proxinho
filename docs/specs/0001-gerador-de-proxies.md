@@ -45,8 +45,8 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 - [x] O PDF é montado em segundo plano enquanto a pessoa revisa (depois das prévias, com a página parada, e nada antes do clique com a economia de dados ligada), e as cartas prontas ficam guardadas no navegador para a próxima visita: num deck de 100 cartas, o PDF sai em 2 s depois de um minuto de revisão, em vez de ~1 min (ADR 0014, 19/11/2026).
 
 ### H7. Honestidade e regras
-- [x] A origem do texto aparece na gaveta (Arena ou impressão PT).
-- [x] Sem tradução oficial, a carta sai em inglês e a interface diz.
+- [x] A origem do texto aparece na gaveta (Arena, impressão PT ou tradução não oficial).
+- [x] Sem tradução oficial nem não oficial, a carta sai em inglês e a interface diz.
 - [x] A explicação das palavras-chave (o lembrete entre parênteses) sai onde a carta física tem, ou seja, onde o Oracle traz, com o texto oficial das cartas impressas em PT; a que nunca saiu impressa em PT vem da explicação oficial que o Arena mostra ao lado da carta, quando ela diz o mesmo que a carta (ADRs 0018 e 0021).
 - [x] O flavor sai em cada arte que o tem na carta física, com a tradução oficial da versão do Arena daquela arte (a fala da Sra. Margarida na Birds of Paradise da BLC; 3.878 artes desde 21/11/2026).
 - [x] Se o motor não reconhece a moldura de uma impressão e ela sai na imagem original, a etiqueta, a legenda e o resumo dizem que sai em inglês.
@@ -61,7 +61,7 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 
 ## Fora do escopo da v1
 
-Molduras além da 2015 normal (a de 2003 entrou em 21/11/2026, H14), edição manual do texto, tradução não oficial assistida, fichas. Ver [roadmap](../roadmap.md).
+Molduras além da 2015 normal (a de 2003 entrou em 21/11/2026, H14), edição manual do texto, tradução não oficial (entrou em 21/11/2026, H15), fichas. Ver [roadmap](../roadmap.md).
 
 Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008). Em 19/11/2026: artes sem borda na moldura padrão, com o nome de crossover mantido no alto e o nome em PT na linha de baixo, e a sangria do PDF com a própria arte (ADR 0012). Em 20/11/2026: Sagas na moldura padrão (ADR 0016) e Aventuras na moldura de livro (ADR 0017).
 
@@ -116,3 +116,11 @@ Como jogador, quero imprimir em português as artes da moldura de 2003 a 2014, i
 - [x] A ponta arredondada das barras do nome e do tipo fica como está, e o tipo começa onde começa na carta impressa.
 - [x] Quando a carta tem uma arte na moldura atual, ela continua sendo a padrão; a de 2003 aparece na gaveta para escolher, e vira a padrão só quando é a única em PT.
 - [x] As impressões com marca-d'água, com efeito de moldura (céu estrelado, lápide, milagre, cores trocadas), os planeswalkers de 2003 e as promos com outro desenho (Champs and States, a Secret Lair espelhada) saem na original, e a etiqueta diz que saem em inglês.
+
+### H15. Tradução não oficial (entregue em 21/11/2026, ADR 0025)
+Como jogador, quero imprimir em português as cartas que nunca saíram em PT, sabendo que a tradução não é oficial.
+- [x] A carta sem texto oficial em PT sai em português quando todas as linhas dela têm tradução: a linha que já saiu igual numa carta oficial vem igual, a que só muda nos números segue o molde da oficial e o resto foi traduzido no padrão do Arena.
+- [x] O nome fica em inglês, salvo quando existe o nome impresso em PT, e não há flavor.
+- [x] A carta leva a etiqueta "PT não oficial" na folha, a legenda "não oficial", "Tradução não oficial" na escolha da arte, a explicação na gaveta e a linha "Reescrita com tradução não oficial" no resumo.
+- [x] Quando existe a imagem oficial em PT, ela é a escolha padrão; e quando o Arena ou uma impressão em PT trouxer a carta, o texto oficial entra no lugar sozinho.
+- [x] Se falta a tradução de uma linha ou do tipo, a carta sai em inglês, como antes.
