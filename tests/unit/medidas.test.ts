@@ -945,6 +945,28 @@ describe("dropArtBelowText: só pé de letra fica abaixo das letras", () => {
     expect(sum(150, 33, 190, 47)).toBe(0);
   });
 
+  it('o pé de uma letra dentro de um trecho comprido que sai fica (o "g" do Angrath\'s Fury RIX 204)', () => {
+    // a perna do "g", de 100 a 108, desce até a linha 41; em volta dela, de 60 a 160 (31 a 43),
+    // o fundo da barra um pouco mais escuro perto da ponta entra na máscara sem tinta forte: o
+    // trecho comprido sai, e com ele saía a perna, que ficava embaixo do português
+    const { mask, core, put, sum } = bar();
+    put(100, 30, 108, 41, true);
+    put(60, 31, 160, 43, false);
+    dropArtBelowText(mask, core, W, H, 1);
+    expect(sum(100, 31, 108, 41)).toBe(8 * 10);
+    expect(sum(60, 33, 90, 43)).toBe(0);
+  });
+
+  it("a arte clara e larga no alto da barra não sobe a linha das letras (Temple of Enlightenment TRC 409)", () => {
+    // "Land" curto, de 20 a 78 (6 a 40), e ao lado, de 90 a 290, a arte clara atrás da barra
+    // translúcida nas linhas de cima (0 a 22): a linha mais cheia fica no fim da arte, no meio
+    // das letras, e a metade de baixo delas saía da máscara
+    const { mask, core, put, sum } = bar((x) => x < 80, 6, 40);
+    put(90, 0, 290, 22, true);
+    dropArtBelowText(mask, core, W, H, 1);
+    expect(sum(20, 22, 80, 40)).toBe(6 * 8 * 18);
+  });
+
   it("o pé com a borda suavizada em volta fica (a borda passa do limiar, sem ser tinta forte)", () => {
     // embaixo de oito letras (150 a 230), de 31 a 38, o traço de 2 px de cada pé com 2 px de
     // borda de cada lado: contando só a tinta forte, um terço do trecho é pé, e ele saía

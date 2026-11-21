@@ -76,11 +76,11 @@ export function dropArtBelowText(mask: Uint8Array, ink: Uint8Array, w: number, h
   const maxLetter = Math.round(80 * unit);
   const tall = Math.max(3, Math.round(8 * unit));
   const label = new Int32Array(w * h).fill(-1);
-  const letter: boolean[] = [];
+  const boxes: [number, number, number, number][] = [];
   const stack: number[] = [];
   for (let k0 = 0; k0 < w * h; k0++) {
     if (!ink[k0] || label[k0] >= 0) continue;
-    const id = letter.length;
+    const id = boxes.length;
     let x0 = w;
     let x1 = -1;
     let y0 = h;
@@ -107,8 +107,30 @@ export function dropArtBelowText(mask: Uint8Array, ink: Uint8Array, w: number, h
           }
         }
     }
-    letter.push(y0 <= peak && base - y0 >= tall && y1 < h - 1 && x0 > 0 && x1 < w - 1 && x1 - x0 + 1 <= maxLetter);
+    boxes.push([x0, y0, x1, y1]);
   }
+  // Arte clara e larga no alto da barra, ao lado das letras (a barra translúcida das terras de
+  // Star Trek, TRC 409), enche as linhas de cima: a linha das letras caía no fim da arte, no
+  // meio delas, e a metade de baixo de "Land" saía da máscara e ficava embaixo do português.
+  // O pé das letras também se mede por elas: o pé mais comum (pela largura) das manchas de
+  // tinta forte do tamanho de uma letra, que começam na metade de cima e não encostam no pé nem
+  // nos lados do retângulo (a arte que entra por baixo encosta no pé), com ao menos duas letras;
+  // quando ele fica 8 px ou mais abaixo da linha medida, vale ele.
+  const bottoms = boxes
+    .filter(([x0, y0, x1, y1]) => y0 < h / 2 && y1 - y0 + 1 >= tall && y1 < h - 1 && x0 > 0 && x1 < w - 1 && x1 - x0 + 1 <= maxLetter)
+    .map(([x0, , x1, y1]) => ({ y: y1, wt: x1 - x0 + 1 }))
+    .sort((a, b) => a.y - b.y);
+  if (bottoms.length >= 2) {
+    const total = bottoms.reduce((t, b) => t + b.wt, 0);
+    let acc = 0;
+    const foot = bottoms.find((b) => (acc += b.wt) * 2 >= total)!.y;
+    // (só quando a linha medida cai bem acima do pé, no meio das letras: um ou dois pixels de
+    // diferença são a borda suavizada do pé, e ficam com a linha medida)
+    if (foot - base >= tall) base = foot;
+  }
+  const letter = boxes.map(
+    ([x0, y0, x1, y1]) => y0 <= peak && base - y0 >= tall && y1 < h - 1 && x0 > 0 && x1 < w - 1 && x1 - x0 + 1 <= maxLetter,
+  );
   // a borda suavizada da letra (e a histerese colada nela) também é pé
   const own = new Uint8Array(w * h);
   for (let k = 0; k < w * h; k++) if (ink[k] && letter[label[k]]) own[k] = 1;
@@ -150,7 +172,7 @@ export function dropArtBelowText(mask: Uint8Array, ink: Uint8Array, w: number, h
     }
     for (let x = 0, on = 0; x < w; x++) {
       on += drop[x];
-      if (on > 0 && !stay[x]) mask[y * w + x] = 0;
+      if (on > 0 && !stay[x] && !near[y * w + x]) mask[y * w + x] = 0;
     }
   }
 }
