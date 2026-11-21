@@ -46,6 +46,8 @@ pnpm exec wrangler rollback <id-da-versao>
 
 **Cartas guardadas no navegador:** cada publicação que muda o motor (`src/engine`), a entrada da montagem ou as fontes livres muda o resumo `__PROXINHO_BUILD__`, e as prévias e faces do PDF guardadas no IndexedDB de cada pessoa deixam de valer, como as montadas no servidor: a primeira visita depois dela monta no aparelho o que o montador ainda não refez (ADR 0014 e 0022). Mudanças só na interface não mexem nelas.
 
+**Ligar o R2** (uma vez; até lá o site monta tudo no aparelho, como antes): ative o R2 no painel da Cloudflare (R2 Object Storage; sem isso a API responde com o erro 10042), crie o depósito (`pnpm exec wrangler r2 bucket create proxinho-cartas`), tire o comentário de `r2_buckets` em `wrangler.jsonc`, grave a senha do montador (abaixo) e publique. Confira com `curl https://proxinho.johnlaff.com/api/cartas`: a lista dos códigos com o depósito, 503 ("Sem o depósito das cartas montadas") sem ele.
+
 **Montar as cartas no servidor** (depois de cada publicação que muda o desenho e depois dos dados diários; ADR 0022): no mesmo commit que está no ar,
 
 ```bash

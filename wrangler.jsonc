@@ -24,6 +24,8 @@
   "kv_namespaces": [{ "binding": "FONTES", "id": "45bd871710cf4290a73b902f3b54a6d8" }],
   // Cartas montadas de antemão pelo mesmo motor do site (ADR 0022): depósito privado, servido
   // só pelo Worker em /api/cartas/. A senha de quem grava é o segredo CARTAS_TOKEN.
-  "r2_buckets": [{ "binding": "CARTAS", "bucket_name": "proxinho-cartas" }],
+  // Desligado até o R2 ser ativado na conta (o deploy falha com o erro 10042 sem ele, e o
+  // Worker funciona sem o depósito). Para ligar, ver "Ligar o R2" em docs/operacao.md:
+  // "r2_buckets": [{ "binding": "CARTAS", "bucket_name": "proxinho-cartas" }],
   "routes": [{ "pattern": "proxinho.johnlaff.com", "custom_domain": true }],
 }
