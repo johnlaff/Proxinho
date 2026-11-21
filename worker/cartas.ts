@@ -3,8 +3,10 @@
  * chave das cartas guardadas no navegador (src/app/cardStore.ts), montadas de antemão pelo mesmo
  * motor do site num Chromium (scripts/montagem). Ler é livre, e a resposta de um endereço nunca
  * muda (a chave resume o código que desenha, as fontes e a entrada inteira da carta). Gravar,
- * perguntar quais faltam e apagar as de um código velho pedem a senha do montador.
+ * perguntar quais faltam, pedir a fila de cartas, ver quanto o depósito ocupa e apagar as de um
+ * código velho pedem a senha do montador ou o token OIDC do workflow da montagem (worker/github.ts).
  */
+import { trustedWorkflow } from "./github";
 
 /** O pedaço do R2 que a API usa (o `R2Bucket` do Worker cabe nele). */
 export interface CardBucket {
@@ -15,10 +17,10 @@ export interface CardBucket {
     value: ArrayBuffer,
     options: { httpMetadata: { contentType: string }; customMetadata: Record<string, string> },
   ): Promise<unknown>;
-  list(options: { prefix?: string; limit?: number; delimiter?: string }): Promise<{
-    objects: { key: string }[];
+  list(options: { prefix?: string; limit?: number; cursor?: string }): Promise<{
+    objects: { key: string; size: number }[];
     truncated: boolean;
-    delimitedPrefixes: string[];
+    cursor?: string;
   }>;
   delete(keys: string[]): Promise<unknown>;
 }
@@ -26,9 +28,17 @@ export interface CardBucket {
 export interface CardsEnv {
   /** Cartas já montadas pelo mesmo motor do site, num Chromium. */
   CARTAS?: CardBucket;
-  /** Senha de quem grava as cartas montadas (o montador em lote, scripts/montagem). */
+  /** Senha de quem grava as cartas montadas (o montador em lote rodado à mão, scripts/montagem). */
   CARTAS_TOKEN?: string;
+  /** Números do repositório e do dono no GitHub: o workflow da montagem de lá entra sem senha. */
+  MONTAGEM_REPO_ID?: string;
+  MONTAGEM_DONO_ID?: string;
+  /** O banco das cartas, para a fila do montador. */
+  DB?: { prepare(query: string): { all<T>(): Promise<{ results: T[] }> } };
 }
+
+/** O arquivo do workflow que pode gravar (.github/workflows/montagem.yml). */
+export const MONTAGEM_WORKFLOW = ".github/workflows/montagem.yml";
 
 const CARD_PATH = /^\/api\/cartas\/([0-9a-f]{16})\/([0-9a-f]{64})\.jpg$/;
 const BUILD_PATH = /^\/api\/cartas\/([0-9a-f]{16})(\/faltando)?$/;
@@ -56,7 +66,11 @@ async function sameSecret(given: string, secret: string): Promise<boolean> {
 
 async function authorized(request: Request, env: CardsEnv): Promise<boolean> {
   const given = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
-  return Boolean(env.CARTAS_TOKEN && given && (await sameSecret(given, env.CARTAS_TOKEN)));
+  if (!given) return false;
+  // um JWT (três partes) é o token OIDC do GitHub Actions; o resto, a senha
+  if (env.MONTAGEM_REPO_ID && env.MONTAGEM_DONO_ID && given.split(".").length === 3)
+    return trustedWorkflow(given, { repositoryId: env.MONTAGEM_REPO_ID, ownerId: env.MONTAGEM_DONO_ID, workflow: MONTAGEM_WORKFLOW });
+  return Boolean(env.CARTAS_TOKEN && (await sameSecret(given, env.CARTAS_TOKEN)));
 }
 
 async function serve(request: Request, env: CardsEnv, key: string, cache?: Cache): Promise<Response> {
@@ -116,10 +130,35 @@ export async function cardsApi(request: Request, env: CardsEnv, url: URL, cache?
   return problem(405, "Método não aceito aqui.");
 }
 
-/** Os códigos com cartas montadas (o montador apaga os que não são o atual). */
+/**
+ * Os códigos com cartas montadas e quanto o depósito inteiro ocupa (o montador apaga os códigos
+ * que não são o atual e não passa do limite combinado, ADR 0022).
+ */
 export async function cardBuilds(request: Request, env: CardsEnv): Promise<Response> {
   if (!env.CARTAS) return problem(503, "Sem o depósito das cartas montadas.");
   if (!(await authorized(request, env))) return problem(401, "Senha do montador inválida.");
-  const list = await env.CARTAS.list({ delimiter: "/", limit: 1000 });
-  return json({ codigos: list.delimitedPrefixes.map((p) => p.replace(/\/$/, "")) });
+  const codes = new Set<string>();
+  let bytes = 0;
+  let objects = 0;
+  let cursor: string | undefined;
+  do {
+    const page = await env.CARTAS.list({ limit: 1000, cursor });
+    for (const o of page.objects) {
+      codes.add(o.key.split("/")[0]);
+      bytes += o.size;
+      objects++;
+    }
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  return json({ codigos: [...codes], bytes, objetos: objects });
+}
+
+/** A fila do montador: as cartas com texto em PT, das mais jogadas às menos (EDHREC). */
+export async function cardQueue(request: Request, env: CardsEnv): Promise<Response> {
+  if (!env.DB) return problem(503, "Sem o banco das cartas.");
+  if (!(await authorized(request, env))) return problem(401, "Senha do montador inválida.");
+  const { results } = await env.DB.prepare(
+    "SELECT oracle_id FROM cards WHERE source IS NOT NULL AND name_pt IS NOT NULL ORDER BY edhrec_rank IS NULL, edhrec_rank, layout = 'token', oracle_id",
+  ).all<{ oracle_id: string }>();
+  return json({ cartas: results.map((r) => r.oracle_id) });
 }

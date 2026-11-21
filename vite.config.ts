@@ -1,9 +1,7 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
 import react from "@vitejs/plugin-react";
-import { createHash } from "node:crypto";
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
 import { defineConfig, type Plugin } from "vite";
+import { drawingHash } from "./scripts/codigo.ts";
 
 /**
  * O pacote do ONNX Runtime referencia o próprio .wasm (28 MiB), e o Vite o
@@ -21,34 +19,12 @@ function dropOrtWasm(): Plugin {
   };
 }
 
-/**
- * Resumo do código que desenha as cartas (o motor, a entrada de cada montagem e as fontes livres):
- * entra na chave das cartas guardadas no navegador (src/app/cardStore.ts), e uma correção no
- * motor faz as cartas guardadas serem montadas de novo. Só no build: no `dev` o código muda sem
- * mudar o resumo, e nada é guardado.
- */
-export function drawingHash(): string {
-  const walk = (path: string): string[] =>
-    statSync(path).isDirectory() ? readdirSync(path).flatMap((name) => walk(join(path, name))) : [path];
-  const files = [
-    "src/engine",
-    "src/app/cardStore.ts",
-    "src/app/model.ts",
-    "src/app/preview.ts",
-    "src/app/printFaces.ts",
-    "public/fonts/cartas",
-  ]
-    .flatMap(walk)
-    .sort();
-  const hash = createHash("sha256");
-  for (const file of files) hash.update(file).update(readFileSync(file));
-  return hash.digest("hex").slice(0, 16);
-}
-
 // O plugin do Cloudflare roda o Worker (API + D1) dentro do próprio `vite dev`,
 // no mesmo runtime (workerd) usado em produção.
 export default defineConfig(({ command }) => ({
   plugins: [react(), cloudflare(), dropOrtWasm()],
+  // o resumo do código que desenha (scripts/codigo.ts), na chave das cartas guardadas; só no build:
+  // no `dev` o código muda sem mudar o resumo, e nada é guardado
   define: command === "build" ? { __PROXINHO_BUILD__: JSON.stringify(drawingHash()) } : {},
   // Worker como módulo, com pedaços à parte: cada runtime do ONNX (placa de vídeo e CPU) vira um
   // arquivo próprio, baixado só quando é usado. E as threads do WebAssembly abrem esse arquivo

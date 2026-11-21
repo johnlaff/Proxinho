@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardBuilds, cardsApi, type CardBucket, type CardsEnv } from "../../worker/cartas";
+import { cardBuilds, cardQueue, cardsApi, type CardBucket, type CardsEnv } from "../../worker/cartas";
 
 const BUILD = "0123456789abcdef";
 const KEY = "a".repeat(64);
@@ -16,11 +16,17 @@ function bucket() {
     },
     head: async (k) => (files.has(k) ? {} : null),
     put: async (k, data, o) => void files.set(k, { data, meta: o.customMetadata }),
-    list: async ({ prefix = "", delimiter }) => {
-      const keys = [...files.keys()].filter((k) => k.startsWith(prefix));
-      return delimiter
-        ? { objects: [], truncated: false, delimitedPrefixes: [...new Set(keys.map((k) => k.split("/")[0] + "/"))] }
-        : { objects: keys.map((key) => ({ key })), truncated: false, delimitedPrefixes: [] };
+    // em páginas de `limit`, como o R2 (o cursor é a posição)
+    list: async ({ prefix = "", limit = 1000, cursor }) => {
+      const keys = [...files.keys()].filter((k) => k.startsWith(prefix)).sort();
+      const from = Number(cursor ?? 0);
+      const page = keys.slice(from, from + limit);
+      const truncated = from + limit < keys.length;
+      return {
+        objects: page.map((key) => ({ key, size: files.get(key)!.data.byteLength })),
+        truncated,
+        cursor: truncated ? String(from + limit) : undefined,
+      };
     },
     delete: async (keys) => keys.forEach((k) => files.delete(k)),
   };
@@ -73,7 +79,7 @@ describe("cartas montadas no servidor", () => {
     });
     expect(await missing!.json()).toEqual({ faltando: [other] });
     const list = await cardBuilds(new Request("https://proxinho.test/api/cartas", { headers: secret }), env);
-    expect(await list.json()).toEqual({ codigos: [BUILD] });
+    expect(await list.json()).toEqual({ codigos: [BUILD], bytes: JPEG.byteLength, objetos: 1 });
     const del = await call(env, `/api/cartas/${BUILD}`, { method: "DELETE", headers: secret });
     expect(await del!.json()).toEqual({ apagadas: 1, restam: false });
     expect(files.size).toBe(0);
@@ -86,5 +92,36 @@ describe("cartas montadas no servidor", () => {
     expect(await call(env, `/api/cartas/${BUILD}/../../segredo.jpg`)).toBeNull();
     // sem o depósito (antes de ligar o R2), a carta simplesmente não existe
     expect((await call({}, PATH))!.status).toBe(404);
+  });
+
+  it("soma o depósito inteiro, de todos os códigos, página por página", async () => {
+    const { b, files } = bucket();
+    const env = { CARTAS: b, CARTAS_TOKEN: "segredo" };
+    for (let i = 0; i < 2500; i++)
+      files.set(`${i % 2 ? BUILD : "f".repeat(16)}/${i.toString(16).padStart(64, "0")}.jpg`, { data: new ArrayBuffer(10), meta: {} });
+    const res = await cardBuilds(new Request("https://proxinho.test/api/cartas", { headers: secret }), env);
+    const body = (await res.json()) as { codigos: string[]; bytes: number; objetos: number };
+    expect(body.objetos).toBe(2500);
+    expect(body.bytes).toBe(25000);
+    expect(body.codigos.sort()).toEqual([BUILD, "f".repeat(16)]);
+    // sem a senha, nada
+    expect((await cardBuilds(new Request("https://proxinho.test/api/cartas"), env)).status).toBe(401);
+  });
+
+  it("dá a fila do montador só com a senha, e um token com cara de JWT não passa por senha", async () => {
+    const queries: string[] = [];
+    const DB = {
+      prepare: (q: string) => ({
+        all: async <T>() => (queries.push(q), { results: [{ oracle_id: "a" }, { oracle_id: "b" }] as T[] }),
+      }),
+    };
+    const env = { DB, CARTAS_TOKEN: "segredo" };
+    const ask = (headers: Record<string, string> = {}) =>
+      cardQueue(new Request("https://proxinho.test/api/cartas/lista", { headers }), env);
+    expect(await (await ask(secret)).json()).toEqual({ cartas: ["a", "b"] });
+    // ordem fixa (os pedaços da montagem no GitHub dividem a mesma fila)
+    expect(queries[0]).toMatch(/ORDER BY .*edhrec_rank.*oracle_id/);
+    expect((await ask()).status).toBe(401);
+    expect((await ask({ authorization: "Bearer a.b.c" })).status).toBe(401);
   });
 });

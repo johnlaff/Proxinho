@@ -8,7 +8,7 @@
  * pelo mesmo motor (R2 privado, /api/cartas/*, ADR 0022).
  */
 import { normalizeName } from "../src/lib/normalize";
-import { cardsApi, cardBuilds } from "./cartas";
+import { cardsApi, cardBuilds, cardQueue } from "./cartas";
 import { importDeck, ImportError } from "./importers";
 
 export interface Env {
@@ -18,9 +18,15 @@ export interface Env {
   FONTES?: KVNamespace;
   /** Cartas já montadas pelo mesmo motor do site, num Chromium (ADR 0022, worker/cartas.ts). */
   CARTAS?: R2Bucket;
-  /** Senha de quem grava as cartas montadas (o montador em lote, scripts/montagem). */
+  /** Senha de quem grava as cartas montadas (o montador em lote rodado à mão, scripts/montagem). */
   CARTAS_TOKEN?: string;
+  /** Números do repositório e do dono no GitHub: o workflow da montagem entra sem senha (worker/github.ts). */
+  MONTAGEM_REPO_ID?: string;
+  MONTAGEM_DONO_ID?: string;
 }
+
+/** Resumo do código que desenha as cartas (vite.config.ts): o montador confere que é o mesmo dele. */
+declare const __PROXINHO_BUILD__: string | undefined;
 
 /** Arquivos de fonte que o site serve, pelo nome público. */
 const FONT_FILES = new Set(["beleren-bold.ttf", "mplantin.ttf", "mplantin-bold.ttf", "mplantin-italic.ttf"]);
@@ -209,7 +215,8 @@ export default {
     try {
       if (url.pathname === "/api/health") {
         const meta = await env.DB.prepare("SELECT value FROM meta WHERE key = 'updated_at'").first<{ value: string }>();
-        return json({ ok: true, dataUpdatedAt: meta?.value ?? null });
+        const codigo = typeof __PROXINHO_BUILD__ === "string" ? __PROXINHO_BUILD__ : null;
+        return json({ ok: true, dataUpdatedAt: meta?.value ?? null, codigo });
       }
       if (url.pathname === "/api/search" && request.method === "GET") {
         return json(
@@ -243,6 +250,7 @@ export default {
         return res;
       }
       if (url.pathname === "/api/cartas" && request.method === "GET") return cardBuilds(request, env);
+      if (url.pathname === "/api/cartas/lista" && request.method === "GET") return cardQueue(request, env);
       if (url.pathname.startsWith("/api/cartas/")) {
         const res = await cardsApi(request, env, url, caches.default);
         if (res) return res;

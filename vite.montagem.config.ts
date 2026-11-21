@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import { drawingHash } from "./vite.config.ts";
+import { drawingHash } from "./scripts/codigo.ts";
 
 /**
  * Build da página do montador em lote (scripts/montagem, ADR 0022), fora do site. Leva o mesmo

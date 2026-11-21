@@ -40,7 +40,7 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 - [x] Qualidade padrão (300 dpi) ou alta (480 dpi).
 - [x] Marcas de corte, régua de 5 cm e aviso de imprimir em tamanho real em toda página.
 - [x] Progresso visível; gerado no navegador, ou já pronto do servidor.
-- [ ] As cartas já montadas no servidor pelo mesmo motor aparecem na hora já na primeira visita, e o PDF delas sai sem montar nada no aparelho; o que não está lá é montado no aparelho, como antes (ADR 0022; o R2 está ligado desde 21/11/2026, falta o montador rodar sozinho).
+- [ ] As cartas já montadas no servidor pelo mesmo motor aparecem na hora já na primeira visita, e o PDF delas sai sem montar nada no aparelho; o que não está lá é montado no aparelho, como antes (ADR 0022; o R2 está ligado desde 21/11/2026 e o montador roda sozinho no GitHub, ADR 0023; marcar quando a primeira montagem terminar).
 - [x] O PDF é montado em segundo plano enquanto a pessoa revisa (depois das prévias, com a página parada, e nada antes do clique com a economia de dados ligada), e as cartas prontas ficam guardadas no navegador para a próxima visita: num deck de 100 cartas, o PDF sai em 2 s depois de um minuto de revisão, em vez de ~1 min (ADR 0014, 19/11/2026).
 
 ### H7. Honestidade e regras

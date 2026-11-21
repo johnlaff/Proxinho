@@ -23,7 +23,10 @@
   // fora do repositório público; ver docs/adr/0001-motor-da-carta-no-navegador.md.
   "kv_namespaces": [{ "binding": "FONTES", "id": "45bd871710cf4290a73b902f3b54a6d8" }],
   // Cartas montadas de antemão pelo mesmo motor do site (ADR 0022): depósito privado, servido
-  // só pelo Worker em /api/cartas/. A senha de quem grava é o segredo CARTAS_TOKEN.
+  // só pelo Worker em /api/cartas/. Grava o workflow da montagem deste repositório no GitHub, sem
+  // senha (token OIDC conferido em worker/github.ts, pelos números do repositório e do dono), ou
+  // quem tiver o segredo CARTAS_TOKEN (o montador rodado à mão).
   "r2_buckets": [{ "binding": "CARTAS", "bucket_name": "proxinho-cartas" }],
+  "vars": { "MONTAGEM_REPO_ID": "1460874607", "MONTAGEM_DONO_ID": "46091881" },
   "routes": [{ "pattern": "proxinho.johnlaff.com", "custom_domain": true }],
 }

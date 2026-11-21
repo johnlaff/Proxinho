@@ -4,28 +4,38 @@
  * montaria no aparelho da pessoa, e grava cada uma no servidor (ou numa pasta) com a mesma chave
  * que o site procura antes de montar (src/app/cardStore.ts).
  *
- * Uso (depois do deploy, com o mesmo commit do site):
+ * Roda sozinho no GitHub Actions (.github/workflows/montagem.yml), sem senha guardada: lá o
+ * montador pede ao GitHub um token OIDC, que o Worker confere (worker/github.ts). À mão, com a
+ * senha do montador:
  *   pnpm montagem:build && pnpm montagem:serve &      # a página do montador em :5198
  *   CARTAS_TOKEN=… node scripts/montagem/montar.mjs --enviar
  *
+ * A ordem é a combinada (ADR 0022): primeiro as artes que passam pela rede neural (as lentas no
+ * aparelho), depois a arte que o site escolhe sozinho das cartas mais jogadas (EDHREC), depois as
+ * outras artes, até o limite do depósito (5 GB): a cota grátis do R2 é da conta inteira.
+ *
  * Opções:
- *   --enviar            grava no servidor (`--api`), só as que faltam; pede CARTAS_TOKEN
+ *   --enviar            grava no servidor (`--api`), só as que faltam; só monta se o site no ar
+ *                       for do mesmo código, apaga antes as cartas de outros códigos e para no limite
  *   --saida PASTA       grava numa pasta (e pula as que já estão lá)
  *   --enviar-pasta P    só envia ao servidor as cartas de uma pasta montada antes com --saida
  *   --api URL           de onde vêm os dados e as fontes (padrão: o site)
- *   --local             a lista de cartas vem do D1 local, não do remoto
  *   --escolhidas        só a arte que o site escolhe sozinho de cada carta
  *   --cartas A,B        só estas cartas (oracle_id)
  *   --limite N          no máximo N faces
+ *   --limite-bytes N    o depósito inteiro não passa de N bytes (padrão 5e9)
+ *   --partes N          o trabalho dividido em N máquinas (padrão 1) ...
+ *   --parte K           ... e esta é a K-ésima (de 1 a N); cada uma fica com 1/N do que cabe
+ *   --prazo-min M       não começa carta nova depois de M minutos (padrão: sem prazo)
  *   --paginas N         montagens comuns ao mesmo tempo (padrão 3; a rede neural tem uma à parte)
- *   --apagar-velhas     apaga do servidor as cartas de outros códigos e sai
+ *   --apagar-velhas     só apaga do servidor as cartas de outros códigos e sai
+ *   --conferir          só diz (saída do GitHub Actions) se há o que montar: o site no ar é deste
+ *                       código e cabe mais no depósito; apaga antes as cartas de outros códigos
  */
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-
-const { chromium } = createRequire(import.meta.url)("playwright");
+import { drawingHash } from "../codigo.ts";
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
@@ -36,19 +46,46 @@ const opt = (name, fallback) => {
 const API = opt("--api", "https://proxinho.johnlaff.com").replace(/\/$/, "");
 const PAGE = opt("--pagina", "http://localhost:5198/scripts/montagem/index.html");
 const OUT = opt("--saida");
-const SEND = flag("--enviar");
+const SEND = flag("--enviar") || flag("--conferir") || flag("--apagar-velhas");
 const TOKEN = process.env.CARTAS_TOKEN ?? "";
 const LIMIT = Number(opt("--limite", "0")) || Infinity;
+const LIMIT_BYTES = Number(opt("--limite-bytes", "5e9"));
+const PARTS = Number(opt("--partes", "1"));
+const PART = Number(opt("--parte", "1"));
+const DEADLINE = Date.now() + (Number(opt("--prazo-min", "0")) || Infinity) * 60_000;
 const PAGES = Number(opt("--paginas", "3"));
 const BATCH = 100;
+/** abaixo disto por máquina, não vale começar (o depósito está cheio) */
+const MIN_BUDGET = 10e6;
+
+/** o `audience` que o Worker aceita no token do GitHub (worker/github.ts) */
+const AUDIENCE = "proxinho-montagem";
 
 const log = (...a) => console.log(`[montagem ${new Date().toISOString().slice(11, 19)}]`, ...a);
-const auth = { authorization: `Bearer ${TOKEN}` };
+
+let oidc = { token: "", at: 0 };
+
+/**
+ * A autorização: no GitHub Actions, um token OIDC do próprio GitHub (vale uns 5 minutos; pedido de
+ * novo a cada 4 e quando o servidor recusa); fora dele, a senha do montador.
+ */
+async function auth(fresh = false) {
+  const url = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
+  if (!url) return { authorization: `Bearer ${TOKEN}` };
+  if (fresh || !oidc.token || Date.now() - oidc.at > 4 * 60_000) {
+    const res = await fetch(`${url}&audience=${encodeURIComponent(AUDIENCE)}`, {
+      headers: { authorization: `bearer ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}` },
+    });
+    if (!res.ok) throw new Error(`token do GitHub: ${res.status}`);
+    oidc = { token: (await res.json()).value, at: Date.now() };
+  }
+  return { authorization: `Bearer ${oidc.token}` };
+}
 
 async function retry(fn, tries = 4) {
   for (let i = 0; ; i++) {
     try {
-      return await fn();
+      return await fn(i > 0);
     } catch (err) {
       if (i + 1 >= tries) throw err;
       await new Promise((r) => setTimeout(r, 1000 * 2 ** i));
@@ -56,16 +93,16 @@ async function retry(fn, tries = 4) {
   }
 }
 
-async function put(path, data, translated) {
-  await retry(async () => {
-    const res = await fetch(API + path, {
-      method: "PUT",
-      headers: { ...auth, "content-type": "image/jpeg", "x-traduzida": translated ? "1" : "0" },
-      body: data,
-    });
-    if (!res.ok) throw new Error(`PUT ${path}: ${res.status} ${await res.text()}`);
+/** Um pedido autorizado ao servidor, com novas tentativas (e um token novo depois de um 401). */
+async function call(method, path, body, headers = {}) {
+  return retry(async (again) => {
+    const res = await fetch(API + path, { method, headers: { ...(await auth(again)), ...headers }, body });
+    if (!res.ok) throw new Error(`${method} ${path}: ${res.status} ${await res.text()}`);
+    return res;
   });
 }
+
+const put = (path, data, translated) => call("PUT", path, data, { "content-type": "image/jpeg", "x-traduzida": translated ? "1" : "0" });
 
 /** O resumo do código e a chave de um caminho /api/cartas/<código>/<chave>.jpg. */
 const parts = (path) => /\/api\/cartas\/([0-9a-f]{16})\/([0-9a-f]{64})\.jpg$/.exec(path);
@@ -78,16 +115,10 @@ async function missing(paths) {
   const build = parts(paths[0])[1];
   for (let i = 0; i < paths.length; i += 1000) {
     const chunk = paths.slice(i, i + 1000);
-    const res = await retry(async () => {
-      const r = await fetch(`${API}/api/cartas/${build}/faltando`, {
-        method: "POST",
-        headers: { ...auth, "content-type": "application/json" },
-        body: JSON.stringify({ chaves: chunk.map((p) => parts(p)[2]) }),
-      });
-      if (!r.ok) throw new Error(`faltando: ${r.status} ${await r.text()}`);
-      return r.json();
+    const res = await call("POST", `/api/cartas/${build}/faltando`, JSON.stringify({ chaves: chunk.map((p) => parts(p)[2]) }), {
+      "content-type": "application/json",
     });
-    for (const k of res.faltando) out.add(`/api/cartas/${build}/${k}.jpg`);
+    for (const k of (await res.json()).faltando) out.add(`/api/cartas/${build}/${k}.jpg`);
   }
   return out;
 }
@@ -123,14 +154,18 @@ async function sendFolder(dir) {
   log(`${n} enviadas`);
 }
 
+/** Os códigos com cartas no depósito e quanto ele ocupa. */
+async function usage() {
+  return (await call("GET", "/api/cartas")).json();
+}
+
+/** Apaga as cartas dos códigos que não são o atual (o site nunca mais as acha). */
 async function dropOld(current) {
-  const res = await fetch(`${API}/api/cartas`, { headers: auth });
-  if (!res.ok) throw new Error(`lista: ${res.status} ${await res.text()}`);
-  const { codigos } = await res.json();
+  const { codigos } = await usage();
   for (const code of codigos.filter((c) => c !== current)) {
     let total = 0;
     for (;;) {
-      const r = await (await fetch(`${API}/api/cartas/${code}`, { method: "DELETE", headers: auth })).json();
+      const r = await (await call("DELETE", `/api/cartas/${code}`)).json();
       total += r.apagadas;
       if (!r.restam) break;
     }
@@ -138,17 +173,24 @@ async function dropOld(current) {
   }
 }
 
-/** As cartas com texto em PT, das mais jogadas às menos (EDHREC), do D1 remoto ou local. */
-function cardIds() {
-  if (opt("--cartas")) return opt("--cartas").split(",");
-  const sql =
-    "SELECT oracle_id FROM cards WHERE source IS NOT NULL AND name_pt IS NOT NULL ORDER BY edhrec_rank IS NULL, edhrec_rank, layout = 'token'";
-  const out = execFileSync(
-    "pnpm",
-    ["exec", "wrangler", "d1", "execute", "proxinho", flag("--local") ? "--local" : "--remote", "--json", "--command", sql],
-    { encoding: "utf8", maxBuffer: 64e6, stdio: ["ignore", "pipe", "ignore"] },
+/** O código do site no ar (`null` no `dev`, que não guarda cartas). */
+async function liveCode() {
+  const res = await retry(() =>
+    fetch(`${API}/api/health`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`health: ${r.status}`)))),
   );
-  return JSON.parse(out)[0].results.map((r) => r.oracle_id);
+  return res.codigo ?? null;
+}
+
+/** Uma saída para os passos seguintes do GitHub Actions. */
+function output(name, value) {
+  log(`${name}=${value}`);
+  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
+}
+
+/** As cartas com texto em PT, das mais jogadas às menos (EDHREC). */
+async function cardIds() {
+  if (opt("--cartas")) return opt("--cartas").split(",");
+  return (await (await call("GET", "/api/cartas/lista")).json()).cartas;
 }
 
 async function fetchCards(ids) {
@@ -182,49 +224,102 @@ async function openPage(browser) {
   return page;
 }
 
+/**
+ * As fases, na ordem combinada: a rede neural (todas as artes, ou só a escolhida), a arte que o
+ * site escolhe sozinho e as outras artes.
+ */
+const PHASES = [
+  { name: "rede neural", keep: (j) => j.neural && (j.first || !flag("--escolhidas")) },
+  { name: "escolhidas", keep: (j) => !j.neural && j.first },
+  ...(flag("--escolhidas") ? [] : [{ name: "outras", keep: (j) => !j.neural && !j.first }]),
+];
+
 async function main() {
-  if (SEND && !TOKEN) throw new Error("Defina CARTAS_TOKEN para gravar no servidor.");
+  if (SEND && !TOKEN && !process.env.ACTIONS_ID_TOKEN_REQUEST_URL)
+    throw new Error("Defina CARTAS_TOKEN para gravar no servidor (no GitHub Actions, o token OIDC basta).");
+  if (!(PART >= 1 && PART <= PARTS)) throw new Error(`--parte ${PART} fora de 1 a ${PARTS}.`);
   if (opt("--enviar-pasta")) return sendFolder(opt("--enviar-pasta"));
-  const browser = await chromium.launch({ args: ["--enable-unsafe-webgpu"] });
+  const build = drawingHash();
+  log(`código ${build}`);
+  let budget = Infinity;
+  if (SEND) {
+    // montar de outro código grava cartas que o site no ar não acha
+    const live = await liveCode();
+    if (live && live !== build) {
+      log(`o site no ar é do código ${live}: nada a montar (publique este commit antes)`);
+      if (flag("--conferir")) output("montar", "false");
+      return;
+    }
+    // só uma máquina apaga: com várias, o passo de conferir já apagou antes de elas começarem
+    if (PARTS === 1 || flag("--conferir") || flag("--apagar-velhas")) await dropOld(build);
+    if (flag("--apagar-velhas")) return;
+    const { bytes, objetos } = await usage();
+    budget = Math.floor((LIMIT_BYTES - bytes) / PARTS);
+    log(`depósito: ${(bytes / 1e9).toFixed(2)} GB em ${objetos} imagens; cabem ${(budget / 1e6).toFixed(0)} MB nesta parte`);
+    if (flag("--conferir")) return output("montar", budget >= MIN_BUDGET ? "true" : "false");
+    if (budget < MIN_BUDGET) return log("o depósito está no limite: nada a montar");
+  }
+  const { chromium } = createRequire(import.meta.url)("@playwright/test");
+  const browser = await chromium.launch({
+    args: ["--enable-unsafe-webgpu"],
+    executablePath: process.env.PW_CHROMIUM_PATH || undefined,
+  });
   const planner = await openPage(browser);
   const { fonts, path } = await planner.evaluate(() => window.montagem.ready());
   if (fonts !== "o|o") throw new Error(`As fontes oficiais não carregaram (${fonts}): as chaves não seriam as do site.`);
   if (!path) throw new Error("A página foi montada sem o resumo do código (use pnpm montagem:build).");
-  const build = parts(path)[1];
-  log(`código ${build}`);
-  if (flag("--apagar-velhas")) {
-    await dropOld(build);
-    return browser.close();
+  if (parts(path)[1] !== build)
+    throw new Error(`A página é do código ${parts(path)[1]}, não deste commit (${build}): rode pnpm montagem:build.`);
+
+  const ids = await cardIds();
+  log(`${ids.length} cartas com texto em PT${PARTS > 1 ? `; parte ${PART} de ${PARTS}` : ""}`);
+  // o plano inteiro primeiro: a mesma ordem em todas as partes, e cada fase passa por todas as cartas
+  const batches = [];
+  for (let i = 0; i < ids.length; i += BATCH) {
+    const batch = ids.slice(i, i + BATCH);
+    const planned = await planner.evaluate((r) => window.montagem.plan(r, true), await fetchCards(batch));
+    await planner.evaluate(() => window.montagem.forget());
+    batches.push({ ids: batch, jobs: planned });
   }
-  const ids = cardIds();
-  log(`${ids.length} cartas com texto em PT`);
+  log(`plano: ${batches.reduce((n, b) => n + b.jobs.length, 0)} faces`);
+
   const pages = [await openPage(browser)];
   for (let i = 1; i < PAGES; i++) pages.push(await openPage(browser));
   const neuralPage = await openPage(browser);
-  const stats = { faces: 0, images: 0, english: 0, skipped: 0, failed: 0, ms: 0 };
+  const stats = { faces: 0, images: 0, bytes: 0, english: 0, skipped: 0, failed: 0 };
   const started = Date.now();
-  let budget = LIMIT;
+  let faces = LIMIT;
+  let stop = "";
 
   async function runJobs(jobs, results) {
     // cada página do lote precisa das cartas
     await Promise.all([...pages, neuralPage].map((p) => p.evaluate((r) => (window.montagem.forget(), window.montagem.plan(r)), results)));
-    const common = jobs.filter((j) => !j.neural);
-    const neural = jobs.filter((j) => j.neural);
     const work = async (page, queue) => {
-      for (let job; (job = queue.shift());) {
+      for (let job; !stop && (job = queue.shift());) {
+        if (Date.now() > DEADLINE) {
+          stop = "prazo";
+          break;
+        }
         try {
           const made = await page.evaluate(([j, k]) => window.montagem.render(j, k), [job, job.todo]);
           stats.faces++;
-          for (const m of made) {
-            // sem a rede neural a carta saiu na original: fica para o aparelho da pessoa
-            if (m.reason === "neural" || !m.path) {
-              stats.failed++;
-              continue;
-            }
-            await save(m.path, Buffer.from(m.data, "base64"), m.translated);
+          // sem a rede neural a carta saiu na original: fica para o aparelho da pessoa
+          if (made.some((m) => m.reason === "neural" || !m.path)) {
+            stats.failed++;
+            continue;
+          }
+          const images = made.map((m) => ({ ...m, buf: Buffer.from(m.data, "base64") }));
+          const size = images.reduce((n, m) => n + m.buf.length, 0);
+          // a prévia e a face do PDF vão juntas, ou nenhuma: o limite do depósito nunca passa
+          if (stats.bytes + size > budget) {
+            stop = "limite";
+            break;
+          }
+          stats.bytes += size;
+          for (const m of images) {
+            await save(m.path, m.buf, m.translated);
             stats.images++;
             stats.english += m.translated ? 0 : 1;
-            stats.ms += m.ms;
           }
         } catch (err) {
           stats.failed++;
@@ -232,31 +327,45 @@ async function main() {
         }
       }
     };
-    await Promise.all([...pages.map((p) => work(p, common)), work(neuralPage, neural)]);
+    await Promise.all([
+      ...pages.map((p) =>
+        work(
+          p,
+          jobs.filter((j) => !j.neural),
+        ),
+      ),
+      work(
+        neuralPage,
+        jobs.filter((j) => j.neural),
+      ),
+    ]);
   }
 
-  for (const phase of flag("--escolhidas") ? ["escolhidas"] : ["escolhidas", "outras"]) {
-    log(`fase: ${phase}`);
-    for (let i = 0; i < ids.length && budget > 0; i += BATCH) {
-      const results = await fetchCards(ids.slice(i, i + BATCH));
-      const planned = await planner.evaluate(([r, every]) => window.montagem.plan(r, every), [results, phase === "outras"]);
-      await planner.evaluate(() => window.montagem.forget());
-      const jobs = planned.filter((j) => (phase === "escolhidas") === j.first);
+  for (const phase of PHASES) {
+    log(`fase: ${phase.name}`);
+    let turn = 0;
+    for (const [n, batch] of batches.entries()) {
+      if (stop || faces <= 0) break;
+      // as faces da fase, em rodízio entre as partes
+      const jobs = batch.jobs.filter((j) => phase.keep(j) && turn++ % PARTS === PART - 1);
+      if (!jobs.length) continue;
       const wanted = await missing(jobs.flatMap((j) => j.keys.map((k) => k.path)));
       const todo = [];
       for (const j of jobs) {
         j.todo = j.keys.filter((k) => wanted.has(k.path)).map((k) => k.kind);
         if (!j.todo.length) stats.skipped++;
-        else if (budget-- > 0) todo.push(j);
+        else if (faces-- > 0) todo.push(j);
       }
-      if (todo.length) await runJobs(todo, results);
+      if (todo.length) await runJobs(todo, await fetchCards(batch.ids));
       const secs = (Date.now() - started) / 1000;
       log(
-        `${phase}: cartas ${Math.min(i + BATCH, ids.length)}/${ids.length} | faces ${stats.faces} (${(stats.faces / secs).toFixed(2)}/s) | imagens ${stats.images} | em inglês ${stats.english} | já prontas ${stats.skipped} | falhas ${stats.failed}`,
+        `${phase.name}: lote ${n + 1}/${batches.length} | faces ${stats.faces} (${(stats.faces / secs).toFixed(2)}/s) | imagens ${stats.images} (${(stats.bytes / 1e6).toFixed(0)} MB) | em inglês ${stats.english} | já prontas ${stats.skipped} | falhas ${stats.failed}`,
       );
     }
   }
   await browser.close();
+  if (stop === "limite") log(`parou no limite do depósito (${(budget / 1e6).toFixed(0)} MB nesta parte)`);
+  if (stop === "prazo") log("parou no prazo: a próxima rodada continua de onde esta parou");
   log(`fim: ${JSON.stringify(stats)} em ${Math.round((Date.now() - started) / 60000)} min`);
 }
 
