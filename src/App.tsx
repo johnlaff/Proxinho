@@ -14,6 +14,7 @@ import {
   countOutcomes,
   entriesFrom,
   mergeEntries,
+  orderedCards,
   tokenSuggestions,
   totalCards,
   type Choice,
@@ -74,6 +75,9 @@ const PAPER_LABEL: Record<Paper, string> = { a4: "A4", letter: "Carta" };
 const MODE_LABEL: Record<PrintMode, string> = { sleeve: "na frente da carta", full: "carta inteira" };
 const sheetsFor = (n: number) => Math.ceil(n / 9);
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString("pt-BR")} ${n === 1 ? one : many}`;
+/** "100 cartas", ou "100 cartas (101 faces)" quando há carta de duas faces: o deck tem 100, o papel leva 101. */
+const countLabel = (cards: number, faces: number) =>
+  cards === faces ? plural(cards, "carta", "cartas") : `${plural(cards, "carta", "cartas")} (${plural(faces, "face", "faces")})`;
 
 export default function App() {
   const [text, setText] = useState(() => loadText(DRAFT_KEY));
@@ -111,6 +115,7 @@ export default function App() {
   }, [entries, settings.quality, fonts]);
 
   const total = totalCards(entries);
+  const cardsLabel = countLabel(orderedCards(entries), total);
   const misses = useSyncExternalStore(onEngineMiss, engineMisses);
   const counts = useMemo(() => countOutcomes(entries, misses), [entries, misses]);
   const openEntry = entries.find((e) => e.key === openKey) ?? null;
@@ -239,9 +244,7 @@ export default function App() {
       a.download = pdfFileName();
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
-      setNotice(
-        `PDF pronto: ${plural(total, "carta", "cartas")} em ${plural(sheetsFor(total), "folha", "folhas")}. Imprima em “Tamanho real” (100%).`,
-      );
+      setNotice(`PDF pronto: ${cardsLabel} em ${plural(sheetsFor(total), "folha", "folhas")}. Imprima em “Tamanho real” (100%).`);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -331,7 +334,7 @@ export default function App() {
           <section className="closing" aria-label="Resumo e acabamento">
             <section className="tally" aria-labelledby="tally-title">
               <h2 id="tally-title" className="section-title">
-                Seu pedido: {plural(total, "carta", "cartas")}, {plural(sheetsFor(total), "folha", "folhas")}
+                Seu pedido: {cardsLabel}, {plural(sheetsFor(total), "folha", "folhas")}
               </h2>
               <ul className="legend">
                 {(Object.keys(counts) as Outcome[])
@@ -424,7 +427,7 @@ export default function App() {
           {total > 0 && (
             <div className="proof-bar">
               <span className="proof-bar-count">
-                {plural(total, "carta", "cartas")} · {plural(sheetsFor(total), "folha", "folhas")} {PAPER_LABEL[settings.paper]}
+                {cardsLabel} · {plural(sheetsFor(total), "folha", "folhas")} {PAPER_LABEL[settings.paper]}
               </span>
               <button type="button" className="btn btn--primary btn--small" onClick={download} disabled={Boolean(progress) || busy}>
                 <Download size={17} aria-hidden="true" />

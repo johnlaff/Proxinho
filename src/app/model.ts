@@ -167,9 +167,14 @@ export function toSheets(entries: Entry[]): SheetSlot[][] {
   return sheets;
 }
 
-/** Quantas cartas vão para o papel (cada face de uma carta de duas faces conta). */
+/** Quantas faces vão para o papel (cada face de uma carta de duas faces ocupa um espaço da folha). */
 export function totalCards(entries: Entry[]): number {
   return entries.reduce((n, e) => n + e.quantity * sideCount(e), 0);
+}
+
+/** Quantas cartas o pedido tem, como no deck: a carta de duas faces conta uma vez. */
+export function orderedCards(entries: Entry[]): number {
+  return entries.reduce((n, e) => n + e.quantity, 0);
 }
 
 /** Chave estável da imagem que uma face produz (para cache de prévia). */
