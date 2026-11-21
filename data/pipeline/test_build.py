@@ -312,6 +312,14 @@ class FrameSupported(unittest.TestCase):
         borderless = {**self.base, **cavolo, "border_color": "borderless", "frame_effects": ["legendary", "inverted"]}
         self.assertTrue(borderless_supported(borderless))
 
+    def test_moldura_rabiscada_na_secret_lair(self) -> None:
+        # a série do Deadpool (sld IFIYW-1 a 10): adesivos e escrita à mão por cima do nome, do
+        # texto e da moldura; o Deadly Dispute ficava com um retângulo de papel no tipo
+        for number in ("IFIYW-1", "IFIYW-6", "IFIYW-10"):
+            self.assertFalse(frame_supported({**self.base, "set": "sld", "collector_number": number}))
+        # o mesmo número fora da Secret Lair não diz nada
+        self.assertTrue(frame_supported({**self.base, "set": "mh3", "collector_number": "IFIYW-1"}))
+
 class BorderlessSupported(unittest.TestCase):
     """Arte sem borda entra só na moldura padrão, com a caixa escura ("inverted")."""
 
