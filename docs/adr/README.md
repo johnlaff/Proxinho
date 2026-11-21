@@ -25,3 +25,4 @@ Cada arquivo registra uma decisão de arquitetura: o contexto, o que foi decidid
 | [0019](0019-moldura-de-classe.md) | Moldura de Classe: coluna, fio do lembrete e barras de nível medidos na imagem, barras recortadas e coladas onde o português pede | Aceita |
 | [0020](0020-moldura-de-posicionar.md) | Moldura das naves e planetas com Posicionar: selos, faixas e P/R medidos na imagem, escurecimento das faixas tirado e posto de novo onde o português pede, rede neural em duas metades | Aceita |
 | [0021](0021-explicacoes-das-dicas-do-arena.md) | Explicação das palavras-chave nunca impressas em PT pelas dicas oficiais do Arena instalado, só quando dizem o mesmo que a carta; o lembrete impresso antigo deixa de ir para as outras cartas | Aceita |
+| [0022](0022-cartas-montadas-no-servidor.md) | Cartas montadas de antemão pelo mesmo motor num Chromium, guardadas no R2 com a chave das cartas do navegador e procuradas pelo site antes de montar | Aceita |

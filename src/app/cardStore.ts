@@ -2,7 +2,8 @@
  * Cartas já montadas, guardadas no próprio navegador (IndexedDB) entre uma visita e outra: a
  * prévia e a face do PDF de cada carta. Abrir a mesma lista de novo, ou trocar uma carta e baixar
  * outro PDF, não refaz as outras; nas artes sem borda e nos planeswalkers isso evita de 20 s a
- * 1 min de rede neural por carta. Nada passa pelo servidor.
+ * 1 min de rede neural por carta. Sem a carta guardada, a montada no servidor com a mesma chave
+ * (`serverCard`, ADR 0022): o mesmo motor, rodado de antemão num Chromium, e a carta chega pronta.
  *
  * A chave resume tudo o que muda o desenho: o código que desenha (`__PROXINHO_BUILD__`, um
  * resumo de src/engine e do que monta a entrada, ver vite.config.ts), os arquivos das fontes
@@ -116,6 +117,55 @@ export async function cardKey(kind: string, input: unknown): Promise<string | nu
   const text = JSON.stringify([build, fontsId(), kind, input]);
   const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
   return Array.from(hash, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Onde fica a carta montada no servidor com a chave `id` (ver ADR 0022), ou `null` sem o resumo do
+ * código (no `dev`). O resumo vai no caminho só para o servidor apagar as cartas de um código velho
+ * de uma vez: a chave já o inclui.
+ */
+export function serverCardPath(id: string): string | null {
+  return build ? `/api/cartas/${build}/${id}.jpg` : null;
+}
+
+/** Quanto a busca da carta no servidor pode demorar antes de a montagem começar no aparelho. */
+const SERVER_WAIT_MS = 5000;
+const remote = new Map<string, Promise<StoredCard | null>>();
+let serverOn = true;
+
+/** Liga ou desliga a busca das cartas montadas no servidor (os testes desligam). */
+export function useCardServer(on: boolean) {
+  serverOn = on;
+  remote.clear();
+}
+
+/**
+ * A carta montada no servidor com essa chave, ou `null` (sem chave, sem a carta lá, sem rede ou
+ * com as fontes da pessoa: o servidor só monta com as oficiais). Procurada uma vez por visita.
+ */
+export function serverCard(id: string | null): Promise<StoredCard | null> {
+  const path = id && serverOn && typeof fetch === "function" && fontsId() === "o|o" ? serverCardPath(id) : null;
+  if (!id || !path) return Promise.resolve(null);
+  let p = remote.get(id);
+  if (!p) {
+    p = (async () => {
+      try {
+        const signal = typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(SERVER_WAIT_MS) : undefined;
+        const res = await fetch(path, { signal });
+        if (!res.ok || !(res.headers.get("content-type") ?? "").startsWith("image/")) return null;
+        return { blob: await res.blob(), translated: res.headers.get("x-traduzida") !== "0" };
+      } catch {
+        return null;
+      }
+    })();
+    remote.set(id, p);
+  }
+  return p;
+}
+
+/** A carta já montada: a guardada no navegador ou, sem ela, a do servidor. */
+export async function savedCard(id: string | null): Promise<StoredCard | null> {
+  return (await storedCard(id)) ?? (await serverCard(id));
 }
 
 /** A carta guardada com essa chave, ou `null` (sem chave, sem a carta, ou com erro no banco). */

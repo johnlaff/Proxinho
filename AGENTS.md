@@ -16,6 +16,9 @@ pnpm check                  # tipos + lint + formatação + testes de unidade (r
 pnpm test:e2e               # Playwright desktop e celular (sobe o site sozinho)
 pnpm test:data              # testes de unidade do pipeline (Python)
 pnpm data:build             # pipeline completo de dados (Python, baixa ~500 MB, ~5 min)
+pnpm montagem:build         # página do montador em lote (ADR 0022), fora do site, em .montagem/
+pnpm montagem:serve         # serve a página do montador em http://localhost:5198
+pnpm montagem -- --enviar   # monta no Chromium e grava no servidor as cartas que faltam (CARTAS_TOKEN)
 ```
 
 Sem download de navegador? `PW_CHROMIUM_PATH=/caminho/do/chrome pnpm test:e2e`.
@@ -23,9 +26,10 @@ Sem download de navegador? `PW_CHROMIUM_PATH=/caminho/do/chrome pnpm test:e2e`.
 ## Mapa
 
 - `src/engine/` motor da carta: `render.ts` (orquestra), `erase.ts` (apaga o inglês), `lama.ts` + `lamaWorker.ts` + `lamaFiles.ts` (preenchimento por rede neural nos planeswalkers e nas artes sem borda: runtime WebGPU ou só de CPU, vigia em três degraus e andamento, ADRs 0008, 0012 e 0013), `token.ts` (moldura de ficha e emblema: acha a barra de tipo e, em 2003, a placa do nome na imagem, ADRs 0009 e 0010), `borderless.ts` (moldura sem borda: aro da caixa, letras brancas, selo, caixa de P/R e a aba do nome de crossover, ADR 0012), `saga.ts` (moldura de Saga: fios, marcadores e barra de tipo medidos na imagem, fios que mudam de lugar para o português caber, ADR 0016), `adventure.ts` (moldura de Aventura: o livro conferido na imagem, as barras e a página da esquerda da aventura, a sombra da lombada tirada antes de apagar, ADR 0017), `classCard.ts` (moldura de Classe: a coluna, o fio do lembrete e as barras de nível medidos na imagem, barras recortadas e coladas onde o português pede, ADR 0019), `station.ts` (moldura das naves e planetas com Posicionar: selos, faixas e caixa de P/R medidos na imagem, escurecimento das faixas tirado e posto de novo onde o português pede, rede neural em duas metades, ADR 0020), `text.ts` (quebra e encaixe do texto), `geometry.ts` (caixas da moldura M15, conferidas na imagem por `erase.ts`, ADR 0011).
-- `src/app/` lógica do pedido sem React: `model.ts` (escolha da arte, folhas), `preview.ts` (filas de prévias: a comum e a da rede neural, o rascunho e o andamento por carta, ADR 0013), `labels.ts` (textos de resultado, de andamento e de onde a rede neural roda), `printFaces.ts` (cartas em resolução de impressão: o PDF adiantado enquanto a pessoa revisa, ADR 0014), `cardStore.ts` (prévias e faces do PDF guardadas no IndexedDB entre visitas, ADR 0014), `exportPdf.ts`.
+- `src/app/` lógica do pedido sem React: `model.ts` (escolha da arte, folhas), `preview.ts` (filas de prévias: a comum e a da rede neural, o rascunho e o andamento por carta, ADR 0013), `labels.ts` (textos de resultado, de andamento e de onde a rede neural roda), `printFaces.ts` (cartas em resolução de impressão: o PDF adiantado enquanto a pessoa revisa, ADR 0014), `cardStore.ts` (prévias e faces do PDF guardadas no IndexedDB entre visitas, ADR 0014, e procuradas no servidor antes de montar, ADR 0022), `exportPdf.ts`.
 - `src/components/` interface React. `src/lib/` leitor de listas e PDF.
-- `worker/` API Cloudflare (`/api/search`, `/api/resolve`, `/api/cards`, `/api/import`, `/api/fontes/*`, `/api/health`).
+- `worker/` API Cloudflare (`/api/search`, `/api/resolve`, `/api/cards`, `/api/import`, `/api/fontes/*`, `/api/health` e, em `cartas.ts`, `/api/cartas/*`: as cartas montadas no servidor, no R2, ADR 0022).
+- `src/montagem/pagina.ts` + `scripts/montagem/` montador em lote (ADR 0022): a página (build à parte, `vite.montagem.config.ts`) chama as mesmas funções do site (`renderInput`, `renderPreview`, `renderPrint`, `cardKey`) e o `montar.mjs` (Playwright) grava cada carta no servidor com a chave que o site procura.
 - `scripts/modelo.mjs` baixa o modelo LaMa e grava, compactados em gzip, o modelo (em duas partes) e os dois runtimes do ONNX (placa de vídeo e CPU) em `public/modelos/` (roda sozinho no `dev` e no `build`).
 - `data/pipeline/build.py` gera `data/out/cards.sql` para o D1; `--dicas` grava as dicas das palavras-chave do Arena instalado em `data/cache/arena_dicas.json` (ADR 0021). `migrations/` esquema do banco.
 
@@ -33,13 +37,15 @@ Sem download de navegador? `PW_CHROMIUM_PATH=/caminho/do/chrome pnpm test:e2e`.
 
 - Português do Brasil em código, comentários, interface e docs. Jargão da comunidade ("deck", "sleeve", "proxy").
 - Texto de carta nunca é traduzido por máquina. Fontes válidas: MTG Arena (arquivos públicos da Untapped), impressões oficiais em PT (Scryfall) e, para a explicação das palavras-chave nunca impressas em PT, as dicas oficiais do Arena (ADR 0021). Sem tradução oficial, a carta sai em inglês e a interface diz isso.
-- Nada extraído do cliente do Arena, salvo as dicas das palavras-chave do arquivo da instalação do João (`build.py --dicas`, fora do repositório, com a cópia no KV; ADR 0021). Nenhuma imagem de carta passa pelo servidor nem fica guardada: o navegador baixa do Scryfall.
+- Nada extraído do cliente do Arena, salvo as dicas das palavras-chave do arquivo da instalação do João (`build.py --dicas`, fora do repositório, com a cópia no KV; ADR 0021). O navegador baixa as imagens do Scryfall e monta a carta; o servidor só guarda as cartas montadas de antemão pelo próprio motor (ADR 0022), no R2 privado, servidas pelo Worker com `noindex`, nunca a imagem do Scryfall como veio.
 - Não usar "Magic", "MTG" nem logos da Wizards como marca. Aviso de conteúdo de fã fica no site e no PDF.
 - Mudança de comportamento vem com teste. Mudança de arquitetura vem com ADR novo.
 - Toda mudança ou feature nova atualiza, no mesmo commit, toda a documentação afetada: README, este arquivo, `docs/arquitetura.md`, `docs/operacao.md`, `docs/pesquisa.md`, `docs/specs/`, `docs/roadmap.md` e os ADRs.
 - Interface segue `DESIGN.md` e o contrato em `.impeccable/surfaces/`. Contraste AA, alvos de toque de 44 px, nada só por cor.
 
 ## Erros que já aconteceram (não repita)
+
+- A carta do servidor (ADR 0022) só é achada com a chave que o site calcula: o montador roda o build do mesmo commit do site (`vite.montagem.config.ts` leva o mesmo `drawingHash`) e confere as fontes oficiais (`o|o`) antes de começar; montar de outro commit grava cartas que ninguém acha. Arquivo novo que muda o desenho entra na lista de `drawingHash`, senão o servidor (e o navegador) servem a carta velha. E a carta que saiu na original porque a rede neural não rodou nunca vai para o servidor (`reason: "neural"`).
 
 - Regex de símbolos do Arena casava "Co" em `{oCoC}`: o token é `o(\([^)]+\)|\d+|Si|[A-Z])`.
 - Flavor do Arena pode ser de outra impressão: só use na arte de `text_print` ou numa com o mesmo flavor em inglês (`text_flavor`, marcado por `mark_text_flavor` no pipeline; sem isso a promo de arte estendida do Spock, PMEI, saía sem flavor). Compare também com o flavor em inglês do próprio Arena: nas coleções digitais (KLR, PIO) o Scryfall não tem flavor (Kari Zev). E a versão mais nova do Arena pode não ter flavor (Itzquinth, LCI 331): `keep_earlier_flavor` fica com o da anterior, com a impressão dele. Dominaria é "DAR" no Arena e "dom" no Scryfall (`ARENA_SETS`). E o Arena tem um flavor por versão: as outras artes ficavam sem nenhum mesmo com a tradução oficial lá (Birds of Paradise da BLC 81 sem a fala da Sra. Margarida, porque o texto vem da LTC 235). `mark_print_flavors` guarda o flavor em PT da versão com o mesmo flavor em inglês na impressão (`prints.flavor_pt`, migração 0008; sem flavor no Scryfall, a da mesma coleção e número: o Toxic Deluge retrô de MH3 tem o flavor na carta e não no Scryfall), e `renderInput` usa o dela quando a arte não leva o do texto. Ficha nunca leva flavor de carta de mesmo nome.

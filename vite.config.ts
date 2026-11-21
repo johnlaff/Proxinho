@@ -27,7 +27,7 @@ function dropOrtWasm(): Plugin {
  * motor faz as cartas guardadas serem montadas de novo. Só no build: no `dev` o código muda sem
  * mudar o resumo, e nada é guardado.
  */
-function drawingHash(): string {
+export function drawingHash(): string {
   const walk = (path: string): string[] =>
     statSync(path).isDirectory() ? readdirSync(path).flatMap((name) => walk(join(path, name))) : [path];
   const files = [

@@ -19,7 +19,7 @@
  * com a mesma carta, ela aparece sem montar nada nem baixar a rede neural.
  */
 import { fontsVersion } from "../engine/fonts";
-import { cardKey, storeCard, storedCard, type StoredCard } from "./cardStore";
+import { cardKey, savedCard, storeCard, type StoredCard } from "./cardStore";
 import { prepareLama } from "../engine/lama";
 import { renderCard, usesNeuralFill } from "../engine/render";
 import type { PrintRecord } from "../engine/types";
@@ -200,12 +200,28 @@ function toBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   );
 }
 
-/** A prévia guardada no navegador numa visita anterior (ver cardStore.ts), procurada uma vez por chave. */
+/** Entrada da montagem de uma face (ver `renderInput`). */
+export type CardInput = NonNullable<ReturnType<typeof renderInput>>;
+
+/**
+ * A prévia acabada de uma face: a imagem "normal" do Scryfall, reduzida, em JPEG. A mesma função
+ * monta as cartas guardadas no servidor (src/montagem/pagina.ts), para a carta de lá ser igual à
+ * que o site montaria.
+ */
+export async function renderPreview(input: CardInput, onNeural?: (p: { done: number; total: number }) => void) {
+  const { canvas, translated, reason } = await renderCard({ ...input, imageVersion: "normal", scale: 0.56, onNeural });
+  return { blob: await toBlob(canvas), translated, reason };
+}
+
+/**
+ * A prévia já montada (ver cardStore.ts): a guardada no navegador numa visita anterior ou a montada
+ * no servidor, procurada uma vez por chave.
+ */
 const lookups = new Map<string, Promise<{ id: string | null; card: StoredCard | null }>>();
-function lookup(key: string, input: NonNullable<ReturnType<typeof renderInput>>) {
+function lookup(key: string, input: CardInput) {
   let p = lookups.get(key);
   if (!p) {
-    p = cardKey("previa", input).then(async (id) => ({ id, card: await storedCard(id) }));
+    p = cardKey("previa", input).then(async (id) => ({ id, card: await savedCard(id) }));
     lookups.set(key, p);
   }
   return p;
@@ -239,14 +255,11 @@ export function previewUrl(entry: Entry, side: Side = 0): Promise<string> {
           // continua baixando e preparando na worker enquanto isso)
           const draft = neural ? drafts.get(key) : undefined;
           if (draft) await draft.then(noop, noop);
-          const { canvas, translated, reason } = await renderCard({
-            ...input,
-            imageVersion: "normal",
-            scale: 0.56,
-            onNeural: neural ? ({ done, total }) => setProgress(key, { state: "running", done, total }) : undefined,
-          });
+          const { blob, translated, reason } = await renderPreview(
+            input,
+            neural ? ({ done, total }) => setProgress(key, { state: "running", done, total }) : undefined,
+          );
           if (input.face) noteRender(input.print.id, side, translated, reason);
-          const blob = await toBlob(canvas);
           // (sem a rede neural a carta saiu na original: noutra visita ela pode rodar)
           if (reason !== "neural") storeCard(id, { blob, translated });
           return URL.createObjectURL(blob);

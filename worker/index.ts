@@ -7,6 +7,7 @@
  * Scryfall e monta a carta localmente.
  */
 import { normalizeName } from "../src/lib/normalize";
+import { cardsApi, cardBuilds } from "./cartas";
 import { importDeck, ImportError } from "./importers";
 
 export interface Env {
@@ -14,6 +15,10 @@ export interface Env {
   ASSETS: Fetcher;
   /** Fontes das cartas reais, guardadas fora do repositório (opcional em dev). */
   FONTES?: KVNamespace;
+  /** Cartas já montadas pelo mesmo motor do site, num Chromium (ADR 0022, worker/cartas.ts). */
+  CARTAS?: R2Bucket;
+  /** Senha de quem grava as cartas montadas (o montador em lote, scripts/montagem). */
+  CARTAS_TOKEN?: string;
 }
 
 /** Arquivos de fonte que o site serve, pelo nome público. */
@@ -235,6 +240,11 @@ export default {
         const res = json(deck, { headers: { "cache-control": "public, max-age=900" } });
         await cache.put(key, res.clone());
         return res;
+      }
+      if (url.pathname === "/api/cartas" && request.method === "GET") return cardBuilds(request, env);
+      if (url.pathname.startsWith("/api/cartas/")) {
+        const res = await cardsApi(request, env, url, caches.default);
+        if (res) return res;
       }
       if (url.pathname.startsWith("/api/fontes/") && request.method === "GET") {
         return serveFont(env, url.pathname.slice("/api/fontes/".length));

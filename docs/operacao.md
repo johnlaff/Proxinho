@@ -9,6 +9,7 @@
 | Fontes das cartas (Beleren, MPlantin) | Cloudflare KV `proxinho-fontes` (binding `FONTES`), servidas em `/api/fontes/*.ttf` |
 | Dicas das palavras-chave do Arena | O mesmo KV, chave `arena-dicas.json` (não é servida pela API); o workflow "Dados diários" baixa antes do pipeline (ADR 0021) |
 | Modelo LaMa e runtimes do ONNX | Assets do site em `/modelos/`, gerados no build por `scripts/modelo.mjs` (baixa do Hugging Face numa revisão fixa, confere o SHA-256 e compacta em gzip): `lama-int4.onnx.gz.0` e `.1`, `ort-webgpu-<versão>.wasm.gz` (placa de vídeo) e `ort-cpu-<versão>.wasm.gz` (CPU) |
+| Cartas montadas no servidor | Cloudflare R2 `proxinho-cartas` (binding `CARTAS`, privado), servidas em `/api/cartas/<código>/<chave>.jpg`; gravadas pelo montador em lote (`scripts/montagem`) com o segredo `CARTAS_TOKEN` do Worker (ADR 0022) |
 | Atualização dos dados | GitHub Actions, workflow "Dados diários" (04h17 de Brasília) |
 | Deploy | GitHub Actions, workflow "CI/CD", job "Deploy em produção" (a cada push na main) |
 | Logs | Painel da Cloudflare → Workers → proxinho → Logs (observability ligada) |
@@ -16,7 +17,7 @@
 
 ## Segredos do repositório
 
-`CLOUDFLARE_API_TOKEN` (permissões: Workers Scripts, D1 e Workers Routes do domínio, edição) e `CLOUDFLARE_ACCOUNT_ID`, no ambiente `producao` do GitHub.
+`CLOUDFLARE_API_TOKEN` (permissões: Workers Scripts, D1 e Workers Routes do domínio, edição) e `CLOUDFLARE_ACCOUNT_ID`, no ambiente `producao` do GitHub. A senha do montador (`CARTAS_TOKEN`) é segredo do Worker (`wrangler secret put`), e fica também no ambiente de onde o montador roda.
 
 ## Tarefas comuns
 
@@ -43,7 +44,17 @@ pnpm exec wrangler rollback <id-da-versao>
 
 **Atualizar as dicas do Arena** (quando o Arena ganha uma mecânica nova): com o Arena atualizado, pegue o `Raw_ClientLocalization_*.mtga` em `MTGA_Data/Downloads/Raw` da pasta do jogo e rode `python3 data/pipeline/build.py --dicas Raw_ClientLocalization_<…>.mtga` (grava `data/cache/arena_dicas.json`, fora do repositório) e `pnpm exec wrangler kv key put --remote --binding FONTES arena-dicas.json --path data/cache/arena_dicas.json`. O próximo "Dados diários" usa as novas. Nunca suba o banco nem o JSON para o repositório.
 
-**Cartas guardadas no navegador:** cada publicação que muda o motor (`src/engine`), a entrada da montagem ou as fontes livres muda o resumo `__PROXINHO_BUILD__`, e as prévias e faces do PDF guardadas no IndexedDB de cada pessoa deixam de valer: a primeira visita depois dela monta tudo de novo (ADR 0014). Mudanças só na interface não mexem nelas.
+**Cartas guardadas no navegador:** cada publicação que muda o motor (`src/engine`), a entrada da montagem ou as fontes livres muda o resumo `__PROXINHO_BUILD__`, e as prévias e faces do PDF guardadas no IndexedDB de cada pessoa deixam de valer, como as montadas no servidor: a primeira visita depois dela monta no aparelho o que o montador ainda não refez (ADR 0014 e 0022). Mudanças só na interface não mexem nelas.
+
+**Montar as cartas no servidor** (depois de cada publicação que muda o desenho e depois dos dados diários; ADR 0022): no mesmo commit que está no ar,
+
+```bash
+pnpm montagem:build && pnpm montagem:serve &     # a página do montador em http://localhost:5198
+CARTAS_TOKEN=… pnpm montagem -- --enviar          # só o que falta; --escolhidas monta só a arte padrão de cada carta
+CARTAS_TOKEN=… pnpm montagem -- --apagar-velhas   # apaga as cartas dos códigos que não estão mais no ar
+```
+
+O montador lê a lista de cartas do D1 remoto (com `CLOUDFLARE_API_TOKEN`), os dados e as fontes oficiais do site, e confere que as fontes oficiais carregaram e que a página tem o resumo do código. Monta a arte padrão de todas as cartas primeiro, das mais jogadas às menos, e depois as outras artes suportadas; as cartas comuns levam ~1,5 s por face e as da rede neural ~20 s no processador. Sem o R2 no ar, `--saida pasta` grava numa pasta e `--enviar-pasta pasta` envia depois. A senha: gere uma nova (`openssl rand -hex 32`), grave no Worker (`pnpm exec wrangler secret put CARTAS_TOKEN`) e use a mesma no montador; nunca no repositório. Enquanto o montador não termina, o site monta no aparelho o que falta, como antes.
 
 **Atualizar o modelo ou o ONNX Runtime:** mude a URL e o SHA-256 em `scripts/modelo.mjs` (ou a versão de `onnxruntime-web`); o runtime leva a versão no nome do arquivo, e um modelo novo deve ganhar nome novo, porque o cache desses arquivos é imutável.
 
@@ -87,3 +98,5 @@ pnpm exec wrangler d1 execute proxinho --remote --command "SELECT count(*) FROM 
 | Lembrete sem itálico com um ")" solto, ou sem o fecho | Parêntese faltando no texto oficial (Scryfall ou Arena) | Ver `balance_parens` em `data/pipeline/build.py` e `pnpm test:data` |
 | Carta com o nome de outra versão no texto ("Keenser") | Versão com nome alternativo do Arena | Ver `cites_alt_name` em `data/pipeline/build.py` e `pnpm test:data` |
 | Texto com outra fonte | `/api/fontes/` sem os arquivos no KV | Recolocar com `wrangler kv key put` (acima) |
+| Primeira visita montando no aparelho cartas que deviam vir prontas | O montador não rodou depois da última publicação (o código mudou e as chaves também), o R2 está sem o binding `CARTAS`, ou a pessoa usa fontes próprias | Rodar o montador (acima); conferir `GET /api/cartas/<código>/<chave>.jpg` de uma carta (o código está no fim do log do montador) |
+| Montador grava mas o site não acha as cartas | Montado de outro commit (outro resumo do código) ou sem as fontes oficiais | Rodar `pnpm montagem:build` no commit que está no ar; o montador recusa começar sem as fontes oficiais |

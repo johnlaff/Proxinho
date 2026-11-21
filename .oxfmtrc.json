@@ -4,6 +4,7 @@
   "ignorePatterns": [
     "coverage/",
     "dist/",
+    ".montagem/",
     "playwright-report/",
     "test-results/",
     ".wrangler/",

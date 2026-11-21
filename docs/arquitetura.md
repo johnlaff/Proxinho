@@ -1,6 +1,6 @@
 # Arquitetura
 
-O Proxinho tem três partes: um **pipeline de dados** que roda uma vez por dia, uma **API** pequena no Cloudflare e o **site**, onde acontece o trabalho pesado (montar cada carta e o PDF).
+O Proxinho tem quatro partes: um **pipeline de dados** que roda uma vez por dia, uma **API** pequena no Cloudflare, o **site**, onde cada carta e o PDF são montados, e o **montador em lote**, que roda o mesmo motor de antemão num Chromium e deixa as cartas prontas no servidor (ADR 0022).
 
 ```mermaid
 flowchart LR
@@ -16,17 +16,21 @@ flowchart LR
   U --> P
   SQL -->|wrangler d1 execute| D1[(D1<br/>cards + prints)]
   subgraph Cloudflare Worker - proxinho.johnlaff.com
-    A[/api/search<br/>/api/resolve<br/>/api/import<br/>/api/fontes/]
+    A[/api/search<br/>/api/resolve<br/>/api/import<br/>/api/fontes/<br/>/api/cartas/]
     ST[Arquivos do site<br/>+ modelo LaMa e runtimes<br/>compactados]
   end
   D1 --- A
   KV[(KV<br/>Beleren e MPlantin)] --- A
+  R2[(R2 privado<br/>cartas montadas)] --- A
+  subgraph Montador em lote - depois do deploy
+    M[Chromium + Playwright<br/>o mesmo motor do site] -->|PUT com senha| A
+  end
   subgraph Navegador da pessoa
     UI[React] --> E[Motor de render<br/>canvas]
     E --> PDF[pdf-lib]
     E <--> LW[Worker LaMa<br/>ONNX Runtime Web:<br/>WebGPU ou só CPU]
   end
-  UI <-->|JSON| A
+  UI <-->|JSON e cartas prontas| A
   ST --> UI
   E <-->|PNG 745×1040| CDN[cards.scryfall.io]
   A -->|só hosts da lista| AR[Archidekt / Moxfield]
@@ -38,8 +42,8 @@ flowchart LR
 2. **Resolver.** `POST /api/resolve` recebe até 250 nomes, casa cada um com o nome em inglês, o da frente de cartas de duas faces ou o nome em português (sem acento e sem maiúsculas) e devolve a carta com o texto PT e até 80 impressões. Fichas ficam por último, salvo nas linhas da seção "Tokens", que as preferem.
    - **Fichas do deck.** Cada carta traz `tokens` (os `oracle_id` das fichas que cria). O site junta as do pedido, busca as que faltam em `POST /api/cards` e as oferece no resumo; a busca também acha fichas e as adiciona pelo `oracle_id`.
 3. **Escolher a arte.** `src/app/model.ts` escolhe a impressão inicial: a pedida na lista, senão a mais recente com moldura suportada, em alta, com borda (a arte sem borda só se a pessoa escolher), sem promo. Sem moldura suportada, a imagem oficial em PT; sem ela, a original em inglês com aviso.
-4. **Prévia.** `src/app/preview.ts` monta cada carta com a imagem leve do Scryfall (488 × 680), 4 por vez, com cache. Planeswalkers e artes sem borda usam o PNG já na prévia (ver abaixo). Cartas de duas faces ocupam dois espaços na folha: frente e verso. Quando o motor não reconhece a moldura na imagem e devolve a original (raro: o Garruk espelhado da Secret Lair tem os dados de uma moldura comum), a prévia anota a falha (`noteRender`) e as etiquetas e o resumo passam a dizer que a carta sai em inglês.
-5. **PDF.** Cada carta é montada de novo com o PNG (745 × 1040, 300 ou 480 dpi) em `src/app/printFaces.ts`: enquanto a pessoa revisa, `warmPrints` já monta as do pedido em segundo plano, uma de cada vez, depois das prévias e só com a página parada (sem nada antes do clique com a economia de dados ligada); no clique, `src/app/exportPdf.ts` usa as prontas e monta o resto, 4 por vez num computador e 2 no celular (ADR 0014). A prévia acabada e a face do PDF ficam guardadas no IndexedDB (`src/app/cardStore.ts`), com a chave pelo resumo do código que desenha, as fontes e a entrada inteira da carta: na visita seguinte a mesma carta aparece sem montar nada. `src/lib/pdf.ts` pagina em 3 × 3, com frente e verso seguidos em cada cópia de carta de duas faces. A sangria tem a cor da borda da carta; nas artes sem borda, é a própria imagem esticada até a beira da célula (`bleedLayers`).
+4. **Prévia.** `src/app/preview.ts` procura a prévia já montada (a guardada no navegador e, sem ela, a do servidor, ver abaixo) e, sem nenhuma, monta cada carta com a imagem leve do Scryfall (488 × 680), 4 por vez, com cache. Planeswalkers e artes sem borda usam o PNG já na prévia (ver abaixo). Cartas de duas faces ocupam dois espaços na folha: frente e verso. Quando o motor não reconhece a moldura na imagem e devolve a original (raro: o Garruk espelhado da Secret Lair tem os dados de uma moldura comum), a prévia anota a falha (`noteRender`) e as etiquetas e o resumo passam a dizer que a carta sai em inglês.
+5. **PDF.** Cada carta é montada de novo com o PNG (745 × 1040, 300 ou 480 dpi) em `src/app/printFaces.ts`: enquanto a pessoa revisa, `warmPrints` já monta as do pedido em segundo plano, uma de cada vez, depois das prévias e só com a página parada (sem nada antes do clique com a economia de dados ligada); no clique, `src/app/exportPdf.ts` usa as prontas e monta o resto, 4 por vez num computador e 2 no celular (ADR 0014). A prévia acabada e a face do PDF ficam guardadas no IndexedDB (`src/app/cardStore.ts`), com a chave pelo resumo do código que desenha, as fontes e a entrada inteira da carta: na visita seguinte a mesma carta aparece sem montar nada. Sem a guardada, a face do PDF também é procurada no servidor. `src/lib/pdf.ts` pagina em 3 × 3, com frente e verso seguidos em cada cópia de carta de duas faces. A sangria tem a cor da borda da carta; nas artes sem borda, é a própria imagem esticada até a beira da célula (`bleedLayers`).
 
 ## O motor da carta
 
@@ -61,6 +65,12 @@ flowchart LR
 
 As medidas da moldura estão em `geometry.ts`, na escala da imagem de 745 × 1040.
 
+## Cartas montadas no servidor
+
+O montador em lote (ADR 0022) monta de antemão as cartas que o site montaria: `scripts/montagem/montar.mjs` abre num Chromium a página do montador (`src/montagem/pagina.ts`, num build à parte, `vite.montagem.config.ts`), que chama as mesmas funções do site (`renderInput`, `renderPreview`, `renderPrint`) e calcula a mesma chave das cartas guardadas no navegador (`cardKey`: o SHA-256 do resumo do código que desenha, das fontes, do tipo da imagem e da entrada inteira da carta). O build do montador leva o mesmo resumo que o build do site do mesmo commit. Para cada carta com texto oficial, ele monta a prévia e a face do PDF na qualidade padrão de cada arte suportada: primeiro a arte que o site escolhe sozinho, das cartas mais jogadas às menos, depois as outras. Só monta o que falta no servidor (`POST /api/cartas/<código>/faltando`), grava com a senha do montador (`PUT /api/cartas/<código>/<chave>.jpg`, segredo `CARTAS_TOKEN`) e, depois, apaga as cartas de códigos velhos.
+
+O Worker (`worker/cartas.ts`) serve `GET /api/cartas/<código>/<chave>.jpg` do R2 (`proxinho-cartas`, privado), pelo cache da borda, com `cache-control: immutable`, `x-robots-tag: noindex` e `x-traduzida` (0 quando a carta saiu na original em inglês, para as etiquetas). O site (`savedCard` e `serverCard` em `src/app/cardStore.ts`) procura a carta no servidor depois da guardada no navegador e antes de montar, uma vez por chave e por visita, até 5 s; com as fontes da pessoa, nem procura.
+
 ## Banco (D1)
 
 - `cards`: uma linha por carta (`oracle_id`), com nome em inglês e português, apelidos normalizados para busca (`search_en`, `search_pt`), origem do texto (`arena` ou `impresso`), faces em JSON, a impressão PT mais recente e `tokens` (JSON com as fichas que a carta cria). As fichas e os emblemas também são linhas de `cards`, com `layout = 'token'` e, nas faces, P/R e cores. Uma face pode ter `ability_words`: as linhas do texto em PT que começam com palavra de habilidade ou de ambientação ("Aterragem — …"), que o motor escreve em itálico, como na carta impressa; a lista dessas palavras vem dos catálogos do Scryfall (`/catalog/ability-words` e `/catalog/flavor-words`), e as palavras-chave com travessão ("Max speed —") ficam de fora. Cada face de uma ficha de duas faces é uma linha de `prints` da ficha equivalente; a de trás tem id `<id>#1` (`printImage` em `src/engine/types.ts`). No texto do Arena, o pipeline põe a explicação das palavras-chave onde o Oracle a traz, com o texto oficial das cartas impressas em PT (`reminder_texts`, `add_reminders`, ADR 0018) e, onde nenhuma impressa a traz, com a dica oficial que o Arena mostra ao lado da carta, quando ela diz o mesmo que o Oracle (`arena_reminders`, `hint_reminder`, a partir de `data/cache/arena_dicas.json`, que o workflow diário baixa do KV; ADR 0021).
@@ -72,4 +82,5 @@ As medidas da moldura estão em `geometry.ts`, na escala da imagem de 745 × 104
 - CSP restrita (`public/_headers`): scripts só do próprio site (mais `wasm-unsafe-eval` para o WebAssembly do LaMa), imagens só do Scryfall.
 - Isolamento de origem (`Cross-Origin-Opener-Policy: same-origin` e `Cross-Origin-Embedder-Policy: credentialless`), que libera várias threads no WebAssembly.
 - Importador com lista fechada de hosts, para o Worker não virar proxy aberto.
+- Cartas montadas no servidor: o R2 não tem endereço público; o Worker só entrega uma carta pela chave exata (SHA-256), sem listagem, com `noindex`. Gravar, listar códigos e apagar pedem a senha do montador, comparada sem vazar pelo tempo.
 - Nenhum dado pessoal: sem cadastro, sem cookies; a lista fica só no `localStorage` do navegador.
