@@ -16,7 +16,7 @@
 - Edição manual do texto antes de imprimir.
 - Emblemas na moldura de 2003 e as cartas de apoio (Monarca, Iniciativa, masmorras). (Fichas, emblemas, fichas de duas faces e fichas de 2003: feito em 17/11/2026, ver ADRs 0009 e 0010.)
 - Exportar PNGs avulsos.
-- Tradução não oficial, o que falta: as 3.864 linhas das cartas fora das 10 mil mais jogadas (`data/pipeline/faltam.py`, pela ordem do EDHREC) e transcrever o texto das 87 cartas que têm a imagem em PT de verdade sem o texto no Scryfall (86 de Dragon's Maze, que hoje saem na imagem oficial). (Tradução não oficial das cartas sem texto em PT, com 1.560 linhas e as 10 mil mais jogadas todas em PT: feito em 21/11/2026, ver ADR 0025.)
+- Tradução não oficial, o que falta: as 3.444 linhas das cartas fora das 10 mil mais jogadas (`data/pipeline/faltam.py`, pela ordem do EDHREC) e transcrever o texto das 87 cartas que têm a imagem em PT de verdade sem o texto no Scryfall (86 de Dragon's Maze, que hoje saem na imagem oficial). (Tradução não oficial das cartas sem texto em PT, com 1.980 linhas e as 10 mil mais jogadas todas em PT: feito em 21/11/2026, ver ADR 0025.)
 - Tabela de correções de texto do Arena (ex.: Lunar Convocation) e botão "reportar tradução", que serve também para a tradução não oficial.
 - PWA para funcionar offline depois da primeira visita.
 
