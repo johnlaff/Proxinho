@@ -32,7 +32,7 @@ Basta uma linha sem tradução, ou um tipo que não se traduz, para a carta segu
 
 ## Consequências
 
-- Primeira entrega: 2.699 linhas traduzidas, das cartas mais jogadas para as menos. 3.125 cartas ganharam texto em PT, com 5.420 linhas: 2.331 (43%) iguais a uma oficial, 296 (5%) pelo molde de uma oficial e 2.793 (52%) traduzidas. Nas 10 mil mais jogadas, o PT foi de 90,0% para 100% (falta uma, de tipo sem tradução); no total, de 78,2% para 87,4% (nas legais no Commander, de 83,8% para 92,7%). Os próximos lotes seguem pela ordem do EDHREC.
+- Primeira entrega: 2.939 linhas traduzidas, das cartas mais jogadas para as menos. 3.307 cartas ganharam texto em PT, com 5.748 linhas: 2.411 (42%) iguais a uma oficial, 299 (5%) pelo molde de uma oficial e 3.038 (53%) traduzidas. Nas 10 mil mais jogadas, o PT foi de 90,0% para 100% (falta uma, de tipo sem tradução); no total, de 78,2% para 88,0% (nas legais no Commander, de 83,8% para 93,3%). Os próximos lotes seguem pela ordem do EDHREC.
 - A tradução não oficial nunca vence a oficial: quando o Arena ou uma impressão em PT trouxer a carta, ela passa sozinha para o texto oficial (o pipeline só traduz as que ficaram sem `source`).
 - O montador do servidor (ADR 0022) já monta essas cartas: a fila pede `source` e `name_pt`, e as duas existem.
 - Uma tradução errada só aparece quando alguém lê a carta. As linhas ficam num arquivo só (`data/traducao/linhas.json`, inglês → português) para corrigir sem mexer no código; o "reportar tradução" do roadmap passa a servir também para elas.
