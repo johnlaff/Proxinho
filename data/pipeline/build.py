@@ -424,12 +424,22 @@ def load_printed_pt(offline: bool) -> dict[str, dict]:
     return best
 
 
+# A imagem que o Scryfall não tem: no lugar dela, a carta em inglês com o selo "Localized Image
+# Not Available" (9.819 das impressões em PT, quase todas de 1995 a 2001).
+NO_IMAGE = {"placeholder", "missing"}
+
+
+def real_image(card: dict) -> bool:
+    return card.get("image_status") not in NO_IMAGE
+
+
 def pick_printed(cards) -> dict[str, dict]:
     """
-    Escolhe, por carta, a impressão em PT da imagem (alta resolução primeiro, depois a
-    mais nova) e guarda em `_text` a do texto: a mais nova. O texto das impressões
-    antigas segue regras velhas ("Coloque em jogo uma ficha", "reserva de mana"), e a
-    alta resolução quase sempre é de uma coleção antiga, escaneada.
+    Escolhe, por carta, a impressão em PT da imagem (com imagem de verdade, depois alta
+    resolução, depois a mais nova) e guarda em `_text` a do texto: a mais nova. O texto das
+    impressões antigas segue regras velhas ("Coloque em jogo uma ficha", "reserva de mana"),
+    e a alta resolução quase sempre é de uma coleção antiga, escaneada. A impressão sem
+    imagem ainda serve pelo nome impresso, mas não vira "imagem oficial em PT" (`real_image`).
     """
     best: dict[str, dict] = {}
     newest: dict[str, dict] = {}
@@ -437,7 +447,7 @@ def pick_printed(cards) -> dict[str, dict]:
         oid = card.get("oracle_id") or (card.get("card_faces") or [{}])[0].get("oracle_id")
         if not oid:
             continue
-        score = (card.get("highres_image", False), card.get("released_at", ""))
+        score = (real_image(card), card.get("highres_image", False), card.get("released_at", ""))
         if oid not in best or score > best[oid]["_score"]:
             card["_score"] = score
             best[oid] = card
@@ -1732,9 +1742,10 @@ def build(offline: bool) -> list[dict]:
                     {**f, "name_en": f.get("name_en") or faces_en[min(i, len(faces_en) - 1)].get("name")}
                     for i, f in enumerate(faces)
                 ],
+                # a carta em inglês com o selo "Localized Image Not Available" não é imagem em PT
                 "pt_print": (
                     {"id": p["id"], "set": p["set"], "number": p["collector_number"], "hires": p.get("highres_image", False)}
-                    if p
+                    if p and real_image(p)
                     else None
                 ),
                 "layout": card.get("layout"),

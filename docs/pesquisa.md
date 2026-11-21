@@ -24,17 +24,19 @@ Levantamento feito em 17/11/2026, antes de escrever a primeira linha de código.
 
 ## Cobertura da tradução oficial
 
-Cruzando a lista de cartas do Scryfall com o texto do Arena e com as impressões em português (17/11/2026):
+Cruzando a lista de cartas do Scryfall com o texto do Arena e com as impressões em português (21/11/2026):
 
 | Cartas legais no Commander | Cartas | % |
 |---|---:|---:|
 | Total | 31.597 | 100 |
-| Com impressão física em português | 24.519 | 77,6 |
-| Com texto PT-BR no Arena | 15.781 | 49,9 |
-| Com pelo menos uma das duas | 29.191 | 92,4 |
-| Entre as 1.000 mais jogadas (EDHREC) | 989 | 98,9 |
+| Com o texto PT-BR do Arena | 15.734 | 49,8 |
+| Só com o texto de uma impressão em português | 10.730 | 34,0 |
+| Com texto oficial (uma das duas) | 26.464 | 83,8 |
+| Sem texto, com a imagem oficial em português | 87 | 0,3 |
+| Sem nada em português | 5.046 | 16,0 |
+| Entre as 1.000 mais jogadas (EDHREC), com texto oficial | 984 | 98,4 |
 
-Algumas impressões em português aparecem no Scryfall só com a imagem, sem o texto (Advent of the Wurm em DGM): essas não contam como tradução. O texto impresso que existe às vezes vem com habilidades coladas, sem a quebra de linha ("reserva de mana.{3}{W}", "VoarAterragem", "Ímpeto{T}: Adicione"), e o pipeline devolve a quebra (ADR 0011); no Arena, duas regras perdem o espaço antes do símbolo ("Adicione{B}"), que volta. Criaturas sem habilidades também vêm sem o texto, mas com o tipo em PT: o texto delas é vazio de verdade, e elas contam como tradução (eram 139 cartas saindo em inglês). Uns 20 lembretes, nas duas fontes, vêm sem o "(" ou sem o ")", e um bônus do Arena vem como "+1/++1": o pipeline repõe só a pontuação, nunca palavras. Umas 17 regras trazem uma palavra repetida ("Toda vez que que"), e a cópia sai. No Arena, alguns planeswalkers vêm com uma habilidade sem o custo de lealdade no texto em PT; o custo é um número da regra, não texto traduzido, e o pipeline o copia do Oracle.
+Algumas impressões em português aparecem no Scryfall só com a imagem, sem o texto (Advent of the Wurm em DGM): essas não contam como tradução. E 9.819 impressões em português, quase todas de 1995 a 2001, não têm nem a imagem: no lugar dela, o Scryfall põe a carta em inglês com o selo "Localized Image Not Available", e só o nome impresso vale. Elas não viram "imagem oficial em português" (`real_image` no pipeline). A medição de 17/11 contava essas cartas como traduzidas (92,4% no total e 98,9% nas 1.000 mais jogadas). O texto impresso que existe às vezes vem com habilidades coladas, sem a quebra de linha ("reserva de mana.{3}{W}", "VoarAterragem", "Ímpeto{T}: Adicione"), e o pipeline devolve a quebra (ADR 0011); no Arena, duas regras perdem o espaço antes do símbolo ("Adicione{B}"), que volta. Criaturas sem habilidades também vêm sem o texto, mas com o tipo em PT: o texto delas é vazio de verdade, e elas contam como tradução (eram 139 cartas saindo em inglês). Uns 20 lembretes, nas duas fontes, vêm sem o "(" ou sem o ")", e um bônus do Arena vem como "+1/++1": o pipeline repõe só a pontuação, nunca palavras. Umas 17 regras trazem uma palavra repetida ("Toda vez que que"), e a cópia sai. No Arena, alguns planeswalkers vêm com uma habilidade sem o custo de lealdade no texto em PT; o custo é um número da regra, não texto traduzido, e o pipeline o copia do Oracle.
 
 O Arena tira a explicação das palavras-chave (o lembrete entre parênteses), que a carta física traz. Das faces com texto do Arena, 5.468 têm lembrete no Oracle e 5.295 vêm sem; das impressões em PT desde o Magic 2010 saem 1.121 lembretes com texto oficial, casados linha a linha com o Oracle, e 3.879 cartas ganham a explicação (ADR 0018). As mecânicas que nunca saíram impressas em PT ficam sem.
 

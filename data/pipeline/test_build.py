@@ -2,7 +2,7 @@
 
 import unittest
 
-from build import says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
+from build import says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -42,6 +42,19 @@ class PickPrinted(unittest.TestCase):
         cards = self.cards()
         cards.append({**cards[1], "set": "sld", "released_at": "2025-01-01", "printed_type_line": None})
         self.assertEqual(pick_printed(cards)["o1"]["_text"]["set"], "rvr")
+
+    def test_imagem_que_o_scryfall_nao_tem(self) -> None:
+        # Phyrexian Altar (INV em PT): o Scryfall põe a carta em inglês com o selo "Localized
+        # Image Not Available"; a impressão serve pelo nome, mas não como imagem em PT
+        altar = {"oracle_id": "o2", "printed_name": "Altar Phyrexiano", "name": "Phyrexian Altar", "set": "inv",
+                 "collector_number": "306", "released_at": "2000-10-02", "image_status": "placeholder"}
+        self.assertFalse(real_image(altar))
+        self.assertEqual(pick_printed([altar])["o2"]["set"], "inv")
+        # com uma impressão de imagem de verdade, ela ganha, mesmo mais velha e sem alta resolução
+        badger = {"oracle_id": "o3", "set": "8ed", "released_at": "2003-07-28", "image_status": "placeholder", "highres_image": False}
+        real = {**badger, "set": "phpr", "released_at": "1997-08-01", "image_status": "lowres"}
+        self.assertEqual(pick_printed([badger, real])["o3"]["set"], "phpr")
+        self.assertTrue(real_image(self.cards()[0]))
 
     def test_hifen_do_tipo_vira_travessao(self) -> None:
         self.assertEqual(printed_faces(self.cards()[0])[0]["type_pt"], "Criatura — Mago Elfo")
