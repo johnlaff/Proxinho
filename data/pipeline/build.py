@@ -1713,10 +1713,18 @@ def official_types(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str,
     """
     A linha de tipo em PT: a parte antes do travessão inteira ("Legendary Artifact Creature" →
     "Criatura Artefato Lendária") e cada subtipo, das faces oficiais com o mesmo número de
-    subtipos nos dois idiomas (o do Arena na frente).
+    subtipos nos dois idiomas (o do Arena na frente). O PT nem sempre segue a ordem do inglês
+    ("Elder Dragon" é "Dragão Ancião", "Zubera Spirit" é "Espírito Zubera"): casar palavra por
+    palavra dava "Dragão" ao "Elder". Em cada linha, o subtipo mais comum fica primeiro com o nome
+    dele e os outros dividem o que sobra, na ordem. A sequência inteira de dois ou mais subtipos
+    também entra (com a chave em inglês), para `translate_type` seguir a ordem oficial, quando ela
+    sai mais vezes que a ordem do inglês (o Arena na frente, como nas linhas): "Human Spellshaper"
+    sai das duas maneiras nas impressas e fica "Humano Magimodelador".
     """
     heads: dict[str, Counter] = {}
-    subs: dict[str, Counter] = {}
+    whole: dict[str, Counter] = {}
+    arena: dict[str, Counter] = {}
+    pairs: list[tuple[list[str], list[str], int]] = []
     for r in rows:
         card = oracle.get(r["oracle_id"])
         if not r["source"] or r["source"] == "nao-oficial" or not card:
@@ -1734,10 +1742,37 @@ def official_types(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str,
             heads.setdefault(he, Counter())[hp] += weight
             se_words, sp_words = se.split(), sp.split()
             if se_words and len(se_words) == len(sp_words):
-                for a, b in zip(se_words, sp_words):
-                    subs.setdefault(a, Counter())[b] += weight
+                pairs.append((se_words, sp_words, weight))
+                if len(se_words) > 1:
+                    whole.setdefault(se, Counter())[sp] += 1
+                    if r["source"] == "arena":
+                        arena.setdefault(se, Counter())[sp] += 1
     pick = lambda c: max(c.items(), key=lambda kv: (kv[1], kv[0]))[0]  # noqa: E731
-    return {h: pick(c) for h, c in heads.items()}, {s: pick(c) for s, c in subs.items()}
+    first: dict[str, Counter] = {}
+    for se_words, sp_words, weight in pairs:
+        for a, b in zip(se_words, sp_words):
+            first.setdefault(a, Counter())[b] += weight
+    top = {a: pick(c) for a, c in first.items()}
+    total = {a: sum(c.values()) for a, c in first.items()}
+    subs: dict[str, Counter] = {}
+    for se_words, sp_words, weight in pairs:
+        left, rest = list(sp_words), []
+        for i in sorted(range(len(se_words)), key=lambda i: -total[se_words[i]]):
+            if top[se_words[i]] in left:
+                left.remove(top[se_words[i]])
+                subs.setdefault(se_words[i], Counter())[top[se_words[i]]] += weight
+            else:
+                rest.append(i)
+        for i, b in zip(sorted(rest), left):
+            subs.setdefault(se_words[i], Counter())[b] += weight
+    words = {a: pick(c) for a, c in subs.items()}
+    order: dict[str, str] = {}
+    for se, c in whole.items():
+        votes = arena.get(se) or c
+        seq, en_order = pick(votes), " ".join(words[a] for a in se.split())
+        if seq != en_order and votes[seq] > votes.get(en_order, 0):
+            order[se] = seq
+    return {h: pick(c) for h, c in heads.items()}, {**words, **order}
 
 
 def translate_type(type_line: str | None, heads: dict[str, str], subs: dict[str, str], extra: dict[str, str]) -> str | None:
@@ -1763,6 +1798,10 @@ def translate_type(type_line: str | None, heads: dict[str, str], subs: dict[str,
         if not pt:
             return None
         words.append(pt)
+    # a ordem oficial da sequência inteira, quando ela tem as mesmas palavras ("Dragão Ancião")
+    seq = subs.get(se) if " " in se else None
+    if seq and sorted(seq.split()) == sorted(" ".join(words).split()):
+        return f"{head} — {seq}"
     return f"{head} — {' '.join(words)}"
 
 

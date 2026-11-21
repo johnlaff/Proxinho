@@ -1132,6 +1132,19 @@ class TraducaoNaoOficial(unittest.TestCase):
         self.assertIsNone(translate_type("Kindred Creature — Bird", heads, subs, extra))
         self.assertIsNone(translate_type(None, heads, subs, extra))
 
+    def test_subtipo_fora_da_ordem_do_ingles(self) -> None:
+        # "Elder Dragon" é "Dragão Ancião": casado palavra por palavra, o "Elder" virava "Dragão" e a
+        # carta saía "Dragão Dragão" (Hraesvelgr of the First Brood)
+        lines = [("Creature — Dragon", "Criatura — Dragão")] * 3 + [("Creature — Spirit", "Criatura — Espírito")] * 3
+        lines += [("Legendary Creature — Elder Dragon", "Criatura Lendária — Dragão Ancião")] * 2 + [("Creature — Zubera Spirit", "Criatura — Espírito Zubera")]
+        oracle = {str(i): {"name": str(i), "type_line": en} for i, (en, _) in enumerate(lines)}
+        rows = [{"oracle_id": str(i), "source": "impresso", "faces": [{"type_pt": pt}]} for i, (_, pt) in enumerate(lines)]
+        heads, subs = official_types(rows, oracle)
+        self.assertEqual((subs["Elder"], subs["Dragon"], subs["Zubera"], subs["Spirit"]), ("Ancião", "Dragão", "Zubera", "Espírito"))
+        self.assertEqual(translate_type("Legendary Creature — Elder Dragon", heads, subs, {}), "Criatura Lendária — Dragão Ancião")
+        self.assertEqual(translate_type("Creature — Zubera Spirit", heads, subs, {}), "Criatura — Espírito Zubera")
+        self.assertEqual(translate_type("Creature — Spirit Dragon", heads, subs, {}), "Criatura — Espírito Dragão")
+
     def test_faces_pela_linha_oficial_pelo_molde_e_pela_traduzida(self) -> None:
         best = {"Flying": "Voar"}
         molds = {mold("You gain 2 life."): mold("Você ganha 2 pontos de vida.")}
