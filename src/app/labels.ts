@@ -6,6 +6,7 @@ import type { NeuralProgress } from "./preview";
 /** Como cada resultado aparece escrito na interface (nunca só pela cor). */
 export const OUTCOME_LABEL: Record<Outcome, string> = {
   reescrita: "Reescrita em português",
+  "nao-oficial": "Reescrita com tradução não oficial",
   "imagem-pt": "Imagem oficial em português",
   "sem-traducao": "Em inglês: ainda sem tradução oficial",
   moldura: "Em inglês: esta moldura ainda não é reescrita",

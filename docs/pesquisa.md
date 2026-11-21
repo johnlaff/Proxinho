@@ -268,6 +268,16 @@ A escolha (ADR 0022): o mesmo motor, rodado de antemão num Chromium com o Playw
 
 **Onde rodar a montagem, de graça (21/11/2026).** A documentação de cobrança do GitHub Actions diz que as máquinas padrão são grátis em repositório público e que as maiores são cobradas mesmo em público; cada job tem no máximo 6 horas e uma conta grátis roda até 20 jobs ao mesmo tempo. A cota grátis do R2 (10 GB, 1 milhão de gravações e 10 milhões de leituras por mês) é da conta inteira, e o plano Workers Paid não a aumenta; acima dela, US$ 0,015 por GB por mês. Para o job gravar sem senha guardada, o padrão de mercado é o token OIDC do provedor de CI (a "publicação confiável" do PyPI e do npm, e o acesso do GitHub Actions à AWS, ao Google Cloud e à Azure): o GitHub assina um JWT de poucos minutos com o repositório, a branch e o workflow, e quem recebe confere a assinatura com as chaves públicas de `token.actions.githubusercontent.com/.well-known/jwks` e as afirmações, pelo número do repositório (o nome muda com renomeação). A escolha (ADR 0023): 12 máquinas padrão, o token OIDC conferido pelo Worker e um limite de 5 GB no depósito, com a rede neural primeiro.
 
+## Tradução das cartas sem texto oficial (21/11/2026)
+
+Depois de tirar a falsa imagem em PT do Scryfall, 7.384 cartas ficavam sem texto oficial, 987 delas entre as 10 mil mais jogadas no EDHREC. O João pediu para traduzi-las, marcadas como não oficiais.
+
+- **Padrão de mercado.** O MtG Proxy Printer, o concorrente mais próximo, troca o texto por uma caixa lisa e usa tradução de máquina (um tradutor de IA, o Google ou a Microsoft), com um selo "MT" na carta. Erra a terminologia que o Arena escreve sempre igual ("terra" por "terreno", "lançar" por "conjurar").
+- **Estado da arte.** Tradução guiada por glossário e por exemplos aprovados (memória de tradução). Na tarefa de terminologia do WMT 2025, dar a terminologia certa melhorou a qualidade e o acerto dos termos, e os melhores sistemas chegaram perto de 100% de acerto por frase. Traduzir e depois revisar impondo os termos (DuTerm, 2025) e buscar exemplos aprovados na hora de traduzir são o que a localização de jogos usa hoje.
+- **A memória que já existe.** As 26.416 faces oficiais dão 29.629 linhas distintas pareadas com o Oracle. Nas 2.328 cartas que ganharam a tradução na primeira entrega, 51% das linhas já tinham saído iguais numa carta oficial e 7% só mudavam nos números (o molde da oficial serve); só 42% precisaram de tradução.
+
+A escolha (ADR 0025): a linha oficial igual, depois o molde, depois a tradução feita uma vez, com os pares oficiais parecidos à vista e o glossário das cartas oficiais, guardada no repositório e conferida nos números e símbolos. A carta só ganha a tradução quando todas as linhas e o tipo têm tradução, e a interface a marca como não oficial.
+
 ## Lado legal e o caminho seguro
 
 | Ponto | O que diz | Risco |

@@ -89,7 +89,7 @@ export function BlankSlots({ count }: { count: number }) {
   );
 }
 
-const SOURCE_CAPTION = { arena: "Arena", impresso: "imp. PT" } as const;
+const SOURCE_CAPTION = { arena: "Arena", impresso: "imp. PT", "nao-oficial": "não oficial" } as const;
 
 /** Legenda técnica: coleção e número · origem do texto · artista. */
 function captionOf(entry: Entry, misses: ReadonlySet<string>): { set: string; source: string; artist: string } {
@@ -99,7 +99,8 @@ function captionOf(entry: Entry, misses: ReadonlySet<string>): { set: string; so
     return { set: pt ? `${pt.set.toUpperCase()} ${pt.number}` : "", source: "imagem PT", artist: "" };
   }
   const p = selectedPrint(entry);
-  const source = outcome === "reescrita" && entry.card.source ? SOURCE_CAPTION[entry.card.source] : "em inglês";
+  const rewritten = outcome === "reescrita" || outcome === "nao-oficial";
+  const source = rewritten && entry.card.source ? SOURCE_CAPTION[entry.card.source] : "em inglês";
   return { set: p ? `${p.set_code.toUpperCase()} ${p.number}` : "", source, artist: p?.artist ?? "" };
 }
 

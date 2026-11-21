@@ -5,7 +5,7 @@ Cada arquivo registra uma decisão de arquitetura: o contexto, o que foi decidid
 | Nº | Decisão | Situação |
 |---|---|---|
 | [0001](0001-reescrever-a-carta-no-navegador.md) | Reescrever o texto sobre a imagem da carta, no navegador | Aceita |
-| [0002](0002-fontes-do-texto-em-portugues.md) | Texto PT: Arena primeiro, impressão oficial depois, nunca máquina | Aceita |
+| [0002](0002-fontes-do-texto-em-portugues.md) | Texto PT: Arena primeiro, impressão oficial depois, nunca máquina | Aceita, com o item 3 mudado pelo 0025 |
 | [0003](0003-um-worker-cloudflare-com-d1.md) | Um único Cloudflare Worker com D1 | Aceita |
 | [0004](0004-pipeline-de-dados-em-python.md) | Pipeline de dados diário em Python puro no GitHub Actions | Aceita |
 | [0005](0005-pdf-no-navegador-com-pdf-lib.md) | PDF gerado no navegador com pdf-lib, em milímetros | Aceita |
@@ -28,3 +28,4 @@ Cada arquivo registra uma decisão de arquitetura: o contexto, o que foi decidid
 | [0022](0022-cartas-montadas-no-servidor.md) | Cartas montadas de antemão pelo mesmo motor num Chromium, guardadas no R2 com a chave das cartas do navegador e procuradas pelo site antes de montar | Aceita |
 | [0023](0023-montagem-no-github-sem-senha.md) | Montagem no GitHub Actions (máquinas padrão, grátis), sem senha guardada: o Worker confere o token OIDC do workflow; rede neural primeiro e limite de 5 GB no depósito | Aceita |
 | [0024](0024-moldura-de-2003.md) | Moldura de 2003 a 2014 pelo caminho da carta comum, com a caixa e a ponta das barras medidas nela e o nome e o tipo em Matrix Bold; sem efeito, sem marca-d'água e com a moldura atual na frente na arte padrão | Aceita |
+| [0025](0025-traducao-nao-oficial.md) | Tradução não oficial das cartas sem texto em PT, linha a linha: a linha oficial igual, o molde dela ou a traduzida no padrão do Arena (`data/traducao/`); marcada na interface, nome em inglês salvo o impresso, nunca no lugar da oficial | Aceita |

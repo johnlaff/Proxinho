@@ -107,6 +107,17 @@ describe("defaultChoice", () => {
     expect(defaultChoice(c, [print("x", { supported: false })])).toEqual({ kind: "pt" });
   });
 
+  it("com a tradução não oficial, a imagem oficial em PT vem antes dela (ADR 0025)", () => {
+    // as de Dragon's Maze têm a carta impressa em PT só em imagem, sem o texto no Scryfall
+    const pt = { id: "pt", set: "dgm", number: "1", hires: true };
+    const unofficial = card({ source: "nao-oficial", name_pt: "Rakdos Drake", pt_print: pt });
+    expect(defaultChoice(unofficial, [print("en")])).toEqual({ kind: "pt" });
+    // sem a imagem, a reescrita com a tradução não oficial, como as outras
+    expect(defaultChoice({ ...unofficial, pt_print: null }, [print("en")])).toEqual({ kind: "print", printId: "en" });
+    // a oficial do Arena continua preferindo a reescrita
+    expect(defaultChoice(card({ pt_print: pt }), [print("en")])).toEqual({ kind: "print", printId: "en" });
+  });
+
   it("sem tradução e sem imagem PT, fica com a impressão em inglês", () => {
     const c = card({
       source: null,
@@ -207,6 +218,17 @@ describe("outcomeOf", () => {
     expect(outcomeOf({ ...base, choice: { kind: "pt" } })).toBe("imagem-pt");
     expect(outcomeOf({ ...base, card: card({ source: null }) })).toBe("sem-traducao");
     expect(countOutcomes([base]).reescrita).toBe(2);
+  });
+
+  it("a tradução não oficial tem etiqueta própria, nunca a da oficial (ADR 0025)", () => {
+    const unofficial = { ...base, card: card({ source: "nao-oficial" }) };
+    expect(outcomeOf(unofficial)).toBe("nao-oficial");
+    expect(countOutcomes([unofficial, base])).toMatchObject({ reescrita: 2, "nao-oficial": 2 });
+    expect(OUTCOME_LABEL["nao-oficial"]).toBe("Reescrita com tradução não oficial");
+    // moldura sem suporte e imagem PT continuam como nas outras
+    expect(outcomeOf({ ...unofficial, choice: { kind: "print", printId: "b" } })).toBe("moldura");
+    expect(outcomeOf({ ...unofficial, choice: { kind: "pt" } })).toBe("imagem-pt");
+    expect(outcomeOf(unofficial, new Set([missKey("a", 0)]))).toBe("moldura");
   });
 
   it("moldura que o motor não reconheceu na imagem sai em inglês, e a interface diz isso (Garruk espelhado, SLD 9995)", () => {

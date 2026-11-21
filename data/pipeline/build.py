@@ -1641,6 +1641,221 @@ PW_MISMATCH: set[str] = set()
 SAGA_MISMATCH: set[str] = set()
 
 
+# --- Tradução não oficial (ADR 0025) -------------------------------------------------------
+# A carta que não tem texto oficial em PT (nem no Arena, nem impresso) é montada linha a linha:
+# a linha do Oracle que já saiu igual em outra carta oficial leva o texto dela (o do Arena na
+# frente, que segue o padrão de hoje); a que só muda nos números e símbolos leva o molde dela; e
+# o resto vem de `data/traducao/linhas.json`, traduzido no padrão do Arena e marcado como não
+# oficial. Basta uma linha sem tradução para a carta seguir em inglês.
+TRANSLATION_DIR = ROOT / "traducao"
+_ANY_REMINDER = re.compile(r"\s*\([^()]*\)")
+_MOLD_MARK = re.compile(r"\{[^}]+\}|[+-]?\d+(?:/[+-]?\d+)?")
+
+
+def line_key(line: str, names: list[str | None]) -> str:
+    """A linha do Oracle sem o lembrete e com o nome da carta trocado por "~" (o nome mais comprido primeiro)."""
+    s = _ANY_REMINDER.sub("", line).strip()
+    for n in sorted({n for n in names if n}, key=len, reverse=True):
+        s = s.replace(n, "~")
+    return s
+
+
+def mold(line: str) -> str:
+    """
+    O molde da linha: os números e símbolos viram "#". O plural vai junto ("1 life" é "1 ponto de
+    vida", "3 life" é "3 pontos de vida"): o molde de uma linha só serve a outra com o mesmo 1 nos
+    mesmos lugares.
+    """
+    marks = _MOLD_MARK.findall(line)
+    plural = "".join("1" if re.fullmatch(r"[+-]?1", m) else "n" for m in marks if not m.startswith("{") and "/" not in m)
+    return _MOLD_MARK.sub("#", line) + "|" + plural
+
+
+def fill_mold(line: str, pt_mold: str) -> str:
+    """Põe no molde em PT os números e símbolos da linha em inglês, na mesma ordem."""
+    marks = iter(_MOLD_MARK.findall(line))
+    return re.sub("#", lambda _: next(marks), pt_mold.split("|")[0])
+
+
+def official_lines(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str, str], dict[str, str]]:
+    """
+    As linhas oficiais, do inglês do Oracle para o PT (sem lembrete, nome como "~"), e os moldes
+    delas. Só casa as faces com o mesmo número de linhas nos dois idiomas; de cada linha fica o
+    texto mais comum do Arena, senão o das impressas.
+    """
+    votes: dict[str, Counter] = {}
+    arena: dict[str, Counter] = {}
+    for r in rows:
+        card = oracle.get(r["oracle_id"])
+        if not r["source"] or r["source"] == "nao-oficial" or not card:
+            continue
+        faces_en = card.get("card_faces") or [card]
+        if len(faces_en) != len(r["faces"]):
+            continue
+        for e, p in zip(faces_en, r["faces"]):
+            en = [x for x in (line_key(x, [e.get("name"), card["name"]]) for x in (e.get("oracle_text") or "").split("\n")) if x]
+            pt = [x for x in (line_key(x, [p.get("name_pt"), r.get("name_pt")]) for x in (p.get("text_pt") or "").split("\n")) if x]
+            if len(en) != len(pt) or not en:
+                continue
+            for a, b in zip(en, pt):
+                votes.setdefault(a, Counter())[b] += 1
+                if r["source"] == "arena":
+                    arena.setdefault(a, Counter())[b] += 1
+    best = {a: max((arena.get(a) or c).items(), key=lambda kv: (kv[1], kv[0]))[0] for a, c in votes.items()}
+    molds: dict[str, str] = {}
+    for a, b in sorted(best.items()):
+        if _MOLD_MARK.findall(a) == _MOLD_MARK.findall(b):
+            molds.setdefault(mold(a), mold(b))
+    return best, molds
+
+
+def official_types(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str, str], dict[str, str]]:
+    """
+    A linha de tipo em PT: a parte antes do travessão inteira ("Legendary Artifact Creature" →
+    "Criatura Artefato Lendária") e cada subtipo, das faces oficiais com o mesmo número de
+    subtipos nos dois idiomas (o do Arena na frente).
+    """
+    heads: dict[str, Counter] = {}
+    subs: dict[str, Counter] = {}
+    for r in rows:
+        card = oracle.get(r["oracle_id"])
+        if not r["source"] or r["source"] == "nao-oficial" or not card:
+            continue
+        faces_en = card.get("card_faces") or [card]
+        if len(faces_en) != len(r["faces"]):
+            continue
+        weight = 2 if r["source"] == "arena" else 1
+        for e, p in zip(faces_en, r["faces"]):
+            te, tp = e.get("type_line"), p.get("type_pt")
+            if not te or not tp:
+                continue
+            he, _, se = te.partition(" — ")
+            hp, _, sp = tp.partition(" — ")
+            heads.setdefault(he, Counter())[hp] += weight
+            se_words, sp_words = se.split(), sp.split()
+            if se_words and len(se_words) == len(sp_words):
+                for a, b in zip(se_words, sp_words):
+                    subs.setdefault(a, Counter())[b] += weight
+    pick = lambda c: max(c.items(), key=lambda kv: (kv[1], kv[0]))[0]  # noqa: E731
+    return {h: pick(c) for h, c in heads.items()}, {s: pick(c) for s, c in subs.items()}
+
+
+def translate_type(type_line: str | None, heads: dict[str, str], subs: dict[str, str], extra: dict[str, str]) -> str | None:
+    """
+    A linha de tipo em PT pelo que já saiu oficial, mais os subtipos de `data/traducao/tipos.json`
+    (os de várias palavras, como "Time Lord", primeiro). O tipo de planeswalker é nome próprio e
+    fica como está. None quando falta alguma parte.
+    """
+    if not type_line:
+        return None
+    he, _, se = type_line.partition(" — ")
+    head = heads.get(he)
+    if not head:
+        return None
+    if not se:
+        return head
+    rest, words = se, []
+    while rest:
+        multi = next((k for k in sorted(extra, key=len, reverse=True) if " " in k and (rest == k or rest.startswith(k + " "))), None)
+        word = multi or rest.split(" ")[0]
+        rest = rest[len(word) :].strip()
+        pt = extra.get(word) or subs.get(word) or (word if "Planeswalker" in he else None)
+        if not pt:
+            return None
+        words.append(pt)
+    return f"{head} — {' '.join(words)}"
+
+
+def load_unofficial() -> tuple[dict[str, str], dict[str, str]]:
+    """As linhas e os subtipos traduzidos (não oficiais), em `data/traducao/`."""
+    lines = json.loads((TRANSLATION_DIR / "linhas.json").read_text())
+    types = json.loads((TRANSLATION_DIR / "tipos.json").read_text())
+    return lines, types
+
+
+def unofficial_faces(
+    card: dict,
+    names_pt: list[str | None],
+    best: dict[str, str],
+    molds: dict[str, str],
+    lines: dict[str, str],
+    heads: dict[str, str],
+    subs: dict[str, str],
+    types: dict[str, str],
+    count: Counter | None = None,
+) -> list[dict] | None:
+    """
+    As faces em PT de uma carta sem texto oficial (ver o começo desta parte): cada linha do Oracle
+    pela linha oficial igual, pelo molde ou pela tradução; o tipo por `translate_type`. O nome fica
+    o impresso em PT, se houver (`names_pt`), senão o em inglês. Sem lembrete (entra depois, pelo
+    texto oficial, em `add_reminders`) e sem flavor. None quando falta uma linha ou o tipo.
+    `count` conta de onde veio cada linha ("oficial", "molde", "traduzida").
+    """
+    faces, used = [], Counter()
+    for i, e in enumerate(card.get("card_faces") or [card]):
+        name = (names_pt[i] if i < len(names_pt) else None) or e.get("name")
+        type_pt = translate_type(e.get("type_line"), heads, subs, types)
+        if type_pt is None:
+            return None
+        out = []
+        for raw in (e.get("oracle_text") or "").split("\n"):
+            key = line_key(raw, [e.get("name"), card["name"]])
+            if not key:
+                continue  # lembrete sozinho na linha (o do alto das Sagas entra em `top_reminder`)
+            if key in best:
+                pt, used["oficial"] = best[key], used["oficial"] + 1
+            elif mold(key) in molds:
+                pt, used["molde"] = fill_mold(key, molds[mold(key)]), used["molde"] + 1
+            elif key in lines:
+                pt, used["traduzida"] = lines[key], used["traduzida"] + 1
+            else:
+                return None
+            out.append(pt.replace("~", name))
+        faces.append({"name_en": e.get("name"), "name_pt": name, "type_pt": type_pt, "text_pt": "\n".join(out), "flavor_pt": None, "mana_cost": e.get("mana_cost")})
+    if count is not None:
+        count.update(used)
+    return faces
+
+
+def add_unofficial(rows: list[dict], oracle: list[dict], reminders: dict[str, str], by_group: dict, by_card: dict) -> int:
+    """
+    Dá a tradução não oficial (`unofficial_faces`) às cartas sem texto oficial em PT, com o mesmo
+    acabamento das do Arena: o custo de lealdade dos planeswalkers, o lembrete do alto das Sagas e
+    das Classes, o lembrete oficial de cada palavra-chave e as palavras de habilidade em itálico. O
+    nome da carta fica o impresso em PT, senão o em inglês. Devolve quantas ganharam a tradução.
+    """
+    by_oid = {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle}
+    best, molds = official_lines(rows, by_oid)
+    heads, subs = official_types(rows, by_oid)
+    lines, types = load_unofficial()
+    done, used = 0, Counter()
+    for r in rows:
+        if r["source"] is not None:
+            continue
+        card, oid = by_oid[r["oracle_id"]], r["oracle_id"]
+        faces = unofficial_faces(card, r["name_pt"].split(" // ") if r["name_pt"] else [], best, molds, lines, heads, subs, types, used)
+        if not faces:
+            continue
+        faces_en = card.get("card_faces") or [card]
+        if "Planeswalker" in card.get("type_line", "") and card.get("layout") == "normal":
+            text_pt = pw_costs(card.get("oracle_text"), faces[0]["text_pt"])
+            if text_pt is None:
+                PW_MISMATCH.add(oid)
+            else:
+                faces[0]["text_pt"] = text_pt
+        for e, f in zip(faces_en, faces):
+            if "Saga" in (e.get("type_line") or "") or "Class" in (e.get("type_line") or ""):
+                f["text_pt"] = top_reminder(e.get("oracle_text"), f["text_pt"], reminders)
+            f["text_pt"] = add_reminders(e.get("oracle_text"), f["text_pt"], face_reminders(oid, e.get("type_line"), by_group, by_card))
+            aw = ability_word_lines(e.get("oracle_text"), f["text_pt"])
+            if aw:
+                f["ability_words"] = aw
+        r.update(source="nao-oficial", faces=faces, name_pt=r["name_pt"] or " // ".join(f["name_pt"] for f in faces))
+        done += 1
+    log(f"tradução não oficial, de onde vêm as linhas: {used['oficial']} iguais a uma oficial, {used['molde']} pelo molde de uma oficial, {used['traduzida']} traduzidas")
+    return done
+
+
 def build(offline: bool) -> list[dict]:
     CACHE.mkdir(parents=True, exist_ok=True)
     OUT.mkdir(parents=True, exist_ok=True)
@@ -1754,7 +1969,11 @@ def build(offline: bool) -> list[dict]:
                 "commander": card.get("legalities", {}).get("commander") == "legal",
             }
         )
-    log(f"cartas: {len(rows)} | texto do Arena: {stats['arena']} | impresso: {stats['impresso']} | sem PT: {stats['sem']}")
+    unofficial = add_unofficial(rows, oracle, reminders, by_group, by_card)
+    log(
+        f"cartas: {len(rows)} | texto do Arena: {stats['arena']} | impresso: {stats['impresso']} | "
+        f"tradução não oficial: {unofficial} | sem PT: {stats['sem'] - unofficial}"
+    )
     log(f"faces do Arena com lembrete de palavra-chave das impressas: {added}")
     return rows
 
@@ -1778,10 +1997,12 @@ def emblem_text(line: str) -> str | None:
 
 
 def emblem_face(t: dict, cards: dict[str, dict], print_oracle: dict[str, str]) -> dict | None:
-    """Emblema em PT a partir do planeswalker (ou carta) que o cria, nunca por tradução.
+    """Emblema em PT a partir do planeswalker (ou carta) que o cria, nunca traduzido à parte.
 
     O texto do emblema é o trecho entre aspas de "Você recebe um emblema com "…"" no texto
-    oficial da carta de origem; o nome na faixa é o nome dela, como no emblema impresso.
+    da carta de origem; o nome na faixa é o nome dela, como no emblema impresso. A origem do
+    texto também vem dela: o emblema de um planeswalker com a tradução não oficial (ADR 0025)
+    sai marcado como não oficial.
     """
     for part in t.get("all_parts") or []:
         src = cards.get(print_oracle.get(part["id"], ""))

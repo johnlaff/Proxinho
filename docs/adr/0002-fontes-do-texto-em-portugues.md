@@ -1,6 +1,6 @@
 # 0002. Texto em português: Arena primeiro, impressão oficial depois, nunca máquina
 
-- Situação: aceita (17/11/2026)
+- Situação: aceita (17/11/2026); o item 3 mudou em 21/11/2026 (ADR 0025: sem texto oficial, a carta sai com a tradução não oficial, marcada, quando todas as linhas dela têm tradução)
 
 ## Contexto
 

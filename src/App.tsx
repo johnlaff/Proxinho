@@ -543,14 +543,16 @@ function HowItWorks() {
           <h3>De onde vem o texto</h3>
           <p>
             Primeiro do MTG Arena, que é traduzido para o português até hoje. Se a carta não está no Arena, usamos a impressão oficial em
-            português mais recente. Quando não existe tradução oficial, a carta sai em inglês e fica marcada. Nada é traduzido por máquina.
+            português mais recente. Sem nenhuma das duas, a carta sai com uma tradução não oficial e fica marcada assim: as frases que já
+            saíram em cartas oficiais vêm iguais, e as outras foram traduzidas no padrão do Arena. O nome continua em inglês se a carta
+            nunca saiu em português.
           </p>
         </div>
         <div>
           <h3>Qualquer arte</h3>
           <p>
-            Você escolhe qualquer impressão em inglês. O Proxinho apaga o nome, o tipo e o texto e escreve o português no lugar, com fontes
-            livres parecidas com as originais. Arte, custo de mana, poder e resistência, artista e copyright continuam os da carta.
+            Você escolhe qualquer impressão em inglês. O Proxinho apaga o nome, o tipo e o texto e escreve o português no lugar, com as
+            fontes das cartas reais. Arte, custo de mana, poder e resistência, artista e copyright continuam os da carta.
           </p>
         </div>
         <div>
@@ -562,8 +564,8 @@ function HowItWorks() {
         </div>
       </div>
       <p className="how-note">
-        Por enquanto, a reescrita funciona na moldura moderna (de 2015 em diante) de cartas normais. Planeswalkers, sagas, cartas de duas
-        faces e molduras especiais usam a imagem oficial em português quando existe.
+        A reescrita cobre a moldura atual e a de 2003: cartas normais e de duas faces, planeswalkers, fichas, Sagas, Aventuras, Classes e as
+        artes sem borda. Molduras especiais usam a imagem oficial em português quando existe; senão, a carta sai em inglês e fica marcada.
       </p>
     </section>
   );

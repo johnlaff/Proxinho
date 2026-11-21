@@ -31,4 +31,4 @@ Abra o pull request. A CI roda tudo e, se você tiver acesso ao repositório, pu
 
 ## Traduções erradas
 
-Se o texto de uma carta está errado, abra uma issue com o nome da carta, o texto que aparece e a fonte do texto correto. Nunca usamos tradução automática.
+Se o texto de uma carta está errado, abra uma issue com o nome da carta, o texto que aparece e a fonte do texto correto. O texto oficial (Arena ou impressão em PT) sempre vem antes. As cartas que nunca saíram em PT têm uma tradução não oficial, marcada no site (ADR 0025): as linhas traduzidas ficam em `data/traducao/linhas.json`, e a correção de uma delas pode vir direto num pull request, no padrão do Arena.
