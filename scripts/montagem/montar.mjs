@@ -327,18 +327,10 @@ async function main() {
         }
       }
     };
-    await Promise.all([
-      ...pages.map((p) =>
-        work(
-          p,
-          jobs.filter((j) => !j.neural),
-        ),
-      ),
-      work(
-        neuralPage,
-        jobs.filter((j) => j.neural),
-      ),
-    ]);
+    // uma fila só para as páginas comuns (cada face uma vez) e outra para a da rede neural
+    const common = jobs.filter((j) => !j.neural);
+    const neural = jobs.filter((j) => j.neural);
+    await Promise.all([...pages.map((p) => work(p, common)), work(neuralPage, neural)]);
   }
 
   for (const phase of PHASES) {
