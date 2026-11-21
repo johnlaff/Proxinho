@@ -396,6 +396,76 @@ describe("findSetSymbolLeft com o símbolo colado no fim do tipo, sem cor", () =
   });
 });
 
+describe("findSetSymbolLeft no verso sem símbolo das cartas de duas faces", () => {
+  // barra dourada; o fim do "Avatar Wizard" em letras brancas, colado desde antes do começo da
+  // busca (559) até 639, com os vãos das letras e das palavras, e o contorno do fim da barra de
+  // 693 a 699. Sem símbolo nenhum, o "símbolo" era a última palavra e o "Vizard" ficava
+  const kefka = () => {
+    const { img, fill } = canvas([190, 160, 90]);
+    for (let x = 400; x < 536; x += 10) fill(x, 602, x + 6, 627, [250, 250, 250]);
+    for (const [a, b] of [
+      [540, 565],
+      [569, 573],
+      [579, 591],
+      [593, 606],
+      [612, 617],
+      [621, 622],
+      [624, 639],
+    ])
+      fill(a, 602, b + 1, 627, [250, 250, 250]);
+    fill(693, 594, 700, 632, [60, 50, 30]);
+    return img;
+  };
+  it('o verso desde 2022 vai até o contorno: o "Wizard" inteiro sai (Kefka, Ruler of Ruin, FIN 231)', () => {
+    const info: { colored: number; lim: number; tight?: boolean; none?: boolean } = { colored: -1, lim: 0 };
+    expect(findSetSymbolLeft(kefka(), 594, 632, undefined, 100, info, false, true)).toBe(693);
+    expect(info.none).toBe(true);
+  });
+  it("na frente, ou num verso de antes de 2022, nada muda", () => {
+    const info: { colored: number; lim: number; tight?: boolean; none?: boolean } = { colored: -1, lim: 0 };
+    expect(findSetSymbolLeft(kefka(), 594, 632, undefined, 100, info)).toBe(559);
+    expect(info.none).toBeUndefined();
+  });
+  it("um pedaço da moldura perto do fim da barra, num tipo curto, não vira texto", () => {
+    // "Land" longe, à esquerda; um enfeite da barra de 660 a 668 e o contorno
+    const { img, fill } = canvas([190, 160, 90]);
+    fill(80, 602, 170, 627, [250, 250, 250]);
+    fill(660, 600, 669, 628, [250, 250, 250]);
+    fill(693, 594, 700, 632, [60, 50, 30]);
+    const info: { colored: number; lim: number; tight?: boolean; none?: boolean } = { colored: -1, lim: 0 };
+    expect(findSetSymbolLeft(img, 594, 632, undefined, 100, info, false, true)).toBe(660);
+    expect(info.none).toBeUndefined();
+  });
+});
+
+describe("findSetSymbolLeft com as letras tingidas do foil sem borda", () => {
+  it('a cor das letras longe do fim não é o símbolo: o "saur" sai e a estrela fica (Ghalta, Primal Hunger, FDN 397)', () => {
+    // barra escura translúcida; letras brancas até o fim da busca, tingidas de rosa pela arte do
+    // foil a partir de 573 (as letras e os vãos entre elas), um pingo em 635, a arte clara e
+    // fraca enchendo os vãos até a estrela dourada (649 a 684). A cor do tingido, a 111 px do
+    // fim, passava por começo do símbolo e o corte ia para 570
+    const { img, fill } = canvas([60, 70, 75]);
+    for (let x = 400; x < 556; x += 10) fill(x, 604, x + 6, 627, [240, 240, 240]);
+    fill(573, 604, 626, 627, [100, 45, 90]);
+    for (const [a, b] of [
+      [559, 560],
+      [563, 572],
+    ])
+      fill(a, 604, b + 1, 627, [240, 240, 240]);
+    for (const [a, b] of [
+      [573, 574],
+      [576, 590],
+      [593, 609],
+      [613, 625],
+    ])
+      fill(a, 604, b + 1, 627, [255, 180, 240]);
+    fill(626, 604, 649, 610, [98, 98, 98]);
+    fill(635, 606, 636, 625, [240, 240, 240]);
+    fill(649, 600, 685, 628, [200, 170, 90]);
+    expect(findSetSymbolLeft(img, 594, 632, 691, 100, undefined, true)).toBe(649);
+  });
+});
+
 describe("symbolRowsFrom", () => {
   it("cobre, linha a linha, do contorno do símbolo ao fim, e deixa a barra antes dele", () => {
     // adaga na diagonal: o contorno começa em 632 na primeira linha e anda 1 px por linha
@@ -733,6 +803,26 @@ describe("textMask com arte no alto da barra", () => {
     const at = (x: number, y: number) => mask[(y - rect.y0) * (rect.x1 - rect.x0) + (x - rect.x0)];
     expect(at(63, 608)).toBe(1);
     expect(at(63, 626)).toBe(1);
+  });
+});
+
+describe("textMask com as letras tomando a linha da barra", () => {
+  it("as letras claras e grossas que passam da metade da linha entram; a sombra do pé fica (Heliode PMOM 17s)", () => {
+    // barra dourada de 590 a 636; letras brancas grossas de 605 a 629, com vãos de 3 px,
+    // de 100 a 640: no meio delas, mais da metade de cada linha é letra e a mediana da
+    // linha caía nelas (as letras saíam da máscara e viravam a fonte do remendo, um risco
+    // claro). A sombra escura do pé da barra continua de fora.
+    const { img, fill } = canvas([150, 140, 80]);
+    fill(50, 590, 700, 636, (x, y, c) => [150, 140, 80][c] + ((x * 13 + y * 7) % 9) - 4);
+    fill(50, 631, 700, 636, [60, 55, 30]);
+    for (let x = 100; x < 640; x += 9) fill(x, 605, x + 6, 629, [245, 245, 240]);
+    const rect = { x0: 93, y0: 590, x1: 688, y1: 636 };
+    const mask = textMask(img, rect, 28, [], 0, "light", true);
+    const at = (x: number, y: number) => mask[(y - rect.y0) * (rect.x1 - rect.x0) + (x - rect.x0)];
+    for (const y of [606, 612, 617, 622, 628]) for (const x of [102, 300, 502, 631]) expect(at(x, y)).toBe(1);
+    let shadow = 0;
+    for (let y = 634; y < 636; y++) for (let x = 660; x < 688; x++) shadow += at(x, y);
+    expect(shadow).toBe(0);
   });
 });
 

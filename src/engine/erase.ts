@@ -206,15 +206,36 @@ export function textMask(
   const keep = new Float32Array(n);
   for (let k = 0; k < n; k++) keep[k] = lum[k] < bg[k] - threshold * 0.6 ? 0 : 1;
   bg = boxMean(lum, keep, w, h, radius);
+  let rowFix: Map<number, number> | undefined;
   if (rowBackground) {
     // Barras (nome, tipo): o fundo de cada linha é a mediana dela. A janela quadrada
     // misturava o brilho do alto com a sombra escura do pé da barra, e a sombra
     // virava "texto": apagada até o custo de mana, sobrava um degrau.
+    // Na linha em que as letras passam da metade (o meio das letras claras e grossas das
+    // promos de pré-estreia, Heliode PMOM 17s), a mediana cai nelas: as letras saíam da
+    // máscara, viravam a fonte do remendo e ficava um risco claro atravessando o tipo. Ali
+    // o fundo é a mediana do que está perto do tom da barra (a mediana do miolo da faixa),
+    // quando isso é uma boa parte da linha e foge da mediana dela mais que o limiar; a
+    // sombra do pé da barra é escura por igual, quase nada dela fica perto do miolo, e
+    // continua com a mediana da linha. (Só na comparação de cada pixel: o limiar da barra
+    // inteira, logo abaixo, continua medido com a mediana de cada linha. Medido com o fundo
+    // corrigido, ele descia, a histerese das barras granuladas não rodava e o pé de uma
+    // letra ficava, Missão Secundária: Pegar um Peixe, FIN 31.)
+    const inset = Math.floor(h * 0.2);
+    const band = Float32Array.from(lum.subarray(inset * w, (h - inset) * w)).sort();
+    const core = band[band.length >> 1];
     const row = new Float32Array(w);
     for (let y = 0; y < h; y++) {
       row.set(lum.subarray(y * w, y * w + w));
       row.sort();
-      bg.fill(row[w >> 1], y * w, y * w + w);
+      const value = row[w >> 1];
+      bg.fill(value, y * w, y * w + w);
+      if (y < inset || y >= h - inset || value >= core - threshold) continue;
+      let from = 0;
+      while (from < w && row[from] < core - 45) from++;
+      const near = w - from;
+      const alt = row[from + (near >> 1)];
+      if (near >= w * 0.25 && alt - value > threshold) (rowFix ??= new Map()).set(y, alt);
     }
   }
 
@@ -236,6 +257,7 @@ export function textMask(
     tLum = Math.max(threshold, Math.min(tLum, 3 * 1.4826 * median(Float32Array.from(up))));
     low = Math.max(threshold, tLum * 0.5);
   }
+  if (rowFix) for (const [y, v] of rowFix) bg.fill(v, y * w, y * w + w);
   // Nas caixas de letra escura o limiar é medido por ladrilho (`tileNoise`): numa caixa
   // translúcida metade lisa, metade sobre arte (fichas de 2008 a 2014), a metade lisa
   // mandava no limiar e a textura da outra virava "texto", apagada como um borrão liso.
@@ -1653,9 +1675,11 @@ export function findSetSymbolLeft(
   y1: number,
   xMax?: number,
   maxWidth = 100,
-  info?: { colored: number; lim: number; tight?: boolean },
+  info?: { colored: number; lim: number; tight?: boolean; none?: boolean },
   /** barra translúcida da moldura sem borda (ver o degradê do arco-íris, abaixo) */
   borderless = false,
+  /** verso de duas faces impresso sem o símbolo da coleção (ver o fim da função) */
+  symbolless = false,
 ): number {
   const x0 = Math.round(img.width * 0.75);
   // nas fichas a barra de tipo termina antes (ponta arredondada): quem chama passa o fim dela
@@ -1746,6 +1770,8 @@ export function findSetSymbolLeft(
   // símbolo (Doombot).
   const edgeWidth = (pass: number) => (xMax !== undefined || pass >= 2 ? 12 : 24);
   let edgeFrom = x1;
+  // (o contorno de fora, a primeira camada: no verso sem símbolo a barra vai até ele)
+  let outerEdge = x1;
   // (o fim do bloco antes da última camada pulada depois da primeira, para desfazer)
   let beforeLayer: number | null = null;
   for (let pass = 0; pass < 3; pass++) {
@@ -1753,6 +1779,7 @@ export function findSetSymbolLeft(
     // o fio é contínuo: qualquer lacuna o separa do símbolo
     while (i > 0 && cols[i] - cols[i - 1] <= Math.max(1, Math.round(3 * kk))) i--;
     if (i > 0 && cols[last] - cols[i] < Math.round(edgeWidth(pass) * kk) && cols[last] >= edgeFrom - Math.round(12 * kk)) {
+      if (pass === 0) outerEdge = cols[i];
       if (pass > 0) beforeLayer = last;
       edgeFrom = cols[i];
       last = i - 1;
@@ -1932,6 +1959,7 @@ export function findSetSymbolLeft(
       for (let i = last; i > 0 && cols[i] >= end - (maxWidth + 15) * k; i--)
         if (cols[i] - cols[i - 1] > 1 && cols[i] - cols[i - 1] >= best - Math.max(1, Math.round(k))) cut = cols[i];
     const colored = colorFrom(Math.max(x0, from), end);
+    const tinted = borderless && end - colored > maxWidth * k && best >= 10 * k;
     if (colored >= 0) {
       // volta até a lacuna logo antes da cor (o contorno preto do símbolo fica junto)
       let c = -1;
@@ -1950,7 +1978,12 @@ export function findSetSymbolLeft(
       // as letras): começa no contorno dele. Com lacuna clara, ela vale (a estrela da
       // Secret Lair tem raios: a cor começa bem depois do contorno)
       // (e quando o corte pelas lacunas caiu dentro do símbolo, à direita da cor)
-      else if (colored < cut || best <= Math.max(2, Math.round(3 * k))) cut = Math.max(start, colored - Math.round(3 * k));
+      // (na sem borda em foil as letras brancas vêm tingidas pela arte: a cor começava no
+      // "Dinosaur", mais longe do fim que a largura de um símbolo, e com uma lacuna clara antes
+      // da estrela o corte ia para a cor e o "saur" ficava ao lado do português, Ghalta, Primal
+      // Hunger FDN 397. Sem a lacuna clara, a cor vale: o selo do Core Set 2021, de ~100 px,
+      // tem o corte pelas lacunas por dentro, entre o "M" e o "21")
+      else if ((colored < cut && !tinted) || best <= Math.max(2, Math.round(3 * k))) cut = Math.max(start, colored - Math.round(3 * k));
     }
     // Na sem borda a arte atrás da barra translúcida enche o vão entre o fim do tipo e o
     // símbolo: o corte pela maior lacuna caía no espaço antes da última palavra, a 76 px da
@@ -1999,6 +2032,22 @@ export function findSetSymbolLeft(
         info.lim = lim;
       }
     }
+  }
+  // Verso de carta de duas faces impresso desde Kamigawa: Neon Dynasty (fev. 2022): não tem o
+  // símbolo da coleção (conferido em 269 versos, de NEO a MSH; os de antes, como MID e VOW,
+  // têm). O "símbolo" achado era a última palavra do tipo, que ficava em inglês ao lado do
+  // português ("Vizard" no Kefka, FIN 231; "Hero" no Homem-Aranha, SPM 10). Um bloco que começa
+  // a 50 px ou mais do contorno do fim da barra é texto (os pedaços do contorno que sobram
+  // começam a até 37 px dele): aí não há símbolo, e a barra vai até o contorno de fora (`none`;
+  // com o tipo comprido até o fim, as últimas letras passavam por camadas do contorno, e o
+  // "ar" de "Avatar" ficava, FIN 451).
+  if (symbolless && start < outerEdge - Math.round(50 * k)) {
+    if (info) {
+      info.none = true;
+      info.tight = false;
+      info.colored = -1;
+    }
+    return outerEdge;
   }
   return start;
 }

@@ -3,8 +3,9 @@
  *
  * O mesmo Worker entrega o site (arquivos estáticos do Vite) e responde em
  * /api/*. Os dados das cartas ficam no D1, atualizados todo dia pelo pipeline.
- * Nenhuma imagem de carta passa por aqui: o navegador baixa direto do CDN do
- * Scryfall e monta a carta localmente.
+ * A imagem do Scryfall não passa por aqui: o navegador baixa direto do CDN dele
+ * e monta a carta localmente. Daqui saem só as cartas já montadas de antemão
+ * pelo mesmo motor (R2 privado, /api/cartas/*, ADR 0022).
  */
 import { normalizeName } from "../src/lib/normalize";
 import { cardsApi, cardBuilds } from "./cartas";
