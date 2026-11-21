@@ -297,6 +297,21 @@ class FrameSupported(unittest.TestCase):
         # Consider (pw22 1)
         self.assertTrue(frame_supported({**self.base, "promo_types": ["wizardsplaynetwork", "gameday"]}))
 
+    def test_moldura_desenhada_a_mao_na_secret_lair(self) -> None:
+        # Sol Ring (sld 2132) e Virtue of Persistence (sld 2129, aventura) do Ricardo Cavolo: o
+        # Scryfall marca 2015 sem efeito, mas nome, texto e moldura são desenho dele
+        cavolo = {"set": "sld", "artist": "Ricardo Cavolo"}
+        self.assertFalse(frame_supported({**self.base, **cavolo}))
+        faces = [{"name": "Virtue of Persistence"}, {"name": "Locthwain Scorn"}]
+        adventure = {"frame": "2015", "layout": "adventure", "border_color": "black", "card_faces": faces}
+        self.assertTrue(adventure_supported(adventure))
+        self.assertFalse(adventure_supported({**adventure, **cavolo}))
+        # fora da Secret Lair, o mesmo artista na moldura comum continua, e a sem borda dele na
+        # moldura padrão também (Xanathar, sld 1785)
+        self.assertTrue(frame_supported({**self.base, "set": "mh3", "artist": "Ricardo Cavolo"}))
+        borderless = {**self.base, **cavolo, "border_color": "borderless", "frame_effects": ["legendary", "inverted"]}
+        self.assertTrue(borderless_supported(borderless))
+
 class BorderlessSupported(unittest.TestCase):
     """Arte sem borda entra só na moldura padrão, com a caixa escura ("inverted")."""
 

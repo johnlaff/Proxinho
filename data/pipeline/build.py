@@ -1154,6 +1154,18 @@ def art_behind_box(card: dict) -> bool:
     return "gameday" in promos and "wizardsplaynetwork" not in promos
 
 
+# Secret Lair com a moldura inteira desenhada à mão pelo artista: nome e texto escritos à mão,
+# arte dentro da barra do nome e da caixa de texto. O Scryfall marca moldura 2015 sem efeito
+# nenhum, e o motor apagava e escrevia nos lugares da M15 (Sol Ring, SLD 2132, saía borrado).
+DRAWN_FRAME_ARTISTS = {"Ricardo Cavolo"}
+
+
+def drawn_frame(card: dict) -> bool:
+    """A moldura da impressão foi desenhada pelo artista (ver DRAWN_FRAME_ARTISTS). Só as de borda
+    preta: a sem borda dele (Xanathar, SLD 1785) tem a moldura padrão, com a caixa translúcida."""
+    return card.get("set") == "sld" and card.get("artist") in DRAWN_FRAME_ARTISTS and card.get("border_color") == "black"
+
+
 def frame_supported(card: dict) -> bool:
     """O motor do Proxinho reescreve a moldura moderna (2015+) de layout normal.
 
@@ -1169,6 +1181,7 @@ def frame_supported(card: dict) -> bool:
         and not card.get("full_art")
         and not art_behind_box(card)
         and not card.get("textless")
+        and not drawn_frame(card)
         and not effects & UNSUPPORTED_EFFECTS
         and not any(t in type_line for t in UNSUPPORTED_TYPES_NORMAL)
         # naves e planetas com "Posicionar" têm caixas de nível próprias (2+, 12+)
@@ -1204,6 +1217,7 @@ def borderless_supported(card: dict) -> bool:
         and effects <= BORDERLESS_EFFECTS_OK
         and not card.get("full_art")
         and not card.get("textless")
+        and not drawn_frame(card)
         and not any(t in type_line for t in UNSUPPORTED_TYPES)
         and "Station" not in (card.get("keywords") or [])
         and "draculaseries" not in (card.get("promo_types") or [])
@@ -1232,6 +1246,7 @@ def saga_supported(card: dict) -> bool:
         and effects <= SAGA_EFFECTS_OK
         and not card.get("full_art")
         and not card.get("textless")
+        and not drawn_frame(card)
         and "Saga" in card.get("type_line", "")
         and "Creature" not in card.get("type_line", "")
     )
@@ -1254,6 +1269,7 @@ def adventure_supported(card: dict) -> bool:
         and effects <= SAGA_EFFECTS_OK
         and not card.get("full_art")
         and not card.get("textless")
+        and not drawn_frame(card)
         and not art_behind_box(card)
         and len(card.get("card_faces") or []) == 2
     )
@@ -1279,6 +1295,7 @@ def station_supported(card: dict) -> bool:
         and effects <= STATION_EFFECTS_OK
         and not card.get("full_art")
         and not card.get("textless")
+        and not drawn_frame(card)
     )
 
 
@@ -1299,6 +1316,7 @@ def class_supported(card: dict) -> bool:
         and effects <= SAGA_EFFECTS_OK
         and not card.get("full_art")
         and not card.get("textless")
+        and not drawn_frame(card)
         and "Class" in card.get("type_line", "")
     )
 
@@ -1358,6 +1376,7 @@ def token_supported(card: dict) -> bool:
         and card.get("layout") in {"token", "emblem", "double_faced_token"}
         and card.get("border_color") == "black"
         and not card.get("textless")
+        and not drawn_frame(card)
         and set(card.get("frame_effects") or []) <= TOKEN_EFFECTS_OK
     )
 
