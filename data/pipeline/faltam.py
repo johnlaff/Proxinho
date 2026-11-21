@@ -8,7 +8,8 @@ Uso, depois de `pnpm data:build` (lê `data/out/cards.jsonl` e o Oracle em `data
     python3 data/pipeline/faltam.py --saida x.json  # todas, com até 3 cartas de exemplo cada
 
 A tradução de cada linha entra em `data/traducao/linhas.json` (a linha em inglês, como aqui,
-para o português no padrão do Arena); um subtipo novo, em `data/traducao/tipos.json`.
+para o português no padrão do Arena); um subtipo novo, em `data/traducao/tipos.json`. No fim,
+lista as linhas traduzidas que citam um subtipo sem o nome oficial dele ("Wall" é "Barreira").
 """
 
 import argparse
@@ -59,6 +60,10 @@ def main() -> None:
             oracle[o.get("oracle_id") or o["card_faces"][0]["oracle_id"]] = o
     todo = missing(cards, oracle)
     print(f"{len(todo)} linhas faltam; das cartas entre as 10 mil mais jogadas: {sum(t['rank'] <= 10_000 for t in todo)}")
+    lines, types = B.load_unofficial()
+    _, subs = B.official_types(cards, oracle)
+    for en, sub, sub_pt in B.subtype_mismatches(lines, subs, types):
+        print(f"subtipo fora do nome oficial ({sub} é {sub_pt}): {en}")
     if args.saida:
         args.saida.write_text(json.dumps(todo, ensure_ascii=False, indent=1))
         print(f"escrito {args.saida}")

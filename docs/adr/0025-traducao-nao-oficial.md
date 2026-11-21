@@ -18,7 +18,7 @@ Pesquisa (no documento de evolução do projeto): o padrão de mercado é a trad
 
 1. a linha que já saiu igual numa carta oficial leva o texto dela (`official_lines`, o do Arena na frente, que segue o padrão de hoje; só faces com o mesmo número de linhas nos dois idiomas);
 2. a que só muda nos números e símbolos leva o molde da oficial (`mold`, `fill_mold`). O molde leva o plural: "1 ponto de vida" não serve a "3 pontos de vida";
-3. o resto vem de `data/traducao/linhas.json`, traduzido nesta sessão no padrão do Arena, com o glossário das cartas oficiais ("card", "conjurar", "ficha", "marcador", "triturar", "entrar" sem "o campo de batalha") e conferido contra os pares oficiais parecidos. Um teste do pipeline confere cada linha traduzida: os mesmos símbolos, números, "X" e "~" nos dois idiomas.
+3. o resto vem de `data/traducao/linhas.json`, traduzido nesta sessão no padrão do Arena, com o glossário das cartas oficiais ("card", "conjurar", "ficha", "marcador", "triturar", "entrar" sem "o campo de batalha") e conferido contra os pares oficiais parecidos. Um teste do pipeline confere cada linha traduzida: os mesmos símbolos, números, "X" e "~" nos dois idiomas. E o subtipo citado no texto tem de ser o da linha de tipo oficial (`subtype_mismatches`, que o `faltam.py` lista e o pipeline avisa): "Wall" é "Barreira", "Beast" é "Besta", "Tribble" é "Pingo".
 
 Basta uma linha sem tradução, ou um tipo que não se traduz, para a carta seguir em inglês, como antes. A linha de tipo vem das oficiais (`official_types`: a parte antes do travessão inteira, os subtipos um a um, o Arena com peso dobrado) e de `data/traducao/tipos.json` para os subtipos que nunca saíram em PT ("Time Lord", "Dalek"); o subtipo de planeswalker é nome próprio e fica.
 
@@ -33,7 +33,7 @@ Basta uma linha sem tradução, ou um tipo que não se traduz, para a carta segu
 ## Consequências
 
 - Primeira entrega: 2.939 linhas traduzidas, das cartas mais jogadas para as menos. 3.307 cartas ganharam texto em PT, com 5.748 linhas: 2.411 (42%) iguais a uma oficial, 299 (5%) pelo molde de uma oficial e 3.038 (53%) traduzidas. Nas 10 mil mais jogadas, o PT foi de 90,0% para 100% (falta uma, de tipo sem tradução); no total, de 78,2% para 88,0% (nas legais no Commander, de 83,8% para 93,3%). Os próximos lotes seguem pela ordem do EDHREC.
-- Depois dos lotes seguintes (21/11): 3.719 linhas traduzidas; 3.955 cartas com texto em PT, com 6.841 linhas: 2.669 (39%) iguais a uma oficial, 317 (5%) pelo molde e 3.855 (56%) traduzidas. No total, 89,9% das cartas em PT; nas legais no Commander, 95,3%. Faltam 1.705 linhas, todas de cartas fora das 10 mil mais jogadas.
+- Depois dos lotes seguintes (21/11): 3.959 linhas traduzidas; 4.170 cartas com texto em PT, com 7.196 linhas: 2.758 (38%) iguais a uma oficial, 322 (4%) pelo molde e 4.116 (57%) traduzidas. No total, 90,5% das cartas em PT; nas legais no Commander, 96,0%. Faltam 1.465 linhas, todas de cartas fora das 10 mil mais jogadas.
 - A tradução não oficial nunca vence a oficial: quando o Arena ou uma impressão em PT trouxer a carta, ela passa sozinha para o texto oficial (o pipeline só traduz as que ficaram sem `source`).
 - O montador do servidor (ADR 0022) já monta essas cartas: a fila pede `source` e `name_pt`, e as duas existem.
 - Uma tradução errada só aparece quando alguém lê a carta. As linhas ficam num arquivo só (`data/traducao/linhas.json`, inglês → português) para corrigir sem mexer no código; o "reportar tradução" do roadmap passa a servir também para elas.

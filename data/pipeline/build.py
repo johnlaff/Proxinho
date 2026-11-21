@@ -1766,6 +1766,39 @@ def translate_type(type_line: str | None, heads: dict[str, str], subs: dict[str,
     return f"{head} — {' '.join(words)}"
 
 
+def subtype_mismatches(lines: dict[str, str], subs: dict[str, str], extra: dict[str, str]) -> list[tuple[str, str, str]]:
+    """
+    As linhas traduzidas que citam um subtipo sem o nome oficial dele em PT: "Wall" é "Barreira"
+    nas cartas oficiais, e "Muralha" no texto deixava o texto diferente da linha de tipo. Devolve
+    (linha em inglês, subtipo, nome oficial). Fica de fora o subtipo dentro de um nome próprio:
+    colado por hífen ("Ghost-Spider"), depois de outra palavra com maiúscula no meio da frase
+    ("Nathan Drake") ou de "The" ("The Beast"), antes de outra palavra com maiúscula ("Bear
+    Witness") ou de "of" ("Eye of Chaos"). O plural em PT muda o fim da palavra ("Cão", "Cães";
+    "Boneco Cabeçudo", "Bonecos Cabeçudos"): basta o começo da primeira, sem acento.
+    """
+    def plain(s: str) -> str:
+        return norm(s).replace(" ", "")
+
+    names = {**subs, **extra}
+    found = []
+    for en, pt in lines.items():
+        pt_plain = plain(pt)
+        for sub, sub_pt in names.items():
+            if " " in sub or len(sub) < 3 or not sub[0].isupper() or plain(sub) == plain(sub_pt):
+                continue
+            for m in re.finditer(rf"(?<![\w-])(?:non-)?{re.escape(sub)}(?:e?s)?(?![\w-])", en):
+                before = en[: m.start()].rstrip()
+                prev = before.split(" ")[-1] if before else ""
+                inside = bool(prev) and prev[0].isupper() and prev[-1].isalpha() and not re.search(r"(^|[.:—•])\s*\S+$", before)
+                if inside or prev == "The" or re.match(r" (of |[A-Z]\w)", en[m.end() :]):
+                    continue
+                stem = plain(re.split(r"[ -]", sub_pt)[0])
+                if stem[: -2 if len(stem) > 4 else -1] not in pt_plain:
+                    found.append((en, sub, sub_pt))
+                break
+    return found
+
+
 def load_unofficial() -> tuple[dict[str, str], dict[str, str]]:
     """As linhas e os subtipos traduzidos (não oficiais), em `data/traducao/`."""
     lines = json.loads((TRANSLATION_DIR / "linhas.json").read_text())
@@ -1853,6 +1886,9 @@ def add_unofficial(rows: list[dict], oracle: list[dict], reminders: dict[str, st
         r.update(source="nao-oficial", faces=faces, name_pt=r["name_pt"] or " // ".join(f["name_pt"] for f in faces))
         done += 1
     log(f"tradução não oficial, de onde vêm as linhas: {used['oficial']} iguais a uma oficial, {used['molde']} pelo molde de uma oficial, {used['traduzida']} traduzidas")
+    wrong = subtype_mismatches(lines, subs, types)
+    if wrong:
+        log(f"AVISO: {len(wrong)} linhas de data/traducao/linhas.json sem o nome oficial do subtipo (ex.: {wrong[0][1]} é {wrong[0][2]}): rode data/pipeline/faltam.py")
     return done
 
 

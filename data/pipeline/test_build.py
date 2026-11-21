@@ -5,7 +5,7 @@ import unittest
 from unittest import mock
 
 import build
-from build import emblem_face, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
+from build import emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -1158,6 +1158,30 @@ class TraducaoNaoOficial(unittest.TestCase):
             self.assertEqual(line_key(en, []), en, "a chave é a linha do Oracle sem lembrete")
             self.assertTrue(pt.strip() and "\n" not in pt, en)
         self.assertTrue(all(pt and pt[0].isupper() for pt in types.values()))
+
+    def test_subtipo_no_texto_com_o_nome_oficial(self) -> None:
+        # "Wall" é "Barreira" nas cartas oficiais: "Muralha" no texto não batia com a linha de tipo
+        subs = {"Wall": "Barreira", "Dog": "Cão", "Spider": "Aranha", "Drake": "Dragonete", "Beast": "Besta", "Bear": "Urso", "Eye": "Olho", "Klingon": "Klingon"}
+        extra = {"Bobblehead": "Boneco Cabeçudo"}
+        lines = {
+            "Destroy target Wall.": "Destrua a Muralha alvo.",
+            "Walls you control get +1/+1.": "As Barreiras que você controla recebem +1/+1.",
+            "Destroy each non-Wall creature.": "Destrua cada criatura não Barreira.",
+            "Other Dogs you control have vigilance.": "Os outros Cães que você controla têm vigilância.",
+            "X is the number of Bobbleheads you control.": "X é o número de Bonecos Cabeçudos que você controla.",
+            "Klingons you control have menace.": "Os Klingons que você controla têm ameaçar.",
+            # nomes próprios: hífen, depois de outra maiúscula ou de "The", antes de outra maiúscula ou de "of"
+            "Whenever Ghost-Spider attacks, draw a card.": "Toda vez que Ghost-Spider atacar, compre um card.",
+            "Whenever Nathan Drake attacks, draw a card.": "Toda vez que Nathan Drake atacar, compre um card.",
+            "The Beast enters tapped.": "The Beast entra virado.",
+            "Bear Witness — Whenever a creature dies, investigate.": "Prestar Testemunho — Toda vez que uma criatura morrer, investigue.",
+            "Partner with Okaun, Eye of Chaos": "Parceiro de Okaun, Eye of Chaos",
+            "Create a 2/2 green Beast creature token.": "Crie uma ficha de criatura Fera verde 2/2.",
+        }
+        self.assertEqual(
+            subtype_mismatches(lines, subs, extra),
+            [("Destroy target Wall.", "Wall", "Barreira"), ("Create a 2/2 green Beast creature token.", "Beast", "Besta")],
+        )
 
     def test_so_a_carta_sem_texto_oficial_ganha_a_traducao(self) -> None:
         oracle = [
