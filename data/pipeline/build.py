@@ -1652,11 +1652,17 @@ _ANY_REMINDER = re.compile(r"\s*\([^()]*\)")
 _MOLD_MARK = re.compile(r"\{[^}]+\}|[+-]?\d+(?:/[+-]?\d+)?")
 
 
-def line_key(line: str, names: list[str | None]) -> str:
-    """A linha do Oracle sem o lembrete e com o nome da carta trocado por "~" (o nome mais comprido primeiro)."""
+def line_key(line: str, names: list[str | None], pt: bool = False) -> str:
+    """
+    A linha do Oracle sem o lembrete e com o nome da carta trocado por "~" (o nome mais comprido
+    primeiro). No inglês, depois de "a" ou "an" o nome é o de um tipo, não a carta: "becomes a
+    Coward" no Coward // Killer fica, para sair "Covarde" e não o nome da carta. No PT (`pt`) o "a"
+    é preposição ("causado a Leão Fulgente") e o nome sempre sai.
+    """
     s = _ANY_REMINDER.sub("", line).strip()
+    article = "" if pt else r"(?<!\ba )(?<!\ban )"
     for n in sorted({n for n in names if n}, key=len, reverse=True):
-        s = s.replace(n, "~")
+        s = re.sub(article + re.escape(n), "~", s)
     return s
 
 
@@ -1694,7 +1700,7 @@ def official_lines(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str,
             continue
         for e, p in zip(faces_en, r["faces"]):
             en = [x for x in (line_key(x, [e.get("name"), card["name"]]) for x in (e.get("oracle_text") or "").split("\n")) if x]
-            pt = [x for x in (line_key(x, [p.get("name_pt"), r.get("name_pt")]) for x in (p.get("text_pt") or "").split("\n")) if x]
+            pt = [x for x in (line_key(x, [p.get("name_pt"), r.get("name_pt")], pt=True) for x in (p.get("text_pt") or "").split("\n")) if x]
             if len(en) != len(pt) or not en:
                 continue
             for a, b in zip(en, pt):
@@ -1713,10 +1719,18 @@ def official_types(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str,
     """
     A linha de tipo em PT: a parte antes do travessão inteira ("Legendary Artifact Creature" →
     "Criatura Artefato Lendária") e cada subtipo, das faces oficiais com o mesmo número de
-    subtipos nos dois idiomas (o do Arena na frente).
+    subtipos nos dois idiomas (o do Arena na frente). O PT nem sempre segue a ordem do inglês
+    ("Elder Dragon" é "Dragão Ancião", "Zubera Spirit" é "Espírito Zubera"): casar palavra por
+    palavra dava "Dragão" ao "Elder". Em cada linha, o subtipo mais comum fica primeiro com o nome
+    dele e os outros dividem o que sobra, na ordem. A sequência inteira de dois ou mais subtipos
+    também entra (com a chave em inglês), para `translate_type` seguir a ordem oficial, quando ela
+    sai mais vezes que a ordem do inglês (o Arena na frente, como nas linhas): "Human Spellshaper"
+    sai das duas maneiras nas impressas e fica "Humano Magimodelador".
     """
     heads: dict[str, Counter] = {}
-    subs: dict[str, Counter] = {}
+    whole: dict[str, Counter] = {}
+    arena: dict[str, Counter] = {}
+    pairs: list[tuple[list[str], list[str], int]] = []
     for r in rows:
         card = oracle.get(r["oracle_id"])
         if not r["source"] or r["source"] == "nao-oficial" or not card:
@@ -1734,10 +1748,37 @@ def official_types(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str,
             heads.setdefault(he, Counter())[hp] += weight
             se_words, sp_words = se.split(), sp.split()
             if se_words and len(se_words) == len(sp_words):
-                for a, b in zip(se_words, sp_words):
-                    subs.setdefault(a, Counter())[b] += weight
+                pairs.append((se_words, sp_words, weight))
+                if len(se_words) > 1:
+                    whole.setdefault(se, Counter())[sp] += 1
+                    if r["source"] == "arena":
+                        arena.setdefault(se, Counter())[sp] += 1
     pick = lambda c: max(c.items(), key=lambda kv: (kv[1], kv[0]))[0]  # noqa: E731
-    return {h: pick(c) for h, c in heads.items()}, {s: pick(c) for s, c in subs.items()}
+    first: dict[str, Counter] = {}
+    for se_words, sp_words, weight in pairs:
+        for a, b in zip(se_words, sp_words):
+            first.setdefault(a, Counter())[b] += weight
+    top = {a: pick(c) for a, c in first.items()}
+    total = {a: sum(c.values()) for a, c in first.items()}
+    subs: dict[str, Counter] = {}
+    for se_words, sp_words, weight in pairs:
+        left, rest = list(sp_words), []
+        for i in sorted(range(len(se_words)), key=lambda i: -total[se_words[i]]):
+            if top[se_words[i]] in left:
+                left.remove(top[se_words[i]])
+                subs.setdefault(se_words[i], Counter())[top[se_words[i]]] += weight
+            else:
+                rest.append(i)
+        for i, b in zip(sorted(rest), left):
+            subs.setdefault(se_words[i], Counter())[b] += weight
+    words = {a: pick(c) for a, c in subs.items()}
+    order: dict[str, str] = {}
+    for se, c in whole.items():
+        votes = arena.get(se) or c
+        seq, en_order = pick(votes), " ".join(words[a] for a in se.split())
+        if seq != en_order and votes[seq] > votes.get(en_order, 0):
+            order[se] = seq
+    return {h: pick(c) for h, c in heads.items()}, {**words, **order}
 
 
 def translate_type(type_line: str | None, heads: dict[str, str], subs: dict[str, str], extra: dict[str, str]) -> str | None:
@@ -1763,7 +1804,44 @@ def translate_type(type_line: str | None, heads: dict[str, str], subs: dict[str,
         if not pt:
             return None
         words.append(pt)
+    # a ordem oficial da sequência inteira, quando ela tem as mesmas palavras ("Dragão Ancião")
+    seq = subs.get(se) if " " in se else None
+    if seq and sorted(seq.split()) == sorted(" ".join(words).split()):
+        return f"{head} — {seq}"
     return f"{head} — {' '.join(words)}"
+
+
+def subtype_mismatches(lines: dict[str, str], subs: dict[str, str], extra: dict[str, str]) -> list[tuple[str, str, str]]:
+    """
+    As linhas traduzidas que citam um subtipo sem o nome oficial dele em PT: "Wall" é "Barreira"
+    nas cartas oficiais, e "Muralha" no texto deixava o texto diferente da linha de tipo. Devolve
+    (linha em inglês, subtipo, nome oficial). Fica de fora o subtipo dentro de um nome próprio:
+    colado por hífen ("Ghost-Spider"), depois de outra palavra com maiúscula no meio da frase
+    ("Nathan Drake") ou de "The" ("The Beast"), antes de outra palavra com maiúscula ("Bear
+    Witness") ou de "of" ("Eye of Chaos"). O plural em PT muda o fim da palavra ("Cão", "Cães";
+    "Boneco Cabeçudo", "Bonecos Cabeçudos"): basta o começo da primeira, sem acento.
+    """
+    def plain(s: str) -> str:
+        return norm(s).replace(" ", "")
+
+    names = {**subs, **extra}
+    found = []
+    for en, pt in lines.items():
+        pt_plain = plain(pt)
+        for sub, sub_pt in names.items():
+            if " " in sub or len(sub) < 3 or not sub[0].isupper() or plain(sub) == plain(sub_pt):
+                continue
+            for m in re.finditer(rf"(?<![\w-])(?:non-)?{re.escape(sub)}(?:e?s)?(?![\w-])", en):
+                before = en[: m.start()].rstrip()
+                prev = before.split(" ")[-1] if before else ""
+                inside = bool(prev) and prev[0].isupper() and prev[-1].isalpha() and not re.search(r"(^|[.:—•])\s*\S+$", before)
+                if inside or prev == "The" or re.match(r" (of |[A-Z]\w)", en[m.end() :]):
+                    continue
+                stem = plain(re.split(r"[ -]", sub_pt)[0])
+                if stem[: -2 if len(stem) > 4 else -1] not in pt_plain:
+                    found.append((en, sub, sub_pt))
+                break
+    return found
 
 
 def load_unofficial() -> tuple[dict[str, str], dict[str, str]]:
@@ -1853,6 +1931,9 @@ def add_unofficial(rows: list[dict], oracle: list[dict], reminders: dict[str, st
         r.update(source="nao-oficial", faces=faces, name_pt=r["name_pt"] or " // ".join(f["name_pt"] for f in faces))
         done += 1
     log(f"tradução não oficial, de onde vêm as linhas: {used['oficial']} iguais a uma oficial, {used['molde']} pelo molde de uma oficial, {used['traduzida']} traduzidas")
+    wrong = subtype_mismatches(lines, subs, types)
+    if wrong:
+        log(f"AVISO: {len(wrong)} linhas de data/traducao/linhas.json sem o nome oficial do subtipo (ex.: {wrong[0][1]} é {wrong[0][2]}): rode data/pipeline/faltam.py")
     return done
 
 

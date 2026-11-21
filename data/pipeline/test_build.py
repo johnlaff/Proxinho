@@ -5,7 +5,8 @@ import unittest
 from unittest import mock
 
 import build
-from build import emblem_face, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
+import faltam
+from build import emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -1079,6 +1080,14 @@ class TraducaoNaoOficial(unittest.TestCase):
             line_key("Alexios, Deimos of Kosmos attacks each combat. Alexios can't be sacrificed.", ["Alexios", "Alexios, Deimos of Kosmos"]),
             "~ attacks each combat. ~ can't be sacrificed.",
         )
+        # depois de "a" ou "an", o nome é o de um tipo (Coward // Killer): fica, para sair "Covarde"
+        self.assertEqual(
+            line_key("Target creature can't block this turn and becomes a Coward in addition to its other types until end of turn.", ["Coward"]),
+            "Target creature can't block this turn and becomes a Coward in addition to its other types until end of turn.",
+        )
+        self.assertEqual(line_key("Coward deals 1 damage to any target.", ["Coward"]), "~ deals 1 damage to any target.")
+        # no PT o "a" é preposição e o nome sai
+        self.assertEqual(line_key("Previne todo o dano que seria causado a Leão Fulgente.", ["Leão Fulgente"], pt=True), "Previne todo o dano que seria causado a ~.")
 
     def test_molde_leva_o_plural(self) -> None:
         # "1 ponto de vida" e "3 pontos de vida": o molde de uma não serve à outra
@@ -1131,6 +1140,19 @@ class TraducaoNaoOficial(unittest.TestCase):
         self.assertIsNone(translate_type("Kindred Creature — Bird", heads, subs, extra))
         self.assertIsNone(translate_type(None, heads, subs, extra))
 
+    def test_subtipo_fora_da_ordem_do_ingles(self) -> None:
+        # "Elder Dragon" é "Dragão Ancião": casado palavra por palavra, o "Elder" virava "Dragão" e a
+        # carta saía "Dragão Dragão" (Hraesvelgr of the First Brood)
+        lines = [("Creature — Dragon", "Criatura — Dragão")] * 3 + [("Creature — Spirit", "Criatura — Espírito")] * 3
+        lines += [("Legendary Creature — Elder Dragon", "Criatura Lendária — Dragão Ancião")] * 2 + [("Creature — Zubera Spirit", "Criatura — Espírito Zubera")]
+        oracle = {str(i): {"name": str(i), "type_line": en} for i, (en, _) in enumerate(lines)}
+        rows = [{"oracle_id": str(i), "source": "impresso", "faces": [{"type_pt": pt}]} for i, (_, pt) in enumerate(lines)]
+        heads, subs = official_types(rows, oracle)
+        self.assertEqual((subs["Elder"], subs["Dragon"], subs["Zubera"], subs["Spirit"]), ("Ancião", "Dragão", "Zubera", "Espírito"))
+        self.assertEqual(translate_type("Legendary Creature — Elder Dragon", heads, subs, {}), "Criatura Lendária — Dragão Ancião")
+        self.assertEqual(translate_type("Creature — Zubera Spirit", heads, subs, {}), "Criatura — Espírito Zubera")
+        self.assertEqual(translate_type("Creature — Spirit Dragon", heads, subs, {}), "Criatura — Espírito Dragão")
+
     def test_faces_pela_linha_oficial_pelo_molde_e_pela_traduzida(self) -> None:
         best = {"Flying": "Voar"}
         molds = {mold("You gain 2 life."): mold("Você ganha 2 pontos de vida.")}
@@ -1158,6 +1180,57 @@ class TraducaoNaoOficial(unittest.TestCase):
             self.assertEqual(line_key(en, []), en, "a chave é a linha do Oracle sem lembrete")
             self.assertTrue(pt.strip() and "\n" not in pt, en)
         self.assertTrue(all(pt and pt[0].isupper() for pt in types.values()))
+
+    def test_subtipo_no_texto_com_o_nome_oficial(self) -> None:
+        # "Wall" é "Barreira" nas cartas oficiais: "Muralha" no texto não batia com a linha de tipo
+        subs = {"Wall": "Barreira", "Dog": "Cão", "Spider": "Aranha", "Drake": "Dragonete", "Beast": "Besta", "Bear": "Urso", "Eye": "Olho", "Klingon": "Klingon"}
+        extra = {"Bobblehead": "Boneco Cabeçudo"}
+        lines = {
+            "Destroy target Wall.": "Destrua a Muralha alvo.",
+            "Walls you control get +1/+1.": "As Barreiras que você controla recebem +1/+1.",
+            "Destroy each non-Wall creature.": "Destrua cada criatura não Barreira.",
+            "Other Dogs you control have vigilance.": "Os outros Cães que você controla têm vigilância.",
+            "X is the number of Bobbleheads you control.": "X é o número de Bonecos Cabeçudos que você controla.",
+            "Klingons you control have menace.": "Os Klingons que você controla têm ameaçar.",
+            # nomes próprios: hífen, depois de outra maiúscula ou de "The", antes de outra maiúscula ou de "of"
+            "Whenever Ghost-Spider attacks, draw a card.": "Toda vez que Ghost-Spider atacar, compre um card.",
+            "Whenever Nathan Drake attacks, draw a card.": "Toda vez que Nathan Drake atacar, compre um card.",
+            "The Beast enters tapped.": "The Beast entra virado.",
+            "Bear Witness — Whenever a creature dies, investigate.": "Prestar Testemunho — Toda vez que uma criatura morrer, investigue.",
+            "Partner with Okaun, Eye of Chaos": "Parceiro de Okaun, Eye of Chaos",
+            "Create a 2/2 green Beast creature token.": "Crie uma ficha de criatura Fera verde 2/2.",
+        }
+        self.assertEqual(
+            subtype_mismatches(lines, subs, extra),
+            [("Destroy target Wall.", "Wall", "Barreira"), ("Create a 2/2 green Beast creature token.", "Beast", "Besta")],
+        )
+
+    def test_faltam_lista_o_subtipo_sem_nome_que_segura_a_carta(self) -> None:
+        # todas as linhas traduzidas e o subtipo sem nome em PT: a carta segue em inglês. O subtipo
+        # que só saiu em PT numa ficha também segura, porque o pipeline não lê os tipos das fichas
+        legal = {"commander": "legal"}
+        oracle = {
+            "a": {"oracle_id": "a", "name": "Arena Bird", "oracle_text": "Flying", "type_line": "Creature — Bird", "legalities": legal},
+            "t": {"oracle_id": "t", "name": "Germ", "oracle_text": "", "type_line": "Token Creature — Germ", "layout": "token", "legalities": legal},
+            "n": {"oracle_id": "n", "name": "Night Bird", "oracle_text": "Flying", "type_line": "Creature — Bird Nightstalker", "legalities": legal},
+            "g": {"oracle_id": "g", "name": "Space Germ", "oracle_text": "Flying", "type_line": "Creature — Germ", "legalities": legal},
+            "o": {"oracle_id": "o", "name": "Odd Bird", "oracle_text": "Flying\nSomething new.", "type_line": "Creature — Bird Nightstalker", "legalities": legal},
+            # folha de adesivos: não vai no deck e fica fora da lista
+            "s": {"oracle_id": "s", "name": "Odd Stickers", "oracle_text": "{TK}{TK} — Flying", "type_line": "Stickers", "legalities": legal},
+        }
+        cards = [
+            {"oracle_id": "a", "source": "arena", "name_pt": "Ave do Arena", "faces": [{"name_pt": "Ave do Arena", "type_pt": "Criatura — Ave", "text_pt": "Voar"}]},
+            {"oracle_id": "t", "source": "arena", "layout": "token", "name_pt": "Germe", "faces": [{"name_pt": "Germe", "type_pt": "Ficha de Criatura — Germe", "text_pt": ""}]},
+            {"oracle_id": "n", "source": None, "faces": []},
+            {"oracle_id": "g", "source": None, "faces": []},
+            {"oracle_id": "o", "source": None, "faces": []},
+            {"oracle_id": "s", "source": None, "faces": []},
+        ]
+        with mock.patch.object(build, "load_unofficial", return_value=({}, {})):
+            self.assertEqual(faltam.held_by_type(cards, oracle), [("Germ", ["Space Germ"]), ("Nightstalker", ["Night Bird"])])
+            self.assertEqual([t["en"] for t in faltam.missing(cards, oracle)], ["Something new."])
+        with mock.patch.object(build, "load_unofficial", return_value=({}, {"Nightstalker": "Espreitador Noturno", "Germ": "Germe"})):
+            self.assertEqual(faltam.held_by_type(cards, oracle), [])
 
     def test_so_a_carta_sem_texto_oficial_ganha_a_traducao(self) -> None:
         oracle = [
