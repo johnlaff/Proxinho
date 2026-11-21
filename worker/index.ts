@@ -29,7 +29,7 @@ export interface Env {
 declare const __PROXINHO_BUILD__: string | undefined;
 
 /** Arquivos de fonte que o site serve, pelo nome público. */
-const FONT_FILES = new Set(["beleren-bold.ttf", "mplantin.ttf", "mplantin-bold.ttf", "mplantin-italic.ttf"]);
+const FONT_FILES = new Set(["beleren-bold.ttf", "mplantin.ttf", "mplantin-bold.ttf", "mplantin-italic.ttf", "matrix-bold.ttf"]);
 
 async function serveFont(env: Env, name: string): Promise<Response> {
   if (!FONT_FILES.has(name) || !env.FONTES) return problem(404, "Fonte não encontrada.");

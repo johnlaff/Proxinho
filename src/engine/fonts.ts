@@ -2,9 +2,9 @@
  * Fontes usadas para escrever nas cartas, em três níveis:
  *
  * 1. As fontes que a pessoa escolheu no próprio navegador (`applyCustomFonts`).
- * 2. As fontes das cartas reais, Beleren Bold e MPlantin (normal e itálica), servidas pelo
- *    próprio site em /api/fontes/. Os arquivos ficam no Cloudflare KV, fora do
- *    repositório público (ver ADR 0001).
+ * 2. As fontes das cartas reais, Beleren Bold e MPlantin (normal e itálica), e a Matrix Bold
+ *    do nome e do tipo da moldura de 2003 (ADR 0024), servidas pelo próprio site em
+ *    /api/fontes/. Os arquivos ficam no Cloudflare KV, fora do repositório público (ver ADR 0001).
  * 3. Fontes livres (SIL OFL 1.1) que vêm com o site, usadas se as oficiais
  *    não carregarem: Eczar SemiBold no nome e Splentinex no texto.
  *
@@ -14,6 +14,7 @@ export const TITLE_FONT = "ProxinhoTitulo";
 export const BODY_FONT = "ProxinhoTexto";
 const OFFICIAL_TITLE = "ProxinhoTituloOficial";
 const OFFICIAL_BODY = "ProxinhoTextoOficial";
+const OFFICIAL_2003 = "ProxinhoTitulo2003";
 const CUSTOM_TITLE = "ProxinhoTituloPessoal";
 const CUSTOM_BODY = "ProxinhoTextoPessoal";
 
@@ -30,6 +31,25 @@ const FREE_BODY_SCALE = 1.06;
  */
 const OFFICIAL_TITLE_SCALE = 1.08;
 
+/**
+ * A Matrix Bold (nome e tipo da moldura de 2003) tem as maiúsculas mais baixas que a Beleren
+ * (0,59 do corpo contra 0,70). Medidas nas cartas: maiúsculas com 27 px no nome e 23 no tipo,
+ * na escala de 745 px, nos corpos 35 e 30 da moldura.
+ */
+const MATRIX_SCALE = 1.3;
+
+/** Fonte do nome e do tipo, com o peso, a escala, o recuo da primeira letra e onde fica a linha. */
+export interface TitleFont {
+  family: string;
+  weight: string;
+  scale: number;
+  dx: number;
+  /** a linha de referência do canvas em que a fonte é escrita */
+  baseline: "middle" | "alphabetic";
+  /** quanto essa linha desce do centro da linha do layout, em frações do corpo */
+  rise: number;
+}
+
 export interface CustomFontFiles {
   title?: ArrayBuffer | null;
   body?: ArrayBuffer | null;
@@ -37,7 +57,7 @@ export interface CustomFontFiles {
 }
 
 let loading: Promise<void> | null = null;
-let official = { title: false, body: false };
+let official = { title: false, body: false, title2003: false };
 let custom: { title: boolean; body: boolean; italic: boolean } = { title: false, body: false, italic: false };
 let customFaces: FontFace[] = [];
 let version = 0;
@@ -54,6 +74,7 @@ export function loadCardFonts(base = "/fonts/cartas/", officialBase = "/api/font
     // "?v=2": os arquivos da MPlantin foram consertados (scripts/consertar-fontes.py) e o cache
     // do navegador guarda a versão anterior por 7 dias; mude o número quando trocar os arquivos
     const title = new FontFace(OFFICIAL_TITLE, `url(${officialBase}beleren-bold.ttf?v=2)`, { weight: "700" });
+    const title2003 = new FontFace(OFFICIAL_2003, `url(${officialBase}matrix-bold.ttf?v=1)`, { weight: "700" });
     const body = [
       new FontFace(OFFICIAL_BODY, `url(${officialBase}mplantin.ttf?v=2)`, { style: "normal", weight: "400" }),
       new FontFace(OFFICIAL_BODY, `url(${officialBase}mplantin-italic.ttf?v=2)`, { style: "italic", weight: "400" }),
@@ -67,19 +88,29 @@ export function loadCardFonts(base = "/fonts/cartas/", officialBase = "/api/font
         (loaded) => loaded.every(add),
         () => false,
       ),
-    ]).then(([, t, b]) => {
-      official = { title: t, body: b };
+      title2003.load().then(add, () => false),
+    ]).then(([, t, b, t2003]) => {
+      official = { title: t, body: b, title2003: t2003 };
     });
   }
   return loading;
 }
 
-/** Família CSS para o nome e o tipo (com o peso já incluído). */
-export function titleFont(): { family: string; weight: string; scale: number; dx: number } {
+/**
+ * Família CSS para o nome e o tipo (com o peso já incluído). Na moldura de 2003 (`frame2003`),
+ * a Matrix Bold, como na carta impressa; sem o arquivo dela, a Beleren.
+ */
+export function titleFont(frame2003 = false): TitleFont {
   // dx: a Beleren tem mais respiro à esquerda; o recuo alinha a primeira letra à da carta real
-  if (custom.title) return { family: CUSTOM_TITLE, weight: "400", scale: OFFICIAL_TITLE_SCALE, dx: -3 };
-  if (official.title) return { family: OFFICIAL_TITLE, weight: "700", scale: OFFICIAL_TITLE_SCALE, dx: -3 };
-  return { family: TITLE_FONT, weight: "600", scale: 1, dx: 0 };
+  const mid = { baseline: "middle", rise: 0.06 } as const;
+  if (custom.title) return { family: CUSTOM_TITLE, weight: "400", scale: OFFICIAL_TITLE_SCALE, dx: -3, ...mid };
+  // na Matrix Bold o "middle" do Chrome cai na linha de base (as métricas verticais do arquivo
+  // de 1990 não servem): a linha de base fica meia altura-x (0,415 do corpo) abaixo do centro
+  // das minúsculas, que é o centro da linha na moldura de 2003 (ver m15Layout)
+  if (frame2003 && official.title2003)
+    return { family: OFFICIAL_2003, weight: "700", scale: MATRIX_SCALE, dx: 0, baseline: "alphabetic", rise: 0.21 };
+  if (official.title) return { family: OFFICIAL_TITLE, weight: "700", scale: OFFICIAL_TITLE_SCALE, dx: -3, ...mid };
+  return { family: TITLE_FONT, weight: "600", scale: 1, dx: 0, ...mid };
 }
 
 /** Família CSS e fator de escala para o texto das regras. */
@@ -102,7 +133,8 @@ export function activeFonts(): "pessoais" | "oficiais" | "livres" {
  * navegador. Só vale depois de `loadCardFonts`.
  */
 export function fontsId(): string {
-  const title = custom.title ? `p${customIds.title}` : official.title ? "o" : "l";
+  // "o": a Beleren e a Matrix Bold; só a Beleren ("b") muda as cartas de 2003
+  const title = custom.title ? `p${customIds.title}` : official.title ? (official.title2003 ? "o" : "b") : "l";
   const body = custom.body ? `p${customIds.body}${custom.italic ? `+${customIds.italic}` : ""}` : official.body ? "o" : "l";
   return `${title}|${body}`;
 }

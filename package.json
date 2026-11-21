@@ -21,7 +21,7 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "db:migrate:local": "wrangler d1 migrations apply proxinho --local",
     "db:seed:local": "pnpm db:migrate:local && wrangler d1 execute proxinho --local --file tests/fixtures/seed.sql",
-    "fonts:local": "for f in beleren-bold mplantin mplantin-bold mplantin-italic; do [ -f .fontes-oficiais/$f.ttf ] && wrangler kv key put --local --binding FONTES $f.ttf --path .fontes-oficiais/$f.ttf; done; true",
+    "fonts:local": "for f in beleren-bold mplantin mplantin-bold mplantin-italic matrix-bold; do [ -f .fontes-oficiais/$f.ttf ] && wrangler kv key put --local --binding FONTES $f.ttf --path .fontes-oficiais/$f.ttf; done; true",
     "model:fetch": "node scripts/modelo.mjs",
     "data:build": "python3 data/pipeline/build.py",
     "montagem:build": "node scripts/modelo.mjs && vite build --config vite.montagem.config.ts",

@@ -39,3 +39,7 @@ Consequência: qualquer pessoa que abra o site consegue baixar os arquivos das f
 ## Atualização (17/11/2026, noite): arquivos da MPlantin consertados
 
 Os três arquivos da MPlantin tinham defeitos de estrutura (tabelas sobrepostas e subtabela `cmap` da Microsoft com idioma 1) e eram recusados pelo OpenType Sanitizer do Chrome e do Firefox; nesses navegadores o texto caía, sem aviso, para a Splentinex. `scripts/consertar-fontes.py` regrava os arquivos com o fontTools, zera o idioma e confere com o próprio OTS; os desenhos das letras não mudam. As URLs ganharam `?v=2` para passar pelo cache de 7 dias.
+
+## Atualização (21/11/2026): Matrix Bold na moldura de 2003
+
+O mantenedor forneceu também a Matrix Bold, a fonte do nome e do tipo da moldura de 2003. Ela vai como as outras (consertada pelo `scripts/consertar-fontes.py`, no KV como `matrix-bold.ttf`) e só desenha a moldura de 2003; sem ela, a de 2003 sai na Beleren. Medidas e posição no ADR 0024.

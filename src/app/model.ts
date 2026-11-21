@@ -91,7 +91,8 @@ export function outcomeOf(entry: Entry, misses?: ReadonlySet<string>): Outcome {
 /**
  * Escolhe a arte inicial:
  * 1. a impressão pedida na lista (coleção + número), se existir;
- * 2. a impressão suportada mais recente, sem promo, em alta resolução;
+ * 2. a impressão suportada mais recente, sem promo, em alta resolução, na moldura atual antes da
+ *    de 2003;
  * 3. sem moldura suportada: a imagem oficial em PT, se houver;
  * 4. senão, a impressão mais recente (sai a original em inglês).
  */
@@ -110,6 +111,9 @@ export function defaultChoice(card: CardRecord, prints: PrintRecord[], wanted?: 
           Number(b.highres) - Number(a.highres) ||
           // a arte sem borda só é escolhida pela pessoa: o apagamento da moldura comum é mais seguro
           Number(a.border === "borderless") - Number(b.border === "borderless") ||
+          // a moldura de 2003 (ADR 0024) também: com uma arte na moldura atual, a padrão continua
+          // a mesma (e a carta já montada no servidor, ADR 0022, continua valendo)
+          Number(a.frame === "2003") - Number(b.frame === "2003") ||
           Number(a.promo) - Number(b.promo) ||
           Number(isReprintList(a)) - Number(isReprintList(b)) ||
           (b.released ?? "").localeCompare(a.released ?? ""),

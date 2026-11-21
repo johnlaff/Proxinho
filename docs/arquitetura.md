@@ -20,7 +20,7 @@ flowchart LR
     ST[Arquivos do site<br/>+ modelo LaMa e runtimes<br/>compactados]
   end
   D1 --- A
-  KV[(KV<br/>Beleren e MPlantin)] --- A
+  KV[(KV<br/>Beleren, Matrix Bold e MPlantin)] --- A
   R2[(R2 privado<br/>cartas montadas)] --- A
   subgraph Montador em lote - depois do deploy
     M[Chromium + Playwright<br/>o mesmo motor do site] -->|PUT com senha| A
@@ -62,9 +62,9 @@ flowchart LR
    - Nas **cartas de duas faces**, o motor desvia dos ícones de transformar, do indicador de cor e do lembrete de P/R do verso (ADR 0007). As **Lições** (STX, TLA, SOS) têm o mesmo círculo à esquerda do nome, e o nome começa depois dele (`hasLeftIcon`; nas de SOS, sem o efeito marcado no Scryfall, o ícone é conferido na imagem por `hasLessonIcon`, ADR 0011).
    - **Medidas na imagem.** A moldura real muda alguns pixels entre coleções e digitalizações, então o motor confere na própria imagem os fios da caixa de texto (`insideBoxSides`), a barra de tipo mais baixa da arte estendida (`typeBarTop`), o topo e o lado da caixa de P/R (`ptBoxTop`, `ptBoxLeft`), o selo de promoção (`findStamp`, com a proteção seguindo a curva da cúpula dele, `stampShape`), onde começa o símbolo da coleção (`findSetSymbolLeft`; linha a linha, quando ele avança na diagonal sobre o tipo, `symbolRowsLeft`; nos versos de duas faces desde 2022, sem símbolo, o tipo vai até o fim da barra), a cor das letras, fatia por fatia (`textPolarity`), e a ponta arredondada das barras, linha a linha (`barCapGuard`), que fica intacta e não semeia a máscara. Nas caixas de letra escura o limiar das letras é medido por ladrilho (`tileNoise`), para a textura de uma caixa translúcida metade sobre a arte não virar "texto". Nas barras o fundo de cada linha é a mediana dela, menos onde as letras passam da metade da linha (aí, a mediana do que está perto do tom da barra), e um trecho denso da máscara abaixo das letras é arte que invade a moldura e fica (`dropArtBelowText`). A medida fixa de `geometry.ts` é o ponto de partida e o limite. A caixa de P/R e o selo ficam e não servem de fonte para o preenchimento, para a cor deles não vazar no papel (ADR 0011).
 3. **Amplia** para a resolução de impressão.
-4. **Escreve** o português (`text.ts`) com a Beleren (nome e tipo) e a MPlantin (texto), servidas em `/api/fontes/` a partir do KV (`fonts.ts`; sem elas, Eczar e Splentinex): quebra em linhas com símbolos de mana em SVG (travessão e número no fim da habilidade nunca começam linha; a continuação de uma opção "•" recua até o texto dela), procura o maior corpo que cabe (de 34 a 15), põe lembretes em itálico e o texto de ambientação só se couber com folga. O texto sai alinhado à esquerda, ou centrado quando o inglês da própria imagem é centrado (alguns feitiços curtos, muitas fichas e emblemas), medido antes de apagar (`measureCentered`).
+4. **Escreve** o português (`text.ts`) com a Beleren (nome e tipo; na moldura de 2003, a Matrix Bold, como na carta impressa) e a MPlantin (texto), servidas em `/api/fontes/` a partir do KV (`fonts.ts`; sem elas, Eczar e Splentinex): quebra em linhas com símbolos de mana em SVG (travessão e número no fim da habilidade nunca começam linha; a continuação de uma opção "•" recua até o texto dela), procura o maior corpo que cabe (de 34 a 15), põe lembretes em itálico e o texto de ambientação só se couber com folga. O texto sai alinhado à esquerda, ou centrado quando o inglês da própria imagem é centrado (alguns feitiços curtos, muitas fichas e emblemas), medido antes de apagar (`measureCentered`).
 
-As medidas da moldura estão em `geometry.ts`, na escala da imagem de 745 × 1040.
+As medidas da moldura estão em `geometry.ts`, na escala da imagem de 745 × 1040. A moldura de 2003 a 2014 passa pelo mesmo caminho da carta comum, com a caixa um pouco mais estreita e curta, o apagamento das barras começando depois da ponta, que é mais funda, o nome e o tipo na Matrix Bold, no centro das minúsculas medido nas cartas, e começando onde começavam na época da impressão (`frame2003` e `frame2003Start`, ADR 0024); com efeito de moldura, marca-d'água ou planeswalker, ela sai na original.
 
 ## Cartas montadas no servidor
 

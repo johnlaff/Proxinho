@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildParagraphs, fitText, layoutAt, lineText, TABLE_ROW, tokenize, toChunks, type Measurer } from "../../src/engine/text";
-import { costLeft, countSymbols, hasLeftIcon, m15Layout } from "../../src/engine/geometry";
+import { costLeft, countSymbols, frame2003Start, hasLeftIcon, m15Layout } from "../../src/engine/geometry";
 import { normalizeName } from "../../src/lib/normalize";
 
 // Medidor falso: cada caractere mede metade do corpo.
@@ -184,12 +184,48 @@ describe("geometria", () => {
       expect(fim, custo).toBeGreaterThan(borda - 12);
     }
   });
+  it("moldura de 2003: o nome e o tipo começam onde começavam na época da impressão", () => {
+    // 6 cartas de cada coleção, de Eighth Edition a Magic 2010
+    expect(frame2003Start("2003-07-28")).toEqual({ title: 65, type: 67 }); // 8ED
+    expect(frame2003Start("2004-06-04")).toEqual({ title: 63, type: 64 }); // 5DN
+    expect(frame2003Start("2004-10-01")).toEqual({ title: 63, type: 72 }); // CHK
+    expect(frame2003Start("2006-10-06")).toEqual({ title: 63, type: 72 }); // TSP
+    expect(frame2003Start("2007-02-02")).toEqual({ title: 67, type: 75 }); // PLC
+    expect(frame2003Start(null)).toEqual({ title: 67, type: 75 });
+  });
   it("cartas de duas faces: nome depois do ícone, tipo depois da bolinha de cor", () => {
     const front = m15Layout("{1}{R}{G}", true, 640, { leftIcon: true });
     expect(front.title.x).toBe(120);
     expect(front.erase[0].rect.x0).toBeGreaterThan(105);
     const back = m15Layout(null, true, 640, { leftIcon: true, indicator: true });
     expect(back.type.x).toBe(98);
+  });
+  it("moldura de 2003: caixa mais estreita e curta, barras sem a ponta funda (ADR 0024)", () => {
+    const m15 = m15Layout("{2}{R}{R}", false, 640);
+    const m03 = m15Layout("{2}{R}{R}", false, 640, { frame2003: true });
+    // papel da caixa de x 61 a 679 e fio de baixo em ~936 (Uncontrollable Anger 10E 244)
+    expect(m03.box).toEqual({ x0: 72, y0: 660, x1: 668, y1: 926 });
+    expect(m15Layout("{1}{G}", true, 640, { frame2003: true }).box.y1).toBe(918); // a caixa de P/R começa em ~927
+    // a ponta de 2003 vai até x ≈ 60 no alto e no pé das barras (Divination M10 49)
+    expect(m03.erase[0].rect.x0).toBe(60);
+    expect(m03.erase[1].rect.x0).toBe(60);
+    // as linhas no centro das minúsculas medido nas cartas, onde a Matrix Bold é escrita; o
+    // apagamento do nome desce junto, até o pé das letras com perna
+    expect(m03.title.centerY).toBe(88);
+    expect(m03.type.centerY).toBe(617.5);
+    expect(m03.erase[0].rect).toMatchObject({ y0: 64.5, y1: 112.5 });
+    expect(m03.erase[1].rect).toEqual({ ...m15.erase[1].rect, x0: 60 });
+    // a primeira letra (1 px depois da posição da linha) onde começava na época
+    expect([m03.title.x, m03.type.x]).toEqual([66, 74]); // de Planar Chaos em diante
+    const mrd = m15Layout("{2}{R}{R}", false, 640, { frame2003: true, released: "2003-10-02" });
+    expect([mrd.title.x, mrd.type.x]).toEqual([62, 63]); // Mirrodin: o tipo em x ≈ 64
+    expect(mrd.type.maxWidth - m03.type.maxWidth).toBe(11);
+    // o resto continua como na M15
+    expect(m03.title.size).toBe(m15.title.size);
+    expect(m03.erase[0].rect.x1).toBe(m15.erase[0].rect.x1);
+    expect(m03.erase[2]).toEqual(m15.erase[2]);
+    expect(m15.box).toEqual({ x0: 68, y0: 656, x1: 677, y1: 944 });
+    expect(m15.erase[1].rect.x0).toBe(50);
   });
   it("Lição: nome depois do ícone, como nas de duas faces (Combustion Technique, TLA)", () => {
     expect(hasLeftIcon("lesson", false, false)).toBe(true);

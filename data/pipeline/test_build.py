@@ -320,6 +320,35 @@ class FrameSupported(unittest.TestCase):
         # o mesmo número fora da Secret Lair não diz nada
         self.assertTrue(frame_supported({**self.base, "set": "mh3", "collector_number": "IFIYW-1"}))
 
+    def test_moldura_de_2003(self) -> None:
+        # ADR 0024: a moldura comum de 2003 a 2014 entra (Uncontrollable Anger 10E 244)
+        m03 = {**self.base, "frame": "2003"}
+        self.assertTrue(frame_supported(m03))
+        # com efeito o desenho muda: céu de Theros, lápide de Odyssey, milagre, cores trocadas
+        for effect in ("enchantment", "tombstone", "miracle", "colorshifted"):
+            self.assertFalse(frame_supported({**m03, "frame_effects": [effect]}), effect)
+        # planeswalker de 2003 tem caixa própria
+        self.assertFalse(frame_supported({**m03, "type_line": "Legendary Planeswalker — Jace"}))
+        # marca-d'água: a de guilda ficava em cacos (Darksteel Relic NPH 134) e a de promo em
+        # manchas (Elvish Visionary F10 6)
+        for mark in ("mirran", "golgari", "fnm", "dci", "junior"):
+            self.assertFalse(frame_supported({**m03, "watermark": mark}), mark)
+        # na M15 a marca-d'água não muda nada aqui
+        self.assertTrue(frame_supported({**self.base, "watermark": "golgari"}))
+        # bordas branca e preta entram; prateada (Unhinged) e dourada (World Championship), não
+        self.assertTrue(frame_supported({**m03, "border_color": "white"}))
+        for border in ("silver", "gold"):
+            self.assertFalse(frame_supported({**m03, "border_color": border}), border)
+        # os outros layouts de 2003 continuam de fora
+        for layout in ("split", "flip", "leveler", "transform"):
+            self.assertFalse(frame_supported({**m03, "layout": layout}), layout)
+        # Champs and States: arte atrás do texto (Rakdos Guildmage PCMP 3); Secret Lair espelhada
+        # (Viscera Seer SLD VS). Na M15 as duas coleções seguem como antes
+        for code in ("pcmp", "sld"):
+            self.assertFalse(frame_supported({**m03, "set": code}), code)
+            self.assertTrue(frame_supported({**self.base, "set": code}), code)
+
+
 class BorderlessSupported(unittest.TestCase):
     """Arte sem borda entra só na moldura padrão, com a caixa escura ("inverted")."""
 

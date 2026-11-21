@@ -61,7 +61,7 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 
 ## Fora do escopo da v1
 
-Molduras além da 2015 normal, edição manual do texto, tradução não oficial assistida, fichas. Ver [roadmap](../roadmap.md).
+Molduras além da 2015 normal (a de 2003 entrou em 21/11/2026, H14), edição manual do texto, tradução não oficial assistida, fichas. Ver [roadmap](../roadmap.md).
 
 Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008). Em 19/11/2026: artes sem borda na moldura padrão, com o nome de crossover mantido no alto e o nome em PT na linha de baixo, e a sangria do PDF com a própria arte (ADR 0012). Em 20/11/2026: Sagas na moldura padrão (ADR 0016) e Aventuras na moldura de livro (ADR 0017).
 
@@ -108,3 +108,11 @@ Como jogador, quero imprimir as naves e os planetas de Edge of Eternities e de S
 - [x] As faixas de cada nível mudam de lugar para o texto em PT, com o selo do nível e a caixa de P/R no meio da faixa, a arte por trás e o mesmo escurecimento de cada faixa da carta original.
 - [x] A explicação do Posicionar, que nunca saiu impressa em PT, sai com o texto oficial da dica do Arena, como na carta física (ADR 0021), e o texto se espalha com a mesma folga em volta de cada parte, como nas artes estendidas.
 - [x] Quando o motor não acha os selos, a caixa de P/R ou o pé da caixa na imagem, quando o texto não cabe ou quando a rede neural não roda, a carta sai na original e a etiqueta diz que sai em inglês. As sem borda e as de vitrine ficam de fora.
+
+### H14. Moldura de 2003 (entregue em 21/11/2026, ADR 0024)
+Como jogador, quero imprimir em português as artes da moldura de 2003 a 2014, inclusive das cartas que nunca tiveram arte na moldura atual.
+- [x] As cartas normais na moldura de 2003, com borda preta ou branca, saem em português, com o texto dentro da caixa, que é mais estreita e curta que a da M15.
+- [x] O nome e o tipo saem em Matrix Bold, a fonte da época, no tamanho e na altura das letras da carta impressa, começando onde começavam nas cartas da mesma época.
+- [x] A ponta arredondada das barras do nome e do tipo fica como está, e o tipo começa onde começa na carta impressa.
+- [x] Quando a carta tem uma arte na moldura atual, ela continua sendo a padrão; a de 2003 aparece na gaveta para escolher, e vira a padrão só quando é a única em PT.
+- [x] As impressões com marca-d'água, com efeito de moldura (céu estrelado, lápide, milagre, cores trocadas), os planeswalkers de 2003 e as promos com outro desenho (Champs and States, a Secret Lair espelhada) saem na original, e a etiqueta diz que saem em inglês.

@@ -92,6 +92,16 @@ describe("defaultChoice", () => {
     expect(defaultChoice(card(), [print("sem-borda", { border: "borderless" })])).toEqual({ kind: "print", printId: "sem-borda" });
   });
 
+  it("prefere a moldura atual à de 2003, mesmo sendo promo (ADR 0024)", () => {
+    const prints = [print("m03", { frame: "2003", released: "2009-01-01" }), print("promo", { promo: true, released: "2020-01-01" })];
+    expect(defaultChoice(card(), prints)).toEqual({ kind: "print", printId: "promo" });
+    // sem arte na moldura atual, a de 2003 sai em português no lugar da original em inglês
+    expect(defaultChoice(card(), [print("m03", { frame: "2003" }), print("antiga", { supported: false })])).toEqual({
+      kind: "print",
+      printId: "m03",
+    });
+  });
+
   it("sem moldura suportada, usa a imagem oficial em português", () => {
     const c = card({ pt_print: { id: "pt", set: "war", number: "1", hires: true } });
     expect(defaultChoice(c, [print("x", { supported: false })])).toEqual({ kind: "pt" });
