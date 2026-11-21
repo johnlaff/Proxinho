@@ -1456,6 +1456,43 @@ describe("inpaint linha a linha", () => {
     };
     expect(worst(200)).toBeLessThan(worst(400) + 1.5);
   });
+
+  it("não pinta o chanfro do pé da barra com o tom do papel de cima (Faramir, LTR 14)", () => {
+    // papel 165 até a linha 103, o fio do chanfro (118) na 104 e o chanfro escuro (86) daí
+    // para baixo; o retângulo acaba na 106 e um bloco apagado desce até o pé dele: com a
+    // mediana das linhas vizinhas (cortada no pé do retângulo), a 104 saía 164, um degrau claro
+    const { img, fill } = canvas();
+    fill(60, 58, 685, 104, () => 165);
+    fill(60, 104, 685, 105, () => 118);
+    fill(60, 105, 685, 112, () => 86);
+    const rect = { x0: 60, y0: 58, x1: 685, y1: 106 };
+    const w = rect.x1 - rect.x0;
+    const mask = new Uint8Array(w * (rect.y1 - rect.y0));
+    for (let y = 44; y < 48; y++) for (let x = 54; x < 69; x++) mask[y * w + x] = 1; // x de 114 a 129, linhas 102 a 105
+    inpaint(img, rect, mask, "rows");
+    const at = (x: number, y: number) => img.data[(y * img.width + x) * 4];
+    for (let x = 114; x < 129; x++) {
+      expect(Math.abs(at(x, 103) - 165)).toBeLessThan(4);
+      expect(Math.abs(at(x, 104) - 118)).toBeLessThan(4);
+      expect(Math.abs(at(x, 105) - 86)).toBeLessThan(4);
+    }
+  });
+
+  it("o brilho da ponta da barra numa linha só não vira risco no remendo (Rakdos Signet, C16 268)", () => {
+    // papel 190; na linha 80 os pixels logo à esquerda do trecho são o brilho da ponta da
+    // barra (240): sem as linhas vizinhas na mediana (separadas pelo tom, que na retícula
+    // grossa muda por acaso), o remendo da linha virava um risco claro
+    const { img, fill } = canvas();
+    fill(60, 58, 685, 106, () => 190);
+    fill(100, 80, 114, 81, () => 240);
+    const rect = { x0: 60, y0: 58, x1: 685, y1: 106 };
+    const w = rect.x1 - rect.x0;
+    const mask = new Uint8Array(w * (rect.y1 - rect.y0));
+    for (let y = 18; y < 27; y++) for (let x = 54; x < 121; x++) mask[y * w + x] = 1; // x de 114 a 180, linhas 76 a 84
+    inpaint(img, rect, mask, "rows");
+    const at = (x: number, y: number) => img.data[(y * img.width + x) * 4];
+    for (let x = 114; x < 181; x++) expect(Math.abs(at(x, 80) - 190)).toBeLessThan(6);
+  });
 });
 
 describe("marca-d'água clara em papel granulado", () => {

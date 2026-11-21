@@ -1330,10 +1330,18 @@ function inpaintRows(img: ImageData, rect: Rect, mask: Uint8Array, unknown: Uint
   // mediana de até `side` pixels conhecidos logo ao lado do trecho, nesta linha e nas
   // vizinhas: só com a própria linha, cada uma pegava um pedaço diferente do brilho e o
   // remendo saía listrado (faixas diagonais do foil, a barra metálica do Tesouro de FIN)
+  // A janela é simétrica: perto do alto ou do pé do retângulo ela encolhe dos dois lados. Cortada
+  // só de um lado, no fio do pé da barra (do papel ao chanfro escuro numa linha só) a mediana
+  // ficava com duas linhas de papel, uma do fio e uma do chanfro, e pintava o chanfro com o tom
+  // do papel, um degrau claro (Faramir, Field Commander, LTR 14). Separar as vizinhas pelo tom,
+  // em vez disso, falhava no papel de retícula grossa: a mediana de dez pixels muda mais de 20
+  // tons de uma linha para outra, a vizinha saía por acaso e o brilho da ponta da barra numa
+  // linha virava um risco claro (Rakdos Signet, C16 268).
   const near = Math.max(1, Math.round(2 * unit));
   const beside = (y: number, from: number, dir: 1 | -1): number[] | null => {
     for (const v of vals) v.length = 0;
-    for (let yy = Math.max(0, y - near); yy <= Math.min(h - 1, y + near); yy++)
+    const k = Math.min(near, y, h - 1 - y);
+    for (let yy = y - k; yy <= y + k; yy++)
       for (let x = from, seen = 0, got = 0; x >= 0 && x < w && seen < side * 3 && got < side; x += dir, seen++)
         if (!unknown[yy * w + x]) {
           got++;
