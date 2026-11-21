@@ -25,7 +25,7 @@ type Result = { translated: boolean; reason?: "neural" };
  * Uma visita ao site: módulos novos, o motor de mentira (cada montagem fica pendurada até o teste
  * soltar) e o mesmo banco das cartas guardadas.
  */
-async function visit(db: CardBackend, fonts = "o|o") {
+async function visit(db: CardBackend, fonts = "o|o", server = new Map<string, { body: string; translated: boolean }>()) {
   const renders: { id: string; version: string; resolve: (r?: Result) => void }[] = [];
   vi.resetModules();
   vi.doMock("../../src/engine/render", () => ({
@@ -44,12 +44,20 @@ async function visit(db: CardBackend, fonts = "o|o") {
   vi.doMock("../../src/engine/lama", () => ({ prepareLama }));
   vi.doMock("../../src/engine/fonts", () => ({ fontsVersion: () => 0, fontsId: () => fonts, loadCardFonts: async () => undefined }));
   vi.spyOn(URL, "createObjectURL").mockImplementation((b) => `blob:${(b as Blob).size}`);
+  // as cartas montadas no servidor (ADR 0022), pelo caminho
+  const fetches: string[] = [];
+  vi.stubGlobal("fetch", async (path: string) => {
+    fetches.push(path);
+    const hit = server.get(path);
+    if (!hit) return new Response("{}", { status: 404, headers: { "content-type": "application/json" } });
+    return new Response(hit.body, { headers: { "content-type": "image/jpeg", "x-traduzida": hit.translated ? "1" : "0" } });
+  });
   const store = await import("../../src/app/cardStore");
   store.useCardBackend(db);
   const preview = await import("../../src/app/preview");
   const faces = await import("../../src/app/printFaces");
   const flush = () => new Promise((r) => setTimeout(r, 20));
-  return { store, preview, faces, renders, prepareLama, flush };
+  return { store, preview, faces, renders, prepareLama, flush, fetches };
 }
 
 function entry(id: string, border: PrintRecord["border"] = "black", text = "Texto."): Entry {
@@ -91,6 +99,7 @@ afterEach(() => {
   vi.doUnmock("../../src/engine/lama");
   vi.doUnmock("../../src/engine/fonts");
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("cartas guardadas no navegador", () => {
@@ -197,5 +206,62 @@ describe("cartas guardadas no navegador", () => {
     await store.storedCard("media");
     await store.prune(30);
     expect([...db.cards.keys()]).toEqual(["media"]);
+  });
+});
+
+describe("cartas montadas no servidor", () => {
+  /** O servidor com a prévia (ou a face do PDF) desta carta, pela mesma chave que o site procura. */
+  async function serverWith(e: Entry, kind = "previa", translated = true) {
+    const { store, preview } = await visit(memory().backend);
+    const id = await store.cardKey(kind, preview.renderInput(e));
+    return new Map([[store.serverCardPath(id!)!, { body: "do-servidor", translated }]]);
+  }
+
+  it("sem a carta no navegador, a prévia vem do servidor, sem montar nada nem baixar a rede neural", async () => {
+    const sb = entry("sb", "borderless");
+    const server = await serverWith(sb);
+    const v = await visit(memory().backend, "o|o", server);
+    const url = v.preview.previewUrl(sb);
+    const draft = v.preview.draftUrl(sb);
+    await expect(url).resolves.toBe(`blob:${"do-servidor".length}`);
+    await expect(draft).rejects.toThrow();
+    await v.flush();
+    expect(v.renders).toEqual([]);
+    expect(v.prepareLama).not.toHaveBeenCalled();
+    expect(v.preview.engineMisses().size).toBe(0);
+  });
+
+  it("a carta do servidor que saiu em inglês vem com a etiqueta de inglês", async () => {
+    const x = entry("x");
+    const v = await visit(memory().backend, "o|o", await serverWith(x, "previa", false));
+    await v.preview.previewUrl(x);
+    expect(v.renders).toEqual([]);
+    expect(v.preview.engineMisses().size).toBe(1);
+  });
+
+  it("sem a carta no servidor, monta no aparelho", async () => {
+    const v = await visit(memory().backend);
+    const url = v.preview.previewUrl(entry("x"));
+    await v.flush();
+    expect(v.fetches.length).toBe(1);
+    expect(v.renders.length).toBe(1);
+    v.renders.shift()!.resolve();
+    await expect(url).resolves.toMatch(/^blob:/);
+  });
+
+  it("com as fontes da pessoa, nem procura no servidor (lá só há cartas com as oficiais)", async () => {
+    const v = await visit(memory().backend, "pabc|o");
+    void v.preview.previewUrl(entry("x"));
+    await v.flush();
+    expect(v.fetches).toEqual([]);
+    expect(v.renders.length).toBe(1);
+  });
+
+  it("o PDF usa a face montada no servidor", async () => {
+    const a = entry("a");
+    const v = await visit(memory().backend, "o|o", await serverWith(a, "impressao:padrao"));
+    const face = await v.faces.printFace(a, 0, "padrao");
+    expect(await face.image.text()).toBe("do-servidor");
+    expect(v.renders).toEqual([]);
   });
 });

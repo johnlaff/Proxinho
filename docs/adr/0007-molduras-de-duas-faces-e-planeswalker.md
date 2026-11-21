@@ -14,6 +14,7 @@ Até aqui o motor só reescrevia a moldura comum de 2015. As cartas de duas face
 - desloca o nome quando há o ícone de transformar à esquerda e procura o ícone à direita nos versos sem custo (desde 2023);
 - pula a bolinha do indicador de cor na linha de tipo;
 - descobre se o texto original é claro ou escuro em cada faixa (`textPolarity`) e escreve na mesma cor;
+- leva o tipo do verso até o fim da barra nas cartas impressas desde Kamigawa: Neon Dynasty (fevereiro de 2022), cujo verso não tem o símbolo da coleção (ADR 0011);
 - redesenha o lembrete "4/4" do verso no canto da caixa, com o texto desviando dele (`Notch` em `text.ts`);
 - nas modais, para a caixa antes da faixa com o resumo do outro lado.
 

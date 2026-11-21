@@ -5,6 +5,7 @@ import {
   coloredInk,
   darkTextBox,
   dividerRows,
+  dropArtBelowText,
   eraseBackPtNotch,
   eraseRegions,
   findSetSymbolLeft,
@@ -394,6 +395,98 @@ describe("findSetSymbolLeft com o símbolo colado no fim do tipo, sem cor", () =
     expect(findSetSymbolLeft(img, 594, 632, undefined, 100, info)).toBe(632);
     expect(info.tight).toBe(true);
   });
+  it('uma coluna fraca no fim do traço não parte o trecho: o "gon" de "Dragon" sai (Hidetsugu and Kairi, MOM 228)', () => {
+    // barra dourada; "agon" até 626, com vãos de 2 a 4 px; a espada (contorno escuro, miolo da
+    // cor da barra) de 630 a 682, uma coluna sem tinta em 683 e um fiapo em 684; a borda do
+    // escudo, de 698 a 710, passa por fio do fim da barra. O trecho do fim era o fiapo, e o
+    // corte pelas lacunas caía entre o "a" e o "g"
+    const { img, fill } = canvas([200, 170, 100]);
+    const letters: [number, number][] = [
+      [559, 578],
+      [581, 594],
+      [596, 610],
+      [614, 619],
+      [621, 626],
+    ];
+    for (const [a, b] of letters) fill(a, 608, b + 1, 627, [30, 25, 15]);
+    fill(630, 596, 683, 630, [30, 25, 15]);
+    fill(638, 604, 676, 622, [205, 175, 105]);
+    fill(684, 610, 685, 616, [30, 25, 15]);
+    fill(698, 594, 711, 632, [40, 35, 30]);
+    const info: { colored: number; lim: number; tight?: boolean } = { colored: -1, lim: 0 };
+    expect(findSetSymbolLeft(img, 594, 632, undefined, 100, info)).toBe(630);
+    expect(info.tight).toBe(true);
+  });
+});
+
+describe("findSetSymbolLeft no verso sem símbolo das cartas de duas faces", () => {
+  // barra dourada; o fim do "Avatar Wizard" em letras brancas, colado desde antes do começo da
+  // busca (559) até 639, com os vãos das letras e das palavras, e o contorno do fim da barra de
+  // 693 a 699. Sem símbolo nenhum, o "símbolo" era a última palavra e o "Vizard" ficava
+  const kefka = () => {
+    const { img, fill } = canvas([190, 160, 90]);
+    for (let x = 400; x < 536; x += 10) fill(x, 602, x + 6, 627, [250, 250, 250]);
+    for (const [a, b] of [
+      [540, 565],
+      [569, 573],
+      [579, 591],
+      [593, 606],
+      [612, 617],
+      [621, 622],
+      [624, 639],
+    ])
+      fill(a, 602, b + 1, 627, [250, 250, 250]);
+    fill(693, 594, 700, 632, [60, 50, 30]);
+    return img;
+  };
+  it('o verso desde 2022 vai até o contorno: o "Wizard" inteiro sai (Kefka, Ruler of Ruin, FIN 231)', () => {
+    const info: { colored: number; lim: number; tight?: boolean; none?: boolean } = { colored: -1, lim: 0 };
+    expect(findSetSymbolLeft(kefka(), 594, 632, undefined, 100, info, false, true)).toBe(693);
+    expect(info.none).toBe(true);
+  });
+  it("na frente, ou num verso de antes de 2022, nada muda", () => {
+    const info: { colored: number; lim: number; tight?: boolean; none?: boolean } = { colored: -1, lim: 0 };
+    expect(findSetSymbolLeft(kefka(), 594, 632, undefined, 100, info)).toBe(559);
+    expect(info.none).toBeUndefined();
+  });
+  it("um pedaço da moldura perto do fim da barra, num tipo curto, não vira texto", () => {
+    // "Land" longe, à esquerda; um enfeite da barra de 660 a 668 e o contorno
+    const { img, fill } = canvas([190, 160, 90]);
+    fill(80, 602, 170, 627, [250, 250, 250]);
+    fill(660, 600, 669, 628, [250, 250, 250]);
+    fill(693, 594, 700, 632, [60, 50, 30]);
+    const info: { colored: number; lim: number; tight?: boolean; none?: boolean } = { colored: -1, lim: 0 };
+    expect(findSetSymbolLeft(img, 594, 632, undefined, 100, info, false, true)).toBe(660);
+    expect(info.none).toBeUndefined();
+  });
+});
+
+describe("findSetSymbolLeft com as letras tingidas do foil sem borda", () => {
+  it('a cor das letras longe do fim não é o símbolo: o "saur" sai e a estrela fica (Ghalta, Primal Hunger, FDN 397)', () => {
+    // barra escura translúcida; letras brancas até o fim da busca, tingidas de rosa pela arte do
+    // foil a partir de 573 (as letras e os vãos entre elas), um pingo em 635, a arte clara e
+    // fraca enchendo os vãos até a estrela dourada (649 a 684). A cor do tingido, a 111 px do
+    // fim, passava por começo do símbolo e o corte ia para 570
+    const { img, fill } = canvas([60, 70, 75]);
+    for (let x = 400; x < 556; x += 10) fill(x, 604, x + 6, 627, [240, 240, 240]);
+    fill(573, 604, 626, 627, [100, 45, 90]);
+    for (const [a, b] of [
+      [559, 560],
+      [563, 572],
+    ])
+      fill(a, 604, b + 1, 627, [240, 240, 240]);
+    for (const [a, b] of [
+      [573, 574],
+      [576, 590],
+      [593, 609],
+      [613, 625],
+    ])
+      fill(a, 604, b + 1, 627, [255, 180, 240]);
+    fill(626, 604, 649, 610, [98, 98, 98]);
+    fill(635, 606, 636, 625, [240, 240, 240]);
+    fill(649, 600, 685, 628, [200, 170, 90]);
+    expect(findSetSymbolLeft(img, 594, 632, 691, 100, undefined, true)).toBe(649);
+  });
 });
 
 describe("symbolRowsFrom", () => {
@@ -717,6 +810,189 @@ describe("textMask com arte invadindo a barra", () => {
     for (let y = 82; y < 92; y++) for (let x = 380; x < 540; x++) art += at(x, y);
     expect(art).toBeLessThan(50);
   });
+
+  it('os pés de "ygg," juntos, densos mas curtos, continuam na máscara (Sygg ECL 76)', () => {
+    // as mesmas letras, e embaixo de quatro delas os pés de "y", "g", "g" e a vírgula: laços
+    // de 10 px com 2 px de vão, de 120 a 166 (enchem metade da janela, mas por pouco espaço)
+    const { img, fill } = canvas([225, 210, 160]);
+    for (let x = 60; x < 540; x += 10) fill(x, 60, x + 5, 78, [20, 20, 20]);
+    for (let x = 120; x < 166; x += 12) {
+      fill(x, 78, x + 10, 80, [20, 20, 20]);
+      fill(x, 86, x + 10, 88, [20, 20, 20]);
+      fill(x, 78, x + 2, 88, [20, 20, 20]);
+      fill(x + 8, 78, x + 10, 88, [20, 20, 20]);
+    }
+    const rect = { x0: 50, y0: 58, x1: 560, y1: 106 };
+    const mask = textMask(img, rect, 28, [], 0, "dark", true);
+    const at = (x: number, y: number) => mask[(y - rect.y0) * (rect.x1 - rect.x0) + (x - rect.x0)];
+    // o fundo de cada laço (86 a 88), no meio dele: tirado como "arte", o pé ficava embaixo
+    // do português
+    for (const x of [125, 137, 149, 161]) {
+      expect(at(x, 87)).toBe(1);
+      expect(at(x, 88)).toBe(1);
+    }
+  });
+
+  it("o pé da barra um pouco mais escuro perto da ponta, ligado ao rabo de uma letra, fica fora da máscara (Rhythm of the Wild RVR 217)", () => {
+    // as mesmas letras; perto da ponta (52 a 98) as linhas de 93 a 103 ficam 37 tons mais
+    // escuras que o resto da barra (passam do limiar, longe da tinta das letras), e o rabo
+    // de uma letra (90 a 95) desce até elas. Pelo rabo, o trecho escuro passava por pé de
+    // letra; apagado, o fio do pé da barra descia 1 px até o meio do nome, um degrau
+    const { img, fill } = canvas([225, 210, 160]);
+    for (let x = 60; x < 540; x += 10) fill(x, 60, x + 5, 78, [20, 20, 20]);
+    fill(52, 93, 98, 104, [188, 173, 123]);
+    fill(90, 78, 95, 95, [20, 20, 20]);
+    const rect = { x0: 50, y0: 58, x1: 560, y1: 106 };
+    const mask = textMask(img, rect, 28, [], 0, "dark", true);
+    const at = (x: number, y: number) => mask[(y - rect.y0) * (rect.x1 - rect.x0) + (x - rect.x0)];
+    let kept = 0;
+    for (let y = 97; y < 104; y++) for (let x = 52; x < 85; x++) kept += at(x, y);
+    expect(kept).toBe(0);
+    expect(at(92, 86)).toBe(1);
+  });
+
+  it("um trecho curto do chanfro no pé da barra, solto das letras, fica fora da máscara (Chaos Warp)", () => {
+    // as mesmas letras; o chanfro do pé da barra (98 a 104) é mais escuro de 200 a 245 só: um
+    // trecho denso curto, como os pés de "ygg,", mas sem encostar em letra nenhuma. Apagado,
+    // virava um dente claro no chanfro
+    const { img, fill } = canvas([225, 210, 160]);
+    for (let x = 60; x < 540; x += 10) fill(x, 60, x + 5, 78, [20, 20, 20]);
+    fill(50, 98, 560, 105, [175, 160, 120]);
+    fill(200, 98, 245, 105, [120, 105, 70]);
+    const rect = { x0: 50, y0: 58, x1: 560, y1: 106 };
+    const mask = textMask(img, rect, 28, [], 0, "dark", true);
+    const at = (x: number, y: number) => mask[(y - rect.y0) * (rect.x1 - rect.x0) + (x - rect.x0)];
+    let kept = 0;
+    for (let y = 98; y < 105; y++) for (let x = 200; x < 245; x++) kept += at(x, y);
+    expect(kept).toBe(0);
+  });
+});
+
+describe("dropArtBelowText: só pé de letra fica abaixo das letras", () => {
+  // máscara de uma barra de 300 × 48 com letras de 8 px (2 px de vão) de 6 a 30, de 20 a 280;
+  // `core` é a tinta forte (o dobro do limiar), sem a histerese nem a borda suavizada
+  const W = 300;
+  const H = 48;
+  const bar = (letters: (x: number) => boolean = () => true, top = 6, foot = 31) => {
+    const mask = new Uint8Array(W * H);
+    const core = new Uint8Array(W * H);
+    const put = (x0: number, y0: number, x1: number, y1: number, strong: boolean, on: (x: number) => boolean = () => true) => {
+      for (let y = y0; y < y1; y++)
+        for (let x = x0; x < x1; x++)
+          if (on(x)) {
+            mask[y * W + x] = 1;
+            if (strong) core[y * W + x] = 1;
+          }
+    };
+    for (let x = 20; x < 280; x += 10) if (letters(x)) put(x, top, x + 8, foot, true);
+    const sum = (x0: number, y0: number, x1: number, y1: number) => {
+      let n = 0;
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) n += mask[y * W + x];
+      return n;
+    };
+    return { mask, core, put, sum };
+  };
+
+  it("a faixa do brilho que entra pela histerese colada nas letras sai (Chaos Warp PIP 466)", () => {
+    // embaixo das letras, de 100 a 158, a faixa um pouco mais escura do brilho diagonal: na
+    // máscara pela histerese, sem tinta forte. Curta como os pés de "ygg,", mas apagada
+    // clareava a barra e o alto do chanfro
+    const { mask, core, put, sum } = bar();
+    put(100, 31, 158, 45, false);
+    dropArtBelowText(mask, core, W, H, 1);
+    expect(sum(100, 33, 158, 45)).toBe(0);
+    expect(sum(20, 6, 280, 31)).toBe(26 * 8 * 25);
+  });
+
+  it("a ponta da barra que desce até o chanfro sai, mesmo com tinta forte (Talisman of Progress TRC 508)", () => {
+    // o contorno da ponta arredondada, no lado esquerdo do retângulo, de 2 a 46, e o pedaço do
+    // chanfro ligado a ele no pé (40 a 46, até 40): tinta forte, curto e "pendurado", mas é
+    // moldura; apagado, virava um dente claro no chanfro
+    const { mask, core, put, sum } = bar((x) => x >= 60);
+    put(0, 2, 7, 47, true);
+    put(0, 40, 41, 47, true);
+    dropArtBelowText(mask, core, W, H, 1);
+    expect(sum(7, 40, 41, 47)).toBe(0);
+  });
+
+  it("um pé ligado a um fio comprido da moldura sai (largo demais para letra)", () => {
+    // um pé denso de 150 a 190 (31 a 40) desce por um traço até o fio do pé da barra (44),
+    // de 10 a 290: o pedaço inteiro é moldura
+    const { mask, core, put, sum } = bar();
+    put(150, 31, 190, 41, true);
+    put(170, 41, 172, 44, true);
+    put(10, 44, 290, 45, true);
+    dropArtBelowText(mask, core, W, H, 1);
+    expect(sum(150, 31, 190, 41)).toBe(0);
+  });
+
+  it("o alto da arte que mal passa do pé das letras sai (cabelo da Vivien Reid M19 208)", () => {
+    // o retângulo mais baixo que as letras: só o pé delas entra (0 a 13) e a linha mais cheia
+    // é a 12. No vão de 140 a 200, o alto do cabelo, de 150 a 190, começa na linha 12 e para
+    // antes do pé do retângulo: tinta forte, estreita como letra, "na linha das letras", mas
+    // só 1 px acima do pé delas
+    const { mask, core, put, sum } = bar((x) => x < 140 || x >= 200, 0, 14);
+    put(150, 12, 190, 44, true);
+    dropArtBelowText(mask, core, W, H, 1);
+    expect(sum(150, 16, 190, 44)).toBe(0);
+  });
+
+  it("a arte estreita que vem do pé do retângulo sai, mesmo subindo até as letras (chifre do Ashiok THB)", () => {
+    // um chifre de 150 a 190, do pé do retângulo (47) até o alto das letras (6), no vão delas
+    const { mask, core, put, sum } = bar((x) => x < 140 || x >= 200);
+    put(150, 6, 190, 48, true);
+    dropArtBelowText(mask, core, W, H, 1);
+    expect(sum(150, 33, 190, 47)).toBe(0);
+  });
+
+  it('o pé de uma letra dentro de um trecho comprido que sai fica (o "g" do Angrath\'s Fury RIX 204)', () => {
+    // a perna do "g", de 100 a 108, desce até a linha 41; em volta dela, de 60 a 160 (31 a 43),
+    // o fundo da barra um pouco mais escuro perto da ponta entra na máscara sem tinta forte: o
+    // trecho comprido sai, e com ele saía a perna, que ficava embaixo do português
+    const { mask, core, put, sum } = bar();
+    put(100, 30, 108, 41, true);
+    put(60, 31, 160, 43, false);
+    dropArtBelowText(mask, core, W, H, 1);
+    expect(sum(100, 31, 108, 41)).toBe(8 * 10);
+    expect(sum(60, 33, 90, 43)).toBe(0);
+  });
+
+  it("a arte clara e larga no alto da barra não sobe a linha das letras (Temple of Enlightenment TRC 409)", () => {
+    // "Land" curto, de 20 a 78 (6 a 40), e ao lado, de 90 a 290, a arte clara atrás da barra
+    // translúcida nas linhas de cima (0 a 22): a linha mais cheia fica no fim da arte, no meio
+    // das letras, e a metade de baixo delas saía da máscara
+    const { mask, core, put, sum } = bar((x) => x < 80, 6, 40);
+    put(90, 0, 290, 22, true);
+    dropArtBelowText(mask, core, W, H, 1);
+    expect(sum(20, 22, 80, 40)).toBe(6 * 8 * 18);
+  });
+
+  it("o pé com a borda suavizada em volta fica (a borda passa do limiar, sem ser tinta forte)", () => {
+    // embaixo de oito letras (150 a 230), de 31 a 38, o traço de 2 px de cada pé com 2 px de
+    // borda de cada lado: contando só a tinta forte, um terço do trecho é pé, e ele saía
+    const { mask, core, put, sum } = bar();
+    for (let x = 150; x < 230; x += 10) {
+      put(x + 4, 31, x + 6, 39, true);
+      put(x + 2, 31, x + 4, 39, false);
+      put(x + 6, 31, x + 8, 39, false);
+    }
+    dropArtBelowText(mask, core, W, H, 1);
+    expect(sum(150, 31, 230, 39)).toBe(8 * 6 * 8);
+  });
+
+  it("o pé que fica não sai pela folga de um trecho vizinho que sai", () => {
+    // embaixo das letras (31 a 38), de 40 a 140, um trecho sem tinta forte e, logo depois, de
+    // 150 a 210, os pés das letras de cima; os dois salpicados (12 px sim, 8 não). A folga de
+    // 30 px do trecho que sai cobria o começo dos pés
+    const { mask, core, put, sum } = bar();
+    const dots = (x0: number) => (x: number) => (x - x0) % 20 < 12;
+    put(40, 31, 140, 39, false, dots(40));
+    put(150, 31, 210, 39, true, dots(150));
+    dropArtBelowText(mask, core, W, H, 1);
+    expect(sum(150, 31, 156, 39)).toBe(6 * 8);
+    expect(sum(170, 31, 182, 39)).toBe(12 * 8);
+    expect(sum(40, 33, 140, 39)).toBe(0);
+  });
 });
 
 describe("textMask com arte no alto da barra", () => {
@@ -733,6 +1009,26 @@ describe("textMask com arte no alto da barra", () => {
     const at = (x: number, y: number) => mask[(y - rect.y0) * (rect.x1 - rect.x0) + (x - rect.x0)];
     expect(at(63, 608)).toBe(1);
     expect(at(63, 626)).toBe(1);
+  });
+});
+
+describe("textMask com as letras tomando a linha da barra", () => {
+  it("as letras claras e grossas que passam da metade da linha entram; a sombra do pé fica (Heliode PMOM 17s)", () => {
+    // barra dourada de 590 a 636; letras brancas grossas de 605 a 629, com vãos de 3 px,
+    // de 100 a 640: no meio delas, mais da metade de cada linha é letra e a mediana da
+    // linha caía nelas (as letras saíam da máscara e viravam a fonte do remendo, um risco
+    // claro). A sombra escura do pé da barra continua de fora.
+    const { img, fill } = canvas([150, 140, 80]);
+    fill(50, 590, 700, 636, (x, y, c) => [150, 140, 80][c] + ((x * 13 + y * 7) % 9) - 4);
+    fill(50, 631, 700, 636, [60, 55, 30]);
+    for (let x = 100; x < 640; x += 9) fill(x, 605, x + 6, 629, [245, 245, 240]);
+    const rect = { x0: 93, y0: 590, x1: 688, y1: 636 };
+    const mask = textMask(img, rect, 28, [], 0, "light", true);
+    const at = (x: number, y: number) => mask[(y - rect.y0) * (rect.x1 - rect.x0) + (x - rect.x0)];
+    for (const y of [606, 612, 617, 622, 628]) for (const x of [102, 300, 502, 631]) expect(at(x, y)).toBe(1);
+    let shadow = 0;
+    for (let y = 634; y < 636; y++) for (let x = 660; x < 688; x++) shadow += at(x, y);
+    expect(shadow).toBe(0);
   });
 });
 

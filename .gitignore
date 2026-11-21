@@ -33,6 +33,7 @@ test-results/
 .impeccable/review/
 .impeccable/mocks/
 coverage/
+.montagem/
 dist/
 .impeccable/questions/
 .fontes-oficiais/

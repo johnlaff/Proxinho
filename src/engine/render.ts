@@ -1474,6 +1474,9 @@ export function usesNeuralFill(print: PrintRecord, face: PtFace | null, side: 0 
   );
 }
 
+/** Lançamento de Kamigawa: Neon Dynasty: dali em diante o verso das cartas de duas faces não tem o símbolo da coleção. */
+const SYMBOLLESS_BACKS_SINCE = "2022-02-18";
+
 export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const { print, face } = opts;
   const side = opts.side ?? 0;
@@ -1575,7 +1578,10 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // Moldura sem borda: a caixa com aro e a barra do nome conferidas na imagem (ver
   // borderlessBox); sem elas, a carta sai na original
   const frameBox = borderless ? borderlessBox(data) : null;
-  const symbolInfo: { colored: number; lim: number; tight?: boolean } = { colored: -1, lim: 0 };
+  const symbolInfo: { colored: number; lim: number; tight?: boolean; none?: boolean } = { colored: -1, lim: 0 };
+  // O verso das cartas de duas faces não tem o símbolo da coleção desde Kamigawa: Neon Dynasty
+  // (ver findSetSymbolLeft). The List traz a impressão original, com a data da lista.
+  const symbolless = side === 1 && !frameBox && print.set_code !== "plst" && (print.released ?? "") >= SYMBOLLESS_BACKS_SINCE;
   // (na sem borda a barra de tipo acaba no aro da caixa, uns 20 px antes da M15: com a busca
   // até o fim da M15, o aro entrava como bloco, o fim do traço do símbolo da Secret Lair
   // grudava nele e a estrela, solta, ficava de fora e era apagada, Lord of the Pit SLD 1857)
@@ -1589,6 +1595,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       100,
       symbolInfo,
       Boolean(frameBox),
+      symbolless,
     ) / fx;
   const manaCost = sideInfo ? sideInfo.mana_cost : print.mana_cost;
   const hasPt = sideInfo ? sideInfo.has_pt : print.has_pt;
@@ -1604,6 +1611,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     indicator: sideInfo ? sideInfo.indicator : Boolean(print.indicator),
     mdfcStrip: print.layout === "modal_dfc",
     typeShift,
+    noSetSymbol: symbolInfo.none,
   });
   // caixa escura ou sem os fios da barra de tipo: não é a moldura da M15 (ver notM15Frame).
   // Na sem borda a caixa é escura de propósito: valem o aro da caixa e a barra do nome (com

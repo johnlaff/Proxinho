@@ -9,14 +9,16 @@
 | Fontes das cartas (Beleren, MPlantin) | Cloudflare KV `proxinho-fontes` (binding `FONTES`), servidas em `/api/fontes/*.ttf` |
 | Dicas das palavras-chave do Arena | O mesmo KV, chave `arena-dicas.json` (não é servida pela API); o workflow "Dados diários" baixa antes do pipeline (ADR 0021) |
 | Modelo LaMa e runtimes do ONNX | Assets do site em `/modelos/`, gerados no build por `scripts/modelo.mjs` (baixa do Hugging Face numa revisão fixa, confere o SHA-256 e compacta em gzip): `lama-int4.onnx.gz.0` e `.1`, `ort-webgpu-<versão>.wasm.gz` (placa de vídeo) e `ort-cpu-<versão>.wasm.gz` (CPU) |
+| Cartas montadas no servidor | Cloudflare R2 `proxinho-cartas` (binding `CARTAS`, privado), servidas em `/api/cartas/<código>/<chave>.jpg`; gravadas pelo montador em lote (`scripts/montagem`), que roda no workflow "Montagem" com o token OIDC do GitHub ou à mão com o segredo `CARTAS_TOKEN` do Worker; até 5 GB (ADR 0022 e 0023) |
 | Atualização dos dados | GitHub Actions, workflow "Dados diários" (04h17 de Brasília) |
+| Montagem das cartas | GitHub Actions, workflow "Montagem" (depois de cada push na main que passa na esteira, todo dia às 06h41 de Brasília e à mão; 12 máquinas padrão) |
 | Deploy | GitHub Actions, workflow "CI/CD", job "Deploy em produção" (a cada push na main) |
 | Logs | Painel da Cloudflare → Workers → proxinho → Logs (observability ligada) |
-| Saúde | `GET https://proxinho.johnlaff.com/api/health` → `{ ok, dataUpdatedAt }` |
+| Saúde | `GET https://proxinho.johnlaff.com/api/health` → `{ ok, dataUpdatedAt, codigo }` (`codigo`: o resumo do código que desenha no build no ar) |
 
 ## Segredos do repositório
 
-`CLOUDFLARE_API_TOKEN` (permissões: Workers Scripts, D1 e Workers Routes do domínio, edição) e `CLOUDFLARE_ACCOUNT_ID`, no ambiente `producao` do GitHub.
+`CLOUDFLARE_API_TOKEN` (permissões: Workers Scripts, D1 e Workers Routes do domínio, edição) e `CLOUDFLARE_ACCOUNT_ID`, no ambiente `producao` do GitHub. A montagem no GitHub não pede segredo: o Worker confere o token OIDC do workflow (os números do repositório e do dono ficam em `vars` no `wrangler.jsonc`; ADR 0023). A senha do montador (`CARTAS_TOKEN`), para rodar à mão, é segredo do Worker (`wrangler secret put`) e nunca vai para o GitHub.
 
 ## Tarefas comuns
 
@@ -43,7 +45,19 @@ pnpm exec wrangler rollback <id-da-versao>
 
 **Atualizar as dicas do Arena** (quando o Arena ganha uma mecânica nova): com o Arena atualizado, pegue o `Raw_ClientLocalization_*.mtga` em `MTGA_Data/Downloads/Raw` da pasta do jogo e rode `python3 data/pipeline/build.py --dicas Raw_ClientLocalization_<…>.mtga` (grava `data/cache/arena_dicas.json`, fora do repositório) e `pnpm exec wrangler kv key put --remote --binding FONTES arena-dicas.json --path data/cache/arena_dicas.json`. O próximo "Dados diários" usa as novas. Nunca suba o banco nem o JSON para o repositório.
 
-**Cartas guardadas no navegador:** cada publicação que muda o motor (`src/engine`), a entrada da montagem ou as fontes livres muda o resumo `__PROXINHO_BUILD__`, e as prévias e faces do PDF guardadas no IndexedDB de cada pessoa deixam de valer: a primeira visita depois dela monta tudo de novo (ADR 0014). Mudanças só na interface não mexem nelas.
+**Cartas guardadas no navegador:** cada publicação que muda o motor (`src/engine`), a entrada da montagem ou as fontes livres muda o resumo `__PROXINHO_BUILD__`, e as prévias e faces do PDF guardadas no IndexedDB de cada pessoa deixam de valer, como as montadas no servidor: a primeira visita depois dela monta no aparelho o que o montador ainda não refez (ADR 0014 e 0022). Mudanças só na interface não mexem nelas.
+
+**O depósito** (`proxinho-cartas`) está ligado desde 21/11/2026. Numa conta nova: ative o R2 no painel da Cloudflare (R2 Object Storage; sem isso a API responde com o erro 10042 e o deploy com o binding falha), crie o depósito (`pnpm exec wrangler r2 bucket create proxinho-cartas`) e publique. Confira com `curl https://proxinho.johnlaff.com/api/cartas`: 401 ("Senha do montador inválida") com o depósito, 503 ("Sem o depósito das cartas montadas") sem ele.
+
+**Montar as cartas no servidor** (ADR 0022 e 0023): o workflow "Montagem" roda sozinho depois de cada push na main e todo dia; depois de uma publicação feita à mão, rode-o em GitHub → Actions → "Montagem" → Run workflow (na main). Ele só monta se o site no ar é do mesmo código, apaga antes as cartas dos códigos velhos e para nos 5 GB do depósito (`--limite-bytes`; a cota grátis do R2 é da conta inteira). À mão, no mesmo commit que está no ar,
+
+```bash
+pnpm montagem:build && pnpm montagem:serve &     # a página do montador em http://localhost:5198
+CARTAS_TOKEN=… pnpm montagem -- --enviar          # só o que falta; --escolhidas monta só a arte padrão de cada carta
+CARTAS_TOKEN=… pnpm montagem -- --apagar-velhas   # apaga as cartas dos códigos que não estão mais no ar
+```
+
+O montador lê a lista de cartas (`/api/cartas/lista`), os dados e as fontes oficiais do site, e confere que o site no ar é deste código, que as fontes oficiais carregaram e que a página tem o mesmo resumo. Monta primeiro as artes que passam pela rede neural (~20 s por face no processador), depois a arte padrão das cartas mais jogadas e depois as outras artes (~1,5 s por face), até o limite; `--partes N --parte K` divide o trabalho entre máquinas e `--prazo-min` para de começar carta nova num prazo. Sem o R2 no ar, `--saida pasta` grava numa pasta e `--enviar-pasta pasta` envia depois. A senha: gere uma nova (`openssl rand -hex 32`), grave no Worker (`pnpm exec wrangler secret put CARTAS_TOKEN`) e use a mesma no montador; nunca no repositório. Enquanto o montador não termina, o site monta no aparelho o que falta, como antes.
 
 **Atualizar o modelo ou o ONNX Runtime:** mude a URL e o SHA-256 em `scripts/modelo.mjs` (ou a versão de `onnxruntime-web`); o runtime leva a versão no nome do arquivo, e um modelo novo deve ganhar nome novo, porque o cache desses arquivos é imutável.
 
@@ -68,7 +82,7 @@ pnpm exec wrangler d1 execute proxinho --remote --command "SELECT count(*) FROM 
 | Arte sem borda sai na original com "Em inglês: o apagador de texto não rodou neste navegador" | A rede neural falhou nos três degraus na página | Esperado: sem ela a caixa sairia borrada. O "Detalhe técnico" da gaveta diz o motivo de cada degrau. Recarregar a página tenta de novo; em outro navegador costuma rodar |
 | Chrome ou Safari com placa de vídeo levando dezenas de segundos por quadro | A placa de vídeo falhou e a carta foi para a CPU | Ver o "Detalhe técnico" da gaveta ou o console. Se for `[WebGPU] Kernel … failed`, conferir se a worker importa `onnxruntime-web/webgpu`, não o pacote principal (o JSEP falha no LaMa, ADR 0013) |
 | Build com a worker num arquivo só e a preparação do modelo travando | O Vite gerou a worker no formato iife: os runtimes do ONNX ficam embutidos e as threads do WebAssembly não sobem | `worker: { format: "es" }` em `vite.config.ts`; o build tem de gerar `ort.webgpu.bundle.min-*.js` e `ort.wasm.bundle.min-*.js` à parte |
-| Carta guardada no navegador com o desenho de antes de uma correção | A chave das cartas guardadas não mudou: o arquivo corrigido não entra no resumo do código que desenha | Pôr o arquivo na lista de `drawingHash` em `vite.config.ts` e publicar de novo; quem já abriu pode limpar os dados do site no navegador. Ver ADR 0014 |
+| Carta guardada no navegador com o desenho de antes de uma correção | A chave das cartas guardadas não mudou: o arquivo corrigido não entra no resumo do código que desenha | Pôr o arquivo na lista de `drawingHash` em `scripts/codigo.ts` e publicar de novo; quem já abriu pode limpar os dados do site no navegador. Ver ADR 0014 |
 | Primeiro planeswalker demora | Download único do modelo e do runtime (37 MB com placa de vídeo, 33 MB sem) e, sem placa de vídeo, ~7 s por quadro na CPU de um computador | Esperado; a carta aparece antes em rascunho. Ver ADRs 0008 e 0013 |
 | Saga sai em inglês com texto em PT disponível | O motor não achou um fio por capítulo (digitalização clara demais, como as promos de pré-estreia), os números dos marcadores ou a barra de tipo no pé, ou o texto não coube nem no corpo 18 | Esperado nas promos de pré-estreia: a versão da coleção sai em PT. Ver `sagaDividers`, `sagaNumerals` e `sagaPlan` em `src/engine/saga.ts` e `pnpm test` (`tests/unit/saga.test.ts`); "Sagas com capítulos que não batem" no log do pipeline lista as que saem como estão já nos dados |
 | Aventura sai em inglês com texto em PT disponível | O motor não achou o livro na imagem (a lombada entre as páginas ou a barra do tipo da aventura), ou a impressão não é da moldura de livro (vitrine, arte estendida, sem borda) | Ver `adventureBook` em `src/engine/adventure.ts` e `pnpm test` (`tests/unit/adventure.test.ts`); as de outro desenho saem como estão de propósito (`adventure_supported` no pipeline) |
@@ -87,3 +101,7 @@ pnpm exec wrangler d1 execute proxinho --remote --command "SELECT count(*) FROM 
 | Lembrete sem itálico com um ")" solto, ou sem o fecho | Parêntese faltando no texto oficial (Scryfall ou Arena) | Ver `balance_parens` em `data/pipeline/build.py` e `pnpm test:data` |
 | Carta com o nome de outra versão no texto ("Keenser") | Versão com nome alternativo do Arena | Ver `cites_alt_name` em `data/pipeline/build.py` e `pnpm test:data` |
 | Texto com outra fonte | `/api/fontes/` sem os arquivos no KV | Recolocar com `wrangler kv key put` (acima) |
+| Primeira visita montando no aparelho cartas que deviam vir prontas | O montador não rodou depois da última publicação (o código mudou e as chaves também), o depósito chegou aos 5 GB (as cartas de fora do limite são montadas no aparelho), o R2 está sem o binding `CARTAS`, ou a pessoa usa fontes próprias | Rodar o workflow "Montagem" (acima); o log diz o código, o espaço no depósito e por que parou; conferir `GET /api/cartas/<código>/<chave>.jpg` de uma carta |
+| Workflow "Montagem" sem montar nada | O site no ar é de outro código ("o site no ar é do código …": a publicação na main pulou por falta dos segredos da Cloudflare), o depósito está cheio ou o repositório deixou de ser público | Publicar o commit da main e rodar o workflow de novo; conferir `codigo` em `/api/health` contra `node scripts/codigo.ts` |
+| Montagem no GitHub com 401 | O token OIDC não é aceito: workflow fora da main, arquivo com outro nome, repositório recriado (outro número) ou `MONTAGEM_REPO_ID`/`MONTAGEM_DONO_ID` errados | Conferir os números em `wrangler.jsonc` (`gh api repos/<dono>/<repo> --jq '.id, .owner.id'`) e publicar |
+| Montador grava mas o site não acha as cartas | Montado de outro commit (outro resumo do código) ou sem as fontes oficiais | Rodar `pnpm montagem:build` no commit que está no ar; o montador recusa começar sem as fontes oficiais |

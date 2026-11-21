@@ -21,6 +21,7 @@
     "src/engine/text.ts",
     "src/engine/geometry.ts",
     "worker/importers.ts",
+    "worker/cartas.ts",
     "vitest.config.ts",
     "playwright.config.ts"
   ]

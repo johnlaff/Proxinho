@@ -63,6 +63,11 @@ export interface FrameExtras {
   mdfcStrip?: boolean;
   /** quanto a linha de tipo (e o topo da caixa) desceu em relação à moldura padrão */
   typeShift?: number;
+  /**
+   * a linha de tipo não tem o símbolo da coleção (verso de duas faces desde 2022, ver
+   * `findSetSymbolLeft`): o tipo vai até o fim da barra, como o nome sem custo
+   */
+  noSetSymbol?: boolean;
 }
 
 /** Medidas das cartas de duas faces (Scryfall PNG, conferidas em MID, VOW, MOM, ZNR, KHM, TLA). */
@@ -119,7 +124,7 @@ export function hasLeftIcon(effects: string | null, twoSided: boolean, rightIcon
  */
 export function m15Layout(manaCost: string | null, hasPt: boolean, setSymbolLeft: number, extras: FrameExtras = {}): FrameLayout {
   const cost = extras.rightIcon && !manaCost ? DFC.rightIconX : costLeft(manaCost);
-  const setLeft = Math.min(Math.max(setSymbolLeft, 560), 660);
+  const setLeft = Math.min(Math.max(setSymbolLeft, 560), extras.noSetSymbol ? 694 : 660);
   const titleX = extras.leftIcon ? DFC.iconTitleX : 66;
   const typeX = extras.indicator ? DFC.indicatorTypeX : 66;
   const eraseBottom = extras.mdfcStrip ? DFC.mdfcEraseBottom : 954;

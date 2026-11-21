@@ -16,6 +16,7 @@ Levantamento feito em 17/11/2026, antes de escrever a primeira linha de código.
 | MPCFill | Banco comunitário de imagens em alta e pedido na MakePlayingCards | Só imagens prontas, quase todas em inglês |
 | Proxxied | Cola a lista, escolhe a arte e gera PDF com marcas de corte | Não |
 | MTGProxyPrinter | App de desktop aberto; PDF em A4/Carta; opção de "traduzir" | Parcial: troca pela imagem PT do Scryfall quando existe |
+| MtG Proxy Printer (site, novembro de 2026) | Cola a lista e troca a caixa de texto por uma caixa lisa da cor da moldura, com a tradução oficial ou de máquina | Sim, mas a caixa perde o desenho da moldura, e sem tradução oficial entra a de máquina |
 | Card Conjurer | Editor de cartas com molduras e texto livre | Manual; saiu do ar oficialmente em 2022 após notificação da Wizards |
 | Gráficas de proxy | Vendem a carta impressa | Não, e vender proxy é proibido pela Wizards |
 
@@ -253,18 +254,30 @@ Qualidade: dos 194 lembretes que as cartas impressas em PT já traziam e que uma
 
 Resultado: 164 lembretes em inglês ganham texto em PT, em 643 cartas (632 de papel). Os maiores grupos: Posicionar (as naves e planetas), Preparar (61 cartas de Secrets of Strixhaven), "Liguem seus motores!" (39), Exaustão (33), Dobra Espacial (29), Definhar (29), Bushido (26), Manifestar Pavor (22) e Cria (20). Ficam de fora as cartas com número por extenso ("Mobilize 2" diz "two", e a dica sairia "2"), as dicas que dizem outra coisa (Prototype, Suspend sem o "it has haste", Partner com "Parceiro" onde a carta diz "this ability") e a "it" que não é a própria carta (o Changeling da ficha do Stalactite Dagger).
 
+## Cartas prontas no servidor (21/11/2026)
+
+O João pediu a experiência instantânea, com tudo montado no servidor (o Proxinho é para ele e para colegas próximos, decisão de 20/11/2026). Como o mercado faz:
+
+- **Imagem pronta num CDN** é o padrão de quem abre na hora: o MPC Autofill serve imagens já montadas por um cache na borda, e o Scryfall e os sites de deck servem a imagem da carta. Quem monta (Card Conjurer, MtG Proxy Printer, Proxyshop no desktop) monta uma carta por vez, no aparelho, e a pessoa espera.
+- **Montar sob demanda num navegador da nuvem** (Cloudflare Browser Run): 10 horas por mês no plano pago e US$ 0,09 por hora depois; a primeira visita continua esperando, e a rede neural (15 s a 1 min por carta no processador) passa do incluído.
+- **Outro motor no servidor** (node-canvas, Skia) seriam dois motores para manter iguais, com fontes e antialiasing diferentes.
+
+A escolha (ADR 0022): o mesmo motor, rodado de antemão num Chromium com o Playwright, grava cada carta no R2 com a mesma chave das cartas guardadas no navegador (o resumo do código, as fontes e a entrada inteira da carta), e o site procura lá antes de montar. São 57.693 artes suportadas com texto oficial (21.470 cartas, 3.616 sem borda, 615 de duas faces), ~115 mil imagens (prévia e face do PDF) e ~20 GB: o R2 cobra US$ 0,015 por GB por mês além dos 10 GB grátis (KV seria US$ 0,50 por GB). A arte padrão de cada carta vem primeiro, das mais jogadas às menos.
+
+**Onde rodar a montagem, de graça (21/11/2026).** A documentação de cobrança do GitHub Actions diz que as máquinas padrão são grátis em repositório público e que as maiores são cobradas mesmo em público; cada job tem no máximo 6 horas e uma conta grátis roda até 20 jobs ao mesmo tempo. A cota grátis do R2 (10 GB, 1 milhão de gravações e 10 milhões de leituras por mês) é da conta inteira, e o plano Workers Paid não a aumenta; acima dela, US$ 0,015 por GB por mês. Para o job gravar sem senha guardada, o padrão de mercado é o token OIDC do provedor de CI (a "publicação confiável" do PyPI e do npm, e o acesso do GitHub Actions à AWS, ao Google Cloud e à Azure): o GitHub assina um JWT de poucos minutos com o repositório, a branch e o workflow, e quem recebe confere a assinatura com as chaves públicas de `token.actions.githubusercontent.com/.well-known/jwks` e as afirmações, pelo número do repositório (o nome muda com renomeação). A escolha (ADR 0023): 12 máquinas padrão, o token OIDC conferido pelo Worker e um limite de 5 GB no depósito, com a rede neural primeiro.
+
 ## Lado legal e o caminho seguro
 
 | Ponto | O que diz | Risco |
 |---|---|---|
-| Política de Conteúdo de Fãs da Wizards | Permite conteúdo de fã gratuito; proíbe vender, usar logos e tirar avisos de copyright; exige o aviso de "não aprovado" | Baixo, se grátis |
+| Política de Conteúdo de Fãs da Wizards | Permite conteúdo de fã gratuito; proíbe vender, usar logos e tirar avisos de copyright; exige o aviso de "não aprovado". E exclui expressamente criar proxies, mesmo grátis ("does not include … creating counterfeit/proxy Magic cards"): não é permissão para o Proxinho | Médio: a tolerância vem da posição de 2016 (uso pessoal). O Proxinho é para o dono e colegas próximos (decisão de 20/11/2026) |
 | Posição da Wizards sobre proxies (2016) | O foco é falsificação e eventos oficiais; não fiscalizam cartas de teste para uso pessoal | Baixo no uso pessoal |
 | Card Conjurer (2022) | Gerador web recebeu notificação; a Wizards citou cópia literal de texto e arte | Médio num site público |
 | Termos do Arena | Proíbem engenharia reversa | Alto se extrair do programa: não fazemos. Desde 20/11/2026 lemos só as dicas das palavras-chave no banco da interface (SQLite) da instalação do dono do projeto, com o ok dele, fora do repositório (ADR 0021): rever antes de abrir ao público |
 | Dados da Untapped | Arquivos públicos, sem termos claros de reuso | Médio: pedir autorização antes de divulgar |
-| Regras de imagem do Scryfall | Não cortar artista e copyright, não distorcer, não pôr marca d'água | Médio: avisar o Scryfall |
+| Regras de imagem do Scryfall | Não cortar artista e copyright, não distorcer, não pôr marca d'água, e não "simplesmente reempacotar, republicar ou servir como proxy" os dados do Scryfall | Médio: as cartas montadas no servidor (ADR 0022) são imagens derivadas, num depósito privado, sem galeria nem listagem; avisar o Scryfall antes de abrir ao público |
 | Fontes das cartas | Beleren e Plantin são de terceiros | Arquivos fornecidos pelo dono do projeto, servidos do KV e fora do repositório; reserva livre: Eczar e Splentinex (OFL). Rever antes de abrir ao público |
 
-**O que o Proxinho faz para ficar no caminho seguro:** é grátis, não vende impressão, gera tudo no navegador (o servidor não guarda nem distribui imagens de cartas, e não há galeria pública), não extrai nada do cliente do Arena além das dicas das palavras-chave (ADR 0021), mantém artista e copyright, mostra o aviso de conteúdo de fã no site e no PDF e não usa nomes ou logos da Wizards como marca.
+**O que o Proxinho faz para ficar no caminho seguro:** é grátis, não vende impressão, é para o dono e colegas próximos, guarda as cartas montadas num depósito privado servido só pelo site, pela chave exata, sem galeria, listagem nem indexação (ADR 0022), não extrai nada do cliente do Arena além das dicas das palavras-chave (ADR 0021), mantém artista e copyright, mostra o aviso de conteúdo de fã no site e no PDF e não usa nomes ou logos da Wizards como marca.
 
 **Pendente antes de divulgar amplamente:** pedir autorização à Untapped e avisar o Scryfall.

@@ -218,6 +218,8 @@ def is_intrinsic_mana(type_en: str | None, subtypes_en: str | None, ability_en: 
 
 # cartas do Arena cuja versão mais nova não tem flavor e ficaram com o da anterior
 KEPT_FLAVOR: set[str] = set()
+# o flavor de cada versão do Arena (não só da que dá o texto): {nome em inglês: [{print, en, pt}]}
+ARENA_FLAVORS: dict[str, list[dict]] = {}
 
 
 def keep_earlier_flavor(entry: dict, prev: dict | None) -> bool:
@@ -317,6 +319,10 @@ def load_arena(offline: bool) -> dict[str, dict]:
         for f in faces:
             f.pop("_flavor_en", None)
         where = {"set": (card.get("set") or "").lower(), "number": str(card.get("collectorNumber") or "")}
+        # cada versão guarda o próprio flavor: outra arte de papel com o mesmo flavor em inglês
+        # leva o dele (Birds of Paradise BLC 81, a fala da Ms. Bumbleflower; o texto vem da LTC 235)
+        if any(f["flavor_pt"] for f in faces):
+            ARENA_FLAVORS.setdefault(name_en, []).append({"print": where, "en": flavor_en, "pt": tuple(f["flavor_pt"] for f in faces)})
         # a versão mais nova pode ser uma variante sem flavor (Itzquinth, LCI 331): o texto vem
         # dela, e o flavor (com a impressão dele) continua o da versão anterior
         entry = {"faces": faces, "print": where, "flavor_en": flavor_en}
@@ -1148,6 +1154,18 @@ def art_behind_box(card: dict) -> bool:
     return "gameday" in promos and "wizardsplaynetwork" not in promos
 
 
+# Secret Lair com a moldura inteira desenhada à mão pelo artista: nome e texto escritos à mão,
+# arte dentro da barra do nome e da caixa de texto. O Scryfall marca moldura 2015 sem efeito
+# nenhum, e o motor apagava e escrevia nos lugares da M15 (Sol Ring, SLD 2132, saía borrado).
+DRAWN_FRAME_ARTISTS = {"Ricardo Cavolo"}
+
+
+def drawn_frame(card: dict) -> bool:
+    """A moldura da impressão foi desenhada pelo artista (ver DRAWN_FRAME_ARTISTS). Só as de borda
+    preta: a sem borda dele (Xanathar, SLD 1785) tem a moldura padrão, com a caixa translúcida."""
+    return card.get("set") == "sld" and card.get("artist") in DRAWN_FRAME_ARTISTS and card.get("border_color") == "black"
+
+
 def frame_supported(card: dict) -> bool:
     """O motor do Proxinho reescreve a moldura moderna (2015+) de layout normal.
 
@@ -1163,6 +1181,7 @@ def frame_supported(card: dict) -> bool:
         and not card.get("full_art")
         and not art_behind_box(card)
         and not card.get("textless")
+        and not drawn_frame(card)
         and not effects & UNSUPPORTED_EFFECTS
         and not any(t in type_line for t in UNSUPPORTED_TYPES_NORMAL)
         # naves e planetas com "Posicionar" têm caixas de nível próprias (2+, 12+)
@@ -1198,6 +1217,7 @@ def borderless_supported(card: dict) -> bool:
         and effects <= BORDERLESS_EFFECTS_OK
         and not card.get("full_art")
         and not card.get("textless")
+        and not drawn_frame(card)
         and not any(t in type_line for t in UNSUPPORTED_TYPES)
         and "Station" not in (card.get("keywords") or [])
         and "draculaseries" not in (card.get("promo_types") or [])
@@ -1226,6 +1246,7 @@ def saga_supported(card: dict) -> bool:
         and effects <= SAGA_EFFECTS_OK
         and not card.get("full_art")
         and not card.get("textless")
+        and not drawn_frame(card)
         and "Saga" in card.get("type_line", "")
         and "Creature" not in card.get("type_line", "")
     )
@@ -1248,6 +1269,7 @@ def adventure_supported(card: dict) -> bool:
         and effects <= SAGA_EFFECTS_OK
         and not card.get("full_art")
         and not card.get("textless")
+        and not drawn_frame(card)
         and not art_behind_box(card)
         and len(card.get("card_faces") or []) == 2
     )
@@ -1273,6 +1295,7 @@ def station_supported(card: dict) -> bool:
         and effects <= STATION_EFFECTS_OK
         and not card.get("full_art")
         and not card.get("textless")
+        and not drawn_frame(card)
     )
 
 
@@ -1293,6 +1316,7 @@ def class_supported(card: dict) -> bool:
         and effects <= SAGA_EFFECTS_OK
         and not card.get("full_art")
         and not card.get("textless")
+        and not drawn_frame(card)
         and "Class" in card.get("type_line", "")
     )
 
@@ -1352,6 +1376,7 @@ def token_supported(card: dict) -> bool:
         and card.get("layout") in {"token", "emblem", "double_faced_token"}
         and card.get("border_color") == "black"
         and not card.get("textless")
+        and not drawn_frame(card)
         and set(card.get("frame_effects") or []) <= TOKEN_EFFECTS_OK
     )
 
@@ -1413,6 +1438,43 @@ def mark_text_flavor(rows: list[dict], prints: list[dict], flavors: dict[tuple[s
     for p in prints:
         p["text_flavor"] = p.get("_flavor") in ref.get(p["oracle_id"], ())
         n += p["text_flavor"]
+    return n
+
+
+def mark_print_flavors(rows: list[dict], prints: list[dict], versions: dict[str, list[dict]]) -> int:
+    """O flavor em PT de cada arte que não leva o da impressão do texto: o da versão do Arena com
+    o mesmo flavor em inglês (ou da mesma coleção e número, quando o Scryfall não tem o flavor).
+
+    O Arena tem um flavor por versão da carta, e o texto em PT vem de uma só (`text_print`): as
+    outras artes ficavam sem flavor mesmo com a tradução oficial no Arena (Birds of Paradise da
+    BLC 81 sem a fala da Ms. Bumbleflower, porque o texto vem da LTC 235). Grava `flavor_pt` (um
+    por face) só onde muda alguma coisa; na impressão do texto e nas com `text_flavor` o site já
+    usa o da carta.
+    """
+    by_oid = {r["oracle_id"]: r for r in rows}
+    n = 0
+    for p in prints:
+        p["flavor_pt"] = None
+        row = by_oid.get(p["oracle_id"])
+        # (fichas têm nomes iguais a cartas, "Adorned Pouncer" eternizado: o flavor do Arena é das cartas)
+        tokens = {"token", "double_faced_token", "emblem"}
+        if not row or p.get("text_flavor") or (p.get("layout") or "") in tokens or (row.get("layout") or "") in tokens:
+            continue
+        tp = row.get("text_print")
+        if tp and (ARENA_SETS.get(tp["set"].lower(), tp["set"].lower()), str(tp["number"])) == (p["set_code"], p["number"]):
+            continue
+        name = row["name_en"]
+        found = versions.get(name) or versions.get(name.split(" // ")[0])
+        if not found:
+            continue
+        mine = p.get("_flavor") or ()
+        for v in reversed(found):  # a versão mais nova primeiro
+            same_print = (ARENA_SETS.get(v["print"]["set"], v["print"]["set"]), v["print"]["number"]) == (p["set_code"], p["number"])
+            if (any(mine) and tuple(v["en"]) == tuple(mine)) or (same_print and not any(mine)):
+                if len(v["pt"]) == len(mine) or not any(mine):
+                    p["flavor_pt"] = list(v["pt"])
+                    n += 1
+                    break
     return n
 
 
@@ -1751,7 +1813,7 @@ def sql_str(value: object) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides", "text_flavor", "flavor_name", "indicator"]
+PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides", "text_flavor", "flavor_name", "indicator", "flavor_pt"]
 
 COLUMNS = ["oracle_id", "name_en", "name_pt", "search_en", "search_pt", "source", "text_print", "faces", "pt_print", "layout", "type_line", "edhrec_rank", "commander", "tokens"]
 
@@ -1810,6 +1872,7 @@ def main() -> None:
     log(f"planeswalkers com habilidades que não batem (saem como estão): {len(PW_MISMATCH)}")
     log(f"Sagas com capítulos que não batem (saem como estão): {len(SAGA_MISMATCH)}")
     log(f"artes com o flavor da impressão do texto em PT: {mark_text_flavor(rows, prints, FLAVORS)}")
+    log(f"artes com o flavor de outra versão do Arena: {mark_print_flavors(rows, prints, ARENA_FLAVORS)}")
     write(rows, prints)
 
 

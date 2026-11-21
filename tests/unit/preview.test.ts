@@ -210,3 +210,20 @@ describe("fila das prévias", () => {
     expect([...preview.engineMisses()].sort()).toEqual([missKey("x", 0), neuralMissKey("x", 0), missKey("y", 0)].sort());
   });
 });
+
+describe("flavor de cada arte", () => {
+  it("a arte com flavor próprio no Arena leva o dele; sem nada, fica sem", async () => {
+    const { preview } = await setup();
+    // Birds of Paradise BLC 81: o texto vem da LTC 235, e a fala da Ms. Bumbleflower não saía
+    const e = entry("blc");
+    e.card.text_print = { set: "ltc", number: "235" };
+    e.card.faces[0].flavor_pt = "O som de águas borbulhantes…";
+    e.prints[0] = { ...e.prints[0], set_code: "blc", number: "81", flavor_pt: ["“Que adorável!…”"] };
+    expect(preview.renderInput(e)?.flavor).toBe("“Que adorável!…”");
+    e.prints[0] = { ...e.prints[0], flavor_pt: null };
+    expect(preview.renderInput(e)?.flavor).toBeNull();
+    // a impressão do texto continua com o flavor da carta
+    e.prints[0] = { ...e.prints[0], set_code: "ltc", number: "235", flavor_pt: ["outro"] };
+    expect(preview.renderInput(e)?.flavor).toBe("O som de águas borbulhantes…");
+  });
+});

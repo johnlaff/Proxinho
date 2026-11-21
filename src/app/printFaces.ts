@@ -11,9 +11,9 @@
  */
 import { fontsVersion } from "../engine/fonts";
 import { renderCard } from "../engine/render";
-import { cardKey, storeCard, storedCard } from "./cardStore";
+import { cardKey, savedCard, storeCard } from "./cardStore";
 import { renderKey, sideCount, sortEntries, type Entry, type Side } from "./model";
-import { noteRender, previewUrl, renderInput, waitsForNeuralFill, whenPreviewsIdle } from "./preview";
+import { noteRender, previewUrl, renderInput, waitsForNeuralFill, whenPreviewsIdle, type CardInput } from "./preview";
 
 export type Quality = "padrao" | "alta";
 /** pixels de saída por pixel do PNG (745 px ≈ 300 dpi em 63 mm) */
@@ -37,6 +37,15 @@ function toBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 }
 
 /**
+ * A face de uma carta na resolução de impressão, em JPEG. A mesma função monta as cartas guardadas
+ * no servidor (src/montagem/pagina.ts).
+ */
+export async function renderPrint(input: CardInput, quality: Quality, onNeural?: (p: { done: number; total: number }) => void) {
+  const { canvas, translated, reason } = await renderCard({ ...input, imageVersion: "png", scale: SCALE[quality], onNeural });
+  return { blob: await toBlob(canvas), translated, reason };
+}
+
+/**
  * A face pronta para o PDF: a guardada, a que já está sendo montada, ou uma montagem nova (que
  * fica guardada; com erro, não). `onNeural` acompanha os quadros da rede neural só numa montagem
  * nova.
@@ -54,17 +63,16 @@ export function printFace(
       const input = renderInput(entry, side);
       if (!input) throw new Error(`Não há imagem para “${entry.card.name_pt ?? entry.card.name_en}”.`);
       const border = input.print.border === "white" || input.print.border === "borderless" ? input.print.border : "black";
-      // guardada no navegador numa visita anterior (ver cardStore.ts)
+      // guardada no navegador numa visita anterior ou montada no servidor (ver cardStore.ts)
       const id = await cardKey(`impressao:${quality}`, input);
-      const stored = await storedCard(id);
+      const stored = await savedCard(id);
       if (stored) {
         if (input.face) noteRender(input.print.id, side, stored.translated);
         return { image: stored.blob, border };
       }
       // (a caixa que a prévia já limpou vem pronta e conta tudo de uma vez)
-      const { canvas, translated, reason } = await renderCard({ ...input, imageVersion: "png", scale: SCALE[quality], onNeural });
+      const { blob: image, translated, reason } = await renderPrint(input, quality, onNeural);
       if (input.face) noteRender(input.print.id, side, translated, reason);
-      const image = await toBlob(canvas);
       // (sem a rede neural a carta saiu na original: noutra visita ela pode rodar)
       if (reason !== "neural") storeCard(id, { blob: image, translated });
       return { image, border };
@@ -142,9 +150,9 @@ export function warmPrints(entries: Entry[], quality: Quality): void {
   void (async () => {
     for (const { entry, side } of list) {
       if (faces.has(faceKey(entry, side, quality))) continue;
-      // a guardada no navegador não monta nada: não precisa esperar a vez
+      // a guardada no navegador ou montada no servidor não monta nada: não precisa esperar a vez
       const input = renderInput(entry, side);
-      if (input && (await storedCard(await cardKey(`impressao:${quality}`, input)))) {
+      if (input && (await savedCard(await cardKey(`impressao:${quality}`, input)))) {
         if (generation !== run) return;
         void printFace(entry, side, quality).catch(() => undefined);
         continue;

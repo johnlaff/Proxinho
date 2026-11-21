@@ -8,6 +8,7 @@
 
 [![CI/CD](https://github.com/johnlaff/proxinho/actions/workflows/ci.yml/badge.svg)](https://github.com/johnlaff/proxinho/actions/workflows/ci.yml)
 [![Dados diários](https://github.com/johnlaff/proxinho/actions/workflows/dados.yml/badge.svg)](https://github.com/johnlaff/proxinho/actions/workflows/dados.yml)
+[![Montagem](https://github.com/johnlaff/proxinho/actions/workflows/montagem.yml/badge.svg)](https://github.com/johnlaff/proxinho/actions/workflows/montagem.yml)
 [![CodeQL](https://github.com/johnlaff/proxinho/actions/workflows/codeql.yml/badge.svg)](https://github.com/johnlaff/proxinho/actions/workflows/codeql.yml)
 
 <img src="docs/img/tela-folhas.webp" alt="Tela do Proxinho: à esquerda a lista colada, à direita uma folha A4 com nove cartas já reescritas em português, com marcas de corte" width="900">
@@ -26,7 +27,7 @@ O Proxinho pega **qualquer impressão em inglês**, apaga o nome, o tipo e o tex
 
 - 92,4% das cartas legais no Commander têm tradução oficial; entre as 1.000 mais jogadas, 98,9%.
 - Cola a lista de qualquer site (Archidekt, Moxfield, Liga Magic, MTGO, Arena), importa por link ou busca pelo nome em português.
-- Tudo é montado no navegador: o servidor não guarda nem distribui imagens.
+- As cartas mais jogadas chegam prontas: o mesmo motor que roda no navegador monta tudo de antemão no servidor (ADR 0022), e o que ainda não está lá é montado no aparelho, na hora.
 - Grátis, sem cadastro, sem anúncio.
 
 <table>
@@ -63,13 +64,13 @@ Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 | Camada | Tecnologia | Por quê |
 |---|---|---|
 | Interface | React 19, Vite 8, TypeScript 7 (strict) | Padrão de mercado, build rápido |
-| Motor da carta | Canvas 2D, SVG de símbolos, Beleren e MPlantin (com reserva OFL: Eczar, Splentinex) | Roda no navegador, sem servidor de imagem |
+| Motor da carta | Canvas 2D, SVG de símbolos, Beleren e MPlantin (com reserva OFL: Eczar, Splentinex) | O mesmo código no navegador e no montador em lote (Chromium com Playwright, em 12 máquinas do GitHub Actions), que deixa as cartas prontas no R2 |
 | Inpainting | LaMa quantizado (37 MB, 30 MB compactado) com ONNX Runtime Web, numa worker: runtime WebGPU na placa de vídeo, runtime só de CPU sem ela | Apaga texto sobre arte sem deixar mancha; tudo no navegador |
 | PDF | pdf-lib, carregado sob demanda | Medidas exatas em milímetros |
-| API | Cloudflare Worker + D1 (SQLite) + Cache API | Um deploy só, custo zero no plano atual |
+| API | Cloudflare Worker + D1 (SQLite) + R2 + Cache API | Um deploy só; as cartas prontas ficam abaixo de 5 GB, dentro da cota grátis do R2 |
 | Dados | Python (só biblioteca padrão) no GitHub Actions | Atualização diária sem servidor |
 | Qualidade | oxlint, oxfmt, Vitest, Playwright (desktop e celular) | Rápido e com poucos plugins |
-| Esteira | GitHub Actions: CI, prévia por PR, deploy, dados diários, CodeQL, Dependabot | Actions fixadas por SHA, permissões mínimas |
+| Esteira | GitHub Actions: CI, prévia por PR, deploy, dados diários, montagem das cartas, CodeQL, Dependabot | Actions fixadas por SHA, permissões mínimas; a montagem grava no R2 com o token OIDC do GitHub, sem senha guardada (ADR 0023) |
 
 As escolhas e alternativas descartadas estão nos [registros de decisão](docs/adr/README.md).
 

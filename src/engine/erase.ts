@@ -34,9 +34,9 @@ function luminance(data: Uint8ClampedArray, i: number): number {
  * sobram os pés delas (g, p, vírgula), finos e soltos; um trecho em que a máscara cobre
  * mais da metade de uma janela de 60 px é arte ou sombra da moldura: sai da máscara e
  * fica como está. Antes ele era "apagado" com a cor da barra e sobrava uma faixa clara
- * embaixo do nome.
+ * embaixo do nome. `ink` é a tinta forte (o dobro do limiar, antes da histerese).
  */
-function dropArtBelowText(mask: Uint8Array, w: number, h: number, unit: number): void {
+export function dropArtBelowText(mask: Uint8Array, ink: Uint8Array, w: number, h: number, unit: number): void {
   const count = new Array<number>(h).fill(0);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) count[y] += mask[y * w + x];
   // A linha das letras é procurada só na metade do meio do retângulo (as barras são
@@ -52,21 +52,127 @@ function dropArtBelowText(mask: Uint8Array, w: number, h: number, unit: number):
   let base = peak;
   while (base + 1 < h && count[base + 1] >= count[peak] * 0.5) base++;
   const half = Math.max(10, Math.round(30 * unit));
+  // Os pés de "ygg," juntos (Sygg, Wanderwine Wisdom, ECL 76) também enchem metade de uma
+  // janela, mas por no máximo ~40 px seguidos: tirados da máscara, ficavam embaixo do
+  // português, dobrando o pé delas. Um trecho denso curto (menos de 60 px) fica na máscara
+  // quando ao menos metade dele é pé de letra: tinta forte (`ink`) ligada a um pedaço que
+  // sobe até a linha mais cheia das letras e pelo menos 8 px acima do pé delas, com até 80
+  // px de largura e longe dos lados e do pé do retângulo, mais a borda dela (até 2 px). O
+  // resto sai:
+  // - a faixa um pouco mais escura do brilho diagonal da barra (Chaos Warp, PIP 466): ela
+  //   entra pela histerese colada nas letras, e apagada clareava a barra e o alto do chanfro;
+  // - o pé da barra um pouco mais escuro perto da ponta (o degradê da barra), que mal passa
+  //   do limiar e encosta no rabo do "R" (Rhythm of the Wild RVR 217, Decimate CMM 922):
+  //   contado como tinta, ia junto com a letra, e o fio do pé da barra descia 1 px;
+  // - o chanfro escuro no pé da barra, mais escuro em alguns trechos (Chaos Warp, Commander's
+  //   Sphere), e a ponta arredondada da barra que desce até ele (Talisman of Progress, TRC
+  //   508; Solemn Simulacrum, FDN 729): ligados à moldura inteira, largos ou no lado do
+  //   retângulo, viravam um dente claro no chanfro;
+  // - a arte que mal passa do pé das letras (o alto do cabelo da Vivien Reid, M19 208, com o
+  //   retângulo mais baixo que as letras) ou que vem do pé do retângulo (os chifres do Ashiok);
+  // - um trecho comprido, sempre (a sombra do Ashiok).
+  // O pé que fica também não sai pela folga de um trecho vizinho que sai.
+  const minRun = Math.round(60 * unit);
+  const maxLetter = Math.round(80 * unit);
+  const tall = Math.max(3, Math.round(8 * unit));
+  const label = new Int32Array(w * h).fill(-1);
+  const boxes: [number, number, number, number][] = [];
+  const stack: number[] = [];
+  for (let k0 = 0; k0 < w * h; k0++) {
+    if (!ink[k0] || label[k0] >= 0) continue;
+    const id = boxes.length;
+    let x0 = w;
+    let x1 = -1;
+    let y0 = h;
+    let y1 = -1;
+    label[k0] = id;
+    stack.push(k0);
+    while (stack.length) {
+      const k = stack.pop()!;
+      const x = k % w;
+      const y = (k - x) / w;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const u = x + dx;
+          const v = y + dy;
+          if (u < 0 || u >= w || v < 0 || v >= h) continue;
+          const q = v * w + u;
+          if (ink[q] && label[q] < 0) {
+            label[q] = id;
+            stack.push(q);
+          }
+        }
+    }
+    boxes.push([x0, y0, x1, y1]);
+  }
+  // Arte clara e larga no alto da barra, ao lado das letras (a barra translúcida das terras de
+  // Star Trek, TRC 409), enche as linhas de cima: a linha das letras caía no fim da arte, no
+  // meio delas, e a metade de baixo de "Land" saía da máscara e ficava embaixo do português.
+  // O pé das letras também se mede por elas: o pé mais comum (pela largura) das manchas de
+  // tinta forte do tamanho de uma letra, que começam na metade de cima e não encostam no pé nem
+  // nos lados do retângulo (a arte que entra por baixo encosta no pé), com ao menos duas letras;
+  // quando ele fica 8 px ou mais abaixo da linha medida, vale ele.
+  const bottoms = boxes
+    .filter(([x0, y0, x1, y1]) => y0 < h / 2 && y1 - y0 + 1 >= tall && y1 < h - 1 && x0 > 0 && x1 < w - 1 && x1 - x0 + 1 <= maxLetter)
+    .map(([x0, , x1, y1]) => ({ y: y1, wt: x1 - x0 + 1 }))
+    .sort((a, b) => a.y - b.y);
+  if (bottoms.length >= 2) {
+    const total = bottoms.reduce((t, b) => t + b.wt, 0);
+    let acc = 0;
+    const foot = bottoms.find((b) => (acc += b.wt) * 2 >= total)!.y;
+    // (só quando a linha medida cai bem acima do pé, no meio das letras: um ou dois pixels de
+    // diferença são a borda suavizada do pé, e ficam com a linha medida)
+    if (foot - base >= tall) base = foot;
+  }
+  const letter = boxes.map(
+    ([x0, y0, x1, y1]) => y0 <= peak && base - y0 >= tall && y1 < h - 1 && x0 > 0 && x1 < w - 1 && x1 - x0 + 1 <= maxLetter,
+  );
+  // a borda suavizada da letra (e a histerese colada nela) também é pé
+  const own = new Uint8Array(w * h);
+  for (let k = 0; k < w * h; k++) if (ink[k] && letter[label[k]]) own[k] = 1;
+  const near = morph(own, w, h, Math.max(1, Math.round(2 * unit)), true);
+  const feet = (y: number, a: number, b: number) => {
+    let marked = 0;
+    let inked = 0;
+    for (let x = a; x < b; x++) {
+      const k = y * w + x;
+      marked += mask[k];
+      if (mask[k] && near[k]) inked++;
+    }
+    return marked > 0 && inked * 2 >= marked;
+  };
   const sum = new Int32Array(w + 1);
+  const dense = new Uint8Array(w);
   for (let y = base + 1; y < h; y++) {
     for (let x = 0; x < w; x++) sum[x + 1] = sum[x] + mask[y * w + x];
     const drop = new Int32Array(w + 1);
+    const stay = new Uint8Array(w);
     for (let x = 0; x < w; x++) {
       const a = Math.max(0, x - half);
       const b = Math.min(w, x + half + 1);
-      if ((sum[b] - sum[a]) * 2 >= b - a) {
-        drop[a]++;
-        drop[b]--;
+      dense[x] = (sum[b] - sum[a]) * 2 >= b - a ? 1 : 0;
+    }
+    for (let x = 0; x < w;) {
+      if (!dense[x]) {
+        x++;
+        continue;
       }
+      let e = x;
+      while (e < w && dense[e]) e++;
+      if (e - x < minRun && feet(y, x, e)) stay.fill(1, x, e);
+      else {
+        drop[Math.max(0, x - half)]++;
+        drop[Math.min(w, e + half)]--;
+      }
+      x = e;
     }
     for (let x = 0, on = 0; x < w; x++) {
       on += drop[x];
-      if (on > 0) mask[y * w + x] = 0;
+      if (on > 0 && !stay[x] && !near[y * w + x]) mask[y * w + x] = 0;
     }
   }
 }
@@ -206,15 +312,36 @@ export function textMask(
   const keep = new Float32Array(n);
   for (let k = 0; k < n; k++) keep[k] = lum[k] < bg[k] - threshold * 0.6 ? 0 : 1;
   bg = boxMean(lum, keep, w, h, radius);
+  let rowFix: Map<number, number> | undefined;
   if (rowBackground) {
     // Barras (nome, tipo): o fundo de cada linha é a mediana dela. A janela quadrada
     // misturava o brilho do alto com a sombra escura do pé da barra, e a sombra
     // virava "texto": apagada até o custo de mana, sobrava um degrau.
+    // Na linha em que as letras passam da metade (o meio das letras claras e grossas das
+    // promos de pré-estreia, Heliode PMOM 17s), a mediana cai nelas: as letras saíam da
+    // máscara, viravam a fonte do remendo e ficava um risco claro atravessando o tipo. Ali
+    // o fundo é a mediana do que está perto do tom da barra (a mediana do miolo da faixa),
+    // quando isso é uma boa parte da linha e foge da mediana dela mais que o limiar; a
+    // sombra do pé da barra é escura por igual, quase nada dela fica perto do miolo, e
+    // continua com a mediana da linha. (Só na comparação de cada pixel: o limiar da barra
+    // inteira, logo abaixo, continua medido com a mediana de cada linha. Medido com o fundo
+    // corrigido, ele descia, a histerese das barras granuladas não rodava e o pé de uma
+    // letra ficava, Missão Secundária: Pegar um Peixe, FIN 31.)
+    const inset = Math.floor(h * 0.2);
+    const band = Float32Array.from(lum.subarray(inset * w, (h - inset) * w)).sort();
+    const core = band[band.length >> 1];
     const row = new Float32Array(w);
     for (let y = 0; y < h; y++) {
       row.set(lum.subarray(y * w, y * w + w));
       row.sort();
-      bg.fill(row[w >> 1], y * w, y * w + w);
+      const value = row[w >> 1];
+      bg.fill(value, y * w, y * w + w);
+      if (y < inset || y >= h - inset || value >= core - threshold) continue;
+      let from = 0;
+      while (from < w && row[from] < core - 45) from++;
+      const near = w - from;
+      const alt = row[from + (near >> 1)];
+      if (near >= w * 0.25 && alt - value > threshold) (rowFix ??= new Map()).set(y, alt);
     }
   }
 
@@ -236,6 +363,7 @@ export function textMask(
     tLum = Math.max(threshold, Math.min(tLum, 3 * 1.4826 * median(Float32Array.from(up))));
     low = Math.max(threshold, tLum * 0.5);
   }
+  if (rowFix) for (const [y, v] of rowFix) bg.fill(v, y * w, y * w + w);
   // Nas caixas de letra escura o limiar é medido por ladrilho (`tileNoise`): numa caixa
   // translúcida metade lisa, metade sobre arte (fichas de 2008 a 2014), a metade lisa
   // mandava no limiar e a textura da outra virava "texto", apagada como um borrão liso.
@@ -300,6 +428,14 @@ export function textMask(
         }
     }
     mask.set(seeded);
+  }
+  // a tinta forte (o dobro do limiar, antes da histerese): só ela conta como pé de letra
+  // (`dropArtBelowText`)
+  let ink: Uint8Array | undefined;
+  if (rowBackground) {
+    ink = new Uint8Array(n);
+    const strong = Math.max(tLum, 2 * threshold);
+    for (let k = 0; k < n; k++) if (mask[k] && lum[k] < bg[k] - strong) ink[k] = 1;
   }
   if (low && low < tLum) {
     const queue: number[] = [];
@@ -388,7 +524,7 @@ export function textMask(
   }
 
   unseed();
-  if (rowBackground) dropArtBelowText(mask, w, h, unit);
+  if (ink) dropArtBelowText(mask, ink, w, h, unit);
 
   // letras claras numa barra (nome das fichas, verso das cartas de duas faces) têm sombra
   // e borda suavizada mais largas: com a folga de 2 px sobrava o contorno da letra apagada
@@ -1653,9 +1789,11 @@ export function findSetSymbolLeft(
   y1: number,
   xMax?: number,
   maxWidth = 100,
-  info?: { colored: number; lim: number; tight?: boolean },
+  info?: { colored: number; lim: number; tight?: boolean; none?: boolean },
   /** barra translúcida da moldura sem borda (ver o degradê do arco-íris, abaixo) */
   borderless = false,
+  /** verso de duas faces impresso sem o símbolo da coleção (ver o fim da função) */
+  symbolless = false,
 ): number {
   const x0 = Math.round(img.width * 0.75);
   // nas fichas a barra de tipo termina antes (ponta arredondada): quem chama passa o fim dela
@@ -1746,6 +1884,8 @@ export function findSetSymbolLeft(
   // símbolo (Doombot).
   const edgeWidth = (pass: number) => (xMax !== undefined || pass >= 2 ? 12 : 24);
   let edgeFrom = x1;
+  // (o contorno de fora, a primeira camada: no verso sem símbolo a barra vai até ele)
+  let outerEdge = x1;
   // (o fim do bloco antes da última camada pulada depois da primeira, para desfazer)
   let beforeLayer: number | null = null;
   for (let pass = 0; pass < 3; pass++) {
@@ -1753,6 +1893,7 @@ export function findSetSymbolLeft(
     // o fio é contínuo: qualquer lacuna o separa do símbolo
     while (i > 0 && cols[i] - cols[i - 1] <= Math.max(1, Math.round(3 * kk))) i--;
     if (i > 0 && cols[last] - cols[i] < Math.round(edgeWidth(pass) * kk) && cols[last] >= edgeFrom - Math.round(12 * kk)) {
+      if (pass === 0) outerEdge = cols[i];
       if (pass > 0) beforeLayer = last;
       edgeFrom = cols[i];
       last = i - 1;
@@ -1932,6 +2073,7 @@ export function findSetSymbolLeft(
       for (let i = last; i > 0 && cols[i] >= end - (maxWidth + 15) * k; i--)
         if (cols[i] - cols[i - 1] > 1 && cols[i] - cols[i - 1] >= best - Math.max(1, Math.round(k))) cut = cols[i];
     const colored = colorFrom(Math.max(x0, from), end);
+    const tinted = borderless && end - colored > maxWidth * k && best >= 10 * k;
     if (colored >= 0) {
       // volta até a lacuna logo antes da cor (o contorno preto do símbolo fica junto)
       let c = -1;
@@ -1950,7 +2092,12 @@ export function findSetSymbolLeft(
       // as letras): começa no contorno dele. Com lacuna clara, ela vale (a estrela da
       // Secret Lair tem raios: a cor começa bem depois do contorno)
       // (e quando o corte pelas lacunas caiu dentro do símbolo, à direita da cor)
-      else if (colored < cut || best <= Math.max(2, Math.round(3 * k))) cut = Math.max(start, colored - Math.round(3 * k));
+      // (na sem borda em foil as letras brancas vêm tingidas pela arte: a cor começava no
+      // "Dinosaur", mais longe do fim que a largura de um símbolo, e com uma lacuna clara antes
+      // da estrela o corte ia para a cor e o "saur" ficava ao lado do português, Ghalta, Primal
+      // Hunger FDN 397. Sem a lacuna clara, a cor vale: o selo do Core Set 2021, de ~100 px,
+      // tem o corte pelas lacunas por dentro, entre o "M" e o "21")
+      else if ((colored < cut && !tinted) || best <= Math.max(2, Math.round(3 * k))) cut = Math.max(start, colored - Math.round(3 * k));
     }
     // Na sem borda a arte atrás da barra translúcida enche o vão entre o fim do tipo e o
     // símbolo: o corte pela maior lacuna caía no espaço antes da última palavra, a 76 px da
@@ -1969,6 +2116,18 @@ export function findSetSymbolLeft(
     if (colored < 0) {
       let r = last;
       while (r > 0 && cols[r] - cols[r - 1] === 1) r--;
+      // Uma coluna só, fraca no traço fino do fim do símbolo, partia o trecho: a espada de MOM
+      // (Hidetsugu and Kairi, MOM 228, rara dourada numa barra dourada, a 3 px do "Dragon") ficava
+      // com um trecho de 1 px no fim, o corte pelas lacunas caía entre as letras e o "gon" ficava
+      // ao lado do português. Se o trecho do fim é um fiapo (até 3 px), um furo de uma coluna
+      // antes dele não separa. (Com um trecho maior no fim, nada muda: as letras brancas do fim
+      // do "Warlock" do verso do FIN 513, sem símbolo, têm furos de uma coluna entre elas, e o
+      // "ck" passava por símbolo; com a adaga do Lazav, a letra a 1 px dela entrava nele.)
+      if (r > 0 && end - cols[r] <= Math.round(3 * k) && cols[r] - cols[r - 1] === 2) {
+        let q = r - 1;
+        while (q > 0 && cols[q] - cols[q - 1] === 1) q--;
+        if (end - cols[q] >= 30 * k) r = q;
+      }
       const width = end - cols[r];
       if (r > 0 && width >= 30 * k && width <= maxWidth * k && cols[r] > start) {
         start = cols[r];
@@ -1999,6 +2158,22 @@ export function findSetSymbolLeft(
         info.lim = lim;
       }
     }
+  }
+  // Verso de carta de duas faces impresso desde Kamigawa: Neon Dynasty (fev. 2022): não tem o
+  // símbolo da coleção (conferido em 269 versos, de NEO a MSH; os de antes, como MID e VOW,
+  // têm). O "símbolo" achado era a última palavra do tipo, que ficava em inglês ao lado do
+  // português ("Vizard" no Kefka, FIN 231; "Hero" no Homem-Aranha, SPM 10). Um bloco que começa
+  // a 50 px ou mais do contorno do fim da barra é texto (os pedaços do contorno que sobram
+  // começam a até 37 px dele): aí não há símbolo, e a barra vai até o contorno de fora (`none`;
+  // com o tipo comprido até o fim, as últimas letras passavam por camadas do contorno, e o
+  // "ar" de "Avatar" ficava, FIN 451).
+  if (symbolless && start < outerEdge - Math.round(50 * k)) {
+    if (info) {
+      info.none = true;
+      info.tight = false;
+      info.colored = -1;
+    }
+    return outerEdge;
   }
   return start;
 }

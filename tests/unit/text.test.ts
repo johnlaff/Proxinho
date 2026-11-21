@@ -204,6 +204,15 @@ describe("geometria", () => {
     expect(back.erase[0].rect.x1).toBeLessThanOrEqual(640);
     expect(back.title.x).toBe(66);
   });
+  it("verso sem símbolo da coleção: o tipo vai até o fim da barra, como o nome sem custo (Kefka, FIN 231)", () => {
+    const back = m15Layout(null, true, 693, { leftIcon: true, indicator: true, noSetSymbol: true });
+    expect(back.erase[1].rect.x1).toBe(687);
+    expect(back.type.maxWidth).toBe(693 - 10 - back.type.x);
+    // (e nunca além do fim do nome sem custo)
+    expect(m15Layout(null, true, 711, { noSetSymbol: true }).erase[1].rect.x1).toBe(m15Layout(null, true, 711).erase[0].rect.x1);
+    // com símbolo, o limite de sempre: nenhum símbolo começa depois de 660
+    expect(m15Layout(null, true, 693, { leftIcon: true }).erase[1].rect.x1).toBe(654);
+  });
   it("carta modal: a caixa para antes da faixa do outro lado", () => {
     const mdfc = m15Layout("{1}{W}", false, 640, { leftIcon: true, mdfcStrip: true });
     expect(mdfc.box.y1).toBeLessThan(922);

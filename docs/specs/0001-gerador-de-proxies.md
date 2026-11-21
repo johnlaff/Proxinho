@@ -39,13 +39,15 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 - [x] A4 ou Carta; "na frente da carta" (sem sangria, opção −0,5 mm) ou "carta inteira" (com sangria).
 - [x] Qualidade padrão (300 dpi) ou alta (480 dpi).
 - [x] Marcas de corte, régua de 5 cm e aviso de imprimir em tamanho real em toda página.
-- [x] Progresso visível; tudo gerado no navegador.
+- [x] Progresso visível; gerado no navegador, ou já pronto do servidor.
+- [ ] As cartas já montadas no servidor pelo mesmo motor aparecem na hora já na primeira visita, e o PDF delas sai sem montar nada no aparelho; o que não está lá é montado no aparelho, como antes (ADR 0022; o R2 está ligado desde 21/11/2026 e o montador roda sozinho no GitHub, ADR 0023; marcar quando a primeira montagem terminar).
 - [x] O PDF é montado em segundo plano enquanto a pessoa revisa (depois das prévias, com a página parada, e nada antes do clique com a economia de dados ligada), e as cartas prontas ficam guardadas no navegador para a próxima visita: num deck de 100 cartas, o PDF sai em 2 s depois de um minuto de revisão, em vez de ~1 min (ADR 0014, 19/11/2026).
 
 ### H7. Honestidade e regras
 - [x] A origem do texto aparece na gaveta (Arena ou impressão PT).
 - [x] Sem tradução oficial, a carta sai em inglês e a interface diz.
 - [x] A explicação das palavras-chave (o lembrete entre parênteses) sai onde a carta física tem, ou seja, onde o Oracle traz, com o texto oficial das cartas impressas em PT; a que nunca saiu impressa em PT vem da explicação oficial que o Arena mostra ao lado da carta, quando ela diz o mesmo que a carta (ADRs 0018 e 0021).
+- [x] O flavor sai em cada arte que o tem na carta física, com a tradução oficial da versão do Arena daquela arte (a fala da Sra. Margarida na Birds of Paradise da BLC; 3.878 artes desde 21/11/2026).
 - [x] Se o motor não reconhece a moldura de uma impressão e ela sai na imagem original, a etiqueta, a legenda e o resumo dizem que sai em inglês.
 - [x] Aviso de conteúdo de fã no site e no PDF; nenhuma marca da Wizards como marca do produto.
 

@@ -24,6 +24,9 @@
     "fonts:local": "for f in beleren-bold mplantin mplantin-bold mplantin-italic; do [ -f .fontes-oficiais/$f.ttf ] && wrangler kv key put --local --binding FONTES $f.ttf --path .fontes-oficiais/$f.ttf; done; true",
     "model:fetch": "node scripts/modelo.mjs",
     "data:build": "python3 data/pipeline/build.py",
+    "montagem:build": "node scripts/modelo.mjs && vite build --config vite.montagem.config.ts",
+    "montagem:serve": "vite preview --config vite.montagem.config.ts",
+    "montagem": "node scripts/montagem/montar.mjs",
     "deploy": "wrangler deploy",
     "cf-typegen": "wrangler types"
   },
