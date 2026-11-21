@@ -115,6 +115,25 @@ describe("defaultChoice", () => {
     });
     expect(defaultChoice(c, [print("en")])).toEqual({ kind: "print", printId: "en" });
   });
+
+  it("sem tradução, a arte em inglês segue a mesma ordem, com a moldura suportada na frente", () => {
+    // Phyrexian Altar: a mais nova é o pôster da Secret Lair (SLC 16), sem moldura suportada
+    const c = card({ source: null, name_pt: "Altar Phyrexiano", faces: [] });
+    const prints = [
+      print("poster", { set_code: "slc", supported: false, frame: "2015", released: "2025-01-01" }),
+      print("promo", { promo: true, released: "2024-01-01" }),
+      print("2x2", { set_code: "2x2", released: "2022-07-08" }),
+      print("uma", { set_code: "uma", released: "2018-12-07" }),
+    ];
+    expect(defaultChoice(c, prints)).toEqual({ kind: "print", printId: "2x2" });
+    // só com artes sem moldura suportada, a melhor delas
+    expect(
+      defaultChoice(c, [print("baixa", { supported: false, highres: false }), print("alta", { supported: false, released: "2000-01-01" })]),
+    ).toEqual({
+      kind: "print",
+      printId: "alta",
+    });
+  });
 });
 
 describe("buildOrder", () => {
