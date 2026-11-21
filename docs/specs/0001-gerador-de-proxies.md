@@ -27,6 +27,7 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 - [x] As cartas aparecem montadas em folhas de 9, na ordem de impressão, comandante primeiro.
 - [x] Cada carta mostra coleção e número e, quando não sai reescrita, uma etiqueta em texto.
 - [x] Um resumo conta quantas saem reescritas, com imagem oficial em PT ou em inglês (e por quê).
+- [x] O pedido conta as cartas como o deck: a carta de duas faces conta uma vez, e as faces que vão para o papel aparecem ao lado ("100 cartas (101 faces)", desde 21/11/2026).
 - [x] Enquanto a rede neural prepara uma carta, a prévia diz a etapa (baixando, com a porcentagem; preparando; apagando o inglês). Se ela travar ou falhar no navegador, a carta não fica presa: sai do jeito simples ou na original, e a gaveta diz por quê (desde 19/11/2026).
 - [x] A carta que espera a rede neural aparece em português em poucos segundos (rascunho) e troca sozinha pela acabada; a prévia diz a parte e o tempo que falta ("Acabamento: parte 2 de 3, cerca de 35 s"), as outras cartas não esperam por ela, a carta aberta na gaveta passa na frente e o PDF diz qual carta está no acabamento. Quando a rede neural não roda, a etiqueta diz isso, e não que a moldura não é reescrita (ADR 0013, 19/11/2026). A gaveta diz se o acabamento roda na placa de vídeo ou no processador, e por quê (ADR 0014).
 

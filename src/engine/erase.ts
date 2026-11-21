@@ -2475,6 +2475,11 @@ export function eraseRegions(
     dividers?: boolean;
     /** retângulos que entram inteiros na máscara (as faixas cinza da tabela de d20) */
     force?: Rect[];
+    /**
+     * a máscara já pronta, na grade de `rect` (inteiro), no lugar da medida aqui: as letras
+     * brancas da barra de tipo translúcida (ver `glassBarLetters`), já sem o que é protegido
+     */
+    letters?: Uint8Array;
   }[],
   protect: Rect[],
   /** áreas protegidas que também não servem de fonte para o preenchimento */
@@ -2488,7 +2493,11 @@ export function eraseRegions(
   const opaque = [...opaqueAreas, ...caps];
   // uma região de cada vez: a máscara da seguinte é medida já sem o texto da anterior
   return regions.map((region) => {
-    const [m] = maskRegions(img, [region], [...protect, ...opaque], caps);
+    const { rect, letters } = region;
+    const [m] =
+      letters && letters.length === (rect.x1 - rect.x0) * (rect.y1 - rect.y0)
+        ? [{ rect, mask: letters, polarity: "light" as const }]
+        : maskRegions(img, [region], [...protect, ...opaque], caps);
     if (!m.mask.length) return m.polarity;
     // (a ligação é medida acima da folga da máscara: dilatada, a do fio subia além da linha)
     if (region.attachedBelow !== undefined) keepAttachedBelow(m, region.attachedBelow, Math.round((8 * img.height) / 1040));

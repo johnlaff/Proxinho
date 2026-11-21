@@ -5,6 +5,7 @@ import {
   borderlessPtBox,
   borderlessStamp,
   boxDividers,
+  glassBarLetters,
   letterBandCenter,
   lightBorderlessBox,
   screenNoise,
@@ -12,7 +13,7 @@ import {
   subtitleShift,
   whiteTextMask,
 } from "../../src/engine/borderless";
-import { regrain, tameInvented } from "../../src/engine/erase";
+import { eraseRegions, regrain, tameInvented } from "../../src/engine/erase";
 import { ptProtect } from "../../src/engine/geometry";
 import { findCardStamp } from "../../src/engine/token";
 
@@ -91,6 +92,60 @@ describe("borderlessBox", () => {
   it("sem a barra do nome no alto também não (terrenos Stellar Sights de Edge of Eternities)", () => {
     // a caixa tem aro, mas o nome fica logo acima dela e o tipo dentro: o inglês ficava
     expect(borderlessBox(frame({ title: false }).img)).toBeNull();
+  });
+});
+
+describe("glassBarLetters", () => {
+  // o retângulo de apagamento da barra de tipo (m15Layout)
+  const rect = { x0: 50, y0: 590, x1: 640, y1: 636 };
+  const inMask = (m: Uint8Array, x: number, y: number) => m[(y - rect.y0) * (rect.x1 - rect.x0) + x - rect.x0];
+  const glass: Paint = (x, y, c) => 30 + 2 * c + (Math.sin(x / 23) > 0.2 && Math.cos(y / 9 + x / 40) > -0.3 ? 55 : 0) + 3 * hash(x, y, c);
+  const letters = (fill: (x0: number, y0: number, x1: number, y1: number, c: Paint) => void, ink: [number, number, number]) => {
+    for (let x = 70; x < 240; x += 14) fill(x, 600, x + 5, 626, ink);
+  };
+
+  it("na barra translúcida devolve só as letras brancas, sem a arte de trás (Return of the Wildspeaker, ELD 373)", () => {
+    const { img, fill } = canvas([200, 200, 200]);
+    // a arte vista através da barra escura: o fundo quase preto e manchas mais claras (o
+    // braço e o punho atrás do "Instant"), de 80 a 95 tons
+    fill(50, 590, 640, 636, glass);
+    letters(fill, [240, 240, 240]);
+    // o aro claro do alto da barra, partido pela arte clara em trechos curtos (Muraganda Raceway, DFT 396)
+    for (let x = 60; x < 620; x += 50) fill(x, 590, x + 40, 593, [235, 235, 235]);
+    const m = glassBarLetters(img, rect);
+    expect(m).not.toBeNull();
+    for (let x = 60; x < 620; x += 50) expect(inMask(m!, x + 20, 591)).toBe(0);
+    expect(inMask(m!, 72, 612)).toBe(1);
+    // a folga de 2 px em volta da letra entra
+    expect(inMask(m!, 76, 612)).toBe(1);
+    // a arte longe das letras fica
+    let art = 0;
+    for (let y = 592; y < 634; y++) for (let x = 300; x < 620; x++) art += inMask(m!, x, y);
+    expect(art).toBe(0);
+  });
+
+  it("na barra opaca e na de letra escura devolve null (o apagamento de sempre)", () => {
+    const opaque = canvas([200, 200, 200]);
+    // barra preta com degradê de cima para baixo e grão, como as das cartas de duas faces
+    opaque.fill(50, 590, 640, 636, (x, y, c) => 20 + (y - 590) * 0.6 + 4 * hash(x, y, c));
+    letters(opaque.fill, [240, 240, 240]);
+    expect(glassBarLetters(opaque.img, rect)).toBeNull();
+    const light = canvas([200, 200, 200]);
+    light.fill(50, 590, 640, 636, (x, y, c) => 190 + 30 * Math.sin(x / 9) * Math.cos(y / 6) + 3 * hash(x, y, c));
+    letters(light.fill, [15, 15, 15]);
+    expect(glassBarLetters(light.img, rect)).toBeNull();
+  });
+
+  it("apagada com a pirâmide, a arte em volta das letras fica como era", () => {
+    const { img, fill } = canvas([200, 200, 200]);
+    fill(50, 590, 640, 636, glass);
+    letters(fill, [240, 240, 240]);
+    const m = glassBarLetters(img, rect)!;
+    eraseRegions(img, [{ rect, threshold: 28, fill: "pyramid", letters: m }], []);
+    // longe das letras, nem um tom mudou
+    expect(at(img, 400, 610)).toBe(Math.round((glass as (x: number, y: number, c: number) => number)(400, 610, 0)));
+    // e no lugar da letra não sobra o branco
+    expect(at(img, 72, 612)).toBeLessThan(150);
   });
 });
 

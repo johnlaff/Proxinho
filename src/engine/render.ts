@@ -13,6 +13,7 @@ import {
   borderlessPtBox,
   borderlessStamp,
   boxDividers,
+  glassBarLetters,
   letterBandCenter,
   lightBorderlessBox,
   screenNoise,
@@ -1801,6 +1802,10 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // depois (ver pageShade)
   const shaded = advLeft && measuredBox ? [measuredBox, advLeft].map((rect) => ({ rect, shade: pageShade(data, rect) })) : [];
   const unshade = shaded.map((p) => shadePage(data, p.rect, p.shade));
+  // barra de tipo translúcida, com a arte por trás e letra branca (artes estendidas): só as
+  // letras saem, e a arte em volta delas fica (ver glassBarLetters)
+  const typeRect = roundRect(toImg(layout.erase[1].rect));
+  const glass = frameBox ? null : glassBarLetters(data, typeRect, [...opaque, ...capGuard], capGuard);
   // (a moldura sem borda vai inteira para a rede neural, logo abaixo)
   const inks = eraseRegions(
     data,
@@ -1808,10 +1813,11 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     // passar do fio de baixo nas outras partes da caixa)
     [
       ...layout.erase.slice(subtitle ? 1 : 0, frameBox ? 0 : 3).map((e) => ({
-        rect: e.stains && measuredBox ? measuredBox : toImg(e.rect),
+        rect: e.stains && measuredBox ? measuredBox : glass && e === layout.erase[1] ? typeRect : toImg(e.rect),
         threshold: e.threshold,
         colorThreshold: e.colorThreshold,
-        fill: e.fill,
+        fill: glass && e === layout.erase[1] ? ("pyramid" as const) : e.fill,
+        letters: glass && e === layout.erase[1] ? glass : undefined,
         stains: e.stains,
         attachedBelow: e.stains ? (advLayout ? ADVENTURE.attachedBelow * fy : toImg(e.rect).y1) : undefined,
         force:

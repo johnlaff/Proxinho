@@ -8,7 +8,7 @@
  * As medidas estão na escala-base (745 × 1040), conferidas em amostras de SLD, FDN, LTR,
  * HOB/HOC, MSH, SPG, FIN, TLA e TLE.
  */
-import { boxMean, morph, ptBoxLeft, ptBoxTop } from "./erase";
+import { boxMean, morph, ptBoxLeft, ptBoxTop, textMask, textPolarity } from "./erase";
 import { BASE_H, BASE_W, type Rect } from "./geometry";
 
 const luminance = (d: Uint8ClampedArray, i: number) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
@@ -414,6 +414,47 @@ export function whiteTextMask(img: ImageData, rect: Rect, protect: Rect[] = [], 
   // e é 8 tons mais escuro que o fundo da vizinhança entra junto.
   const ring = morph(out, w, h, Math.max(2, Math.round(3 * unit)), true);
   for (let k = 0; k < n; k++) if (ring[k] && !out[k] && lum[k] < bg[k] - 8) out[k] = 1;
+  for (const p of protect)
+    for (let y = Math.max(Math.round(p.y0), rect.y0); y < Math.min(Math.round(p.y1), rect.y1); y++)
+      for (let x = Math.max(Math.round(p.x0), rect.x0); x < Math.min(Math.round(p.x1), rect.x1); x++)
+        out[(y - rect.y0) * w + x - rect.x0] = 0;
+  return out;
+}
+
+/** Parte do retângulo da barra que a máscara das barras opacas pega longe das letras brancas, a partir da qual a barra é translúcida. */
+export const GLASS_BAR_SPILL = 0.05;
+
+/**
+ * Barra de tipo translúcida, com a arte por trás e letra branca, numa carta com borda (as
+ * artes estendidas: Return of the Wildspeaker, ELD 373; Once Upon a Time, ELD 371). A
+ * máscara das barras opacas (`textMask`, contra a mediana de cada linha) pegava também a
+ * arte vista através da barra, e o preenchimento linha a linha a trocava por um bloco liso e
+ * escuro até o símbolo, com um degrau onde a arte voltava. Aqui, quando essa máscara pega
+ * mais de `GLASS_BAR_SPILL` do retângulo a mais de 4 px das letras brancas, devolve a
+ * máscara só das letras brancas (`whiteTextMask`, como nas barras da sem borda), para quem
+ * chama preencher com a pirâmide, que guarda a arte em volta. Senão (barra opaca, letra
+ * escura), `null`. `rect` é o retângulo já arredondado (escala da imagem); `protect` fica de
+ * fora das duas máscaras e `seedless` não semeia a das barras opacas, como em `maskRegions`.
+ */
+export function glassBarLetters(img: ImageData, rect: Rect, protect: Rect[] = [], seedless: Rect[] = []): Uint8Array | null {
+  const w = rect.x1 - rect.x0;
+  const h = rect.y1 - rect.y0;
+  if (w <= 0 || h <= 0 || textPolarity(img, rect) !== "light") return null;
+  const unit = img.width / BASE_W;
+  const opaque = textMask(img, rect, 28, protect, 0, "light", true, true, seedless);
+  const letters = whiteTextMask(img, rect, protect);
+  const near = morph(letters, w, h, Math.round(4 * unit), true);
+  let spill = 0;
+  for (let k = 0; k < w * h; k++) if (opaque[k] && !near[k]) spill++;
+  if (spill <= w * h * GLASS_BAR_SPILL) return null;
+  // O aro claro no alto da barra não é letra: o alto das letras fica uns 10 px abaixo do topo
+  // do retângulo. Onde a arte clara encosta no aro, ele se partia em trechos curtos, passava
+  // por letra e saía em pedaços escuros (Muraganda Raceway, DFT 396; Dragonskull Summit, WHO 1081)
+  letters.fill(0, 0, Math.min(h, Math.round(7 * (img.height / BASE_H))) * w);
+  // com a folga de 2 px, como nas barras da sem borda (`combineMasks`): a franja colorida da
+  // digitalização em volta das letras ficava fora e virava fonte da pirâmide, uma mancha lilás
+  // acima do tipo (Sedge Sliver, SLD 642)
+  const out = morph(letters, w, h, Math.max(1, Math.round(2 * unit)), true);
   for (const p of protect)
     for (let y = Math.max(Math.round(p.y0), rect.y0); y < Math.min(Math.round(p.y1), rect.y1); y++)
       for (let x = Math.max(Math.round(p.x0), rect.x0); x < Math.min(Math.round(p.x1), rect.x1); x++)

@@ -15,6 +15,7 @@ import {
   toSheets,
   tokenDetails,
   tokenSuggestions,
+  orderedCards,
   totalCards,
   type Entry,
 } from "../../src/app/model";
@@ -152,6 +153,8 @@ describe("buildOrder", () => {
       choice: { kind: "print", printId: "tov" },
     };
     expect(totalCards([dfc])).toBe(4);
+    // o deck conta a carta uma vez: 2 cartas, 4 faces no papel (o deck da Kona dava "101 cartas")
+    expect(orderedCards([dfc])).toBe(2);
     const [sheet] = toSheets([dfc]);
     expect(sheet.map((s) => s.side)).toEqual([0, 1, 0, 1]);
     expect(renderKey(dfc, 0, 1)).not.toBe(renderKey(dfc, 0, 0));

@@ -1159,11 +1159,23 @@ def art_behind_box(card: dict) -> bool:
 # nenhum, e o motor apagava e escrevia nos lugares da M15 (Sol Ring, SLD 2132, saía borrado).
 DRAWN_FRAME_ARTISTS = {"Ricardo Cavolo"}
 
+# Secret Lair com adesivos e rabiscos à mão por cima da moldura e do texto (a série do Deadpool de
+# 1º de abril de 2026, SLD IFIYW-1 a 10: o nome riscado com o novo escrito à mão, "Bolt" colado
+# no texto, "Shroud" e "Zero" por cima das palavras, o Deadpool saindo da arte por cima do tipo e
+# da caixa). O Scryfall marca moldura 2015 sem efeito, e o motor apagava a escrita e os desenhos
+# junto com o inglês: sobrava um retângulo de papel no lugar do braço dele (Deadly Dispute).
+DRAWN_OVER_NUMBERS = ("IFIYW-",)
+
 
 def drawn_frame(card: dict) -> bool:
-    """A moldura da impressão foi desenhada pelo artista (ver DRAWN_FRAME_ARTISTS). Só as de borda
-    preta: a sem borda dele (Xanathar, SLD 1785) tem a moldura padrão, com a caixa translúcida."""
-    return card.get("set") == "sld" and card.get("artist") in DRAWN_FRAME_ARTISTS and card.get("border_color") == "black"
+    """A moldura da impressão foi desenhada pelo artista (ver DRAWN_FRAME_ARTISTS) ou rabiscada por
+    cima (ver DRAWN_OVER_NUMBERS). Do artista, só as de borda preta: a sem borda dele (Xanathar,
+    SLD 1785) tem a moldura padrão, com a caixa translúcida."""
+    if card.get("set") != "sld":
+        return False
+    if str(card.get("collector_number") or "").startswith(DRAWN_OVER_NUMBERS):
+        return True
+    return card.get("artist") in DRAWN_FRAME_ARTISTS and card.get("border_color") == "black"
 
 
 def frame_supported(card: dict) -> bool:
