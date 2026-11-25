@@ -400,6 +400,36 @@ def load_arena_tokens() -> dict[tuple, dict]:
     return out
 
 
+# o que a impressão em PT traz escrito, nos campos do Scryfall
+TRANSCRIBED = ("printed_name", "printed_type_line", "printed_text", "flavor_text")
+
+
+def load_transcribed() -> dict[str, dict]:
+    """As impressões em PT transcritas da imagem oficial, por "coleção/número" (ADR 0026)."""
+    return json.loads((TRANSLATION_DIR / "transcritas.json").read_text())
+
+
+def transcribe(card: dict, table: dict[str, dict]) -> dict:
+    """
+    A impressão em PT que o Scryfall tem só na imagem, sem tipo nem texto (as 86 de Dragon's
+    Maze), com o que a carta traz escrito, transcrito da imagem em `data/traducao/transcritas.json`
+    (ADR 0026). A transcrição vale também para o nome, que o Scryfall às vezes tem errado ("Mao
+    do Bico de Bronze" no Moa do Bico de Bronze). A entrada só vale para a carta de mesmo nome
+    naquela coleção e número e deixa de valer quando o Scryfall trouxer o tipo ou o texto.
+    """
+    t = table.get(f"{card.get('set')}/{card.get('collector_number')}")
+    if not t or t["name"] != card.get("name") or card.get("card_faces") or card.get("printed_type_line") or card.get("printed_text") is not None:
+        return card
+    return {**card, **{k: t[k] if k in t else card.get(k) for k in TRANSCRIBED}, "_transcribed": f"{card['set']}/{card['collector_number']}"}
+
+
+def read_printed_pt(table: dict[str, dict]):
+    """As impressões em PT do cache do Scryfall, com as transcritas completadas (`transcribe`)."""
+    with open(CACHE / "scryfall_pt.jsonl") as fh:
+        for line in fh:
+            yield transcribe(json.loads(line), table)
+
+
 def load_printed_pt(offline: bool) -> dict[str, dict]:
     """Impressão em português mais recente de cada carta (Scryfall lang:pt)."""
     cache = CACHE / "scryfall_pt.jsonl"
@@ -418,9 +448,12 @@ def load_printed_pt(offline: bool) -> dict[str, dict]:
                 if page % 25 == 0:
                     log(f"Scryfall PT: página {page}")
                 time.sleep(0.1)  # Scryfall pede 50-100 ms entre chamadas
-    with open(cache) as fh:
-        best = pick_printed(json.loads(line) for line in fh)
-    log(f"Scryfall: {len(best)} cartas com impressão em português")
+    table = load_transcribed()
+    best = pick_printed(read_printed_pt(table))
+    used = {c["_text"].get("_transcribed") for c in best.values()} - {None}
+    log(f"Scryfall: {len(best)} cartas com impressão em português ({len(used)} com o texto transcrito da imagem)")
+    if stale := sorted(set(table) - used):
+        log(f"AVISO: {len(stale)} entradas de data/traducao/transcritas.json não valem mais (ex.: {stale[0]}): o Scryfall já traz o texto ou a carta mudou de número")
     return best
 
 
@@ -1946,8 +1979,7 @@ def build(offline: bool) -> list[dict]:
     ITALIC_WORDS.update(load_italic_words(offline))
     reminders = top_reminders(printed)
     log(f"lembretes do alto de Saga e Classe em PT (das impressas): {len(reminders)}")
-    with open(CACHE / "scryfall_pt.jsonl") as fh:
-        by_group, by_card = reminder_texts((json.loads(line) for line in fh), {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle})
+    by_group, by_card = reminder_texts(read_printed_pt(load_transcribed()), {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle})
     log(f"lembretes de palavra-chave em PT (das impressas): {len(by_group.get('*', {}))}")
     # e os das dicas do Arena, onde nenhuma impressa traz o lembrete (o Posicionar, ADR 0021)
     hints = arena_reminders(oracle, load_hints(), set(by_group.get("*", {})))

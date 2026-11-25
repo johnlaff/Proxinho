@@ -124,3 +124,9 @@ Como jogador, quero imprimir em português as cartas que nunca saíram em PT, sa
 - [x] A carta leva a etiqueta "PT não oficial" na folha, a legenda "não oficial", "Tradução não oficial" na escolha da arte, a explicação na gaveta e a linha "Reescrita com tradução não oficial" no resumo.
 - [x] Quando existe a imagem oficial em PT, ela é a escolha padrão; e quando o Arena ou uma impressão em PT trouxer a carta, o texto oficial entra no lugar sozinho.
 - [x] Se falta a tradução de uma linha ou do tipo, a carta sai em inglês, como antes.
+
+### H16. Texto das impressões em PT que só têm a imagem (entregue em 25/11/2026, ADR 0026)
+Como jogador, quero o texto oficial das cartas que saíram em PT mesmo quando o Scryfall só tem a imagem delas (Dragon's Maze), em qualquer arte.
+- [x] As 86 cartas de Dragon's Maze saem com o texto oficial, transcrito da imagem da carta em PT, com o nome, o tipo e o flavor dela, e a etiqueta de texto oficial.
+- [x] O texto é o da carta física, com os erros dela; a carta de 1995 com as regras daquele tempo (Sewers of Estark) fica só com o nome em PT e a tradução não oficial.
+- [x] Quando o Scryfall trouxer o texto, ele entra no lugar sozinho.

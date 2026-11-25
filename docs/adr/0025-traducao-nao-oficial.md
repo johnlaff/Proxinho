@@ -37,7 +37,7 @@ Basta uma linha sem tradução, ou um tipo que não se traduz, para a carta segu
 - A tradução não oficial nunca vence a oficial: quando o Arena ou uma impressão em PT trouxer a carta, ela passa sozinha para o texto oficial (o pipeline só traduz as que ficaram sem `source`).
 - O montador do servidor (ADR 0022) já monta essas cartas: a fila pede `source` e `name_pt`, e as duas existem.
 - Uma tradução errada só aparece quando alguém lê a carta. As linhas ficam num arquivo só (`data/traducao/linhas.json`, inglês → português) para corrigir sem mexer no código; o "reportar tradução" do roadmap passa a servir também para elas.
-- Falta transcrever as 87 cartas com a imagem em PT de verdade e sem o texto no Scryfall (86 de Dragon's Maze e uma Phyrexian Altar de promo): por enquanto saem na imagem oficial, ou com a tradução não oficial numa arte em inglês.
+- As 87 cartas com a imagem em PT de verdade e sem o texto no Scryfall (86 de Dragon's Maze e a Sewers of Estark da promo da HarperPrism) foram transcritas da imagem (ADR 0026, 25/11): as 86 de Dragon's Maze passaram ao texto oficial, e a tradução não oficial ficou com 5.305 cartas e 9.030 linhas: 3.123 (35%) iguais a uma oficial, 340 (4%) pelo molde e 5.567 (62%) traduzidas.
 
 ## Alternativas descartadas
 

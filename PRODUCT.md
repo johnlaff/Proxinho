@@ -49,7 +49,7 @@ Pegar qualquer carta, em qualquer arte, e entregar um PDF pronto para imprimir n
 
 ## Evidence on Hand
 
-- Medição de 21/11/2026: 83,8% das 31.597 cartas de Commander têm texto PT oficial; 98,4% das 1.000 mais jogadas. (A de 17/11, 92,4%, contava as impressões em PT que o Scryfall tem sem imagem e sem texto, só com o nome.)
+- Medição de 25/11/2026: 84,0% das 31.597 cartas de Commander têm texto PT oficial; 98,4% das 1.000 mais jogadas. (A de 21/11, 83,8%, ainda não tinha o texto das 86 impressões de Dragon's Maze que o Scryfall tem só na imagem, ADR 0026. A de 17/11, 92,4%, contava as impressões em PT que o Scryfall tem sem imagem e sem texto, só com o nome.)
 - Só 4% das imagens em português do Scryfall têm alta resolução (1.620 de 38.832).
 - Não há depoimentos, usuários ou números de uso ainda. Não inventar.
 

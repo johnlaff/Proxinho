@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, type_group
+from build import emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -22,6 +22,69 @@ class CitesAltName(unittest.TestCase):
 
     def test_sem_nome_alternativo(self) -> None:
         self.assertFalse(cites_alt_name("qualquer texto", [None, ""]))
+
+
+class Transcribe(unittest.TestCase):
+    """As impressões em PT que o Scryfall tem só na imagem, transcritas da imagem (ADR 0026)."""
+
+    def setUp(self) -> None:
+        self.table = {
+            "dgm/60": {
+                "name": "Bronzebeak Moa",
+                "oracle_text": "Whenever another creature you control enters, this creature gets +3/+3 until end of turn.",
+                "printed_name": "Moa do Bico de Bronze",
+                "printed_type_line": "Criatura — Ave",
+                "printed_text": "Toda vez que outra criatura entra no campo de batalha sob seu controle, Moa do Bico de Bronze recebe +3/+3 até o final do turno.",
+                "flavor_text": "Elas lutam pelo seu lar com mais lealdade do que qualquer recruta.",
+            },
+            "phpr/2": {"name": "Sewers of Estark", "printed_name": "Esgotos de Estark"},
+        }
+
+    def card(self, **kw) -> dict:
+        # o Scryfall tem só a imagem, e o nome errado
+        return {"set": "dgm", "collector_number": "60", "name": "Bronzebeak Moa", "lang": "pt", "printed_name": "Mao do Bico de Bronze", "printed_text": None, **kw}
+
+    def test_a_impressao_so_com_a_imagem_ganha_o_texto_transcrito(self) -> None:
+        c = transcribe(self.card(), self.table)
+        self.assertTrue(printed_has_text(c))
+        face = printed_faces(c)[0]
+        self.assertEqual(face["name_pt"], "Moa do Bico de Bronze")
+        self.assertEqual(face["type_pt"], "Criatura — Ave")
+        self.assertTrue(face["text_pt"].startswith("Toda vez que outra criatura"))
+        self.assertEqual(face["flavor_pt"], "Elas lutam pelo seu lar com mais lealdade do que qualquer recruta.")
+        self.assertEqual(c["_transcribed"], "dgm/60")
+
+    def test_o_texto_do_scryfall_ganha(self) -> None:
+        for kw in ({"printed_type_line": "Criatura — Ave"}, {"printed_text": "Voar"}):
+            c = self.card(**kw)
+            self.assertIs(transcribe(c, self.table), c)
+
+    def test_so_a_carta_de_mesmo_nome_no_numero(self) -> None:
+        c = self.card(name="Boros Mastiff")
+        self.assertIs(transcribe(c, self.table), c)
+        c = self.card(collector_number="61")
+        self.assertIs(transcribe(c, self.table), c)
+
+    def test_so_o_nome(self) -> None:
+        # Sewers of Estark (PHPR 2): o texto da carta é das regras de 1995 ("baixe antes da
+        # defesa ter sido escolhida"); fica só o nome, e a carta segue com a tradução não oficial
+        c = transcribe({"set": "phpr", "collector_number": "2", "name": "Sewers of Estark", "printed_text": None}, self.table)
+        self.assertEqual(printed_faces(c)[0]["name_pt"], "Esgotos de Estark")
+        self.assertFalse(printed_has_text(c))
+
+    def test_transcritas_com_os_mesmos_numeros_e_simbolos_do_oracle(self) -> None:
+        mark = re.compile(r"\{[^}]+\}|[+-]?\d+/[+-]?\d+|[+-]?\d+|\bX\b")
+        table = build.load_transcribed()
+        self.assertGreater(len(table), 80)
+        for key, t in table.items():
+            self.assertRegex(key, r"^[a-z0-9]+/[0-9a-z]+$")
+            self.assertTrue(t["name"] and t["printed_name"], key)
+            self.assertLessEqual(set(t), {"name", "oracle_text", "printed_name", "printed_type_line", "printed_text", "flavor_text"}, key)
+            if "printed_text" not in t:
+                continue
+            self.assertEqual(sorted(mark.findall(t["oracle_text"])), sorted(mark.findall(t["printed_text"])), key)
+            self.assertTrue(t["printed_type_line"][0].isupper() and "  " not in t["printed_text"], key)
+            self.assertTrue(all(x.strip() == x and x for x in t["printed_text"].split("\n")) or t["printed_text"] == "", key)
 
 
 class PickPrinted(unittest.TestCase):

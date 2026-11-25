@@ -1,0 +1,694 @@
+{
+ "dgm/1": {
+  "name": "Boros Mastiff",
+  "oracle_text": "Battalion — Whenever this creature and at least two other creatures attack, this creature gains lifelink until end of turn. (Damage dealt by a creature with lifelink also causes its controller to gain that much life.)",
+  "printed_name": "Mastim dos Boros",
+  "printed_type_line": "Criatura — Sabujo",
+  "printed_text": "Batalhão — Toda vez que Mastim dos Boros e pelo menos duas outras criaturas atacarem, Mastim dos Boros ganhará vínculo com a vida até o final do turno. (O dano causado por uma criatura com vínculo com a vida também faz com que seu controlador ganhe uma quantidade equivalente de pontos de vida.)",
+  "flavor_text": null
+ },
+ "dgm/2": {
+  "name": "Haazda Snare Squad",
+  "oracle_text": "Whenever this creature attacks, you may pay {W}. If you do, tap target creature an opponent controls.",
+  "printed_name": "Esquadrão Emboscador de Haazda",
+  "printed_type_line": "Criatura — Humano Soldado",
+  "printed_text": "Toda vez que Esquadrão Emboscador de Haazda ataca, você pode pagar {W}. Se fizer isso, vire a criatura alvo que um oponente controla.",
+  "flavor_text": "Eles já foram agentes de condicional, soldados rasos no exército, caçadores de recompensa... qualquer coisa para tornar o distrito deles mais seguro."
+ },
+ "dgm/3": {
+  "name": "Lyev Decree",
+  "oracle_text": "Detain up to two target creatures your opponents control. (Until your next turn, those creatures can't attack or block and their activated abilities can't be activated.)",
+  "printed_name": "Decreto de Lyev",
+  "printed_type_line": "Feitiço",
+  "printed_text": "Detenha até duas criaturas alvo que seus oponentes controlam. (Até seu próximo turno, aquelas criaturas não podem atacar nem bloquear e as habilidades ativadas delas não podem ser ativadas.)",
+  "flavor_text": "Os Azorius têm tantos códigos e estatutos que você está sempre violando algum deles."
+ },
+ "dgm/4": {
+  "name": "Maze Sentinel",
+  "oracle_text": "Vigilance\nMulticolored creatures you control have vigilance.",
+  "printed_name": "Sentinela do Labirinto",
+  "printed_type_line": "Criatura — Elemental",
+  "printed_text": "Vigilância\nAs criaturas multicoloridas que você controla têm vigilância.",
+  "flavor_text": "O caminho é conhecido a milênios, mas apenas por aqueles sem meios contar."
+ },
+ "dgm/5": {
+  "name": "Renounce the Guilds",
+  "oracle_text": "Each player sacrifices a multicolored permanent of their choice.",
+  "printed_name": "Renunciar às Guildas",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "Cada jogador sacrifica uma permanente multicolorida.",
+  "flavor_text": "“Multidões morrerão em nome da paz. Você acha que isso é fazer concessões?”\n— Gideon Jura, para Aurélia"
+ },
+ "dgm/6": {
+  "name": "Riot Control",
+  "oracle_text": "You gain 1 life for each creature your opponents control. Prevent all damage that would be dealt to you this turn.",
+  "printed_name": "Controle de Tumulto",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "Você ganha 1 ponto de vida para cada criatura que seus oponentes controlam. Previna todo o dano que seria causado a você neste turno.",
+  "flavor_text": "“Os ravnicanos precisam de ordem. Se carecerem dela, nós a levaremos a eles.”\n— Isperia"
+ },
+ "dgm/7": {
+  "name": "Scion of Vitu-Ghazi",
+  "oracle_text": "When this creature enters, if you cast it from your hand, create a 1/1 white Bird creature token with flying, then populate. (Create a token that's a copy of a creature token you control.)",
+  "printed_name": "Herdeiro de Vitu-Ghazi",
+  "printed_type_line": "Criatura — Elemental",
+  "printed_text": "Quando Herdeiro de Vitu-Ghazi entrar no campo de batalha, se você o conjurou de sua mão, coloque uma ficha de criatura branca 1/1 do tipo Ave no campo de batalha e, depois, povoe. (Coloque no campo de batalha uma ficha que seja uma cópia de uma ficha de criatura que você controla.)",
+  "flavor_text": null
+ },
+ "dgm/8": {
+  "name": "Steeple Roc",
+  "oracle_text": "Flying, first strike",
+  "printed_name": "Roca do Campanário",
+  "printed_type_line": "Criatura — Ave",
+  "printed_text": "Voar, iniciativa",
+  "flavor_text": "“Às vezes ele esquece de soltar as garras antes de sair voando. Eu perdi o meu telhado assim.”\n— Ecaban, batedor Boros"
+ },
+ "dgm/9": {
+  "name": "Sunspire Gatekeepers",
+  "oracle_text": "When this creature enters, if you control two or more Gates, create a 2/2 white Knight creature token with vigilance.",
+  "printed_name": "Porteiros da Espiral Solar",
+  "printed_type_line": "Criatura — Humano Soldado",
+  "printed_text": "Quando Porteiros da Espiral Solar entrar no campo de batalha, se você controlar dois ou mais Portões, coloque no campo de batalha uma ficha de criatura branca 2/2 do tipo Cavaleiro com vigilância.",
+  "flavor_text": "“Você passará com respeito, ou não passará.”"
+ },
+ "dgm/10": {
+  "name": "Wake the Reflections",
+  "oracle_text": "Populate. (Create a token that's a copy of a creature token you control.)",
+  "printed_name": "Desperte os Reflexos",
+  "printed_type_line": "Feitiço",
+  "printed_text": "Povoe. (Coloque no campo de batalha uma ficha que seja uma cópia de uma ficha de criatura que você controla.)",
+  "flavor_text": "“Você vê um pássaro, um carvalho, uma besta de carga. Eu vejo um exército em potencial.”\n— Lalia, dríade Selesnya"
+ },
+ "dgm/13": {
+  "name": "Maze Glider",
+  "oracle_text": "Flying\nMulticolored creatures you control have flying.",
+  "printed_name": "Planador do Labirinto",
+  "printed_type_line": "Criatura — Elemental",
+  "printed_text": "Voar\nAs criaturas multicoloridas que você controla têm voar.",
+  "flavor_text": "O padrão do Labirinto Implícito se estende por mais de duas dimensões."
+ },
+ "dgm/14": {
+  "name": "Mindstatic",
+  "oracle_text": "Counter target spell unless its controller pays {6}.",
+  "printed_name": "Estática Mental",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "Anule a mágica alvo, a menos que seu controlador pague {6}.",
+  "flavor_text": "“É sempre satisfatório frustrar os maiores esforços de um rival, mas as reações dos Gruul são particularmente divertidas.”\n— Bori Andon, buscador de explosão Izzet"
+ },
+ "dgm/17": {
+  "name": "Runner's Bane",
+  "oracle_text": "Enchant creature with power 3 or less\nWhen this Aura enters, tap enchanted creature.\nEnchanted creature doesn't untap during its controller's untap step.",
+  "printed_name": "Maldição do Corredor",
+  "printed_type_line": "Encantamento — Aura",
+  "printed_text": "Encantar criatura com poder menor ou igual a 3\nQuando Maldição do Corredor entrar no campo de batalha, vire a criatura encantada.\nA criatura encantada não é desvirada durante a etapa de desvirar de seu controlador.",
+  "flavor_text": null
+ },
+ "dgm/18": {
+  "name": "Trait Doctoring",
+  "oracle_text": "Change the text of target permanent by replacing all instances of one color word with another or one basic land type with another until end of turn.\nCipher (Then you may exile this spell card encoded on a creature you control. Whenever that creature deals combat damage to a player, its controller may cast a copy of the encoded card without paying its mana cost.)",
+  "printed_name": "Tratamento de Traços",
+  "printed_type_line": "Feitiço",
+  "printed_text": "Altere o texto de uma permanente alvo substituindo todas as ocorrências de uma cor por outra ou um tipo de terreno básico por outro até o final do turno.\nCifrar (Depois, você pode exilar este card de mágica cifrado numa criatura que você controla. Toda vez que aquela criatura causar dano de combate a um jogador, seu controlador poderá conjurar uma cópia do card cifrado sem pagar seu custo de mana.)",
+  "flavor_text": null
+ },
+ "dgm/19": {
+  "name": "Uncovered Clues",
+  "oracle_text": "Look at the top four cards of your library. You may reveal up to two instant and/or sorcery cards from among them and put the revealed cards into your hand. Put the rest on the bottom of your library in any order.",
+  "printed_name": "Indícios Desvendados",
+  "printed_type_line": "Feitiço",
+  "printed_text": "Olhe os quatro cards do topo do seu grimório. Você pode revelar até dois cards de mágica instantânea e/ou feitiço dentre eles e colocar os cards revelados em sua mão. Coloque o resto no fundo de seu grimório em qualquer ordem.",
+  "flavor_text": "O Labirinto Implícito serpenteia por Ravnica, conectando pontos de referência arcanos de todas as dez guildas."
+ },
+ "dgm/21": {
+  "name": "Bane Alley Blackguard",
+  "oracle_text": "",
+  "printed_name": "Vilão do Beco da Ruína",
+  "printed_type_line": "Criatura — Humano Ladino",
+  "printed_text": "",
+  "flavor_text": "“Trabalho no ramo de aquisições e os negócios vão bem. As guildas estão à caça de todo tipo de mapa e relíquias, embora eu não tenha muita certeza do que elas querem com aquilo.”"
+ },
+ "dgm/24": {
+  "name": "Fatal Fumes",
+  "oracle_text": "Target creature gets -4/-2 until end of turn.",
+  "printed_name": "Fumaça Fatal",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "A criatura alvo recebe -4/-2 até o final do turno.",
+  "flavor_text": "Os viajantes do submundo temem os horrores e assassinos dos Dimir, mas a quantidade de vítimas de perigos mais mundanos é praticamente igual."
+ },
+ "dgm/25": {
+  "name": "Hired Torturer",
+  "oracle_text": "Defender\n{3}{B}, {T}: Target opponent loses 2 life, then reveals a card at random from their hand.",
+  "printed_name": "Torturador de Aluguel",
+  "printed_type_line": "Criatura — Humano Ladino",
+  "printed_text": "Defensor\n{3}{B}, {T}: O oponente alvo perde 2 pontos de vida e, depois, revela um card aleatório da própria mão.",
+  "flavor_text": "“Siga sua paixão, é o que eu sempre digo. Você pode acabar sendo pago para fazer o que gosta.”"
+ },
+ "dgm/26": {
+  "name": "Maze Abomination",
+  "oracle_text": "Deathtouch (Any amount of damage this deals to a creature is enough to destroy it.)\nMulticolored creatures you control have deathtouch.",
+  "printed_name": "Abominação do Labirinto",
+  "printed_type_line": "Criatura — Elemental",
+  "printed_text": "Toque mortífero (Qualquer quantidade de dano que esta criatura cause a uma criatura é suficiente para destruí-la.)\nAs criaturas multicoloridas que você controla têm toque mortífero.",
+  "flavor_text": null
+ },
+ "dgm/28": {
+  "name": "Rakdos Drake",
+  "oracle_text": "Flying\nUnleash (You may have this creature enter with a +1/+1 counter on it. It can't block as long as it has a +1/+1 counter on it.)",
+  "printed_name": "Dragonete Rakdos",
+  "printed_type_line": "Criatura — Dragonete",
+  "printed_text": "Voar\nLiberar (Você pode fazer com que esta criatura entre no campo de batalha com um marcador +1/+1. Ela não poderá bloquear enquanto tiver um marcador +1/+1.)",
+  "flavor_text": "Os arruaceiros Rakdos pintam os rostos para parecerem focinhos ensanguentados dos dragonetes."
+ },
+ "dgm/29": {
+  "name": "Sinister Possession",
+  "oracle_text": "Enchant creature\nWhenever enchanted creature attacks or blocks, its controller loses 2 life.",
+  "printed_name": "Possessão Sinistra",
+  "printed_type_line": "Encantamento — Aura",
+  "printed_text": "Encantar criatura\nToda vez que a criatura encantada ataca ou bloqueia, seu controlador perde 2 pontos de vida.",
+  "flavor_text": "“Você pegou alguma coisa passeando em uma noite fria? Não. Eu diria que alguma coisa é que pegou você.”\n— Mezim Magrah, curandeiro cívico"
+ },
+ "dgm/31": {
+  "name": "Awe for the Guilds",
+  "oracle_text": "Monocolored creatures can't block this turn.",
+  "printed_name": "Admiração pelas Guildas",
+  "printed_type_line": "Feitiço",
+  "printed_text": "As criaturas monocoloridas não podem bloquear neste turno.",
+  "flavor_text": "Quando as guildas cooperam, os sem-guilda celebram sua sociedade pacífica. Quando as guildas se enfrentam, os sem-guilda tentam apenas ficar fora do caminho."
+ },
+ "dgm/33": {
+  "name": "Maze Rusher",
+  "oracle_text": "Haste\nMulticolored creatures you control have haste.",
+  "printed_name": "Cruzador do Labirinto",
+  "printed_type_line": "Criatura — Elemental",
+  "printed_text": "Ímpeto\nAs criaturas multicoloridas que você controla têm ímpeto.",
+  "flavor_text": "“O labirinto parece nos enfrentar a cada curva, resistindo a nossos esforços para solucioná-lo.”\n— Niv-Mizzet"
+ },
+ "dgm/35": {
+  "name": "Punish the Enemy",
+  "oracle_text": "Punish the Enemy deals 3 damage to target player or planeswalker and 3 damage to target creature.",
+  "printed_name": "Punir o Inimigo",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "Punir o Inimigo causa 3 pontos de dano ao jogador alvo e 3 pontos de dano à criatura alvo.",
+  "flavor_text": "“Quando a justiça cair sobre eles, o servo queimará com o mestre.”\n— Aurélia"
+ },
+ "dgm/36": {
+  "name": "Pyrewild Shaman",
+  "oracle_text": "Bloodrush — {1}{R}, Discard this card: Target attacking creature gets +3/+1 until end of turn.\nWhenever one or more creatures you control deal combat damage to a player, if this card is in your graveyard, you may pay {3}. If you do, return this card to your hand.",
+  "printed_name": "Xamã Pirófugo",
+  "printed_type_line": "Criatura — Goblin Xamã",
+  "printed_text": "Impulso sanguinário — {1}{R}, Descarte Xamã Pirófugo: A criatura atacante alvo recebe +3/+1 até o final do turno.\nToda vez que uma ou mais criaturas que você controla causarem dano de combate a um jogador, se Xamã Pirófugo estiver em seu cemitério, você poderá pagar {3}. Se fizer isso, devolva Xamã Pirófugo para sua mão.",
+  "flavor_text": null
+ },
+ "dgm/37": {
+  "name": "Riot Piker",
+  "oracle_text": "First strike\nThis creature attacks each combat if able.",
+  "printed_name": "Piqueiro de Tumulto",
+  "printed_type_line": "Criatura — Goblin Amoque",
+  "printed_text": "Iniciativa\nPiqueiro de Tumulto ataca a cada turno se estiver apto.",
+  "flavor_text": "Ele não se importa se está em uma revolta por causa de direitos comerciais ou numa simples briga de bêbados. Ele acorda toda manhã ansioso para arrebentar uns crânios."
+ },
+ "dgm/39": {
+  "name": "Smelt-Ward Gatekeepers",
+  "oracle_text": "When this creature enters, if you control two or more Gates, gain control of target creature an opponent controls until end of turn. Untap that creature. It gains haste until end of turn.",
+  "printed_name": "Porteiros do Bairro da Fundição",
+  "printed_type_line": "Criatura — Humano Guerreiro",
+  "printed_text": "Quando Porteiros do Bairro da Fundição entrar no campo de batalha, se você controlar dois ou mais Portões, ganhe o controle da criatura alvo que um oponente controla até o final do turno. Desvire aquela criatura. Ela ganha ímpeto até o final do turno.",
+  "flavor_text": null
+ },
+ "dgm/40": {
+  "name": "Weapon Surge",
+  "oracle_text": "Target creature you control gets +1/+0 and gains first strike until end of turn.\nOverload {1}{R} (You may cast this spell for its overload cost. If you do, change \"target\" in its text to \"each.\")",
+  "printed_name": "Surto de Arma",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "A criatura alvo que você controla recebe +1/+0 e ganha iniciativa até o final do turno.\nSobrecarga {1}{R} (Você pode conjurar esta mágica pagando seu custo de sobrecarga. Se fizer isso, altere seu texto substituindo todas as ocorrências de “a criatura alvo” por “cada criatura”.)",
+  "flavor_text": null
+ },
+ "dgm/42": {
+  "name": "Kraul Warrior",
+  "oracle_text": "{5}{G}: This creature gets +3/+3 until end of turn.",
+  "printed_name": "Guerreiro Kraul",
+  "printed_type_line": "Criatura — Inseto Guerreiro",
+  "printed_text": "{5}{G}: Guerreiro Kraul recebe +3/+3 até o final do turno.",
+  "flavor_text": "Os insetos kraul espreitam nos túneis abaixo do nível da rua. Muitos são leais ao Enxame Golgari, mas outros seguem seu próprio sistema de castas esotérico."
+ },
+ "dgm/43": {
+  "name": "Maze Behemoth",
+  "oracle_text": "Trample\nMulticolored creatures you control have trample.",
+  "printed_name": "Behemoth do Labirinto",
+  "printed_type_line": "Criatura — Elemental",
+  "printed_text": "Atropelar\nAs criaturas multicoloridas que você controla têm atropelar.",
+  "flavor_text": "Ele voltou para as linhas de força tão rápido quanto havia aparecido, deixando apenas corpos retorcidos para marcar sua passagem."
+ },
+ "dgm/44": {
+  "name": "Mending Touch",
+  "oracle_text": "Regenerate target creature.",
+  "printed_name": "Toque Emendador",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "Regenere a criatura alvo.",
+  "flavor_text": "“O dom da vida deve ser concedido gratuitamente. Qualquer coisa menos que isso nos diminuiria a todos.”\n— Arin, curandeiro Selesnya"
+ },
+ "dgm/45": {
+  "name": "Mutant's Prey",
+  "oracle_text": "Target creature you control with a +1/+1 counter on it fights target creature an opponent controls. (Each deals damage equal to its power to the other.)",
+  "printed_name": "Presa do Mutante",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "A criatura alvo que você controla com um marcador +1/+1 luta com a criatura alvo que um oponente controla. (Cada uma causa dano igual a seu poder à outra.)",
+  "flavor_text": "Cada esquina é um território de caça, cada cidadão, uma presa em potencial."
+ },
+ "dgm/46": {
+  "name": "Phytoburst",
+  "oracle_text": "Target creature gets +5/+5 until end of turn.",
+  "printed_name": "Fitoestouro",
+  "printed_type_line": "Feitiço",
+  "printed_text": "A criatura alvo recebe +5/+5 até o final do turno.",
+  "flavor_text": "As fito-hidras são proibidas como plantas domésticas em muitas torres residenciais. Se não são alimentadas, elas acham sua própria saída, geralmente causando extensos danos à propriedade."
+ },
+ "dgm/47": {
+  "name": "Renegade Krasis",
+  "oracle_text": "Evolve (Whenever a creature you control enters, if that creature has greater power or toughness than this creature, put a +1/+1 counter on this creature.)\nWhenever this creature evolves, put a +1/+1 counter on each other creature you control with a +1/+1 counter on it.",
+  "printed_name": "Krasis Renegado",
+  "printed_type_line": "Criatura — Besta Mutante",
+  "printed_text": "Evoluir (Toda vez que uma criatura entrar no campo de batalha sob o seu controle, se ela tiver poder ou resistência maior que a desta criatura, coloque um marcador +1/+1 nesta criatura.)\nToda vez que Krasis Renegado evoluir, coloque um marcador +1/+1 em cada outra criatura que você controla com um marcador +1/+1.",
+  "flavor_text": null
+ },
+ "dgm/48": {
+  "name": "Saruli Gatekeepers",
+  "oracle_text": "When this creature enters, if you control two or more Gates, you gain 7 life.",
+  "printed_name": "Porteiros de Saruli",
+  "printed_type_line": "Criatura — Elfo Guerreiro",
+  "printed_text": "Quando Porteiros de Saruli entrar no campo de batalha, se você controlar dois ou mais Portões, ganhará 7 pontos de vida.",
+  "flavor_text": "Nos distritos mais selvagens de Ravnica, a natureza ainda se agita, e seus protetores continuam em seus postos."
+ },
+ "dgm/50": {
+  "name": "Thrashing Mossdog",
+  "oracle_text": "Reach (This creature can block creatures with flying.)\nScavenge {4}{G}{G} ({4}{G}{G}, Exile this card from your graveyard: Put a number of +1/+1 counters equal to this card's power on target creature. Scavenge only as a sorcery.)",
+  "printed_name": "Cão Musgoso Surrador",
+  "printed_type_line": "Criatura — Planta Sabujo",
+  "printed_text": "Alcance (Esta criatura pode bloquear criaturas com voar.)\nNecrofagia {4}{G}{G} ({4}{G}{G}, Exile este card de seu cemitério: Coloque uma quantidade de marcadores +1/+1 igual ao poder deste card na criatura alvo. Use necrofagia somente quando puder conjurar um feitiço.)",
+  "flavor_text": null
+ },
+ "dgm/51": {
+  "name": "Advent of the Wurm",
+  "oracle_text": "Create a 5/5 green Wurm creature token with trample.",
+  "printed_name": "Advento do Vorme",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "Coloque no campo de batalha uma ficha de criatura verde 5/5 do tipo Vorme com atropelar.",
+  "flavor_text": "A consciência de Mat’Selesnya nem sempre se expande de modo pacífico."
+ },
+ "dgm/52": {
+  "name": "Armored Wolf-Rider",
+  "oracle_text": "",
+  "printed_name": "Ginete de Lobo Blindado",
+  "printed_type_line": "Criatura — Elfo Cavaleiro",
+  "printed_text": "",
+  "flavor_text": "Os ginetes de lobo dos Selesnya aprendem desde tenra idade. Cada ginete cria um filhote de lobo desde o nascimento para servir de montaria, esperando que um dia ambos compartilhem a honra de proteger a Grande Confluência."
+ },
+ "dgm/53": {
+  "name": "Ascended Lawmage",
+  "oracle_text": "Flying\nHexproof (This creature can't be the target of spells or abilities your opponents control.)",
+  "printed_name": "Mago Legista Ascendido",
+  "printed_type_line": "Criatura — Vedalkeano Mago",
+  "printed_text": "Voar, resistência à magia",
+  "flavor_text": "O texto rúnico de um mago legista é um ato de governança materializado: a legislação escrita diretamente no próprio ar."
+ },
+ "dgm/54": {
+  "name": "Beetleform Mage",
+  "oracle_text": "{G}{U}: This creature gets +2/+2 and gains flying until end of turn. Activate only once each turn.",
+  "printed_name": "Mago Besouriforme",
+  "printed_type_line": "Criatura — Humano Inseto Mago",
+  "printed_text": "{G}{U}: Mago Besouriforme recebe +2/+2 e ganha voar até o final do turno. Ative esta habilidade apenas uma vez a cada turno.",
+  "flavor_text": "“Quando nós Simic falamos em assumir o controle de sua vida, não estamos falando só da sua carreira.”\n— Vorel da Cepa do Casco"
+ },
+ "dgm/55": {
+  "name": "Blast of Genius",
+  "oracle_text": "Choose any target. Draw three cards, then discard a card. Blast of Genius deals damage equal to the discarded card's mana value to that permanent or player.",
+  "printed_name": "Explosão de Genialidade",
+  "printed_type_line": "Feitiço",
+  "printed_text": "Escolha uma criatura ou jogador alvo. Compre três cards e depois descarte um card. Explosão de Genialidade causa àquela criatura ou jogador uma quantidade de pontos de dano equivalente ao custo de mana convertido do card descartado.",
+  "flavor_text": "As tempestades de ideias de Ral Zarek causam raios e trovões de verdade."
+ },
+ "dgm/56": {
+  "name": "Blaze Commando",
+  "oracle_text": "Whenever an instant or sorcery spell you control deals damage, create two 1/1 red and white Soldier creature tokens with haste.",
+  "printed_name": "Comando da Labareda",
+  "printed_type_line": "Criatura — Minotauro Soldado",
+  "printed_text": "Toda vez que uma mágica instantânea ou feitiço que você controla causar dano, coloque no campo de batalha duas fichas de criatura vermelhas e brancas 1/1 do tipo Soldado com ímpeto.",
+  "flavor_text": "Um verdadeiro comando Boros só chama os reforços para que limpem a bagunça."
+ },
+ "dgm/58": {
+  "name": "Boros Battleshaper",
+  "oracle_text": "At the beginning of each combat, up to one target creature attacks or blocks this combat if able and up to one target creature can't attack or block this combat.",
+  "printed_name": "Modelador de Batalha Boros",
+  "printed_type_line": "Criatura — Minotauro Soldado",
+  "printed_text": "No início de cada combate, até uma criatura alvo ataca ou bloqueia neste combate se estiver apta e até uma criatura alvo não pode atacar nem bloquear neste combate.",
+  "flavor_text": "Os líderes moldam as mentes de seus aliados. Mas para moldar a mente dos inimigos, é preciso ser um mestre."
+ },
+ "dgm/60": {
+  "name": "Bronzebeak Moa",
+  "oracle_text": "Whenever another creature you control enters, this creature gets +3/+3 until end of turn.",
+  "printed_name": "Moa do Bico de Bronze",
+  "printed_type_line": "Criatura — Ave",
+  "printed_text": "Toda vez que outra criatura entra no campo de batalha sob seu controle, Moa do Bico de Bronze recebe +3/+3 até o final do turno.",
+  "flavor_text": "Elas lutam pelo seu lar com mais lealdade do que qualquer recruta."
+ },
+ "dgm/62": {
+  "name": "Council of the Absolute",
+  "oracle_text": "As this creature enters, choose a noncreature, nonland card name.\nYour opponents can't cast spells with the chosen name.\nSpells with the chosen name you cast cost {2} less to cast.",
+  "printed_name": "Conselho do Absoluto",
+  "printed_type_line": "Criatura — Humano Conselheiro",
+  "printed_text": "Conforme Conselho do Absoluto entra no campo de batalha, nomeie um card que não seja uma criatura nem um terreno.\nSeus oponentes não podem conjurar cards com o nome escolhido.\nAs mágicas com o nome escolhido que você conjurar custarão {2} a menos para serem conjuradas.",
+  "flavor_text": null
+ },
+ "dgm/66": {
+  "name": "Dragonshift",
+  "oracle_text": "Until end of turn, target creature you control becomes a blue and red Dragon with base power and toughness 4/4, loses all abilities, and gains flying.\nOverload {3}{U}{U}{R}{R} (You may cast this spell for its overload cost. If you do, change \"target\" in its text to \"each.\")",
+  "printed_name": "Dragomorfose",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "Até o final do turno, a criatura alvo que você controla torna-se um Dragão azul e vermelho 4/4, perde todas as habilidades e ganha voar.\nSobrecarga {3}{U}{U}{R}{R} (Você pode conjurar esta mágica pagando seu custo de sobrecarga. Se fizer isso, altere seu texto substituindo todas as ocorrências de “a criatura alvo” por “cada criatura”.)",
+  "flavor_text": null
+ },
+ "dgm/67": {
+  "name": "Drown in Filth",
+  "oracle_text": "Choose target creature. Mill four cards, then that creature gets -1/-1 until end of turn for each land card in your graveyard.",
+  "printed_name": "Afogar na Imundice",
+  "printed_type_line": "Feitiço",
+  "printed_text": "Escolha uma criatura alvo. Coloque os quatro cards do topo de seu grimório em seu cemitério. Depois, aquela criatura recebe -1/-1 até o final do turno para cada card de terreno em seu cemitério.",
+  "flavor_text": "O primeiro rito de passagem de um fazendeiro de podridão é fazer um par de pernas de pau para trabalhar."
+ },
+ "dgm/69": {
+  "name": "Exava, Rakdos Blood Witch",
+  "oracle_text": "First strike, haste\nUnleash (You may have this creature enter with a +1/+1 counter on it. It can't block as long as it has a +1/+1 counter on it.)\nEach other creature you control with a +1/+1 counter on it has haste.",
+  "printed_name": "Exava, Bruxa Sanguinária Rakdos",
+  "printed_type_line": "Criatura Lendária — Humano Clérigo",
+  "printed_text": "Iniciativa, ímpeto\nLiberar (Você pode fazer com que esta criatura entre no campo de batalha com um marcador +1/+1. Ela não poderá bloquear enquanto tiver um marcador +1/+1.)\nCada outra criatura que você controla com um marcador +1/+1 tem ímpeto.",
+  "flavor_text": null
+ },
+ "dgm/71": {
+  "name": "Fluxcharger",
+  "oracle_text": "Flying\nWhenever you cast an instant or sorcery spell, you may switch this creature's power and toughness until end of turn.",
+  "printed_name": "Carregador de Fluxo",
+  "printed_type_line": "Criatura — Bizarro",
+  "printed_text": "Voar\nToda vez que você conjurar uma mágica instantânea ou feitiço, poderá inverter o poder e a resistência de Carregador de Fluxo até o final do turno.",
+  "flavor_text": "Uma parte mizzium, duas partes energia elemental, onze partes perigo."
+ },
+ "dgm/73": {
+  "name": "Gleam of Battle",
+  "oracle_text": "Whenever a creature you control attacks, put a +1/+1 counter on it.",
+  "printed_name": "Brilho da Batalha",
+  "printed_type_line": "Encantamento",
+  "printed_text": "Toda vez que uma criatura que você controla atacar, coloque um marcador +1/+1 nela.",
+  "flavor_text": "Todo soldado volta da batalha mudado: pelas dificuldades, pelo sangue ou por um vislumbre de glória."
+ },
+ "dgm/74": {
+  "name": "Goblin Test Pilot",
+  "oracle_text": "Flying\n{T}: This creature deals 2 damage to any target chosen at random.",
+  "printed_name": "Piloto de Teste Goblin",
+  "printed_type_line": "Criatura — Goblin Mago",
+  "printed_text": "Voar\n{T}: Piloto de Teste Goblin causa 2 pontos de dano à criatura ou jogador alvo escolhido aleatoriamente.",
+  "flavor_text": "“Todos os pilotos e protótipos destruídos. Extenso dano colateral causado. Conclusão: projeto impecável.”\n— Manual de Melek"
+ },
+ "dgm/75": {
+  "name": "Gruul War Chant",
+  "oracle_text": "Attacking creatures you control get +1/+0 and have menace.",
+  "printed_name": "Cântico de Guerra Gruul",
+  "printed_type_line": "Encantamento",
+  "printed_text": "Cada criatura atacante que você controla recebe +1/+0 e só pode ser bloqueada por duas ou mais criaturas.",
+  "flavor_text": "“Nós somos o coração da natureza selvagem, o fogo de seus olhos, o uivo de sua garganta. Venha e entre na batalha para a qual você nasceu.”\n— Kroshkar, xamã Gruul"
+ },
+ "dgm/76": {
+  "name": "Haunter of Nightveil",
+  "oracle_text": "Creatures your opponents control get -1/-0.",
+  "printed_name": "Assombro do Véu da Noite",
+  "printed_type_line": "Criatura — Espírito",
+  "printed_text": "As criaturas que seus oponentes controlam recebem -1/-0.",
+  "flavor_text": "Os Dimir empregam os espíritos dos mortos antigos e sem nome, conduzindo a malevolência deles rumo a vítimas selecionadas."
+ },
+ "dgm/77": {
+  "name": "Jelenn Sphinx",
+  "oracle_text": "Flying, vigilance\nWhenever this creature attacks, other attacking creatures get +1/+1 until end of turn.",
+  "printed_name": "Esfinge de Jelenn",
+  "printed_type_line": "Criatura — Esfinge",
+  "printed_text": "Voar, vigilância\nToda vez que Esfinge de Jelenn ataca, as outras criaturas atacantes recebem +1/+1 até o final do turno.",
+  "flavor_text": "Poucos entre os Azorius chegaram a sequer falar com as esfinges, mas todos já sentiram sua influência."
+ },
+ "dgm/78": {
+  "name": "Korozda Gorgon",
+  "oracle_text": "Deathtouch\n{2}, Remove a +1/+1 counter from a creature you control: Target creature gets -1/-1 until end of turn.",
+  "printed_name": "Górgona de Korozda",
+  "printed_type_line": "Criatura — Górgona",
+  "printed_text": "Toque mortífero\n{2}, Remova um marcador +1/+1 de uma criatura que você controla: A criatura alvo recebe -1/-1 até o final do turno.",
+  "flavor_text": "“Bem-vindo à minha coleção.”"
+ },
+ "dgm/79": {
+  "name": "Krasis Incubation",
+  "oracle_text": "Enchant creature\nEnchanted creature can't attack or block, and its activated abilities can't be activated.\n{1}{G}{U}, Return this Aura to its owner's hand: Put two +1/+1 counters on enchanted creature.",
+  "printed_name": "Incubação de Krasis",
+  "printed_type_line": "Encantamento — Aura",
+  "printed_text": "Encantar criatura\nA criatura encantada não pode atacar nem bloquear e suas habilidades ativadas não podem ser ativadas.\n{1}{G}{U}, Devolva Incubação de Krasis para a mão de seu dono: Coloque dois marcadores +1/+1 na criatura encantada.",
+  "flavor_text": null
+ },
+ "dgm/80": {
+  "name": "Lavinia of the Tenth",
+  "oracle_text": "Protection from red\nWhen Lavinia enters, detain each nonland permanent your opponents control with mana value 4 or less. (Until your next turn, those permanents can't attack or block and their activated abilities can't be activated.)",
+  "printed_name": "Lavínia do Décimo",
+  "printed_type_line": "Criatura Lendária — Humano Soldado",
+  "printed_text": "Proteção contra o vermelho\nQuando Lavínia do Décimo entrar no campo de batalha, detenha cada permanente que não seja um terreno que seus oponentes controlem com custo de mana convertido menor ou igual a 4. (Até seu próximo turno, aquelas permanentes não podem atacar nem bloquear, e as habilidades ativadas delas não podem ser ativadas.)",
+  "flavor_text": null
+ },
+ "dgm/81": {
+  "name": "Legion's Initiative",
+  "oracle_text": "Red creatures you control get +1/+0.\nWhite creatures you control get +0/+1.\n{R}{W}, Exile this enchantment: Exile all creatures you control. At the beginning of the next combat, return those cards to the battlefield under their owner's control and those creatures gain haste until end of turn.",
+  "printed_name": "Iniciativa da Legião",
+  "printed_type_line": "Encantamento",
+  "printed_text": "As criaturas vermelhas que você controla recebem +1/+0.\nAs criaturas brancas que você controla recebem +0/+1.\n{R}{W}, Exile Iniciativa da Legião: Exile todas as criaturas que você controla. No início do próximo combate, devolva aqueles cards ao campo de batalha sob o controle de seus donos e aquelas criaturas ganharão ímpeto até o final do turno.",
+  "flavor_text": null
+ },
+ "dgm/83": {
+  "name": "Maw of the Obzedat",
+  "oracle_text": "Sacrifice a creature: Creatures you control get +1/+1 until end of turn.",
+  "printed_name": "Bucho do Obzedat",
+  "printed_type_line": "Criatura — Thrull",
+  "printed_text": "Sacrifique uma criatura: As criaturas que você controla recebem +1/+1 até o final do turno.",
+  "flavor_text": "Os devotos se sacrificam na esperança de escapar de suas dívidas com a guilda, mas muitos acabam em débito na pós-vida."
+ },
+ "dgm/85": {
+  "name": "Mirko Vosk, Mind Drinker",
+  "oracle_text": "Flying\nWhenever Mirko Vosk deals combat damage to a player, that player reveals cards from the top of their library until they reveal four land cards, then puts those cards into their graveyard.",
+  "printed_name": "Mirko Vosk, Sugador de Mentes",
+  "printed_type_line": "Criatura Lendária — Vampiro",
+  "printed_text": "Voar\nToda vez que Mirko Vosk, Sugador de Mentes, causa dano de combate a um jogador, aquele jogador revela cards do topo do próprio grimório até revelar quatro cards de terreno. Depois, ele coloca aqueles cards no próprio cemitério.",
+  "flavor_text": null
+ },
+ "dgm/86": {
+  "name": "Morgue Burst",
+  "oracle_text": "Return target creature card from your graveyard to your hand. Morgue Burst deals damage to any target equal to the power of the card returned this way.",
+  "printed_name": "Invasão de Necrotério",
+  "printed_type_line": "Feitiço",
+  "printed_text": "Devolva o card de criatura alvo de seu cemitério para sua mão. Invasão de Necrotério causa à criatura ou jogador alvo uma quantidade de pontos de dano equivalente ao poder do card devolvido desta forma.",
+  "flavor_text": "“Deixem-no entrar. Ele está na lista.”\n— Olrich, proprietário de clube dos Rakdos"
+ },
+ "dgm/89": {
+  "name": "Obzedat's Aid",
+  "oracle_text": "Return target permanent card from your graveyard to the battlefield.",
+  "printed_name": "Auxílio do Obzedat",
+  "printed_type_line": "Feitiço",
+  "printed_text": "Devolva o card de permanente alvo de seu cemitério para o campo de batalha.",
+  "flavor_text": "“O Obzedat ressuscitou você com um propósito. Não desperdice esta bênção.”\n— Teysa Karlov, Grande Enviada dos Orzhov"
+ },
+ "dgm/90": {
+  "name": "Pilfered Plans",
+  "oracle_text": "Target player mills two cards. Draw two cards.",
+  "printed_name": "Planos Furtados",
+  "printed_type_line": "Feitiço",
+  "printed_text": "O jogador alvo coloca os dois cards do topo do grimório dele no próprio cemitério. Compre dois cards.",
+  "flavor_text": "Mirko Vosk caçou qualquer um com conhecimento sobre o labirinto, drenando as chances das outras guildas."
+ },
+ "dgm/91": {
+  "name": "Plasm Capture",
+  "oracle_text": "Counter target spell. At the beginning of your next first main phase, add X mana in any combination of colors, where X is that spell's mana value.",
+  "printed_name": "Captura de Plasma",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "Anule a mágica alvo. No início de sua próxima fase principal pré-combate, adicione X manas em qualquer combinação de cores a sua reserva de mana, sendo X o custo de mana convertido daquela mágica.",
+  "flavor_text": "“Tudo tem seu propósito. Até mesmo você.”\n— Vorel da Cepa do Casco"
+ },
+ "dgm/95": {
+  "name": "Reap Intellect",
+  "oracle_text": "Target opponent reveals their hand. You choose up to X nonland cards from it and exile them. For each card exiled this way, search that player's graveyard, hand, and library for any number of cards with the same name as that card and exile them. Then that player shuffles.",
+  "printed_name": "Ceifar Intelecto",
+  "printed_type_line": "Feitiço",
+  "printed_text": "O oponente alvo revela a própria mão. Você escolhe até X cards dela que não sejam terrenos e os exila. Para cara card exilado desta forma, procure no cemitério, na mão e no grimório daquele jogador um número qualquer de cards com o mesmo nome daquele card e exile-os. Depois, aquele jogador embaralha o próprio grimório.",
+  "flavor_text": null
+ },
+ "dgm/97": {
+  "name": "Restore the Peace",
+  "oracle_text": "Return each creature that dealt damage this turn to its owner's hand.",
+  "printed_name": "Restaurar a Paz",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "Devolva cada criatura que causou dano neste turno para a mão de seu dono.",
+  "flavor_text": "“Você sempre pode contar com os Azorius para acabar com uma festa.”\n— Garota-Massacre"
+ },
+ "dgm/98": {
+  "name": "Rot Farm Skeleton",
+  "oracle_text": "This creature can't block.\n{2}{B}{G}, Mill four cards: Return this card from your graveyard to the battlefield. Activate only as a sorcery.",
+  "printed_name": "Esqueleto de Podridão",
+  "printed_type_line": "Criatura — Planta Esqueleto",
+  "printed_text": "Esqueleto de Podridão não pode bloquear.\n{2}{B}{G}, Coloque os quatro cards do topo de seu grimório em seu cemitério: Devolva Esqueleto de Podridão de seu cemitério para o campo de batalha. Ative esta habilidade somente nos momentos em que poderia conjurar um feitiço.",
+  "flavor_text": null
+ },
+ "dgm/100": {
+  "name": "Savageborn Hydra",
+  "oracle_text": "Double strike\nThis creature enters with X +1/+1 counters on it.\n{1}{R/G}: Put a +1/+1 counter on this creature. Activate only as a sorcery.",
+  "printed_name": "Hidra Selvagem",
+  "printed_type_line": "Criatura — Hidra",
+  "printed_text": "Golpe duplo\nHidra Selvagem entra no campo de batalha com X marcadores +1/+1 sobre ela.\n{1}{R/G}: Coloque um marcador +1/+1 em Hidra Selvagem. Ative esta habilidade somente nos momentos em que poderia conjurar um feitiço.",
+  "flavor_text": null
+ },
+ "dgm/101": {
+  "name": "Scab-Clan Giant",
+  "oracle_text": "When this creature enters, it fights target creature an opponent controls chosen at random.",
+  "printed_name": "Gigante do Clã Scab",
+  "printed_type_line": "Criatura — Gigante Guerreiro",
+  "printed_text": "Quando Gigante do Clã Scab entra no campo de batalha, ele luta com a criatura alvo que um oponente controla, escolhida aleatoriamente.",
+  "flavor_text": "Para os Gruul, a fúria destruidora é a prioridade número um. A precisão vem bem atrás, lá pelo número noventa."
+ },
+ "dgm/102": {
+  "name": "Showstopper",
+  "oracle_text": "Until end of turn, creatures you control gain \"When this creature dies, it deals 2 damage to target creature an opponent controls.\"",
+  "printed_name": "Final Explosivo",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "Até o final do turno, as criaturas que você controla ganham “Quando esta criatura morre, ela causa 2 pontos de dano à criatura alvo que um oponente controla.”",
+  "flavor_text": "A plateia percebeu rapidamente algumas coisas: aquilo não era um truque de mágica, não havia balinhas ali dentro e eles precisariam de roupas novas."
+ },
+ "dgm/105": {
+  "name": "Species Gorger",
+  "oracle_text": "At the beginning of your upkeep, return a creature you control to its owner's hand.",
+  "printed_name": "Devorador de Espécies",
+  "printed_type_line": "Criatura — Sapo Besta",
+  "printed_text": "No início de sua manutenção, devolva uma criatura que você controla para a mão de seu dono.",
+  "flavor_text": "“Nós criamos os enguifalcos para controlar as polvomoscas e, depois, os vespoguejos para caçarem os enguifalcos. Agora o que fazer com todos esses vespoguejos?”\n— Gulistan, biomante Simic"
+ },
+ "dgm/106": {
+  "name": "Spike Jester",
+  "oracle_text": "Haste",
+  "printed_name": "Bufão do Espículo",
+  "printed_type_line": "Criatura — Goblin Guerreiro",
+  "printed_text": "Ímpeto",
+  "flavor_text": "Para os Rakdos, “investida suicida” e “dar um bom espetáculo” são a mesma coisa."
+ },
+ "dgm/112": {
+  "name": "Varolz, the Scar-Striped",
+  "oracle_text": "Each creature card in your graveyard has scavenge. The scavenge cost is equal to its mana cost. (Exile a creature card from your graveyard and pay its mana cost: Put a number of +1/+1 counters equal to that card's power on target creature. Scavenge only as a sorcery.)\nSacrifice another creature: Regenerate Varolz.",
+  "printed_name": "Varolz, o Cicatrizado",
+  "printed_type_line": "Criatura Lendária — Trol Guerreiro",
+  "printed_text": "Cada card de criatura em seu cemitério tem necrofagia. O custo de necrofagia é igual ao seu custo de mana. (Exile um card de criatura de seu cemitério e pague seu custo de mana: Coloque um número de marcadores +1/+1 igual ao poder daquele card na criatura alvo. Use necrofagia somente quando puder conjurar um feitiço.)\nSacrifique outra criatura: Regenere Varolz, o Cicatrizado.",
+  "flavor_text": null
+ },
+ "dgm/113": {
+  "name": "Viashino Firstblade",
+  "oracle_text": "Haste\nWhen this creature enters, it gets +2/+2 until end of turn.",
+  "printed_name": "Primeira-espada Viashino",
+  "printed_type_line": "Criatura — Viashino Soldado",
+  "printed_text": "Ímpeto\nQuando Primeira-espada Viashino entra no campo de batalha, a criatura alvo recebe +2/+2 até o final do turno.",
+  "flavor_text": "“Todo aquele aço não os torna mais lentos. Ele os torna mais ousados.”\n— Tajic, Espada da Legião"
+ },
+ "dgm/116": {
+  "name": "Warleader's Helix",
+  "oracle_text": "Warleader's Helix deals 4 damage to any target and you gain 4 life.",
+  "printed_name": "Hélice da Líder de Guerra",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "Hélice da Líder de Guerra causa 4 pontos de dano à criatura ou jogador alvo e você ganha 4 pontos de vida.",
+  "flavor_text": "“Não há tempo para remediar a ignorância de nossos inimigos. Arranque-a deles à força.”\n— Aurélia"
+ },
+ "dgm/117": {
+  "name": "Warped Physique",
+  "oracle_text": "Target creature gets +X/-X until end of turn, where X is the number of cards in your hand.",
+  "printed_name": "Físico Distorcido",
+  "printed_type_line": "Mágica Instantânea",
+  "printed_text": "A criatura alvo recebe +X/-X até o final do turno, sendo X o número de cards em sua mão.",
+  "flavor_text": "Os Gruul buscam a força ilimitada. Os Dimir oferecem ironia cruel."
+ },
+ "dgm/118": {
+  "name": "Woodlot Crawler",
+  "oracle_text": "Forestwalk (This creature can't be blocked as long as defending player controls a Forest.)\nProtection from green",
+  "printed_name": "Rastejador da Mata",
+  "printed_type_line": "Criatura — Inseto",
+  "printed_text": "Travessia de floresta, proteção contra o verde",
+  "flavor_text": "“Aprendemos algo com os Simic. Para a infelicidade deles.”\n— Nefara, agente Dimir"
+ },
+ "dgm/119": {
+  "name": "Zhur-Taa Ancient",
+  "oracle_text": "Whenever a player taps a land for mana, that player adds one mana of any type that land produced.",
+  "printed_name": "Ancião Zhur-Taa",
+  "printed_type_line": "Criatura — Besta",
+  "printed_text": "Toda vez que um jogador virar um terreno para gerar mana, ele adicionará um mana à própria reserva de mana de qualquer tipo que aquele terreno gerar.",
+  "flavor_text": "Muitos ravnicanos pensam na natureza como bosques organizados e fazendas de podridão cultivadas por elfos. Eles não viram as terras selvagens dos Gruul."
+ },
+ "dgm/136": {
+  "name": "Azorius Cluestone",
+  "oracle_text": "{T}: Add {W} or {U}.\n{W}{U}, {T}, Sacrifice this artifact: Draw a card.",
+  "printed_name": "Pedra dos Indícios Azorius",
+  "printed_type_line": "Artefato",
+  "printed_text": "{T}: Adicione {W} ou {U} à sua reserva de mana.\n{W}{U}, {T}, Sacrifique Pedra dos Indícios Azorius: Compre um card.",
+  "flavor_text": "Seus três lados representam os Sova, juízes e árbitros; os Jelenn, escribas e locutores; e os Lyev, magos legistas e impositores."
+ },
+ "dgm/137": {
+  "name": "Boros Cluestone",
+  "oracle_text": "{T}: Add {R} or {W}.\n{R}{W}, {T}, Sacrifice this artifact: Draw a card.",
+  "printed_name": "Pedra dos Indícios Boros",
+  "printed_type_line": "Artefato",
+  "printed_text": "{T}: Adicione {R} ou {W} à sua reserva de mana.\n{R}{W}, {T}, Sacrifique Pedra dos Indícios Boros: Compre um card.",
+  "flavor_text": "“Em caso de incêndio, traição, tumulto generalizado pela cidade, sublevação política ou colapso social em escala mundial, quebre o vidro.”\n— Inscrição na Pedra dos Indícios"
+ },
+ "dgm/138": {
+  "name": "Dimir Cluestone",
+  "oracle_text": "{T}: Add {U} or {B}.\n{U}{B}, {T}, Sacrifice this artifact: Draw a card.",
+  "printed_name": "Pedra dos Indícios Dimir",
+  "printed_type_line": "Artefato",
+  "printed_text": "{T}: Adicione {U} ou {B} à sua reserva de mana.\n{U}{B}, {T}, Sacrifique Pedra dos Indícios Dimir: Compre um card.",
+  "flavor_text": "Ela espera no frio do submundo, guardando segredos inominados para os que ousarem tocá-la."
+ },
+ "dgm/139": {
+  "name": "Golgari Cluestone",
+  "oracle_text": "{T}: Add {B} or {G}.\n{B}{G}, {T}, Sacrifice this artifact: Draw a card.",
+  "printed_name": "Pedra dos Indícios Golgari",
+  "printed_type_line": "Artefato",
+  "printed_text": "{T}: Adicione {B} ou {G} à sua reserva de mana.\n{B}{G}, {T}, Sacrifique Pedra dos Indícios Golgari: Compre um card.",
+  "flavor_text": "O bolor dos Golgari coleta sussurros, informações que são colhidas mais tarde por Jarad e seus altos chanceleres."
+ },
+ "dgm/140": {
+  "name": "Gruul Cluestone",
+  "oracle_text": "{T}: Add {R} or {G}.\n{R}{G}, {T}, Sacrifice this artifact: Draw a card.",
+  "printed_name": "Pedra dos Indícios Gruul",
+  "printed_type_line": "Artefato",
+  "printed_text": "{T}: Adicione {R} ou {G} à sua reserva de mana.\n{R}{G}, {T}, Sacrifique Pedra dos Indícios Gruul: Compre um card.",
+  "flavor_text": "Esquecidos sob rochas e vinhas, os símbolos dos Gruul marcam os locais de rituais primitivos, onde um dia xamãs cantaram à natureza."
+ },
+ "dgm/141": {
+  "name": "Izzet Cluestone",
+  "oracle_text": "{T}: Add {U} or {R}.\n{U}{R}, {T}, Sacrifice this artifact: Draw a card.",
+  "printed_name": "Pedra dos Indícios Izzet",
+  "printed_type_line": "Artefato",
+  "printed_text": "{T}: Adicione {U} ou {R} à sua reserva de mana.\n{U}{R}, {T}, Sacrifique Pedra dos Indícios Izzet: Compre um card.",
+  "flavor_text": "Ela encerra em si um enigma indecifrável. Uma resposta criativa vale um convite para fazer parte da guilda."
+ },
+ "dgm/143": {
+  "name": "Rakdos Cluestone",
+  "oracle_text": "{T}: Add {B} or {R}.\n{B}{R}, {T}, Sacrifice this artifact: Draw a card.",
+  "printed_name": "Pedra dos Indícios Rakdos",
+  "printed_type_line": "Artefato",
+  "printed_text": "{T}: Adicione {B} ou {R} à sua reserva de mana.\n{B}{R}, {T}, Sacrifique Pedra dos Indícios Rakdos: Compre um card.",
+  "flavor_text": "“Queime. Sangre. Aproveite.”\n— Inscrição na Pedra dos Indícios"
+ },
+ "dgm/145": {
+  "name": "Simic Cluestone",
+  "oracle_text": "{T}: Add {G} or {U}.\n{G}{U}, {T}, Sacrifice this artifact: Draw a card.",
+  "printed_name": "Pedra dos Indícios Simic",
+  "printed_type_line": "Artefato",
+  "printed_text": "{T}: Adicione {G} ou {U} à sua reserva de mana.\n{G}{U}, {T}, Sacrifique Pedra dos Indícios Simic: Compre um card.",
+  "flavor_text": "Os símbolos dos Simic estão entre os mais intrincados e frágeis, no entanto, poucos ousam violá-los, temerosos das formas de vida estranhas que podem ser libertadas."
+ },
+ "phpr/2": {
+  "name": "Sewers of Estark",
+  "printed_name": "Esgotos de Estark"
+ }
+}
