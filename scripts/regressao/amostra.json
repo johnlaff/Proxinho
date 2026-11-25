@@ -88,6 +88,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "e96901eb-5b57-43f4-a7b1-ae3b809bc36e",
+    "oracle_id": "2af01e09-f233-4675-89cd-470816471c62",
+    "set": "dsk",
+    "number": "147",
+    "nome": "Painter's Studio // Defaced Gallery",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "bf256f95-d184-4ea9-9039-fc64f461d9b3",
     "oracle_id": "76372327-41ec-4516-abff-3b612e073629",
     "set": "dsk",
@@ -5494,6 +5502,86 @@
     "number": "35",
     "nome": "Three Blind Mice",
     "grupo": "saga"
+  },
+  {
+    "id": "fe050c16-9be5-42ef-988f-0531a8bb2352",
+    "oracle_id": "c8abde48-a07a-42a0-a43b-c357e6d9cad4",
+    "set": "dsc",
+    "number": "10",
+    "nome": "Secret Arcade // Dusty Parlor",
+    "grupo": "sala"
+  },
+  {
+    "id": "6a7c3370-6f79-417e-a98e-4341307e151b",
+    "oracle_id": "cfcf34ba-b412-447f-b200-d841371c0a1c",
+    "set": "dsc",
+    "number": "23",
+    "nome": "Polluted Cistern // Dim Oubliette",
+    "grupo": "sala"
+  },
+  {
+    "id": "a22e8038-0706-47ec-bfda-f421a4912774",
+    "oracle_id": "a341eb75-e6a0-468b-8c83-61102249c648",
+    "set": "dsk",
+    "number": "181",
+    "nome": "Greenhouse // Rickety Gazebo",
+    "grupo": "sala"
+  },
+  {
+    "id": "94352ffb-d716-484d-b018-4e1c033ef2f3",
+    "oracle_id": "d5f31713-d380-42ba-8052-4b8d9beb3958",
+    "set": "dsk",
+    "number": "230",
+    "nome": "Roaring Furnace // Steaming Sauna",
+    "grupo": "sala"
+  },
+  {
+    "id": "c5ee6651-9946-4bae-b21e-6cf28fa77b13",
+    "oracle_id": "e633412b-e36b-4ec5-b0d0-7cb24c7503f4",
+    "set": "dsk",
+    "number": "4",
+    "nome": "Dollmaker's Shop // Porcelain Gallery",
+    "grupo": "sala"
+  },
+  {
+    "id": "2dd69f2d-8c9c-41fc-93ea-48fc7a6d5272",
+    "oracle_id": "2b46394e-d337-4b1a-88e6-7fdac2ee4ac4",
+    "set": "dsk",
+    "number": "79",
+    "nome": "Underwater Tunnel // Slimy Aquarium",
+    "grupo": "sala"
+  },
+  {
+    "id": "dbede516-796d-410f-ac65-7affa23d524b",
+    "oracle_id": "a39d541e-86c1-4595-a2e9-f107def5bbc6",
+    "set": "pdsk",
+    "number": "100p",
+    "nome": "Funeral Room // Awakening Hall",
+    "grupo": "sala"
+  },
+  {
+    "id": "0fb666ce-b2a5-4af1-8112-acad88715438",
+    "oracle_id": "bd388ad9-a47b-4b0b-b94a-8e4343cd3de5",
+    "set": "pdsk",
+    "number": "118p",
+    "nome": "Unholy Annex // Ritual Chamber",
+    "grupo": "sala"
+  },
+  {
+    "id": "2e4dcd84-f4cf-4952-81fa-168ee9e3b151",
+    "oracle_id": "9f50ec9f-78e6-403f-8f41-84d603fee0eb",
+    "set": "pdsk",
+    "number": "129s",
+    "nome": "Charred Foyer // Warped Space",
+    "grupo": "sala"
+  },
+  {
+    "id": "96b9ec37-0276-4f95-9dea-aa675bd18233",
+    "oracle_id": "52e77cc3-f8e9-4a20-811b-fe1e46a96ad7",
+    "set": "pdsk",
+    "number": "205s",
+    "nome": "Walk-In Closet // Forgotten Cellar",
+    "grupo": "sala"
   },
   {
     "id": "0d84eb6f-2675-436c-885e-207468110d76",

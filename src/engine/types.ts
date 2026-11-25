@@ -13,6 +13,11 @@ export interface PtFace {
   colors?: string;
   /** Linhas de `text_pt` (índices de `split("\n")`) que começam com palavra de habilidade, em itálico na carta. */
   ability_words?: number[];
+  /**
+   * Lembrete que a carta imprime fora da caixa: o das Salas de Duskmourn, na faixa entre a linha
+   * de tipo e as caixas ("(Você pode conjurar qualquer metade. …)", da dica do Arena, ADR 0033).
+   */
+  reminder_pt?: string;
 }
 
 /**

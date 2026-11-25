@@ -140,6 +140,7 @@ import {
 import { mdfcHint, type MdfcHint } from "./mdfc";
 import { OLD, oldCostLeft, oldLetters, oldTypeEnds } from "./old";
 import { prepareFrame, prepareLayout } from "./prepare";
+import { ROOM, roomCostLeft, roomFrame } from "./room";
 import { preloadSymbols } from "./symbols";
 import {
   SYMBOL_EM,
@@ -192,6 +193,8 @@ export interface RenderOptions {
   adventure?: PtFace | null;
   /** cartas modais de duas faces: a outra face, resumida na faixa de baixo (ver mdfc.ts) */
   otherFace?: PtFace | null;
+  /** cartas divididas (as Salas de Duskmourn, ver room.ts): a metade da direita; a da esquerda é `face` */
+  split?: PtFace | null;
   /** linha de tipo em inglês da carta (reconhece planeswalkers mesmo sem o tipo em PT) */
   typeLine?: string | null;
   /**
@@ -1586,6 +1589,129 @@ async function renderOld(p: {
   return "ok";
 }
 
+/**
+ * Salas de Duskmourn (ADR 0033): a carta dividida impressa deitada (ver room.ts). O motor gira a
+ * imagem e, na carta deitada, apaga as duas barras dos nomes e as duas caixas pelo apagamento de
+ * sempre, e as letras brancas da linha de tipo e da faixa do lembrete pela rede neural (as duas
+ * são translúcidas, com a arte por trás), em dois quadros, um de cada metade: num quadro só, a
+ * faixa de 900 px seria reduzida aos 512 do modelo. Escreve o português na carta deitada e a põe
+ * de pé de novo. Devolve "neural" quando a rede neural não rodou e `false` quando a imagem não tem
+ * a moldura das Salas ou falta o lembrete em PT (sem ele, a faixa ficaria em inglês).
+ */
+async function renderRoom(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  halves: [PtFace, PtFace];
+  print: PrintRecord;
+  W: number;
+  H: number;
+  neural: Neural;
+  plan: (frames: number) => void;
+}): Promise<"ok" | "neural" | false> {
+  const { ctx, src, halves, print, W, H, neural } = p;
+  const reminder = halves[0].reminder_pt ?? halves[1].reminder_pt ?? null;
+  const type = halves[0].type_pt;
+  if (!reminder || !type) return false;
+  // a carta deitada: girada 90° no sentido horário, o pé da carta de pé fica à esquerda
+  const rot = document.createElement("canvas");
+  rot.width = src.height;
+  rot.height = src.width;
+  const rctx = rot.getContext("2d", { willReadFrequently: true });
+  if (!rctx) throw new Error("Seu navegador não liberou o canvas 2D.");
+  rctx.translate(rot.width, 0);
+  rctx.rotate(Math.PI / 2);
+  rctx.drawImage(src, 0, 0);
+  rctx.setTransform(1, 0, 0, 1, 0, 0);
+  const data = rctx.getImageData(0, 0, rot.width, rot.height);
+  if (!roomFrame(data)) return false;
+  const fx = rot.width / ROOM.width;
+  const fy = rot.height / ROOM.height;
+  const toImg = (r: Rect) => roundRect({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
+
+  // 1. as barras dos nomes (até o custo de cada metade, que fica) e as caixas
+  const costs = halves.map((h, i) => roomCostLeft(h.mana_cost, i as 0 | 1));
+  const { nameY } = ROOM;
+  const nameRects = ROOM.names.map((n, i) => toImg({ x0: n.x0, y0: nameY.y0, x1: costs[i] - 6, y1: nameY.y1 }));
+  const costGuard = ROOM.names.map((n, i) => toImg({ x0: costs[i] - 4, y0: nameY.y0 - 2, x1: n.x1 + 4, y1: nameY.y1 + 1 }));
+  const inks = eraseRegions(
+    data,
+    [
+      ...nameRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
+      ...ROOM.boxes.map((b) => ({ rect: toImg(b), threshold: 14, colorThreshold: 34, stains: true })),
+    ],
+    costGuard,
+    costGuard,
+    // (a ponta arredondada da esquerda de cada barra fica como está, ver barCapGuard)
+    nameRects.flatMap((r) => barCapGuard(data, r, "left")),
+  );
+
+  // 2. a linha de tipo e a faixa do lembrete: só as letras brancas, refeitas pela rede neural
+  // (o símbolo da coleção fica escondido dela)
+  const typeRect = toImg(ROOM.type);
+  const stripRect = toImg(ROOM.strip);
+  const masks: RegionMask[] = [
+    { rect: typeRect, mask: whiteTextMask(data, typeRect), polarity: "light" },
+    { rect: stripRect, mask: whiteTextMask(data, stripRect), polarity: "light" },
+  ];
+  p.plan(2);
+  const area = toImg(ROOM.lama);
+  const mid = Math.round(ROOM.lama.mid * fx);
+  for (const [x0, x1, tag] of [
+    [area.x0, mid, "a"],
+    [mid, area.x1, "b"],
+  ] as const) {
+    const clean = await lamaBox(
+      data,
+      clipMasks(masks, x0, area.x1),
+      { ...area, x0, x1 },
+      [toImg(ROOM.symbol)],
+      "light",
+      `${print.id}:${data.width}:sala:${tag}`,
+      { art: true, simple: false, neural },
+    );
+    if (!clean) return "neural";
+  }
+  rctx.putImageData(data, 0, 0);
+
+  // 3. o português, escrito na carta deitada e posta de pé de novo
+  const k = H / ROOM.width;
+  ctx.save();
+  ctx.translate(0, H);
+  ctx.rotate(-Math.PI / 2);
+  ctx.drawImage(rot, 0, 0, H, W);
+  halves.forEach((h, i) => {
+    const n = ROOM.names[i];
+    drawLine(ctx, h.name_pt ?? h.name_en, n.x, nameY.center, costs[i] - 10 - n.x, ROOM.nameSize, k);
+  });
+  const t = ROOM.type;
+  drawLine(ctx, type, t.x, t.center, t.end - t.x, t.size, k, INK.light);
+  const m = measurer(ctx, k);
+  const s = ROOM.strip;
+  const strip = { x0: s.textX0, y0: s.textY0, x1: s.textX1, y1: s.textY1 };
+  const stripText = fitText(reminder, null, strip.x1 - strip.x0, strip.y1 - strip.y0, m, ROOM.stripMax, ROOM.stripMin);
+  drawLayout(ctx, stripText, strip, k, "light", new Map(), m, true);
+  const pad = ROOM.boxPad;
+  for (const [i, h] of halves.entries()) {
+    const b = ROOM.boxes[i];
+    const box = { x0: b.x0 + pad.x0, y0: b.y0 + pad.y0, x1: b.x1 - pad.x1, y1: b.y1 - pad.y1 };
+    const symbols = await preloadSymbols(h.text_pt, h.flavor_pt);
+    const res = fitText(
+      h.text_pt,
+      h.flavor_pt,
+      box.x1 - box.x0,
+      box.y1 - box.y0,
+      m,
+      ROOM.maxSize,
+      ROOM.minSize,
+      undefined,
+      h.ability_words,
+    );
+    drawLayout(ctx, res, box, k, inks[2 + i] ?? "dark", symbols, m);
+  }
+  ctx.restore();
+  return "ok";
+}
+
 async function renderToken(p: {
   ctx: CanvasRenderingContext2D;
   src: HTMLCanvasElement;
@@ -1799,9 +1925,16 @@ export function usesNeuralFill(print: PrintRecord, face: PtFace | null, side: 0 
   const supported = print.sides ? Boolean(print.sides[side]?.supported) : print.supported;
   return (
     Boolean(supported && face?.name_pt && face.text_pt !== null) &&
-    (print.border === "borderless" || isPlaneswalker(print, face, typeLine) || (print.frame === "1997" && print.layout === "normal"))
+    (print.border === "borderless" ||
+      isPlaneswalker(print, face, typeLine) ||
+      (print.frame === "1997" && print.layout === "normal") ||
+      isRoom(print, typeLine))
   );
 }
+
+/** Sala de Duskmourn (ver room.ts): carta dividida com o tipo "Room" nas duas metades. */
+const isRoom = (print: PrintRecord, typeLine?: string | null) =>
+  print.layout === "split" && print.border !== "borderless" && /\bRoom\b/.test(typeLine ?? "");
 
 /** Lançamento de Kamigawa: Neon Dynasty: dali em diante o verso das cartas de duas faces não tem o símbolo da coleção. */
 const SYMBOLLESS_BACKS_SINCE = "2022-02-18";
@@ -1824,7 +1957,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const stationParts = !borderless && print.layout === "normal" ? stationText(face?.text_pt) : null;
   // e a moldura antiga: o nome e o tipo, sobre a moldura texturizada, vão para a rede neural
   const old = print.frame === "1997" && !borderless && print.layout === "normal";
-  const version = pw || borderless || saga || klass || stationParts || old ? "png" : (opts.imageVersion ?? "png");
+  // e as Salas de Duskmourn: a linha de tipo e a faixa do lembrete vão para a rede neural
+  const room = isRoom(print, opts.typeLine);
+  const version = pw || borderless || saga || klass || stationParts || old || room ? "png" : (opts.imageVersion ?? "png");
   const [img] = await Promise.all([opts.source ?? loadImage(printImage(print, version, side)), loadCardFonts()]);
 
   const W = Math.round(BASE_W * scale);
@@ -1880,6 +2015,16 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       report();
     },
   };
+
+  // cartas divididas: só as Salas, deitadas (ver renderRoom); as outras saem na original
+  if (print.layout === "split") {
+    const other = opts.split ?? null;
+    const halves: [PtFace, PtFace] | null = other?.name_pt && other.text_pt !== null ? [face, other] : null;
+    const done = halves && room ? await renderRoom({ ctx, src, halves, print, W, H, neural, plan }) : false;
+    if (done === "ok") return { canvas: out, translated: true };
+    ctx.drawImage(img, 0, 0, W, H);
+    return done === "neural" ? { canvas: out, translated: false, reason: "neural" } : { canvas: out, translated: false };
+  }
 
   if (pw) {
     const done = await renderPlaneswalker({ ctx, src, sctx, data, toImg, face, print, W, H, neural, plan });

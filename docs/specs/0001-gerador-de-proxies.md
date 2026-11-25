@@ -95,6 +95,12 @@ Como jogador, quero imprimir as Aventuras em português na arte que eu escolher.
 - [x] A sombra do papel perto da lombada continua igual depois de apagar o inglês.
 - [x] Quando o motor não acha o livro na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
 
+### H11c. Salas de Duskmourn (entregue em 25/11/2026, ADR 0033)
+Como jogador, quero imprimir as Salas de Duskmourn em português na arte que eu escolher.
+- [x] As Salas de borda preta saem em português: o nome e o texto de cada metade, com o custo no lugar, "Encantamento — Cômodo" e o lembrete das Salas na faixa do meio, com o texto oficial da explicação do Arena.
+- [x] Quando o motor não acha a moldura das Salas na imagem, ou a rede neural não roda, a carta sai na original e a etiqueta diz que sai em inglês.
+- [x] O nome em PT das cartas divididas aparece uma vez só ("Armário // Porão Esquecido").
+
 ### H11b. Cartas com Preparar (entregue em 25/11/2026, ADR 0032)
 Como jogador, quero imprimir as cartas com Preparar de Secrets of Strixhaven em português na arte que eu escolher.
 - [x] As cartas com Preparar na moldura padrão e na de arte estendida saem em português: a criatura à esquerda do fio e o nome, o tipo e as regras da mágica preparada à direita, com o custo dela no lugar.

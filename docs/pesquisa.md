@@ -211,6 +211,24 @@ Medidas nas imagens do Scryfall (745 × 1040), em SOS, SOC, FRA e as promos (PSO
 
 Nas promos de pré-estreia e em algumas da coleção, a última linha da criatura desce até ~945 e o pé dela tem mais tinta que papel na linha: a mediana da linha passava pelo pé da página. As bordas das caixas são medidas pela parte de cada linha no tom do papel (ADR 0032).
 
+### Salas de Duskmourn (25/11/2026)
+
+Como as ferramentas existentes fazem: nenhuma das conhecidas (Proxyshop, MTG.design, Card Conjurer) tem modelo para as Salas de Duskmourn: House of Horror (2024). As cartas divididas antigas (Invasion, Ravnica, Amonkhet) têm modelos no Proxyshop, com as duas metades lado a lado na carta de pé ou deitada, e nenhum serve: a Sala tem uma linha de tipo e uma faixa de lembrete comuns às duas metades, translúcidas, de uma ponta à outra da carta deitada.
+
+O que o texto em PT pede: o Arena traz a carta inteira ("Armário // Porão Esquecido", com os dois textos juntos) e as duas metades; o lembrete das Salas não está em nenhuma delas e nunca saiu impresso em PT. O Arena o mostra como dica da palavra-chave (`Room_Body`), com o inglês igual ao do Oracle: "Você pode conjurar qualquer metade. Aquela porta é destrancada no campo de batalha. Como um feitiço, você pode pagar o custo de mana de uma porta trancada para destrancá-la." Em PT ele é uns 20% mais comprido e cabe em duas linhas do corpo ~20 (o inglês tem 24).
+
+Medidas nas imagens do Scryfall giradas 90° no sentido horário (1040 × 745), nas 51 impressões de borda preta (DSK, DSC, PDSK, The List):
+
+| Medida | Valor |
+|---|---|
+| Barras dos nomes | y ≈ 37 a 89, a da esquerda de x ≈ 96 a 515 e a da direita de ≈ 573 a 992; letras a partir de x ≈ 111 e 590, em ~63 |
+| Custo de mana | acaba em x ≈ 508 e 984; ~35,3 px por símbolo, a sombra do círculo uns 2 px à esquerda |
+| Linha de tipo | barra translúcida entre os fios de y ≈ 401 a 408 e 442 a 448; letras brancas a partir de x ≈ 101, em ~423, de ~17 px de altura; o símbolo da coleção de x ≈ 935 a 980 |
+| Faixa do lembrete | translúcida, de y ≈ 448 a 511 e x ≈ 96 a 990; itálico branco centrado em duas linhas |
+| Caixas | papel de x ≈ 102 a 503 e 578 a 979, de y ≈ 524 a 703; o relevo do lado direito (x ≈ 504 a 507 e 980 a 983) é mais escuro que o papel também na moldura branca, em que o fio em volta da caixa tem a cor do papel |
+
+A barra do tipo e a faixa do lembrete ficam entre 16 e 91 tons de mediana (a arte por trás, escurecida); as letras brancas passam de 230. As promos de PDSK estão 1 px deslocadas, dentro da folga das medidas.
+
 ### Marcas-d'água na moldura de 2003 (25/11/2026)
 
 Como as ferramentas existentes fazem: o Proxyshop não reaproveita a imagem; ele monta a carta do zero e põe a marca-d'água como uma camada vetorial, desenhada à parte a partir do nome que o Scryfall dá (`watermark`). O Proxinho escreve sobre a digitalização, então a marca já está lá e precisa ficar: apagar a caixa inteira levava a marca junto, e apagar só onde as letras passam deixava a marca em cacos. A saída é a mesma da arte sem borda (ADR 0012): só as letras saem da máscara, e a rede neural (LaMa) refaz o que estava por baixo delas, a marca inclusive.

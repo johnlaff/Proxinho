@@ -9,7 +9,8 @@ A amostra tem dois pedaços:
 2. Um sorteio fixo (semente 20261125) por grupo de moldura, entre as impressões suportadas de
    cartas com texto em PT: a moldura comum de 2015, a de 2003 (sem e com marca-d'água), a antiga
    (1997), a sem borda, a arte estendida, as de duas faces, os planeswalkers, as fichas, os
-   emblemas, as Sagas, Aventuras, Classes, cartas com Preparar, naves e a tradução não oficial.
+   emblemas, as Sagas, Aventuras, Classes, cartas com Preparar, as Salas de Duskmourn, naves e a
+   tradução não oficial.
 
 Lê o banco montado pelo pipeline (data/out/cards.sql, depois de `pnpm data:build`). A amostra é
 versionada e só cresce: rodar de novo mantém as impressões que já estão nela e acrescenta as
@@ -56,6 +57,7 @@ GROUPS: dict[str, int] = {
     "1997": 40,
     "2003 com marca-d'água": 30,
     "preparar": 15,
+    "sala": 10,
 }
 
 
@@ -67,11 +69,13 @@ def group_of(row: sqlite3.Row) -> str | None:
     # a moldura antiga entrou depois (ADR 0031): antes de tudo, para não mudar os outros grupos
     if frame == "1997":
         return "1997"
-    # (e depois a marca-d'água de 2003, ADR 0024, e o Preparar, ADR 0032)
+    # (e depois a marca-d'água de 2003, ADR 0024, o Preparar, ADR 0032, e as Salas, ADR 0033)
     if frame == "2003" and row["watermark"]:
         return "2003 com marca-d'água"
     if layout == "prepare":
         return "preparar"
+    if layout == "split":
+        return "sala"
     if row["source"] == "nao-oficial":
         return "não oficial"
     if layout == "emblem":

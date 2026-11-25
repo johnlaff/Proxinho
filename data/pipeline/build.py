@@ -1172,8 +1172,14 @@ def printed_faces(card: dict) -> list[dict]:
     card = card.get("_text", card)
     faces = card.get("card_faces") or [card]
     out = []
-    for f in faces:
+    for i, f in enumerate(faces):
         text = f.get("printed_text")
+        # nas reimpressões de RVR o Scryfall põe o nome inteiro em cada metade ("Fortalecer //
+        # Formar" no Assure e no Assemble), e o nome da carta saía repetido: cada metade fica
+        # com a parte dela
+        name_pt = f.get("printed_name")
+        if name_pt and " // " in name_pt and " // " not in (f.get("name") or "") and len(name_pt.split(" // ")) == len(faces):
+            name_pt = name_pt.split(" // ")[i]
         # criatura sem habilidades (Great-Horn Krushok): o Scryfall não manda o texto,
         # que é vazio mesmo. Com o tipo em PT, é tradução; antes ficava `None` e a carta
         # saía em inglês, como se não houvesse texto oficial
@@ -1182,7 +1188,7 @@ def printed_faces(card: dict) -> list[dict]:
         out.append(
             {
                 "name_en": f.get("name"),
-                "name_pt": f.get("printed_name"),
+                "name_pt": name_pt,
                 # impressões antigas separam o subtipo com hífen: é o travessão da carta
                 "type_pt": re.sub(r" - ", " — ", f["printed_type_line"]) if f.get("printed_type_line") else None,
                 "text_pt": clean_rules(fix_breaks(drop_level_marks(text))),
@@ -1456,6 +1462,94 @@ def prepare_supported(card: dict) -> bool:
     )
 
 
+def room_supported(card: dict) -> bool:
+    """Salas (Cômodos) de Duskmourn: a carta dividida impressa deitada, com a barra do nome e o
+    custo de cada metade no alto, a linha de tipo das duas e a faixa do lembrete no meio (as duas
+    translúcidas, de letra branca) e uma caixa de papel por metade embaixo (src/engine/room.ts,
+    ADR 0033). O motor confere as barras, as faixas e as caixas na imagem; sem elas, a arte sai
+    como está. Só as de borda preta: as sem borda (Booster Fun) têm outro desenho."""
+    faces = card.get("card_faces") or []
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "split"
+        and card.get("border_color") == "black"
+        and not card.get("frame_effects")
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+        and len(faces) == 2
+        and all(is_room(f.get("type_line")) for f in faces)
+    )
+
+
+def is_room(type_line: str | None) -> bool:
+    return "Room" in (type_line or "").split("—")[-1].split()
+
+
+# O lembrete das Salas, impresso na faixa entre a linha de tipo e as caixas (e no fim do texto de
+# cada metade no Oracle). Nunca saiu impresso em PT: vem da dica do Arena (ADR 0021).
+ROOM_HINT = "AbilityHanger/Keyword/Room_Body"
+
+
+def room_reminder(oracle_text: str | None, hints: list[dict[str, str]]) -> str | None:
+    """O lembrete das Salas em PT, entre parênteses, quando o do Oracle é o da dica palavra por palavra."""
+    hint = next((h for h in hints if h["key"] == ROOM_HINT), None)
+    if not hint:
+        return None
+    for line in (oracle_text or "").split("\n"):
+        m = re.fullmatch(r"\((.+)\)", line.strip())
+        if m and m.group(1).strip() == hint["en"].strip():
+            return f"({hint['pt'].strip()})"
+    return None
+
+
+def without_room_reminder(oracle_text: str | None) -> str | None:
+    """O texto de uma metade de Sala sem a linha do lembrete delas (que vai na faixa do meio, não na caixa)."""
+    if oracle_text is None:
+        return None
+    return "\n".join(x for x in oracle_text.split("\n") if not re.fullmatch(r"\(You may cast either half\..*\)", x.strip()))
+
+
+def en_face_of(card: dict, faces: list[dict], i: int) -> dict:
+    """
+    A face em inglês (do Oracle) da face `i` em PT. Nas cartas divididas o Arena traz antes das
+    metades a carta inteira ("Armário // Porão Esquecido", com os dois textos): ela casa com a
+    carta, e cada metade com a dela (casadas pela posição, a primeira metade ia com o texto da
+    segunda). Nas Salas, sem a linha do lembrete delas, que vai na faixa do meio da carta e não
+    está no texto em PT de cada metade (com ela, as linhas nunca batiam).
+    """
+    faces_en = card.get("card_faces") or [card]
+    whole = len(faces) == len(faces_en) + 1 and " // " in (faces[0].get("name_en") or "")
+    f = (card if i == 0 else faces_en[i - 1]) if whole else faces_en[min(i, len(faces_en) - 1)]
+    if card.get("layout") == "split" and is_room(f.get("type_line")):
+        return {**f, "oracle_text": without_room_reminder(f.get("oracle_text"))}
+    return f
+
+
+def arena_name_pt(faces: list[dict]) -> str:
+    """O nome em PT das faces do Arena: o da carta inteira, quando ela vem antes das metades (cartas divididas)."""
+    if len(faces) > 1 and " // " in (faces[0].get("name_en") or ""):
+        return faces[0]["name_pt"]
+    return " // ".join(f["name_pt"] for f in faces)
+
+
+def add_room_reminders(rows: list[dict], oracle, hints: list[dict[str, str]]) -> int:
+    """Põe o lembrete das Salas em PT (`reminder_pt`) em cada face delas, também nas de tradução não oficial."""
+    by_oid = {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle}
+    done = 0
+    for r in rows:
+        card = by_oid.get(r["oracle_id"])
+        faces_en = (card or {}).get("card_faces") or []
+        if not r["faces"] or r["layout"] != "split" or not faces_en or not all(is_room(f.get("type_line")) for f in faces_en):
+            continue
+        pt = room_reminder(faces_en[0].get("oracle_text"), hints)
+        if pt:
+            for f in r["faces"]:
+                f["reminder_pt"] = pt
+            done += 1
+    return done
+
+
 # efeitos que não mudam a caixa das naves: a coroa de lendária e a arte estendida (que já vem
 # sem a explicação do "Station", com as faixas mais altas)
 STATION_EFFECTS_OK = {"legendary", "extendedart"}
@@ -1689,6 +1783,7 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or saga_supported(c)
         or adventure_supported(c)
         or prepare_supported(c)
+        or room_supported(c)
         or class_supported(c)
         or station_supported(c)
         or bool(sides and sides[0]["supported"]),
@@ -2045,14 +2140,14 @@ def add_unofficial(rows: list[dict], oracle: list[dict], reminders: dict[str, st
         faces = unofficial_faces(card, r["name_pt"].split(" // ") if r["name_pt"] else [], best, molds, lines, heads, subs, types, used)
         if not faces:
             continue
-        faces_en = card.get("card_faces") or [card]
         if "Planeswalker" in card.get("type_line", "") and card.get("layout") == "normal":
             text_pt = pw_costs(card.get("oracle_text"), faces[0]["text_pt"])
             if text_pt is None:
                 PW_MISMATCH.add(oid)
             else:
                 faces[0]["text_pt"] = text_pt
-        for e, f in zip(faces_en, faces):
+        for i, f in enumerate(faces):
+            e = en_face_of(card, faces, i)
             if "Saga" in (e.get("type_line") or "") or "Class" in (e.get("type_line") or ""):
                 f["text_pt"] = top_reminder(e.get("oracle_text"), f["text_pt"], reminders)
             f["text_pt"] = add_reminders(e.get("oracle_text"), f["text_pt"], face_reminders(oid, e.get("type_line"), by_group, by_card))
@@ -2080,7 +2175,8 @@ def build(offline: bool) -> list[dict]:
     by_group, by_card = reminder_texts(read_printed_pt(load_transcribed()), {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle})
     log(f"lembretes de palavra-chave em PT (das impressas): {len(by_group.get('*', {}))}")
     # e os das dicas do Arena, onde nenhuma impressa traz o lembrete (o Posicionar, ADR 0021)
-    hints = arena_reminders(oracle, load_hints(), set(by_group.get("*", {})))
+    raw_hints = load_hints()
+    hints = arena_reminders(oracle, raw_hints, set(by_group.get("*", {})))
     for oid, table in hints.items():
         for en, pt in table.items():
             # o texto impresso da própria carta ganha da dica
@@ -2098,7 +2194,6 @@ def build(offline: bool) -> list[dict]:
         oid = card["oracle_id"] if "oracle_id" in card else card["card_faces"][0]["oracle_id"]
         a = arena.get(name) or arena.get(front_name)
         p = printed.get(oid)
-        faces_en = card.get("card_faces") or [card]
 
         if a:
             source, faces, text_print = "arena", a["faces"], a["print"]
@@ -2122,7 +2217,7 @@ def build(offline: bool) -> list[dict]:
         # lembrete do alto das Sagas e das Classes)
         if source == "arena":
             for i, f in enumerate(faces):
-                en_face = faces_en[min(i, len(faces_en) - 1)]
+                en_face = en_face_of(card, faces, i)
                 if "Saga" in en_face.get("type_line", ""):
                     text_pt = saga_chapters(en_face.get("oracle_text"), f.get("text_pt"))
                     if text_pt is None:
@@ -2134,13 +2229,13 @@ def build(offline: bool) -> list[dict]:
                     f["text_pt"] = top_reminder(en_face.get("oracle_text"), f["text_pt"], reminders)
             # o lembrete de palavra-chave de cada linha, como na carta física ("Arregimentar Orcs 1. (Coloque…)")
             for i, f in enumerate(faces):
-                en_face = faces_en[min(i, len(faces_en) - 1)]
+                en_face = en_face_of(card, faces, i)
                 before = f.get("text_pt")
                 f["text_pt"] = add_reminders(en_face.get("oracle_text"), before, face_reminders(oid, en_face.get("type_line"), by_group, by_card))
                 added += f["text_pt"] != before
 
         for i, f in enumerate(faces):
-            aw = ability_word_lines(faces_en[min(i, len(faces_en) - 1)].get("oracle_text"), f.get("text_pt"))
+            aw = ability_word_lines(en_face_of(card, faces, i).get("oracle_text"), f.get("text_pt"))
             if aw:
                 f["ability_words"] = aw
 
@@ -2151,8 +2246,8 @@ def build(offline: bool) -> list[dict]:
             if all(f["name_pt"] and f["name_pt"] != f["name_en"] for f in pf):
                 name_pt = " // ".join(f["name_pt"] for f in pf)
         if not name_pt and a:
-            name_pt = " // ".join(f["name_pt"] for f in a["faces"])
-        aliases = {norm(x) for x in [name_pt or "", a and " // ".join(f["name_pt"] for f in a["faces"]) or ""] if x}
+            name_pt = arena_name_pt(a["faces"])
+        aliases = {norm(x) for x in [name_pt or "", a and arena_name_pt(a["faces"]) or ""] if x}
 
         rows.append(
             {
@@ -2165,7 +2260,7 @@ def build(offline: bool) -> list[dict]:
                 "text_print": text_print,
                 "_flavor_ref": a["flavor_en"] if source == "arena" else None,
                 "faces": [
-                    {**f, "name_en": f.get("name_en") or faces_en[min(i, len(faces_en) - 1)].get("name")}
+                    {**f, "name_en": f.get("name_en") or en_face_of(card, faces, i).get("name")}
                     for i, f in enumerate(faces)
                 ],
                 # a carta em inglês com o selo "Localized Image Not Available" não é imagem em PT
@@ -2181,6 +2276,8 @@ def build(offline: bool) -> list[dict]:
             }
         )
     unofficial = add_unofficial(rows, oracle, reminders, by_group, by_card)
+    # o lembrete das Salas, na faixa do meio (da dica do Arena, também nas de tradução não oficial)
+    log(f"Salas com o lembrete em PT: {add_room_reminders(rows, oracle, raw_hints)}")
     log(
         f"cartas: {len(rows)} | texto do Arena: {stats['arena']} | impresso: {stats['impresso']} | "
         f"tradução não oficial: {unofficial} | sem PT: {stats['sem'] - unofficial}"

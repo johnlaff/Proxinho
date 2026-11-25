@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
+from build import add_room_reminders, arena_name_pt, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -1076,6 +1076,64 @@ class PrepareSupported(unittest.TestCase):
         self.assertFalse(prepare_supported({**self.base, "layout": "adventure"}))
         self.assertFalse(prepare_supported({**self.base, "card_faces": self.faces[:1]}))
         self.assertFalse(adventure_supported(self.base))
+
+
+ROOM_EN = "You may cast either half. That door unlocks on the battlefield. As a sorcery, you may pay the mana cost of a locked door to unlock it."
+ROOM_PT = "Você pode conjurar qualquer metade. Aquela porta é destrancada no campo de batalha. Como um feitiço, você pode pagar o custo de mana de uma porta trancada para destrancá-la."
+ROOM_HINTS = [{"key": "AbilityHanger/Keyword/Room_Body", "en": ROOM_EN, "pt": ROOM_PT}]
+
+
+class Salas(unittest.TestCase):
+    """Salas de Duskmourn (ADR 0033): a moldura deitada, o lembrete da faixa do meio e as metades."""
+
+    faces = [
+        {"name": "Walk-In Closet", "type_line": "Enchantment — Room", "oracle_text": f"You may play lands from your graveyard.\n({ROOM_EN})"},
+        {"name": "Forgotten Cellar", "type_line": "Enchantment — Room", "oracle_text": f"When you unlock this door, mill three cards.\n({ROOM_EN})"},
+    ]
+    base = {"name": "Walk-In Closet // Forgotten Cellar", "frame": "2015", "layout": "split", "border_color": "black", "card_faces": faces}
+
+    def test_suportada(self):
+        self.assertTrue(room_supported(self.base))
+
+    def test_fora(self):
+        # as sem borda de Booster Fun (DSK 297 a 306) e as cartas divididas que não são Salas
+        self.assertFalse(room_supported({**self.base, "border_color": "borderless", "frame_effects": ["inverted"]}))
+        self.assertFalse(room_supported({**self.base, "card_faces": [{**f, "type_line": "Instant"} for f in self.faces]}))
+        self.assertFalse(room_supported({**self.base, "frame": "2003"}))
+        self.assertFalse(frame_supported(self.base))
+
+    def test_lembrete_da_dica(self):
+        self.assertEqual(room_reminder(self.faces[0]["oracle_text"], ROOM_HINTS), f"({ROOM_PT})")
+        # sem a dica, ou com outro lembrete no Oracle, nada
+        self.assertIsNone(room_reminder(self.faces[0]["oracle_text"], []))
+        self.assertIsNone(room_reminder("You may play lands from your graveyard.\n(You may cast either half.)", ROOM_HINTS))
+
+    def test_texto_sem_o_lembrete(self):
+        self.assertEqual(without_room_reminder(self.faces[0]["oracle_text"]), "You may play lands from your graveyard.")
+        self.assertIsNone(without_room_reminder(None))
+
+    def test_lembrete_em_cada_face(self):
+        rows = [{"oracle_id": "x", "layout": "split", "faces": [{"name_pt": "Armário"}, {"name_pt": "Porão Esquecido"}]}]
+        self.assertEqual(add_room_reminders(rows, [{**self.base, "oracle_id": "x"}], ROOM_HINTS), 1)
+        self.assertEqual([f["reminder_pt"] for f in rows[0]["faces"]], [f"({ROOM_PT})"] * 2)
+
+    def test_metades_do_arena(self):
+        # o Arena traz a carta inteira antes das metades: cada metade casa com a dela, sem o lembrete
+        arena = [{"name_en": "Walk-In Closet // Forgotten Cellar"}, {"name_en": "Walk-In Closet"}, {"name_en": "Forgotten Cellar"}]
+        self.assertIsNone(en_face_of(self.base, arena, 0).get("oracle_text"))
+        self.assertEqual(en_face_of(self.base, arena, 1)["oracle_text"], "You may play lands from your graveyard.")
+        self.assertEqual(en_face_of(self.base, arena, 2)["oracle_text"], "When you unlock this door, mill three cards.")
+        self.assertEqual(en_face_of(self.base, arena[1:], 1)["name"], "Forgotten Cellar")
+
+    def test_nome_da_carta_inteira(self):
+        arena = [{"name_en": "Walk-In Closet // Forgotten Cellar", "name_pt": "Armário // Porão Esquecido"}, {"name_en": "Walk-In Closet", "name_pt": "Armário"}, {"name_en": "Forgotten Cellar", "name_pt": "Porão Esquecido"}]
+        self.assertEqual(arena_name_pt(arena), "Armário // Porão Esquecido")
+        self.assertEqual(arena_name_pt(arena[1:]), "Armário // Porão Esquecido")
+
+    def test_nome_inteiro_em_cada_metade_impressa(self):
+        # Assure // Assemble de RVR: o Scryfall põe "Fortalecer // Formar" nas duas metades
+        card = {"card_faces": [{"name": "Assure", "printed_name": "Fortalecer // Formar"}, {"name": "Assemble", "printed_name": "Fortalecer // Formar"}]}
+        self.assertEqual([f["name_pt"] for f in printed_faces(card)], ["Fortalecer", "Formar"])
 
 
 class AdventureSupported(unittest.TestCase):
