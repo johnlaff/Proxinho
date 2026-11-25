@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import add_room_reminders, arena_name_pt, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
+from build import swap_half_names, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -72,12 +72,38 @@ class Transcribe(unittest.TestCase):
         self.assertEqual(printed_faces(c)[0]["name_pt"], "Esgotos de Estark")
         self.assertFalse(printed_has_text(c))
 
+    def test_nomes_das_metades_que_o_scryfall_tem_em_ingles(self) -> None:
+        # Confusão // Bagunça (TSR 186): o Scryfall tem o texto em PT e os nomes em inglês
+        table = {"tsr/186": {"name": "Rough // Tumble", "face_names": ["Confusão", "Bagunça"]}}
+        faces = [
+            {"name": "Rough", "printed_name": "Rough", "printed_text": "Confusão causa 2 pontos de dano a cada criatura sem voar."},
+            {"name": "Tumble", "printed_name": "Tumble", "printed_text": "Bagunça causa 6 pontos de dano a cada criatura com voar."},
+        ]
+        card = {"set": "tsr", "collector_number": "186", "name": "Rough // Tumble", "card_faces": faces}
+        c = transcribe(card, table)
+        self.assertEqual([f["name_pt"] for f in printed_faces(c)], ["Confusão", "Bagunça"])
+        self.assertEqual(c["_transcribed"], "tsr/186")
+        # com o nome em PT no Scryfall, fica o dele
+        named = {**card, "card_faces": [{**f, "printed_name": n} for f, n in zip(faces, ["Confusão", "Bagunça"])]}
+        self.assertIs(transcribe(named, table), named)
+        # o nome inteiro da carta em inglês em cada metade (Saciar // Exagerar, NCC 46)
+        whole = {**card, "card_faces": [{**f, "printed_name": "Rough // Tumble"} for f in faces]}
+        self.assertEqual([f["name_pt"] for f in printed_faces(transcribe(whole, table))], ["Confusão", "Bagunça"])
+        # outra carta no número, nada muda
+        other = {**card, "name": "Boom // Bust"}
+        self.assertIs(transcribe(other, table), other)
+
     def test_transcritas_com_os_mesmos_numeros_e_simbolos_do_oracle(self) -> None:
         mark = re.compile(r"\{[^}]+\}|[+-]?\d+/[+-]?\d+|[+-]?\d+|\bX\b")
         table = build.load_transcribed()
         self.assertGreater(len(table), 80)
         for key, t in table.items():
             self.assertRegex(key, r"^[a-z0-9]+/[0-9a-z]+$")
+            if "face_names" in t:
+                # só os nomes das metades de uma carta dividida (ver transcribe_face_names)
+                self.assertEqual(set(t), {"name", "face_names"}, key)
+                self.assertEqual(len(t["face_names"]), len(t["name"].split(" // ")), key)
+                continue
             self.assertTrue(t["name"] and t["printed_name"], key)
             self.assertLessEqual(set(t), {"name", "oracle_text", "printed_name", "printed_type_line", "printed_text", "flavor_text"}, key)
             if "printed_text" not in t:
@@ -1130,10 +1156,63 @@ class Salas(unittest.TestCase):
         self.assertEqual(arena_name_pt(arena), "Armário // Porão Esquecido")
         self.assertEqual(arena_name_pt(arena[1:]), "Armário // Porão Esquecido")
 
+    def test_separador_das_consequencias_no_arena(self):
+        # Dusk // Dawn (AKR) e Crime // Punishment (OTP) vêm do Arena com " /// ": sem trocar, a
+        # carta casava pela primeira metade e o nome saía "Anoitecer // Anoitecer /// Alvorecer"
+        self.assertEqual(arena_name("Dusk /// Dawn"), "Dusk // Dawn")
+        self.assertEqual(arena_name("Anoitecer /// Alvorecer"), "Anoitecer // Alvorecer")
+        self.assertEqual(arena_name("Find // Finality"), "Find // Finality")
+        self.assertEqual(arena_name("Llanowar Elves"), "Llanowar Elves")
+        self.assertIsNone(arena_name(None))
+        arena = [{"name_en": arena_name("Dusk /// Dawn"), "name_pt": arena_name("Anoitecer /// Alvorecer")}, {"name_en": "Dusk", "name_pt": "Anoitecer"}, {"name_en": "Dawn", "name_pt": "Alvorecer"}]
+        self.assertEqual(arena_name_pt(arena), "Anoitecer // Alvorecer")
+
+    def test_metade_com_o_nome_inteiro_no_arena(self):
+        # Hustle // Bustle (MKM 249): o Arena dá à Hustle o nome da carta inteira
+        faces = [
+            {"name_en": "Hustle // Bustle", "name_pt": "Burburinho // Agitação"},
+            {"name_en": "Hustle", "name_pt": "Burburinho // Agitação"},
+            {"name_en": "Bustle", "name_pt": "Agitação"},
+        ]
+        self.assertEqual([f["name_pt"] for f in half_names(faces)], ["Burburinho // Agitação", "Burburinho", "Agitação"])
+        # sem a carta inteira na frente (as de duas faces), nada muda
+        dfc = [{"name_en": "Delver of Secrets", "name_pt": "A // B"}, {"name_en": "Insectile Aberration", "name_pt": "C"}]
+        self.assertEqual(half_names(dfc)[0]["name_pt"], "A // B")
+
+    def test_dividida_do_arena_so_pelo_nome_inteiro(self):
+        start = {"faces": [{"name_en": "Start"}, {"name_en": "Start // Finish"}]}
+        delver = {"faces": [{"name_en": "Delver of Secrets"}, {"name_en": "Insectile Aberration"}]}
+        arena = {"Start": start, "Start // Finish": {"faces": []}, "Delver of Secrets": delver}
+        # a carta de teste Start // Fire não é a Start // Finish do Arena
+        self.assertIsNone(arena_entry(arena, "Start // Fire"))
+        self.assertIs(arena_entry(arena, "Start // Finish"), arena["Start // Finish"])
+        # as de duas faces casam pela primeira
+        self.assertIs(arena_entry(arena, "Delver of Secrets // Insectile Aberration"), delver)
+        self.assertIsNone(arena_entry(arena, "Llanowar Elves"))
+
     def test_nome_inteiro_em_cada_metade_impressa(self):
         # Assure // Assemble de RVR: o Scryfall põe "Fortalecer // Formar" nas duas metades
         card = {"card_faces": [{"name": "Assure", "printed_name": "Fortalecer // Formar"}, {"name": "Assemble", "printed_name": "Fortalecer // Formar"}]}
         self.assertEqual([f["name_pt"] for f in printed_faces(card)], ["Fortalecer", "Formar"])
+
+    def test_metades_trocadas_de_invasion(self):
+        card = {"set": "inv", "collector_number": "294", "card_faces": [{"name": "Pain", "printed_name": "Sofrimento"}, {"name": "Suffering", "printed_name": "Dor"}]}
+        fixed = swap_half_names(card)
+        self.assertEqual([f["printed_name"] for f in fixed["card_faces"]], ["Dor", "Sofrimento"])
+        self.assertEqual(fixed["printed_name"], "Dor // Sofrimento")
+        # as de Apocalypse estão certas
+        apc = {"set": "apc", "collector_number": "128", "card_faces": [{"name": "Fire", "printed_name": "Fogo"}, {"name": "Ice", "printed_name": "Gelo"}]}
+        self.assertIs(swap_half_names(apc), apc)
+
+    def test_segunda_metade_no_texto_da_primeira(self):
+        # Assault // Battery de TSB: o Scryfall tem a segunda metade inteira no texto da primeira
+        card = {
+            "card_faces": [
+                {"name": "Assault", "printed_text": "Assalto causa 2 pontos de dano à criatura alvo ou jogador alvo.\n//\nBateria\no3oG\nFeitiço\nColoque em jogo uma ficha."},
+                {"name": "Battery", "printed_text": "Coloque em jogo uma ficha."},
+            ]
+        }
+        self.assertEqual([f["text_pt"] for f in printed_faces(card)], ["Assalto causa 2 pontos de dano à criatura alvo ou jogador alvo.", "Coloque em jogo uma ficha."])
 
 
 class AdventureSupported(unittest.TestCase):

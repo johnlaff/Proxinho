@@ -18,6 +18,7 @@ O Scryfall preenche o nome, o tipo e o texto impressos de quase todas as impress
 - A carta é copiada como está: com o texto de 2013 ("coloque no campo de batalha uma ficha", "à sua reserva de mana", "custo de mana convertido") e com os erros dela. O Herdeiro de Vitu-Ghazi cria a Ave sem "com voar", a Primeira-espada Viashino dá +2/+2 à "criatura alvo" em vez de a si mesma e o Ceifar Intelecto diz "Para cara card". É o que a carta física diz, como nas outras impressões em PT.
 - Um teste do pipeline confere cada texto transcrito contra o do Oracle: os mesmos símbolos, números e "X".
 - A Sewers of Estark (1995) traz as regras daquele tempo ("baixe antes da defesa ter sido escolhida"), que não dizem o que a carta faz hoje: entra só o nome, "Esgotos de Estark", e o texto segue com a tradução não oficial.
+- Adendo (25/11/2026, ADR 0034): nas cartas divididas o Scryfall às vezes tem o texto em PT e o nome das metades em inglês (ou o nome inteiro da carta em inglês em cada metade). A entrada pode trazer só os nomes das metades (`face_names`, transcritos da imagem oficial), e `transcribe_face_names` troca só a metade que está em inglês. Vale para a impressão de onde vem o texto (a mais nova com texto, `pick_printed`).
 
 ## Consequências
 

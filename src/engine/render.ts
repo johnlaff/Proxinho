@@ -141,6 +141,7 @@ import { mdfcHint, type MdfcHint } from "./mdfc";
 import { OLD, oldCostLeft, oldLetters, oldTypeEnds } from "./old";
 import { prepareFrame, prepareLayout } from "./prepare";
 import { ROOM, roomCostLeft, roomFrame } from "./room";
+import { SPLIT, splitBoxes, splitCostLeft, splitFrame } from "./split";
 import { preloadSymbols } from "./symbols";
 import {
   SYMBOL_EM,
@@ -1712,6 +1713,91 @@ async function renderRoom(p: {
   return "ok";
 }
 
+/**
+ * Carta dividida de 2015 (ver split.ts): girada para a carta deitada, cada metade é uma carta
+ * pequena da M15. Os nomes e os tipos saem linha a linha, como na M15 (o custo e o símbolo da
+ * coleção ficam), as caixas pelo apagamento de sempre (a marca-d'água vai junto, inteira) e o
+ * português é escrito na carta deitada, posta de pé de novo.
+ */
+async function renderSplit(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  halves: [PtFace, PtFace];
+  W: number;
+  H: number;
+}): Promise<boolean> {
+  const { ctx, src, halves, W, H } = p;
+  if (halves.some((h) => !h.type_pt)) return false;
+  const rot = document.createElement("canvas");
+  rot.width = src.height;
+  rot.height = src.width;
+  const rctx = rot.getContext("2d", { willReadFrequently: true });
+  if (!rctx) throw new Error("Seu navegador não liberou o canvas 2D.");
+  rctx.translate(rot.width, 0);
+  rctx.rotate(Math.PI / 2);
+  rctx.drawImage(src, 0, 0);
+  rctx.setTransform(1, 0, 0, 1, 0, 0);
+  const data = rctx.getImageData(0, 0, rot.width, rot.height);
+  if (!splitFrame(data)) return false;
+  const fx = rot.width / SPLIT.width;
+  const fy = rot.height / SPLIT.height;
+  const toImg = (r: Rect) => roundRect({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
+
+  const costs = halves.map((h, i) => splitCostLeft(h.mana_cost, i as 0 | 1));
+  const { nameY, typeY } = SPLIT;
+  const nameRects = SPLIT.names.map((n, i) => toImg({ x0: n.x0, y0: nameY.y0, x1: costs[i] - 6, y1: nameY.y1 }));
+  const costGuard = SPLIT.names.map((n, i) => toImg({ x0: costs[i] - 4, y0: nameY.y0 - 2, x1: n.x1 + 4, y1: nameY.y1 + 1 }));
+  const typeRects = SPLIT.types.map((t) => toImg({ x0: t.x0, y0: typeY.y0, x1: t.x1, y1: typeY.y1 }));
+  const boxes = splitBoxes(data);
+  const boxRects = boxes.map(toImg);
+  // texto curto centralizado no original (Boom // Bust, TSR) sai centralizado
+  const centered = boxRects.map((r, i) => (halves[i].text_pt?.trim() ? measureCentered(data, r, [], fx) === true : false));
+  const inks = eraseRegions(
+    data,
+    [
+      ...nameRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
+      ...typeRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
+      ...boxRects.map((rect) => ({ rect, threshold: 14, colorThreshold: 34, stains: true, dividers: true })),
+    ],
+    costGuard,
+    costGuard,
+    // (a ponta arredondada da esquerda de cada barra fica como está, ver barCapGuard)
+    [...nameRects, ...typeRects].flatMap((r) => barCapGuard(data, r, "left")),
+  );
+  rctx.putImageData(data, 0, 0);
+
+  const k = H / SPLIT.width;
+  ctx.save();
+  ctx.translate(0, H);
+  ctx.rotate(-Math.PI / 2);
+  ctx.drawImage(rot, 0, 0, H, W);
+  const m = measurer(ctx, k);
+  const pad = SPLIT.boxPad;
+  for (const [i, h] of halves.entries()) {
+    const n = SPLIT.names[i];
+    drawLine(ctx, h.name_pt ?? h.name_en, n.x, nameY.center, costs[i] - 10 - n.x, SPLIT.nameSize, k, INK[inks[i] ?? "dark"]);
+    const t = SPLIT.types[i];
+    drawLine(ctx, h.type_pt ?? "", t.x, typeY.center, t.x1 - t.x, SPLIT.typeSize, k, INK[inks[2 + i] ?? "dark"]);
+    const b = boxes[i];
+    const box = { x0: b.x0 + pad.x0, y0: b.y0 + pad.y0, x1: b.x1 - pad.x1, y1: b.y1 - pad.y1 };
+    const symbols = await preloadSymbols(h.text_pt, h.flavor_pt);
+    const res = fitText(
+      h.text_pt,
+      h.flavor_pt,
+      box.x1 - box.x0,
+      box.y1 - box.y0,
+      m,
+      SPLIT.maxSize,
+      SPLIT.minSize,
+      undefined,
+      h.ability_words,
+    );
+    drawLayout(ctx, res, box, k, inks[4 + i] ?? "dark", symbols, m, centered[i]);
+  }
+  ctx.restore();
+  return true;
+}
+
 async function renderToken(p: {
   ctx: CanvasRenderingContext2D;
   src: HTMLCanvasElement;
@@ -2020,7 +2106,13 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   if (print.layout === "split") {
     const other = opts.split ?? null;
     const halves: [PtFace, PtFace] | null = other?.name_pt && other.text_pt !== null ? [face, other] : null;
-    const done = halves && room ? await renderRoom({ ctx, src, halves, print, W, H, neural, plan }) : false;
+    const done = !halves
+      ? false
+      : room
+        ? await renderRoom({ ctx, src, halves, print, W, H, neural, plan })
+        : (await renderSplit({ ctx, src, halves, W, H }))
+          ? "ok"
+          : false;
     if (done === "ok") return { canvas: out, translated: true };
     ctx.drawImage(img, 0, 0, W, H);
     return done === "neural" ? { canvas: out, translated: false, reason: "neural" } : { canvas: out, translated: false };

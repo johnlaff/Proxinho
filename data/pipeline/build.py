@@ -119,6 +119,31 @@ def drop_invisible(text: str | None) -> str | None:
     return "\n".join(lines)
 
 
+def arena_name(name: str | None) -> str | None:
+    """
+    O nome de uma carta do Arena com o separador do Scryfall. As divididas com Consequência
+    (Amonkhet Remastered, Hour of Devastation) e a Crime // Punishment de OTP vêm com " /// "
+    ("Dusk /// Dawn"): a carta não casava pelo nome, casava pela primeira metade, e a segunda
+    ficava com o nome e os dois textos da carta inteira ("Anoitecer // Anoitecer /// Alvorecer").
+    """
+    return re.sub(r" /{3} ", " // ", name) if name else name
+
+
+def half_names(faces: list[dict]) -> list[dict]:
+    """
+    Nas divididas do Arena a carta inteira vem antes das metades (ver `en_face_of`), e uma metade
+    pode vir com o nome da carta inteira ("Burburinho // Agitação" na Hustle, MKM 249): o nome
+    inteiro saía na barra da metade da esquerda. Cada metade fica com a parte dela.
+    """
+    if len(faces) < 3 or " // " not in (faces[0].get("name_en") or ""):
+        return faces
+    for i, f in enumerate(faces[1:]):
+        parts = (f.get("name_pt") or "").split(" // ")
+        if len(parts) == len(faces) - 1:
+            f["name_pt"] = parts[i]
+    return faces
+
+
 def fix_arena_typos(text: str) -> str:
     """Erros de digitação do arquivo do Arena que não mudam nada do texto oficial: o "+"
     repetido no bônus ("recebe +1/++1", Colorstorm Stallion; "+2/++2" no Delírio de
@@ -261,7 +286,7 @@ def load_arena(offline: bool) -> dict[str, dict]:
     by_grp = {c["grpid"]: c for c in cards}
 
     def face(card: dict) -> dict | None:
-        name_pt = text(br, card.get("titleId"))
+        name_pt = arena_name(text(br, card.get("titleId")))
         if not name_pt:
             return None
         type_pt = text(br, card.get("cardTypeTextId")) or ""
@@ -289,7 +314,7 @@ def load_arena(offline: bool) -> dict[str, dict]:
     # grpid maior = texto mais novo; as versões com nome alternativo vêm antes, para a
     # impressão normal sempre ganhar quando existe
     for card in sorted(cards, key=lambda c: (not c.get("altTitleId"), c["grpid"])):
-        name_en = text(en, card.get("titleId"))
+        name_en = arena_name(text(en, card.get("titleId")))
         if not name_en or name_en.startswith("A-") or card.get("set") in DIGITAL_SETS:
             continue
         # fichas têm nomes que coincidem com cartas ("Adorned Pouncer" eternizado): ficam em load_arena_tokens
@@ -309,9 +334,10 @@ def load_arena(offline: bool) -> dict[str, dict]:
         for linked in card.get("linkedFaces") or []:
             other = by_grp.get(linked)
             if other and other.get("titleId") != card.get("titleId") and (f := face(other)):
-                f["name_en"] = text(en, other.get("titleId"))
+                f["name_en"] = arena_name(text(en, other.get("titleId")))
                 faces.append(f)
         front["name_en"] = name_en
+        half_names(faces)
         # O texto de ambientação (flavor) é de cada impressão: guardamos de qual veio e o
         # flavor em inglês do próprio Arena, para achar as artes de papel com o mesmo flavor
         # (nas coleções digitais, como Kaladesh Remastered, o Scryfall não tem o flavor)
@@ -418,16 +444,60 @@ def transcribe(card: dict, table: dict[str, dict]) -> dict:
     naquela coleção e número e deixa de valer quando o Scryfall trouxer o tipo ou o texto.
     """
     t = table.get(f"{card.get('set')}/{card.get('collector_number')}")
+    if t and t["name"] == card.get("name") and "face_names" in t:
+        return transcribe_face_names(card, t["face_names"])
     if not t or t["name"] != card.get("name") or card.get("card_faces") or card.get("printed_type_line") or card.get("printed_text") is not None:
         return card
     return {**card, **{k: t[k] if k in t else card.get(k) for k in TRANSCRIBED}, "_transcribed": f"{card['set']}/{card['collector_number']}"}
+
+
+def transcribe_face_names(card: dict, names: list[str]) -> dict:
+    """
+    O nome em PT de cada metade de uma carta dividida, transcrito da imagem, quando o Scryfall põe
+    o nome em inglês no lugar ("Rough" e "Tumble" na Confusão // Bagunça de TSR, com o texto em
+    PT dizendo "Confusão causa 2 pontos de dano"). Só troca a metade que está com o nome em
+    inglês (ou sem nome) e deixa de valer quando o Scryfall trouxer o nome em PT.
+    """
+    faces = card.get("card_faces") or []
+    if len(faces) != len(names):
+        return card
+    # o nome em inglês da metade, ou o da carta inteira em cada metade (Saciar // Exagerar, NCC 46)
+    fixed = [
+        {**f, "printed_name": n} if f.get("printed_name") in (None, f.get("name"), card.get("name")) else f
+        for f, n in zip(faces, names)
+    ]
+    if fixed == faces:
+        return card
+    return {
+        **card,
+        "card_faces": fixed,
+        "printed_name": " // ".join(f["printed_name"] for f in fixed),
+        "_transcribed": f"{card['set']}/{card['collector_number']}",
+    }
+
+
+# As divididas de Invasion em PT no Scryfall têm o nome de cada metade na outra ("Bateria" no
+# Assault, "Sofrimento" no Pain, "Decrescer" no Wax, que dá +2/+2): a reimpressão de Time Spiral
+# (TSB 106, com a imagem em PT) tem "Assalto" no Assault. A carta saía com o nome de uma metade
+# sobre o texto da outra.
+SWAPPED_HALF_NAMES = {"inv/292", "inv/293", "inv/294", "inv/295", "inv/296"}
+
+
+def swap_half_names(card: dict) -> dict:
+    """Destroca o nome das metades das divididas de `SWAPPED_HALF_NAMES`."""
+    faces = card.get("card_faces") or []
+    if f"{card.get('set')}/{card.get('collector_number')}" not in SWAPPED_HALF_NAMES or len(faces) != 2:
+        return card
+    names = [f.get("printed_name") for f in faces][::-1]
+    fixed = [{**f, "printed_name": n} for f, n in zip(faces, names)]
+    return {**card, "card_faces": fixed, "printed_name": " // ".join(n or "" for n in names) if all(names) else card.get("printed_name")}
 
 
 def read_printed_pt(table: dict[str, dict]):
     """As impressões em PT do cache do Scryfall, com as transcritas completadas (`transcribe`)."""
     with open(CACHE / "scryfall_pt.jsonl") as fh:
         for line in fh:
-            yield transcribe(json.loads(line), table)
+            yield swap_half_names(transcribe(json.loads(line), table))
 
 
 def load_printed_pt(offline: bool) -> dict[str, dict]:
@@ -1180,6 +1250,10 @@ def printed_faces(card: dict) -> list[dict]:
         name_pt = f.get("printed_name")
         if name_pt and " // " in name_pt and " // " not in (f.get("name") or "") and len(name_pt.split(" // ")) == len(faces):
             name_pt = name_pt.split(" // ")[i]
+        # o texto da primeira metade do Assault // Battery de TSB traz, depois de uma linha "//",
+        # a segunda metade inteira (nome, custo, tipo e texto): fica só o da metade
+        if text and len(faces) > 1:
+            text = re.split(r"\n//\n", text)[0]
         # criatura sem habilidades (Great-Horn Krushok): o Scryfall não manda o texto,
         # que é vazio mesmo. Com o tipo em PT, é tradução; antes ficava `None` e a carta
         # saía em inglês, como se não houvesse texto oficial
@@ -1482,6 +1556,36 @@ def room_supported(card: dict) -> bool:
     )
 
 
+# divididas de 2015 com outro desenho: as de Commander 2016 (Trial // Error, Order // Chaos) têm
+# as metades mais altas e a linha do copyright no pé da carta deitada, e as cartas de teste dos
+# Mystery Boosters e do Unknown Event (Start // Fire, Bind // Liberate) têm a moldura de rascunho
+SPLIT_SETS_OFF = {"c16", "cmb1", "cmb2", "mb2", "unk"}
+
+
+def split_supported(card: dict) -> bool:
+    """Cartas divididas de 2015 (Guilds of Ravnica, Ravnica Allegiance, Murders at Karlov Manor e
+    as reimpressões na moldura atual): duas cartas pequenas da M15 lado a lado na carta deitada,
+    cada uma com a barra do nome, a barra de tipo e a caixa (src/engine/split.ts, ADR 0034). O
+    motor confere as barras e as caixas na imagem; sem elas, a arte sai como está. Ficam de fora
+    as Salas (room_supported), a Consequência e o Fundir, que têm outro desenho, e as de borda
+    branca, prateada e sem borda."""
+    faces = card.get("card_faces") or []
+    keywords = set(card.get("keywords") or [])
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "split"
+        and card.get("border_color") == "black"
+        and not card.get("frame_effects")
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+        and card.get("set") not in SPLIT_SETS_OFF
+        and len(faces) == 2
+        and not any(is_room(f.get("type_line")) for f in faces)
+        and not keywords & {"Aftermath", "Fuse"}
+    )
+
+
 def is_room(type_line: str | None) -> bool:
     return "Room" in (type_line or "").split("—")[-1].split()
 
@@ -1524,6 +1628,21 @@ def en_face_of(card: dict, faces: list[dict], i: int) -> dict:
     if card.get("layout") == "split" and is_room(f.get("type_line")):
         return {**f, "oracle_text": without_room_reminder(f.get("oracle_text"))}
     return f
+
+
+def arena_entry(arena: dict[str, dict], name: str) -> dict | None:
+    """
+    A carta do Arena de um nome do Oracle: pelo nome inteiro ou, nas de duas faces e nas
+    Aventuras, pelo da primeira face. Uma dividida do Arena só vale com o mesmo nome inteiro: a
+    Start // Fire (carta de teste dos Mystery Boosters) casava pela primeira metade com a Start //
+    Finish e saía com o texto da Finish na segunda.
+    """
+    if name in arena:
+        return arena[name]
+    a = arena.get(name.split(" // ")[0])
+    if a and any(" // " in (f.get("name_en") or "") and f.get("name_en") != name for f in a["faces"]):
+        return None
+    return a
 
 
 def arena_name_pt(faces: list[dict]) -> str:
@@ -1784,6 +1903,7 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or adventure_supported(c)
         or prepare_supported(c)
         or room_supported(c)
+        or split_supported(c)
         or class_supported(c)
         or station_supported(c)
         or bool(sides and sides[0]["supported"]),
@@ -2192,7 +2312,7 @@ def build(offline: bool) -> list[dict]:
         name = card["name"]
         front_name = name.split(" // ")[0]
         oid = card["oracle_id"] if "oracle_id" in card else card["card_faces"][0]["oracle_id"]
-        a = arena.get(name) or arena.get(front_name)
+        a = arena_entry(arena, name)
         p = printed.get(oid)
 
         if a:

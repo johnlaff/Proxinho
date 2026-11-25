@@ -229,6 +229,21 @@ Medidas nas imagens do Scryfall giradas 90° no sentido horário (1040 × 745), 
 
 A barra do tipo e a faixa do lembrete ficam entre 16 e 91 tons de mediana (a arte por trás, escurecida); as letras brancas passam de 230. As promos de PDSK estão 1 px deslocadas, dentro da folga das medidas.
 
+### Cartas divididas da moldura atual (25/11/2026)
+
+Como as ferramentas existentes fazem: o Proxyshop tem modelo para as divididas da moldura atual (as duas metades como cartas pequenas, lado a lado), desenhado do zero; aqui a moldura é a da imagem, e o que importa são as medidas de cada parte, tiradas das impressões. A metade da direita repete a da esquerda 480 px adiante.
+
+Medidas nas imagens do Scryfall giradas 90° no sentido horário (1040 × 745), nas 90 impressões de borda preta (GRN, RNA, MKM, CLU, DMR, RVR, TSR, UMA, MH2 e os decks de Commander):
+
+| Medida | Valor |
+|---|---|
+| Barras dos nomes | y ≈ 52 a 105, a da esquerda de x ≈ 90 a 515 e a da direita de ≈ 570 a 995; letras a partir de x ≈ 107 e 587, de ~27 px de altura das maiúsculas |
+| Custo de mana | acaba em x ≈ 505 e 981; ~36,4 px por símbolo; o híbrido tem um círculo de 41 px |
+| Barras de tipo | y ≈ 405 a 437; letras a partir de x ≈ 107 e 587, de ~18,5 px; o tipo em inglês acaba antes de x 200 e 680; o símbolo da coleção começa em x ≥ 455 e 934 (DMR, UMA, MH2 são os mais largos) |
+| Caixas | y ≈ 450 a 713 (de 709 a 715 no pé); o lado de dentro da da esquerda vai de x 93 (RNA) a 102 (MKM, RVR, CLU); a da direita, de 570 a 987; o texto em inglês chega a ~22,5 px de altura das maiúsculas (corpo ~34), centrado na altura |
+
+As de Commander 2016 (Trial // Error, Order // Chaos) têm as metades mais altas (caixa até y ≈ 664, com o copyright no pé da carta deitada) e as cartas de teste dos Mystery Boosters e do Unknown Event, a moldura de rascunho: ficam de fora. Em 18 cartas divididas impressas em PT o Scryfall põe o nome de cada metade em inglês (ou o nome inteiro da carta em inglês em cada metade) com o texto em PT; os nomes foram transcritos das imagens oficiais.
+
 ### Marcas-d'água na moldura de 2003 (25/11/2026)
 
 Como as ferramentas existentes fazem: o Proxyshop não reaproveita a imagem; ele monta a carta do zero e põe a marca-d'água como uma camada vetorial, desenhada à parte a partir do nome que o Scryfall dá (`watermark`). O Proxinho escreve sobre a digitalização, então a marca já está lá e precisa ficar: apagar a caixa inteira levava a marca junto, e apagar só onde as letras passam deixava a marca em cacos. A saída é a mesma da arte sem borda (ADR 0012): só as letras saem da máscara, e a rede neural (LaMa) refaz o que estava por baixo delas, a marca inclusive.

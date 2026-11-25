@@ -95,6 +95,12 @@ Como jogador, quero imprimir as Aventuras em português na arte que eu escolher.
 - [x] A sombra do papel perto da lombada continua igual depois de apagar o inglês.
 - [x] Quando o motor não acha o livro na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
 
+### H11d. Cartas divididas da moldura atual (entregue em 25/11/2026, ADR 0034)
+Como jogador, quero imprimir as cartas divididas (Find // Finality, Fire // Ice, Expansion // Explosion) em português na arte que eu escolher.
+- [x] As divididas de borda preta da moldura atual saem em português: o nome, o tipo e o texto de cada metade, com o custo e o símbolo da coleção no lugar.
+- [x] Quando o motor não acha as barras e as caixas das duas metades na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
+- [x] As divididas impressas em PT mostram o nome em PT de cada metade, também onde o Scryfall o tem em inglês (Confusão // Bagunça).
+
 ### H11c. Salas de Duskmourn (entregue em 25/11/2026, ADR 0033)
 Como jogador, quero imprimir as Salas de Duskmourn em português na arte que eu escolher.
 - [x] As Salas de borda preta saem em português: o nome e o texto de cada metade, com o custo no lugar, "Encantamento — Cômodo" e o lembrete das Salas na faixa do meio, com o texto oficial da explicação do Arena.

@@ -272,6 +272,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "19859061-f5ec-4b7f-86a1-196f98648e0a",
+    "oracle_id": "4744b086-fea2-4992-bfef-68c58cdf9cf0",
+    "set": "inv",
+    "number": "296",
+    "nome": "Wax // Wane",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "9710889c-0fc6-43a9-83df-484ab0659030",
     "oracle_id": "fe16f1ab-58b4-4452-abe4-cbd9addd348f",
     "set": "jou",
@@ -453,6 +461,14 @@
     "set": "ons",
     "number": "116",
     "nome": "Standardize",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "ce4bc5b7-233c-4076-8268-7f9bd346ec55",
+    "oracle_id": "c3df3574-c4da-415f-a56b-807ed8e41d73",
+    "set": "otp",
+    "number": "39",
+    "nome": "Crime // Punishment",
     "grupo": "citada nos documentos"
   },
   {
@@ -869,6 +885,14 @@
     "set": "trc",
     "number": "508",
     "nome": "Talisman of Progress",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "ea0cdb87-030a-4696-a16f-c971cdced3ca",
+    "oracle_id": "5e2bf834-7f92-4da5-beac-0dad817dc233",
+    "set": "tsr",
+    "number": "186",
+    "nome": "Rough // Tumble",
     "grupo": "citada nos documentos"
   },
   {
@@ -4014,6 +4038,126 @@
     "number": "13",
     "nome": "Leader's Talent",
     "grupo": "classe"
+  },
+  {
+    "id": "099b1265-11a5-48e2-9529-24fa3ea46377",
+    "oracle_id": "363edb16-009f-4cc2-99e3-2b15db84e7af",
+    "set": "c21",
+    "number": "219",
+    "nome": "Incubation // Incongruity",
+    "grupo": "dividida"
+  },
+  {
+    "id": "2c1ace2e-b3eb-4e60-adfd-9f40b8cd4416",
+    "oracle_id": "363edb16-009f-4cc2-99e3-2b15db84e7af",
+    "set": "clu",
+    "number": "197",
+    "nome": "Incubation // Incongruity",
+    "grupo": "dividida"
+  },
+  {
+    "id": "03541f43-671a-4b5d-a07c-c75efd6fe490",
+    "oracle_id": "df7d4964-35a2-42f7-a4f5-05122f78cbba",
+    "set": "clu",
+    "number": "210",
+    "nome": "Status // Statue",
+    "grupo": "dividida"
+  },
+  {
+    "id": "eccff9be-a18d-4fad-b23a-7f66ae9dbfed",
+    "oracle_id": "cb32ab3e-ef76-4afb-959f-f8cc2d18416e",
+    "set": "dmr",
+    "number": "214",
+    "nome": "Night // Day",
+    "grupo": "dividida"
+  },
+  {
+    "id": "feb4b39f-d309-49ba-b427-240b7fdc1099",
+    "oracle_id": "2f8243a4-f347-4e18-9094-570b34df903b",
+    "set": "grn",
+    "number": "226",
+    "nome": "Flower // Flourish",
+    "grupo": "dividida"
+  },
+  {
+    "id": "43ab3ed2-2b50-4488-a21f-60965222970a",
+    "oracle_id": "5d1d76e0-049c-4a33-96ec-8e60deed16d5",
+    "set": "mh2",
+    "number": "60",
+    "nome": "Said // Done",
+    "grupo": "dividida"
+  },
+  {
+    "id": "85835473-b9b6-4f4a-bb93-fef93d5ec57b",
+    "oracle_id": "7e050495-bed7-43b9-abce-866c61beb1da",
+    "set": "mkm",
+    "number": "250",
+    "nome": "Push // Pull",
+    "grupo": "dividida"
+  },
+  {
+    "id": "d9374771-c737-4cc8-b379-19039e66a525",
+    "oracle_id": "6e07e7ae-1bb7-4831-adb9-a5e71b7d79e3",
+    "set": "pgrn",
+    "number": "222s",
+    "nome": "Connive // Concoct",
+    "grupo": "dividida"
+  },
+  {
+    "id": "4411a717-fda0-45f1-a8ba-618884de5ce2",
+    "oracle_id": "b8bb97a8-5f5d-48e9-a4c1-b4c20efe7739",
+    "set": "prna",
+    "number": "221p",
+    "nome": "Bedeck // Bedazzle",
+    "grupo": "dividida"
+  },
+  {
+    "id": "ab0ba4ef-9e82-4177-a80f-8fa6f6a5bd60",
+    "oracle_id": "c547c9ab-a303-48fb-9579-37f9de9a558b",
+    "set": "rna",
+    "number": "225",
+    "nome": "Depose // Deploy",
+    "grupo": "dividida"
+  },
+  {
+    "id": "f6200937-3146-4972-ab83-051ade3b7a52",
+    "oracle_id": "a43ecf8b-5dc9-4ac4-ae1f-b663aa8c9d7b",
+    "set": "rna",
+    "number": "227",
+    "nome": "Repudiate // Replicate",
+    "grupo": "dividida"
+  },
+  {
+    "id": "7e565adc-32ec-4ba8-9220-1239c373f84f",
+    "oracle_id": "19053c47-97ce-4a25-a92c-1f4061e85bf3",
+    "set": "rvr",
+    "number": "240",
+    "nome": "Warrant // Warden",
+    "grupo": "dividida"
+  },
+  {
+    "id": "1a359c9d-c7d8-4d57-bf32-f49eac65b8de",
+    "oracle_id": "212af747-2ac1-4d33-9456-8b3cc8988f5d",
+    "set": "rvr",
+    "number": "245",
+    "nome": "Find // Finality",
+    "grupo": "dividida"
+  },
+  {
+    "id": "65c091fa-00a8-4f20-8148-46db3fc3c67d",
+    "oracle_id": "af6f771f-5154-4fb3-8ed4-768d71eea568",
+    "set": "tdc",
+    "number": "287",
+    "nome": "Expansion // Explosion",
+    "grupo": "dividida"
+  },
+  {
+    "id": "3f822331-315e-4297-bb69-f1069032c6c5",
+    "oracle_id": "ae92942b-919c-4ea9-b693-85fcef765d5a",
+    "set": "uma",
+    "number": "225",
+    "nome": "Fire // Ice",
+    "grupo": "dividida"
   },
   {
     "id": "c697548f-925b-405e-970a-4e78067d5c8e",
