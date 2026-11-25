@@ -7,9 +7,9 @@ A amostra tem dois pedaços:
    em que o motor já errou: "Faramir, Field Commander, LTR 14", "Sol Ring, SLD 2467"...). Uma
    correção nova nunca pode trazer de volta um erro velho.
 2. Um sorteio fixo (semente 20261125) por grupo de moldura, entre as impressões suportadas de
-   cartas com texto em PT: a moldura comum de 2015, a de 2003, a antiga (1997), a sem borda, a
-   arte estendida, as de duas faces, os planeswalkers, as fichas, os emblemas, as Sagas,
-   Aventuras, Classes, naves e a tradução não oficial.
+   cartas com texto em PT: a moldura comum de 2015, a de 2003 (sem e com marca-d'água), a antiga
+   (1997), a sem borda, a arte estendida, as de duas faces, os planeswalkers, as fichas, os
+   emblemas, as Sagas, Aventuras, Classes, cartas com Preparar, naves e a tradução não oficial.
 
 Lê o banco montado pelo pipeline (data/out/cards.sql, depois de `pnpm data:build`). A amostra é
 versionada e só cresce: rodar de novo mantém as impressões que já estão nela e acrescenta as
@@ -54,6 +54,8 @@ GROUPS: dict[str, int] = {
     "não oficial": 40,
     # por último: um grupo novo no fim não muda o sorteio dos de antes
     "1997": 40,
+    "2003 com marca-d'água": 30,
+    "preparar": 15,
 }
 
 
@@ -65,6 +67,11 @@ def group_of(row: sqlite3.Row) -> str | None:
     # a moldura antiga entrou depois (ADR 0031): antes de tudo, para não mudar os outros grupos
     if frame == "1997":
         return "1997"
+    # (e depois a marca-d'água de 2003, ADR 0024, e o Preparar, ADR 0032)
+    if frame == "2003" and row["watermark"]:
+        return "2003 com marca-d'água"
+    if layout == "prepare":
+        return "preparar"
     if row["source"] == "nao-oficial":
         return "não oficial"
     if layout == "emblem":
@@ -124,7 +131,7 @@ def main() -> None:
     db.row_factory = sqlite3.Row
     rows = db.execute(
         """SELECT p.id, p.oracle_id, p.set_code, p.number, p.layout, p.frame, p.border, p.effects, p.has_pt,
-                  p.supported, c.name_en, c.source, c.type_line, c.faces AS text_pt
+                  p.supported, p.watermark, c.name_en, c.source, c.type_line, c.faces AS text_pt
            FROM prints p JOIN cards c ON c.oracle_id = p.oracle_id
            ORDER BY p.set_code, p.number, p.id"""
     ).fetchall()

@@ -76,6 +76,11 @@ export interface PrintRecord {
    */
   flavor_name?: string | null;
   /**
+   * Marca-d'água da impressão ("golgari", "mirran", "fnm"…): na moldura de 2003 ela fica, e só as
+   * letras saem de cima dela (ADR 0024).
+   */
+  watermark?: string | null;
+  /**
    * Carta de uma face só com indicador de cor (o círculo à esquerda da linha de tipo:
    * Crashing Footfalls, Living End). Nas de duas faces ele vem em `sides`.
    */

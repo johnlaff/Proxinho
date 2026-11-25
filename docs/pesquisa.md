@@ -195,6 +195,28 @@ O papel escurece em direção à lombada: na página da direita, de ~210 tons no
 
 O que o texto em PT pede: o Arena traz a criatura e a aventura como duas faces, repete o flavor da criatura nas duas e não tem o lembrete "(Then exile this card…)". O nome da aventura em PT é quase sempre mais longo ("Mágica Instantânea — Aventura" contra "Instant — Adventure"), e as duas barras comprimem a letra antes de reduzir o corpo, como a impressão oficial em PT.
 
+### Preparar (25/11/2026)
+
+Como as ferramentas existentes fazem: nenhuma ferramenta de proxy conhecida tem modelo para o Preparar (Secrets of Strixhaven, abril de 2026); as notas de lançamento descrevem a mágica num "conjunto de características alternativas numa moldura menor, do lado direito da caixa de texto". O desenho é a Aventura de lado trocado, sem o livro, e o Proxinho segue a divisão do `AdventureMod` do Proxyshop: a caixa principal é a da criatura, e o nome, o tipo e as regras da mágica têm caixas próprias (ADR 0032).
+
+Medidas nas imagens do Scryfall (745 × 1040), em SOS, SOC, FRA e as promos (PSOS, PFRA):
+
+| Medida | Valor |
+|---|---|
+| Fio entre as caixas | x ≈ 366 a 377, o mais escuro em 371 a 373 |
+| Barra do nome da mágica | y ≈ 657 a 699, do contorno em x ≈ 377 até a ponta em ~699; letras a partir de x ≈ 389, em ~679; custo acabando em x ≈ 690 |
+| Barra do tipo da mágica | y ≈ 701 a 750 (uma linha escura de 701 a 705, logo abaixo da barra do nome, fica fora do apagamento), letras em ~726; a ponta da direita é redonda |
+| Caixa da mágica | papel de x ≈ 379 a 687, de 760 a 762 (depois de um bisel claro) até 919 a 922 (o bisel acima da caixa de P/R) |
+| Página da criatura | de x ≈ 52 até o fio, de ~652 a 956 a 964 |
+
+Nas promos de pré-estreia e em algumas da coleção, a última linha da criatura desce até ~945 e o pé dela tem mais tinta que papel na linha: a mediana da linha passava pelo pé da página. As bordas das caixas são medidas pela parte de cada linha no tom do papel (ADR 0032).
+
+### Marcas-d'água na moldura de 2003 (25/11/2026)
+
+Como as ferramentas existentes fazem: o Proxyshop não reaproveita a imagem; ele monta a carta do zero e põe a marca-d'água como uma camada vetorial, desenhada à parte a partir do nome que o Scryfall dá (`watermark`). O Proxinho escreve sobre a digitalização, então a marca já está lá e precisa ficar: apagar a caixa inteira levava a marca junto, e apagar só onde as letras passam deixava a marca em cacos. A saída é a mesma da arte sem borda (ADR 0012): só as letras saem da máscara, e a rede neural (LaMa) refaz o que estava por baixo delas, a marca inclusive.
+
+Medidas em 71 faces de 73 impressões, de todas as marcas da época: a marca fica de 15 a 40 tons abaixo do papel (as letras, mais de 150), e a cor das marcas das guildas passa de 60 perto das letras (o sol dos Boros), enquanto o miolo dos símbolos de mana do texto passa de 120. Os logotipos das promos são outra coisa: grandes, com letras, contorno escuro ou foil holográfico, e a rede neural os refaz em borrões; ficam de fora (adendo do ADR 0024).
+
 ### Classes (20/11/2026)
 
 Como as ferramentas existentes fazem: o Proxyshop tem, para a Classe (`ClassMod`), uma camada de texto por nível. Ele encolhe todas até caberem na coluna (`scale_text_layers_to_height`), espalha-as com a mesma folga acima e abaixo de cada uma (`spread_layers_over_reference`) e põe uma barra de nível entre cada duas (`position_dividers`). A barra é desenho do modelo, com o custo e o "Level N" escritos por cima. Aqui a barra faz parte da imagem escolhida: o Proxinho a recorta com o custo, tira o "Level N" e a cola onde o plano do texto em PT pede, com a mesma folga do Proxyshop (ADR 0019).

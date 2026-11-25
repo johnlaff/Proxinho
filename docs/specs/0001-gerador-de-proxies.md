@@ -95,6 +95,11 @@ Como jogador, quero imprimir as Aventuras em português na arte que eu escolher.
 - [x] A sombra do papel perto da lombada continua igual depois de apagar o inglês.
 - [x] Quando o motor não acha o livro na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
 
+### H11b. Cartas com Preparar (entregue em 25/11/2026, ADR 0032)
+Como jogador, quero imprimir as cartas com Preparar de Secrets of Strixhaven em português na arte que eu escolher.
+- [x] As cartas com Preparar na moldura padrão e na de arte estendida saem em português: a criatura à esquerda do fio e o nome, o tipo e as regras da mágica preparada à direita, com o custo dela no lugar.
+- [x] Quando o motor não acha o fio ou as barras da mágica na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
+
 ### H12. Classes (entregue em 20/11/2026, ADR 0019)
 Como jogador, quero imprimir as Classes em português na arte que eu escolher, inclusive as que nunca saíram impressas em PT.
 - [x] As Classes na moldura padrão saem em português, com todas as habilidades no mesmo corpo de letra e cada uma no meio da faixa do seu nível.
@@ -115,7 +120,8 @@ Como jogador, quero imprimir em português as artes da moldura de 2003 a 2014, i
 - [x] O nome e o tipo saem em Matrix Bold, a fonte da época, no tamanho e na altura das letras da carta impressa, começando onde começavam nas cartas da mesma época.
 - [x] A ponta arredondada das barras do nome e do tipo fica como está, e o tipo começa onde começa na carta impressa.
 - [x] Quando a carta tem uma arte na moldura atual, ela continua sendo a padrão; a de 2003 aparece na gaveta para escolher, e vira a padrão só quando é a única em PT.
-- [x] As impressões com marca-d'água, com efeito de moldura (lápide, milagre, cores trocadas; o céu estrelado de Theros entra, com as barras e a caixa da comum), os planeswalkers de 2003 e as promos com outro desenho (Champs and States, a Secret Lair espelhada) saem na original, e a etiqueta diz que saem em inglês.
+- [x] Na moldura de 2003, a marca-d'água lisa (as das guildas, das facções, o símbolo da coleção) fica: só as letras saem, e a rede neural refaz a marca por baixo delas; sem a rede neural, a carta sai na original.
+- [x] As impressões com o logotipo de uma promo como marca-d'água (FNM, Pro Tour, Junior), com efeito de moldura (lápide, milagre, cores trocadas; o céu estrelado de Theros entra, com as barras e a caixa da comum), os planeswalkers de 2003 e as promos com outro desenho (Champs and States, a Secret Lair espelhada) saem na original, e a etiqueta diz que saem em inglês.
 
 ### H15. Tradução não oficial (entregue em 21/11/2026, ADR 0025)
 Como jogador, quero imprimir em português as cartas que nunca saíram em PT, sabendo que a tradução não é oficial.

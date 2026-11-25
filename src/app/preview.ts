@@ -189,8 +189,8 @@ export function renderInput(entry: Entry, side: Side = 0) {
   const face = translate ? (entry.card.faces[side] ?? null) : null;
   // o flavor da impressão do texto, ou o da versão do Arena desta arte (ver `flavor_pt`)
   const flavor = !face ? null : flavorApplies(entry.card, print) ? (face.flavor_pt ?? null) : (print.flavor_pt?.[side] ?? null);
-  // (Aventura: a segunda face é o feitiço da página da esquerda, na mesma imagem)
-  const adventure = face && print.layout === "adventure" ? (entry.card.faces[1] ?? null) : null;
+  // (Aventura e Preparar: a segunda face é a mágica da outra caixa, na mesma imagem)
+  const adventure = face && (print.layout === "adventure" || print.layout === "prepare") ? (entry.card.faces[1] ?? null) : null;
   // (carta modal: a outra face, resumida na faixa de baixo, ver mdfc.ts)
   const otherFace = face && print.layout === "modal_dfc" ? (entry.card.faces[side === 1 ? 0 : 1] ?? null) : null;
   return {

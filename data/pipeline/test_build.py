@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
+from build import emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -418,9 +418,13 @@ class FrameSupported(unittest.TestCase):
             self.assertFalse(frame_supported({**m03, "frame_effects": ["enchantment", effect]}), effect)
         # planeswalker de 2003 tem caixa própria
         self.assertFalse(frame_supported({**m03, "type_line": "Legendary Planeswalker — Jace"}))
-        # marca-d'água: a de guilda ficava em cacos (Darksteel Relic NPH 134) e a de promo em
-        # manchas (Elvish Visionary F10 6)
-        for mark in ("mirran", "golgari", "fnm", "dci", "junior"):
+        # marca-d'água lisa entra: o motor apaga só as letras e a rede neural refaz a marca por
+        # baixo delas (Darksteel Relic NPH 134, Wojek Halberdiers GTC 208)
+        for mark in ("mirran", "phyrexian", "golgari", "boros", "dci", "wotc", "set", "colorpie"):
+            self.assertTrue(frame_supported({**m03, "watermark": mark}), mark)
+        # os logotipos grandes das promos, não: a rede neural os refazia em borrões, e o "FNM"
+        # deixava pedaços do inglês (Terror F03 8)
+        for mark in ("fnm", "arena", "protour", "grandprix", "mtg", "junior", "scholarship", "herospath"):
             self.assertFalse(frame_supported({**m03, "watermark": mark}), mark)
         # na M15 a marca-d'água não muda nada aqui
         self.assertTrue(frame_supported({**self.base, "watermark": "golgari"}))
@@ -1051,6 +1055,27 @@ class SagaSupported(unittest.TestCase):
         # criatura Saga (Invocações de Final Fantasy): outra moldura
         self.assertFalse(saga_supported({**self.base, "type_line": "Enchantment Creature — Saga Knight"}))
         self.assertFalse(saga_supported({**self.base, "layout": "transform"}))
+
+
+class PrepareSupported(unittest.TestCase):
+    faces = [{"name": "Scathing Shadelock", "power": "4"}, {"name": "Venomous Words"}]
+    base = {"frame": "2015", "layout": "prepare", "border_color": "black", "frame_effects": [], "card_faces": faces}
+
+    def test_caixa_dividida(self):
+        self.assertTrue(prepare_supported(self.base))
+        self.assertTrue(prepare_supported({**self.base, "frame_effects": ["legendary"]}))
+        # a arte estendida (Joined Researchers, SOS 312) tem a mesma caixa
+        self.assertTrue(prepare_supported({**self.base, "frame_effects": ["extendedart"]}))
+        self.assertTrue(prepare_supported({**self.base, "frame_effects": ["legendary", "extendedart"]}))
+
+    def test_fora(self):
+        # Ancestral Recall de SOS na moldura de 2003 e Bloodline Recollector de arte inteira (FRA 402)
+        self.assertFalse(prepare_supported({**self.base, "frame": "2003"}))
+        self.assertFalse(prepare_supported({**self.base, "full_art": True}))
+        self.assertFalse(prepare_supported({**self.base, "frame_effects": ["showcase"]}))
+        self.assertFalse(prepare_supported({**self.base, "layout": "adventure"}))
+        self.assertFalse(prepare_supported({**self.base, "card_faces": self.faces[:1]}))
+        self.assertFalse(adventure_supported(self.base))
 
 
 class AdventureSupported(unittest.TestCase):

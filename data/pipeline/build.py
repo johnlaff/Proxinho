@@ -1276,8 +1276,9 @@ def frame2003_supported(card: dict) -> bool:
     estrelado de Theros (`enchantment`, nas criaturas encantamento de THS, BNG e JOU: as estrelas
     ficam só na moldura em volta, e as barras e a caixa são as mesmas, conferido em 34 cartas).
     Com outro efeito (a lápide de Odyssey no começo do nome, a faixa do milagre, as cores trocadas
-    de Planar Chaos) o desenho muda, e os planeswalkers de 2003 têm caixa própria. E duas coleções
-    de promos (`SETS_2003_OFF`)."""
+    de Planar Chaos) o desenho muda, e os planeswalkers de 2003 têm caixa própria. A marca-d'água
+    entra quando é lisa (`WATERMARKS_2003_OK`: as das guildas, das facções, o símbolo da coleção);
+    os logotipos das promos, não. E duas coleções de promos ficam de fora (`SETS_2003_OFF`)."""
     return (
         card.get("frame") == "2003"
         and set(card.get("frame_effects") or []) <= {"enchantment"}
@@ -1316,12 +1317,35 @@ SETS_1997_OFF = {"sld"}
 SETS_2003_OFF = {"pcmp", "sld"}
 
 
-# Marcas-d'água na moldura de 2003 (ADR 0024): por enquanto só sem nenhuma. As das guildas de Ravnica
-# e das facções de Scars of Mirrodin são cinza-claras e sem cor, e o apagamento levava só os pedaços
-# que as letras cruzavam: o resto ficava em cacos no papel (Darksteel Relic NPH 134, Peace Strider
-# MBS 119). As das promos (FNM, DCI, Junior...) são logotipos grandes e brilhantes no meio da caixa,
-# e ficavam manchas claras onde as letras os cruzavam (Elvish Visionary F10 6, Counterspell F05 11).
-WATERMARKS_2003_OK = {None}
+# Marcas-d'água na moldura de 2003 (ADR 0024): o motor apaga só as letras e a rede neural refaz a
+# marca por baixo delas (`keepMark` em `render.ts`). Entram as marcas lisas, de um tom só: as das
+# guildas de Ravnica, das facções de Scars of Mirrodin, da Conspiracy, das cores (colorpie), o
+# símbolo da coleção (set), o planeswalker das promos da Wizards (wotc), o DCI e o WPN, conferidas
+# em 60 cartas. Ficam de fora os logotipos grandes das promos, com letras e contorno: FNM, Arena,
+# Pro Tour, Grand Prix, "Magic" e os de aniversário, Hero's Path e os foils holográficos das
+# Junior e Super Series; a rede neural os refazia em borrões, e o "FNM" branco de contorno escuro
+# deixava pedaços do inglês (Terror, F03 8). Sem marca, a carta entra como antes.
+WATERMARKS_2003_OK = {
+    None,
+    "azorius",
+    "boros",
+    "dimir",
+    "golgari",
+    "gruul",
+    "izzet",
+    "orzhov",
+    "rakdos",
+    "selesnya",
+    "simic",
+    "mirran",
+    "phyrexian",
+    "conspiracy",
+    "colorpie",
+    "set",
+    "wotc",
+    "dci",
+    "wpn",
+}
 
 
 # efeitos que não mudam o desenho da moldura sem borda padrão: "inverted" (letra clara sobre a
@@ -1402,6 +1426,28 @@ def adventure_supported(card: dict) -> bool:
         and card.get("layout") == "adventure"
         and card.get("border_color") == "black"
         and effects <= SAGA_EFFECTS_OK
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+        and not art_behind_box(card)
+        and len(card.get("card_faces") or []) == 2
+    )
+
+
+def prepare_supported(card: dict) -> bool:
+    """Preparar (Secrets of Strixhaven, Reality Fracture): a caixa dividida por um fio, a criatura
+    à esquerda e a mágica (nome, tipo e regras) à direita (src/engine/prepare.ts, ADR 0032). O
+    motor confere o fio e as barras da mágica na imagem; sem eles, a arte sai como está.
+
+    Ficam de fora as de moldura de 2003 e as de arte inteira (a Ancestral Recall de SOS, a
+    Bloodline Recollector de FRA), que têm outro desenho; a arte estendida tem a mesma caixa.
+    """
+    effects = set(card.get("frame_effects") or [])
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "prepare"
+        and card.get("border_color") == "black"
+        and effects <= SAGA_EFFECTS_OK | {"extendedart"}
         and not card.get("full_art")
         and not card.get("textless")
         and not drawn_frame(card)
@@ -1642,6 +1688,7 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or token_supported(c)
         or saga_supported(c)
         or adventure_supported(c)
+        or prepare_supported(c)
         or class_supported(c)
         or station_supported(c)
         or bool(sides and sides[0]["supported"]),
@@ -1650,6 +1697,8 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         "flavor_name": c.get("flavor_name") or face.get("flavor_name"),
         # indicador de cor das cartas de uma face só (nas de duas faces, em `sides`)
         "indicator": bool(c.get("color_indicator")),
+        # marca-d'água: na moldura de 2003 ela fica, e só as letras saem de cima dela (ADR 0024)
+        "watermark": c.get("watermark"),
     }
 
 
@@ -2250,7 +2299,7 @@ def sql_str(value: object) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides", "text_flavor", "flavor_name", "indicator", "flavor_pt"]
+PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides", "text_flavor", "flavor_name", "indicator", "flavor_pt", "watermark"]
 
 COLUMNS = ["oracle_id", "name_en", "name_pt", "search_en", "search_pt", "source", "text_print", "faces", "pt_print", "layout", "type_line", "edhrec_rank", "commander", "tokens"]
 

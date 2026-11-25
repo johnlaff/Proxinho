@@ -102,6 +102,16 @@ export function frame2003Start(released: string | null | undefined): { title: nu
  */
 export const TYPE_BAR_END_2003 = 684;
 
+/**
+ * Caixa com marca-d'água na moldura de 2003: o limiar das letras (contra o papel) e o da cor
+ * (os símbolos de mana do texto). A marca fica de 15 a 40 tons abaixo do papel; com o limiar
+ * de 14 da caixa comum, ela entrava na máscara e a rede neural a apagava junto. A cor das
+ * marcas das guildas (o sol laranja dos Boros) passa de 60 perto das letras: com o limiar de
+ * cor 60, a marca inteira debaixo do texto saía na máscara e voltava como um borrão (Wojek
+ * Halberdiers, GTC 208); o miolo dos símbolos passa de 120.
+ */
+export const WATERMARK_2003 = { ink: 50, color: 120 };
+
 /** Medidas das cartas de duas faces (Scryfall PNG, conferidas em MID, VOW, MOM, ZNR, KHM, TLA). */
 const DFC = {
   /** o nome começa depois do ícone (x ≈ 35–108) */

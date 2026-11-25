@@ -136,6 +136,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "1089ee82-518b-4b0e-bc53-1c5ef66beca5",
+    "oracle_id": "acdf9fb0-96eb-4520-bd4b-b6480c7c9b29",
+    "set": "f03",
+    "number": "8",
+    "nome": "Smother",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "394d65a0-0792-43d5-ab09-354cf8984428",
     "oracle_id": "cc187110-1148-4090-bbb8-e205694a39f5",
     "set": "f05",
@@ -208,6 +216,38 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "fb6bad96-841d-4738-8e62-92f346f914fd",
+    "oracle_id": "92a0aa44-0ef7-4e6f-8288-7c33067c5fd1",
+    "set": "fra",
+    "number": "156",
+    "nome": "Theorix Metamage // Omit Variables",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "9a5db4d2-035f-4f48-8752-75487267c222",
+    "oracle_id": "c8e9a7e1-28ae-40e3-8715-1bb0aa2057c7",
+    "set": "fra",
+    "number": "402",
+    "nome": "Bloodline Recollector // Ancestral Craving",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "423f0870-dc1c-4cd8-b92c-6d5f92abbaec",
+    "oracle_id": "96d6a400-f1bc-40f8-91ef-1d3cb96926f1",
+    "set": "gtc",
+    "number": "208",
+    "nome": "Wojek Halberdiers",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "a77058d9-d2b5-424a-bfe2-070b754051cb",
+    "oracle_id": "dc9374df-134d-4d32-842e-991e2bfb2dc1",
+    "set": "gtc",
+    "number": "225",
+    "nome": "Shattering Blow",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "1127eb51-50ef-47f3-abfe-48895c832296",
     "oracle_id": "2550099d-b3e2-4eb6-9f36-0fc412828ca6",
     "set": "hoc",
@@ -221,6 +261,14 @@
     "set": "hoc",
     "number": "77",
     "nome": "Sauron, the Lidless Eye",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "9710889c-0fc6-43a9-83df-484ab0659030",
+    "oracle_id": "fe16f1ab-58b4-4452-abe4-cbd9addd348f",
+    "set": "jou",
+    "number": "103",
+    "nome": "Magma Spray",
     "grupo": "citada nos documentos"
   },
   {
@@ -285,6 +333,14 @@
     "set": "ltr",
     "number": "14",
     "nome": "Faramir, Field Commander",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "6ee46d8b-559e-4c33-99fb-b55f00aeee72",
+    "oracle_id": "50de88d4-0beb-45e5-9664-d4f0e280e652",
+    "set": "m10",
+    "number": "166",
+    "nome": "Ant Queen",
     "grupo": "citada nos documentos"
   },
   {
@@ -437,6 +493,14 @@
     "set": "pss5",
     "number": "2",
     "nome": "Squall, SeeD Mercenary",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "7faa4674-c4fa-4395-ad6b-d80989e05ec5",
+    "oracle_id": "5748ebf1-24e3-499d-ab7c-c2cebd462a24",
+    "set": "psus",
+    "number": "8",
+    "nome": "Giant Growth",
     "grupo": "citada nos documentos"
   },
   {
@@ -712,11 +776,51 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "cb535433-f062-4c35-977e-2f896251b1d8",
+    "oracle_id": "a371d035-488e-4b3d-81de-ee7859452c0e",
+    "set": "soc",
+    "number": "49",
+    "nome": "Lorehold Archivist // Restore Relic",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "77285d12-e658-4eb3-ba13-ff202afab9c8",
+    "oracle_id": "2f5f46ed-b8aa-4864-bd20-17281d4632bf",
+    "set": "sos",
+    "number": "170",
+    "nome": "Abigale, Poet Laureate // Heroic Stanza",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "36985a8e-dcc0-4349-93d7-071370a75615",
     "oracle_id": "fd4f0315-567a-4cc5-bc7e-88a9d2cee910",
     "set": "sos",
     "number": "294",
     "nome": "Improvisation Capstone",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "ef371352-ec8f-4da4-9085-67195068fb79",
+    "oracle_id": "24a29be4-5bc2-469b-b2ce-2fb305c3facb",
+    "set": "sos",
+    "number": "306",
+    "nome": "Emeritus of Ideation // Ancestral Recall",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "15d99a75-939e-4584-9b4a-8afd115bab2c",
+    "oracle_id": "ec744a2d-4a33-4807-bce0-d95cd5277b1f",
+    "set": "sos",
+    "number": "312",
+    "nome": "Joined Researchers // Secret Rendezvous",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "75961d36-acf6-425f-9698-0bf52af74f31",
+    "oracle_id": "24a29be4-5bc2-469b-b2ce-2fb305c3facb",
+    "set": "sos",
+    "number": "45",
+    "nome": "Emeritus of Ideation // Ancestral Recall",
     "grupo": "citada nos documentos"
   },
   {
@@ -1574,6 +1678,246 @@
     "number": "211",
     "nome": "Arid Mesa",
     "grupo": "2003"
+  },
+  {
+    "id": "3ebcadf9-65ec-4835-9472-921c3dde96d2",
+    "oracle_id": "69ae765d-03c9-46d9-bdad-8e5936df9616",
+    "set": "dci",
+    "number": "18",
+    "nome": "Wilt-Leaf Cavaliers",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "19dbd2db-ab33-4171-ae51-aa66c79b97b2",
+    "oracle_id": "64cf5d59-7bcd-4b0b-a160-c8468d4c0f60",
+    "set": "dci",
+    "number": "71",
+    "nome": "Vault Skirge",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "f6a2f10c-721c-40c7-8fe1-b4877a40fe96",
+    "oracle_id": "87e65e36-9483-49fe-b644-2caca092107f",
+    "set": "ddj",
+    "number": "45",
+    "nome": "Jarad, Golgari Lich Lord",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "a2074ce5-c31d-4dae-a2cc-f06f677da1e3",
+    "oracle_id": "1cf51f50-24e4-48d0-95b3-1dad3ffa4bf5",
+    "set": "ddj",
+    "number": "66",
+    "nome": "Golgari Signet",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "1921fa4e-2256-4ef1-b2fe-874f9fbbcdf3",
+    "oracle_id": "874e0b54-bc24-4887-abe1-1ecfd3a3abae",
+    "set": "dgm",
+    "number": "110",
+    "nome": "Trostani's Summoner",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "7fb6e10a-3df1-4c6f-bf4c-d4a2a0467c60",
+    "oracle_id": "43a2bd01-3fce-4191-a08a-1e379c7770b0",
+    "set": "dis",
+    "number": "164",
+    "nome": "Rakdos Riteknife",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "f51b9925-4aab-4056-a723-8dd799e9a7da",
+    "oracle_id": "5a46ad2a-35b1-4dd5-b7c3-fec36b7c67ab",
+    "set": "g10",
+    "number": "1",
+    "nome": "Sinkhole",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "2000b4e8-7887-454e-9d52-211516613dd0",
+    "oracle_id": "e99fde0d-ca28-4a49-abe0-d01cf4e322b6",
+    "set": "gtc",
+    "number": "146",
+    "nome": "Biovisionary",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "fd5c0f38-916a-4f6c-b678-7447cb0709e0",
+    "oracle_id": "9808c424-0d74-45b8-a092-fd296c6833d2",
+    "set": "gtc",
+    "number": "233",
+    "nome": "Orzhov Keyrune",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "3795a4e7-646f-4bb7-b154-2610eb740e8d",
+    "oracle_id": "a3c8d817-7949-4dae-b9f5-f9d952479270",
+    "set": "gtc",
+    "number": "61",
+    "nome": "Crypt Ghast",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "9ee77c7b-0db9-4281-85d6-fe91f3db47ea",
+    "oracle_id": "8a5e3c8e-8e22-49b9-8ee5-4a36361f0da6",
+    "set": "j14",
+    "number": "7",
+    "nome": "Nekusar, the Mindrazer",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "ba60731f-ed96-4eba-b2de-94965745f35a",
+    "oracle_id": "b5b4cf54-ed5e-42d0-9d98-5fec76b0b0b8",
+    "set": "mbs",
+    "number": "104",
+    "nome": "Darksteel Plate",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "bfd8d7de-a2e1-4f83-85f9-7057eebf0c37",
+    "oracle_id": "7c4dbaa8-e24f-4126-81fe-3f218f520d8c",
+    "set": "nph",
+    "number": "128",
+    "nome": "Jor Kadeen, the Prevailer",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "97538294-058c-47d4-b7a8-4db3753a6628",
+    "oracle_id": "d0868a52-5b19-4429-acf1-399f3ae8308c",
+    "set": "nph",
+    "number": "84",
+    "nome": "Furnace Scamp",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "118b7aa3-bb05-4691-978e-51486435bf05",
+    "oracle_id": "6ec2794f-db1a-4448-a75e-ed7aff565378",
+    "set": "nph",
+    "number": "85",
+    "nome": "Geosurge",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "3422b1bf-c5b6-4d1c-bcea-8e81b83b996e",
+    "oracle_id": "063960e0-3f9c-4697-ba5e-81c56ac1b5d2",
+    "set": "pgtc",
+    "number": "191★",
+    "nome": "Rubblehulk",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "601a138a-a860-4c2b-9d6c-f6eb8552c5d8",
+    "oracle_id": "b33d2b77-f068-4fdc-a1a8-0353a35e3973",
+    "set": "plst",
+    "number": "NPH-47",
+    "nome": "Tezzeret's Gambit",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "ecc43058-6708-489f-a88f-33930c58ebce",
+    "oracle_id": "71358110-4e28-4794-befa-ea6e27e720ef",
+    "set": "prtr",
+    "number": "158",
+    "nome": "Dreg Mangler",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "73bfefd3-bddd-47bb-92f3-9356a7bca637",
+    "oracle_id": "60e95faf-1496-4298-9588-52b50b05fc6b",
+    "set": "rav",
+    "number": "224",
+    "nome": "Razia's Purification",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "7410c546-745c-469f-b3b8-eafb69391600",
+    "oracle_id": "6ad87598-5b57-496c-96ec-c04fe0616b6b",
+    "set": "rav",
+    "number": "235",
+    "nome": "Thundersong Trumpeter",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "012a7f5d-f798-4030-86e3-05956487a383",
+    "oracle_id": "4ad09b75-6d7a-46c7-95a2-d7f90995fdd1",
+    "set": "rav",
+    "number": "249",
+    "nome": "Lurking Informant",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "5cf3ba87-93a0-44db-83d9-92e23a677a62",
+    "oracle_id": "a34a70b8-02e5-4e8c-a9e7-b21c5a11dddf",
+    "set": "rav",
+    "number": "283",
+    "nome": "Svogthos, the Restless Tomb",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "6e0db10d-fb6d-44df-9ff2-6f1e0e8f8209",
+    "oracle_id": "7de04284-dcaa-4b63-a734-fcfe2698f83c",
+    "set": "rav",
+    "number": "43",
+    "nome": "Dizzy Spell",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "9580a40b-b413-4f0d-9b38-13903a9d367d",
+    "oracle_id": "c0c96c7a-02d8-40cb-a08b-4a2a3b631eef",
+    "set": "rtr",
+    "number": "144",
+    "nome": "Auger Spree",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "f024b19a-923a-4313-be06-e743d3fbab46",
+    "oracle_id": "e1bf20b0-2bd7-4a0f-9a02-41e43bd44641",
+    "set": "rtr",
+    "number": "170",
+    "nome": "Hypersonic Dragon",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "b6c10302-f0b3-4076-ae5c-a8c8c09a7d41",
+    "oracle_id": "81704164-bad9-4e52-9b69-3d49e92fe284",
+    "set": "som",
+    "number": "117",
+    "nome": "Cystbearer",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "ed1f540f-0d51-4e32-a4f9-c8977834572a",
+    "oracle_id": "4893a301-29a8-4a0e-845c-8ddb5cb8db25",
+    "set": "som",
+    "number": "150",
+    "nome": "Darksteel Juggernaut",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "ad590bea-b872-4af7-a612-c8e8759d59df",
+    "oracle_id": "b0f99367-4313-4bb1-a9fd-7711bc4ce40e",
+    "set": "som",
+    "number": "169",
+    "nome": "Kuldotha Forgemaster",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "18ae62f9-361c-4849-b0af-2b08fc0421c8",
+    "oracle_id": "289e1a7c-b301-4395-baf8-e9a1c6d38aab",
+    "set": "som",
+    "number": "18",
+    "nome": "Revoke Existence",
+    "grupo": "2003 com marca-d'água"
+  },
+  {
+    "id": "10b264aa-303b-4982-a653-9573d39c28de",
+    "oracle_id": "7f3b6c25-b855-4ea5-a8ad-d954a6cdffb7",
+    "set": "som",
+    "number": "195",
+    "nome": "Prototype Portal",
+    "grupo": "2003 com marca-d'água"
   },
   {
     "id": "967a6608-6e5d-40b3-b0c6-2e79b97f10ba",
@@ -4910,6 +5254,126 @@
     "number": "54",
     "nome": "Jace, Wielder of Mysteries",
     "grupo": "planeswalker"
+  },
+  {
+    "id": "7d17f7e3-7b63-4674-9024-4fd1827f40ec",
+    "oracle_id": "f3ed157f-a09b-405f-aec4-0e7a81d80fc8",
+    "set": "fra",
+    "number": "165",
+    "nome": "Woodwork Prodigy // Soul Tether",
+    "grupo": "preparar"
+  },
+  {
+    "id": "4fcc913e-f736-460a-b24b-022fa2e861b9",
+    "oracle_id": "c8e9a7e1-28ae-40e3-8715-1bb0aa2057c7",
+    "set": "fra",
+    "number": "49",
+    "nome": "Bloodline Recollector // Ancestral Craving",
+    "grupo": "preparar"
+  },
+  {
+    "id": "545db49d-ee24-496b-8c00-443af20b1066",
+    "oracle_id": "c8e9a7e1-28ae-40e3-8715-1bb0aa2057c7",
+    "set": "pfra",
+    "number": "49p",
+    "nome": "Bloodline Recollector // Ancestral Craving",
+    "grupo": "preparar"
+  },
+  {
+    "id": "699c0207-901e-4fe9-b22d-1f6cb994a1f2",
+    "oracle_id": "5963eef1-1022-42b1-8a0c-fc9850bfc2a3",
+    "set": "psos",
+    "number": "113p",
+    "nome": "Emeritus of Conflict // Lightning Bolt",
+    "grupo": "preparar"
+  },
+  {
+    "id": "04f58460-79bd-4632-b921-9c8927976aca",
+    "oracle_id": "03931270-504a-4b0b-af3f-918bf124ea07",
+    "set": "psos",
+    "number": "122p",
+    "nome": "Maelstrom Artisan // Rocket Volley",
+    "grupo": "preparar"
+  },
+  {
+    "id": "7bf58206-b7b6-45e7-b99a-9de1c58c5c96",
+    "oracle_id": "f6036065-7196-44d4-8a27-2199f0e1a03c",
+    "set": "psos",
+    "number": "52p",
+    "nome": "Harmonized Trio // Brainstorm",
+    "grupo": "preparar"
+  },
+  {
+    "id": "09d1f048-f411-4677-a0dc-dbddd06fe694",
+    "oracle_id": "09b7ea91-2620-4c45-af3c-60bbeab89966",
+    "set": "soc",
+    "number": "13",
+    "nome": "Eiganjo Dynastorian // Replenish",
+    "grupo": "preparar"
+  },
+  {
+    "id": "159c2891-c1e2-4ec3-8c20-d6b97315dd1c",
+    "oracle_id": "10389ff7-2ea4-4413-90cc-0e3ca268c64d",
+    "set": "soc",
+    "number": "50",
+    "nome": "Striding Shotcaller // Run the Play",
+    "grupo": "preparar"
+  },
+  {
+    "id": "9869a753-5e41-4098-ab41-e75b4396ec50",
+    "oracle_id": "e6c41473-2398-4888-9f0c-467dce7c39a4",
+    "set": "sos",
+    "number": "13",
+    "nome": "Emeritus of Truce // Swords to Plowshares",
+    "grupo": "preparar"
+  },
+  {
+    "id": "911442e3-3003-4683-a766-e791e9553667",
+    "oracle_id": "4cbbdebc-b807-4d7b-92dd-312637d2a5de",
+    "set": "sos",
+    "number": "152",
+    "nome": "Infirmary Healer // Stream of Life",
+    "grupo": "preparar"
+  },
+  {
+    "id": "676ba521-66e4-42cf-a315-70d03cb7334e",
+    "oracle_id": "df1c0d06-2109-4297-9271-8a003fc892bc",
+    "set": "sos",
+    "number": "198",
+    "nome": "Kirol, History Buff // Pack a Punch",
+    "grupo": "preparar"
+  },
+  {
+    "id": "bfd607c0-7ed7-4a4e-abdd-508080f40ef2",
+    "oracle_id": "e6c41473-2398-4888-9f0c-467dce7c39a4",
+    "set": "sos",
+    "number": "309",
+    "nome": "Emeritus of Truce // Swords to Plowshares",
+    "grupo": "preparar"
+  },
+  {
+    "id": "f9092a09-78a8-421c-868b-115175f4c252",
+    "oracle_id": "788d3cfa-7706-4728-9c48-cf7bc963d002",
+    "set": "sos",
+    "number": "322",
+    "nome": "Skycoach Conductor // All Aboard",
+    "grupo": "preparar"
+  },
+  {
+    "id": "2b7e8e07-b3ff-496e-923f-42d703f20a1e",
+    "oracle_id": "e5152e8d-9f55-493d-a0fc-753cc72ee299",
+    "set": "sos",
+    "number": "339",
+    "nome": "Emeritus of Abundance // Regrowth",
+    "grupo": "preparar"
+  },
+  {
+    "id": "72654b84-9902-41db-92ab-a3499c31221c",
+    "oracle_id": "d6accaed-ff35-4324-b31b-35e6837bc079",
+    "set": "sos",
+    "number": "46",
+    "nome": "Encouraging Aviator // Jump",
+    "grupo": "preparar"
   },
   {
     "id": "0d5e4d9a-34e1-46eb-814b-8e3bd4475b8a",
