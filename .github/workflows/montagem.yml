@@ -1,6 +1,6 @@
 # Montagem das cartas no servidor (ADR 0022): monta, com o mesmo motor do site, as cartas que o
 # site montaria no aparelho da pessoa e grava no depósito das cartas (R2), na ordem combinada
-# (primeiro a rede neural, depois as cartas mais jogadas) e até o limite de 5 GB.
+# (primeiro a rede neural, depois as cartas mais jogadas) e até o limite de 6 GB.
 # - Sem senha guardada no GitHub: o Worker confere o token OIDC que o GitHub dá a este workflow,
 #   e só aceita o deste arquivo, na main, deste repositório, numa máquina do GitHub (worker/github.ts).
 # - De graça: só máquinas padrão (ubuntu-latest), e só com o repositório público.

@@ -1,6 +1,6 @@
-# ADR 0023: Montagem no GitHub Actions, sem senha guardada e com limite de 5 GB
+# ADR 0023: Montagem no GitHub Actions, sem senha guardada e com limite no depósito
 
-- Status: aceito
+- Status: aceito; limite de 5 GB subido para 6 GB em 25/11/2026 (ver Consequências)
 - Data: 21/11/2026
 - Complementa: ADR 0022 (cartas montadas no servidor); muda a ordem do item 5 dele
 
@@ -35,7 +35,7 @@ O padrão de mercado para um job de CI provar quem é sem segredo guardado é o 
 
    Um fork, um pull request, outra branch, outro workflow do mesmo repositório ou uma máquina própria não gravam nada. A senha do montador continua valendo para rodar à mão.
 3. **Limite do depósito inteiro.**
-   - O montador mede o depósito (`GET /api/cartas` devolve os códigos, os bytes e as imagens) e divide o que falta até 5 GB entre as partes.
+   - O montador mede o depósito (`GET /api/cartas` devolve os códigos, os bytes e as imagens) e divide o que falta até o limite (6 GB; eram 5 GB até 25/11/2026) entre as partes.
    - A prévia e a face do PDF de cada face vão juntas ou nenhuma, e a parte para quando a próxima passaria do seu pedaço.
    - Com o depósito cheio, a rodada diária termina no job `conferir`.
 4. **A ordem.**
@@ -59,8 +59,9 @@ O padrão de mercado para um job de CI provar quem é sem segredo guardado é o 
 
 ## Consequências
 
-- De graça: máquinas padrão num repositório público, e o depósito fica abaixo de 5 GB dos 10 GB grátis da conta.
-- Cabem ~15 mil faces: todas as da rede neural e a arte padrão das cartas mais jogadas. O resto é montado no aparelho, como antes, em ~1 s por carta.
+- De graça: máquinas padrão num repositório público, e o depósito fica abaixo de 6 GB dos 10 GB grátis da conta (o `proxinho-cartas` é o único depósito do R2 na conta).
+- O limite subiu de 5 GB para 6 GB em 25/11/2026, a pedido do João: o depósito chegou a 5,00 GB (29.772 imagens) e as cartas que a tradução não oficial pôs na fila depois ficavam de fora, entre elas 29 faces da rede neural (os comandantes de Star Trek). Com o mesmo código, o montador não tira uma carta já montada para pôr outra mais jogada; isso só acontece quando o código muda e a rodada monta tudo de novo.
+- Cabem ~15 mil faces com 5 GB (~18 mil com 6 GB): todas as da rede neural e a arte padrão das cartas mais jogadas. O resto é montado no aparelho, como antes, em ~1 s por carta.
 - Uma mudança no motor muda o código. A rodada seguinte apaga as cartas velhas e monta tudo de novo, em ~2 a 3 horas com 12 partes. Enquanto isso, o site monta no aparelho o que falta.
 - Enquanto o deploy na main pula por falta dos segredos da Cloudflare no GitHub, a publicação é feita à mão. A montagem que roda depois do push encontra o site com outro código e não faz nada. A rodada diária, ou uma rodada à mão depois da publicação, monta.
 - Nenhum segredo da montagem fica no GitHub. Quem pode mudar `montagem.yml` na main pode gravar no depósito, e isso pede acesso de escrita ao repositório.

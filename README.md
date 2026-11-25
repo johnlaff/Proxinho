@@ -67,7 +67,7 @@ Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 | Motor da carta | Canvas 2D, SVG de símbolos, Beleren, Matrix Bold e MPlantin (com reserva OFL: Eczar, Splentinex) | O mesmo código no navegador e no montador em lote (Chromium com Playwright, em 12 máquinas do GitHub Actions), que deixa as cartas prontas no R2 |
 | Inpainting | LaMa quantizado (37 MB, 30 MB compactado) com ONNX Runtime Web, numa worker: runtime WebGPU na placa de vídeo, runtime só de CPU sem ela | Apaga texto sobre arte sem deixar mancha; tudo no navegador |
 | PDF | pdf-lib, carregado sob demanda | Medidas exatas em milímetros |
-| API | Cloudflare Worker + D1 (SQLite) + R2 + Cache API | Um deploy só; as cartas prontas ficam abaixo de 5 GB, dentro da cota grátis do R2 |
+| API | Cloudflare Worker + D1 (SQLite) + R2 + Cache API | Um deploy só; as cartas prontas ficam abaixo de 6 GB, dentro da cota grátis do R2 |
 | Dados | Python (só biblioteca padrão) no GitHub Actions | Atualização diária sem servidor |
 | Qualidade | oxlint, oxfmt, Vitest, Playwright (desktop e celular) | Rápido e com poucos plugins |
 | Esteira | GitHub Actions: CI, prévia por PR, deploy, dados diários, montagem das cartas, CodeQL, Dependabot | Actions fixadas por SHA, permissões mínimas; a montagem grava no R2 com o token OIDC do GitHub, sem senha guardada (ADR 0023) |
