@@ -113,3 +113,91 @@ test("sugere o emblema do planeswalker, em português", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Seu pedido: 2 cartas, 1 folha/ })).toBeVisible();
   await expect(page.locator(".slot-img")).toHaveCount(2, { timeout: 60_000 });
 });
+
+test("o pedido volta como estava ao recarregar, com a arte escolhida", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Lista do deck").fill("1 Sol Ring\n2 Counterspell");
+  await page.getByRole("button", { name: "Montar folhas" }).click();
+  await expect(page.getByRole("heading", { name: /Seu pedido: 3 cartas, 1 folha/ })).toBeVisible();
+  await page
+    .getByRole("button", { name: /Anel Solar/ })
+    .first()
+    .click();
+  const drawer = page.getByRole("dialog");
+  await drawer.getByRole("radio").nth(1).check();
+  await drawer.getByRole("button", { name: "Fechar" }).click();
+
+  await page.reload();
+  await expect(page.getByText("Seu último pedido voltou como você deixou.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Seu pedido: 3 cartas, 1 folha/ })).toBeVisible();
+  await page
+    .getByRole("button", { name: /Anel Solar/ })
+    .first()
+    .click();
+  await expect(page.getByRole("dialog").getByRole("radio").nth(1)).toBeChecked();
+
+  // começar outro pedido apaga tudo, e o "Desfazer" traz de volta
+  await page.getByRole("dialog").getByRole("button", { name: "Fechar" }).click();
+  await page.getByRole("button", { name: "Começar outro pedido" }).click();
+  await expect(page.getByRole("heading", { name: /Seu pedido/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Desfazer" }).click();
+  await expect(page.getByRole("heading", { name: /Seu pedido: 3 cartas, 1 folha/ })).toBeVisible();
+});
+
+test("o link do pedido abre as mesmas cartas em outro navegador", async ({ page, context, browser }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.addInitScript(() => Object.defineProperty(navigator, "share", { value: undefined }));
+  await page.goto("/");
+  await page.getByLabel("Lista do deck").fill("2 Sol Ring\n1 Counterspell\n\nTokens\n1 Treasure");
+  await page.getByRole("button", { name: "Montar folhas" }).click();
+  await expect(page.getByRole("heading", { name: /Seu pedido: 4 cartas, 1 folha/ })).toBeVisible();
+  await page.getByRole("button", { name: "Copiar link do pedido" }).click();
+  await expect(page.getByText(/Link do pedido copiado/)).toBeVisible();
+  const link = await page.evaluate(() => navigator.clipboard.readText());
+  expect(link).toMatch(/\/#pedido=[\w-]+$/);
+
+  const other = await browser.newContext();
+  const friend = await other.newPage();
+  await friend.goto(link);
+  await expect(friend.getByText(/Pedido aberto pelo link/)).toBeVisible();
+  await expect(friend.getByRole("heading", { name: /Seu pedido: 4 cartas, 1 folha/ })).toBeVisible();
+  await expect(friend.getByRole("button", { name: /Tesouro/ })).toBeVisible();
+  expect(new URL(friend.url()).hash).toBe(""); // recarregar não abre o link de novo por cima das mudanças
+  await other.close();
+
+  // quem já tinha outro pedido pode voltar a ele depois de abrir um link
+  await page.getByLabel("Lista do deck").fill("1 Lightning Bolt");
+  await page.getByRole("button", { name: "Montar folhas" }).click();
+  await expect(page.getByRole("heading", { name: /Seu pedido: 1 carta, 1 folha/ })).toBeVisible();
+  await page.goto(link);
+  await expect(page.getByRole("heading", { name: /Seu pedido: 4 cartas, 1 folha/ })).toBeVisible();
+  await page.getByRole("button", { name: "Voltar ao meu pedido" }).click();
+  await expect(page.getByRole("heading", { name: /Seu pedido: 1 carta, 1 folha/ })).toBeVisible();
+  await expect(page.getByLabel("Lista do deck")).toHaveValue("1 Lightning Bolt");
+});
+
+test("sugere o nome certo para um nome com erro de digitação", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Lista do deck").fill("1 Counterspell\n2x Sol Rng (C21) 263");
+  await page.getByRole("button", { name: "Montar folhas" }).click();
+  await expect(page.getByText("1 nome não encontrado")).toBeVisible();
+  const hint = page.getByRole("group", { name: /Você quis dizer, no lugar de Sol Rng/ });
+  await hint.getByRole("button", { name: "Sol Ring" }).click();
+  await expect(page.getByRole("heading", { name: /Seu pedido: 3 cartas, 1 folha/ })).toBeVisible();
+  await expect(page.getByText("1 nome não encontrado")).toHaveCount(0);
+  await expect(page.getByLabel("Lista do deck")).toHaveValue("1 Counterspell\n2x Sol Ring (C21) 263");
+});
+
+test("a legenda filtra a prova pelas cartas de um resultado", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Lista do deck").fill("1 Sol Ring\n1 Counterspell");
+  await page.getByRole("button", { name: "Montar folhas" }).click();
+  const row = page.getByRole("button", { name: /Reescrita em português/ });
+  await row.click();
+  await expect(row).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("Só as cartas reescritas em português: 2")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Cartas filtradas, folha 1 de 1" })).toBeVisible();
+  await page.getByRole("button", { name: "Mostrar todas" }).click();
+  await expect(row).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("region", { name: "Folha 1 de 1" })).toBeVisible();
+});

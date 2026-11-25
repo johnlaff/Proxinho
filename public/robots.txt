@@ -1,0 +1,3 @@
+# Proxinho: o site pode ser lido; a API e as cartas montadas, não (elas também saem com noindex).
+User-agent: *
+Disallow: /api/

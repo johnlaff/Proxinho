@@ -5,6 +5,7 @@
     "coverage/",
     "dist/",
     ".montagem/",
+    ".regressao/",
     "playwright-report/",
     "test-results/",
     ".wrangler/",

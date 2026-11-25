@@ -6,6 +6,7 @@
  * - Arena / Moxfield:        "1 Sol Ring (C21) 263", "1 Sol Ring (C21) 263 *F*"
  * - Archidekt (texto):       "1x Sol Ring (c21) 263 [Ramp] ^Have,#37d67a^"
  * - Liga Magic:              "1 Anel Solar" (nomes em português também valem)
+ * - Do próprio Proxinho:     "1 Sensory Deprivation *PT*" (a imagem oficial em português; ver `orderText`)
  * - Seções:                  "Commander", "Comandante", "Sideboard", "Tokens", "Fichas", "// Deck", "SB: 1 X"
  */
 
@@ -17,6 +18,8 @@ export interface DeckLine {
   set?: string;
   number?: string;
   foil?: boolean;
+  /** "*PT*": a imagem oficial em português, em vez de uma arte em inglês reescrita */
+  pt?: boolean;
   section: Section;
   /** linha original, para mostrar ao usuário se algo não for encontrado */
   raw: string;
@@ -82,7 +85,8 @@ export function parseDecklist(text: string): DeckLine[] {
     // (um "[C21] 263" seguido de número é coleção e fica; o resto é categoria)
     rest = rest.replace(/\^[^^]*\^/g, "").replace(/\s*\[[^\]]*\](?!\s*[\w★-]+\s*$)/g, "");
     const foil = /\*(F|E)\*/i.test(rest);
-    rest = rest.replace(/\*[A-Z]\*/gi, "").trim();
+    const pt = /\*PT\*/i.test(rest);
+    rest = rest.replace(/\*(?:[A-Z]|PT)\*/gi, "").trim();
 
     let set: string | undefined;
     let number: string | undefined;
@@ -104,6 +108,7 @@ export function parseDecklist(text: string): DeckLine[] {
       set,
       number,
       foil: foil || undefined,
+      pt: pt || undefined,
       section: lineSection,
       raw: rawLine.trim(),
     });
@@ -115,10 +120,26 @@ export function parseDecklist(text: string): DeckLine[] {
 export function mergeLines(lines: DeckLine[]): DeckLine[] {
   const map = new Map<string, DeckLine>();
   for (const l of lines) {
-    const key = `${l.section}|${l.name.toLowerCase()}|${l.set ?? ""}|${l.number ?? ""}`;
+    const key = `${l.section}|${l.name.toLowerCase()}|${l.set ?? ""}|${l.number ?? ""}|${l.pt ? "pt" : ""}`;
     const prev = map.get(key);
     if (prev) prev.quantity += l.quantity;
     else map.set(key, { ...l });
   }
   return [...map.values()];
+}
+
+/**
+ * Troca o nome de uma carta na lista colada (a sugestão aceita em "Você quis dizer…?"), só nas
+ * linhas em que o leitor acha exatamente esse nome: a quantidade, a coleção e as categorias da
+ * linha ficam como estavam.
+ */
+export function renameInList(text: string, from: string, to: string): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      if (parseDecklist(line)[0]?.name !== from) return line;
+      const at = line.indexOf(from);
+      return at < 0 ? line : line.slice(0, at) + to + line.slice(at + from.length);
+    })
+    .join("\n");
 }

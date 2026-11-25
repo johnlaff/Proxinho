@@ -13,6 +13,16 @@ export const OUTCOME_LABEL: Record<Outcome, string> = {
   apagador: "Em inglês: o apagador de texto não rodou neste navegador",
 };
 
+/** O filtro da prova pela legenda: "Só as cartas ainda sem tradução oficial". */
+export const OUTCOME_FILTER: Record<Outcome, string> = {
+  reescrita: "reescritas em português",
+  "nao-oficial": "com a tradução não oficial",
+  "imagem-pt": "com a imagem oficial em português",
+  "sem-traducao": "ainda sem tradução oficial",
+  moldura: "em molduras ainda não reescritas",
+  apagador: "em que o apagador de texto não rodou",
+};
+
 /** Tempo que falta, por extenso e arredondado: "alguns segundos", "cerca de 40 s", "cerca de 2 min". */
 export function formatEta(ms: number): string {
   if (ms < 10_000) return "alguns segundos";

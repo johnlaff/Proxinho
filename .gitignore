@@ -34,6 +34,8 @@ test-results/
 .impeccable/mocks/
 coverage/
 .montagem/
+# Regressão visual (scripts/regressao): imagens das cartas só na máquina
+.regressao/
 dist/
 .impeccable/questions/
 .fontes-oficiais/

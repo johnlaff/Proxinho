@@ -27,6 +27,7 @@
     "montagem:build": "node scripts/modelo.mjs && vite build --config vite.montagem.config.ts",
     "montagem:serve": "vite preview --config vite.montagem.config.ts",
     "montagem": "node scripts/montagem/montar.mjs",
+    "regressao": "node scripts/regressao/regressao.mjs",
     "deploy": "wrangler deploy",
     "cf-typegen": "wrangler types"
   },

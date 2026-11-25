@@ -278,6 +278,17 @@ Depois de tirar a falsa imagem em PT do Scryfall, 7.384 cartas ficavam sem texto
 
 A escolha (ADR 0025): a linha oficial igual, depois o molde, depois a tradução feita uma vez, com os pares oficiais parecidos à vista e o glossário das cartas oficiais, guardada no repositório e conferida nos números e símbolos. A carta só ganha a tradução quando todas as linhas e o tipo têm tradução, e a interface a marca como não oficial.
 
+## Auditoria e o padrão de mercado (25/11/2026)
+
+O João pediu o Proxinho "perfeito e completo", com arquitetura, UI/UX e desempenho no padrão de mercado. A auditoria do site no ar:
+
+- **Desempenho.** Lighthouse 99 no celular e 96 no computador (o que faltava era o deslocamento de layout, CLS 0,099, no computador). Um deck de 100 cartas (Liesa) fica pronto na tela em 8,6 s, com 176 das 180 imagens vindas do servidor (ADR 0022), e o PDF sai 1,4 s depois do clique. Já está acima do mercado: o Moxfield e o Archidekt mostram a imagem pronta do Scryfall, sem montar nada.
+- **Acessibilidade.** O axe não achou nada além do papel de aba (`tabpanel`) posto num `<form>`, que o ARIA não aceita: o papel foi para um `div` em volta.
+- **O que os sites de referência têm e o Proxinho não tinha.** O Moxfield e o Archidekt guardam o deck e o compartilham por link, mas com conta; o Scryfall (`/cards/named?fuzzy=`) e os sites de deck acham o nome com erro de digitação. Ferramentas sem conta guardam o documento inteiro no endereço (o playground do TypeScript comprime o código depois do `#`), e o que vem depois do `#` nunca chega ao servidor. Faltavam também o manifesto do app, a prévia do link (`og:image`) e um `robots.txt` (o endereço devolvia a página do site).
+- **Regressão.** A regressão de 630 cartas, exigida antes de toda publicação que muda o desenho, vivia fora do repositório e se perdia com a máquina. As ferramentas de mercado (Percy, Chromatic, o `toHaveScreenshot` do Playwright) guardam as imagens de referência num serviço ou no repositório, e as do Proxinho não podem ir para um repositório público (são cartas da Wizards).
+
+As escolhas: o pedido como lista no `localStorage` e num link `#pedido=` comprimido com o `CompressionStream` do navegador, "Você quis dizer…?" no Worker com Damerau-Levenshtein sobre os nomes do banco (ADR 0028), e a regressão no repositório, com a amostra versionada e as imagens só na máquina (ADR 0027).
+
 ## Lado legal e o caminho seguro
 
 | Ponto | O que diz | Risco |

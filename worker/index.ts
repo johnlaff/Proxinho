@@ -8,6 +8,7 @@
  * pelo mesmo motor (R2 privado, /api/cartas/*, ADR 0022).
  */
 import { normalizeName } from "../src/lib/normalize";
+import { suggestNames, type NameEntry } from "../src/lib/suggest";
 import { cardsApi, cardBuilds, cardQueue } from "./cartas";
 import { importDeck, ImportError } from "./importers";
 
@@ -90,6 +91,8 @@ function parseCard(row: CardRow) {
 interface PrintRow {
   id: string;
   oracle_id: string;
+  set_code: string;
+  number: string;
   highres: number;
   promo: number;
   has_pt: number;
@@ -196,17 +199,103 @@ interface ResolveLine {
   token?: boolean;
 }
 
+/**
+ * A impressão pedida (coleção e número) de uma carta com esse nome. Fichas diferentes têm o mesmo
+ * nome ("Spirit" 1/1 branca, 1/1 incolor, 2/2 azul…): só o nome achava uma delas, e o pedido
+ * guardado ou o link do pedido (src/app/order.ts) voltavam com a ficha errada.
+ */
+async function findByPrint(db: D1Database, name: string, set: string, number: string) {
+  const row = await db
+    .prepare(
+      `SELECT c.*, p.id AS print_id FROM prints p JOIN cards c ON c.oracle_id = p.oracle_id
+       WHERE p.set_code = ?2 AND p.number = ?3 AND (${ALIAS_MATCH("c.search_en")} OR ${ALIAS_MATCH("c.search_pt")}) LIMIT 1`,
+    )
+    .bind(normalizeName(name), set.toLowerCase(), number)
+    .first<CardRow & { print_id: string }>();
+  if (!row) return null;
+  const print = await db.prepare("SELECT * FROM prints WHERE id = ?1").bind(row.print_id).first<PrintRow>();
+  return { row, print: print ? parsePrint(print) : null };
+}
+
+const lineKey = (l: ResolveLine) => [l.token ? "t" : "c", normalizeName(l.name), l.set ?? "", l.number ?? ""].join("|");
+
 async function resolve(db: D1Database, lines: ResolveLine[]) {
-  const unique = [...new Map(lines.map((l) => [`${l.token ? "t" : "c"}:${normalizeName(l.name)}`, l])).values()].slice(0, MAX_RESOLVE);
+  const unique = [...new Map(lines.map((l) => [lineKey(l), l])).values()].slice(0, MAX_RESOLVE);
   const rows = await Promise.all(unique.map((l) => findByName(db, l.name, l.token)));
-  const found = rows.filter((r): r is CardRow => r !== null);
-  const prints = await printsFor(db, [...new Set(found.map((r) => r.oracle_id))]);
-  const results = unique.map((line, i) => {
-    const row = rows[i];
-    if (!row) return { query: line.name, card: null, prints: [] };
-    return { query: line.name, card: parseCard(row), prints: prints.get(row.oracle_id) ?? [] };
+  const prints = await printsFor(db, [...new Set(rows.flatMap((r) => (r ? [r.oracle_id] : [])))]);
+  // a impressão pedida que não está entre as da carta achada pelo nome: é de outra carta de mesmo
+  // nome (fichas), ou mais antiga que as MAX_PRINTS_PER_CARD que vêm (Sol Ring tem mais de 80)
+  const extra = await Promise.all(
+    unique.map((l, i) => {
+      if (!l.set || !l.number) return null;
+      const set = l.set.toLowerCase();
+      const have = rows[i] && prints.get(rows[i].oracle_id)?.some((p) => p.set_code === set && p.number === l.number);
+      return have ? null : findByPrint(db, l.name, set, l.number);
+    }),
+  );
+  const missingPrints = extra.flatMap((x, i) =>
+    x && x.row.oracle_id !== rows[i]?.oracle_id && !prints.has(x.row.oracle_id) ? [x.row.oracle_id] : [],
+  );
+  for (const [id, list] of await printsFor(db, [...new Set(missingPrints)])) prints.set(id, list);
+  return unique.map((line, i) => {
+    const echo = { query: line.name, set: line.set, number: line.number, token: line.token || undefined };
+    const row = extra[i]?.row ?? rows[i];
+    if (!row) return { ...echo, card: null, prints: [] };
+    let list = prints.get(row.oracle_id) ?? [];
+    const wanted = extra[i]?.print;
+    if (wanted && !list.some((p) => p.id === wanted.id)) list = [...list, wanted];
+    return { ...echo, card: parseCard(row), prints: list };
   });
-  return results;
+}
+
+const MAX_SUGGEST = 40;
+const NAMES_TTL = 60 * 60 * 1000;
+/** Todos os nomes do banco, guardados enquanto o Worker vive (no máximo uma hora: os dados mudam). */
+let names: { at: number; list: Promise<(NameEntry & { name_en: string; name_pt: string | null })[]> } | null = null;
+
+function allNames(db: D1Database) {
+  if (!names || Date.now() - names.at > NAMES_TTL) {
+    const list = db
+      .prepare("SELECT oracle_id, name_en, name_pt, search_en, search_pt, edhrec_rank, layout FROM cards")
+      .all<{
+        oracle_id: string;
+        name_en: string;
+        name_pt: string | null;
+        search_en: string | null;
+        search_pt: string | null;
+        edhrec_rank: number | null;
+        layout: string | null;
+      }>()
+      .then(({ results }) =>
+        results.map((r) => ({
+          id: r.oracle_id,
+          name_en: r.name_en,
+          name_pt: r.name_pt,
+          aliases: [...new Set([...(r.search_en ?? "").split(" | "), ...(r.search_pt ?? "").split(" | ")].filter(Boolean))],
+          rank: r.edhrec_rank,
+          token: r.layout === "token",
+        })),
+      );
+    names = { at: Date.now(), list };
+    list.catch(() => {
+      names = null;
+    });
+  }
+  return names.list;
+}
+
+/** "Você quis dizer…?": até três cartas parecidas para cada nome que a lista trouxe e o banco não achou. */
+async function suggestions(db: D1Database, queries: { name: string; token?: boolean }[]) {
+  const list = await allNames(db);
+  const byId = new Map(list.map((n) => [n.id, n]));
+  return queries.slice(0, MAX_SUGGEST).map((q) => ({
+    query: q.name,
+    token: q.token || undefined,
+    suggestions: suggestNames(normalizeName(q.name), list, { token: q.token }).map(({ id }) => {
+      const n = byId.get(id)!;
+      return { oracle_id: id, name_en: n.name_en, name_pt: n.name_pt, token: n.token };
+    }),
+  }));
 }
 
 export default {
@@ -227,10 +316,19 @@ export default {
       if (url.pathname === "/api/resolve" && request.method === "POST") {
         const body = (await request.json().catch(() => null)) as { lines?: ResolveLine[] } | null;
         if (!body?.lines || !Array.isArray(body.lines)) return problem(400, "Envie { lines: [{ name }] }.");
+        const text = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : undefined);
         const lines = body.lines
           .filter((l) => typeof l?.name === "string" && l.name.trim())
-          .map((l) => ({ name: l.name.slice(0, 200), token: l.token === true }));
+          .map((l) => ({ name: l.name.slice(0, 200), token: l.token === true, set: text(l.set, 8), number: text(l.number, 16) }));
         return json({ results: await resolve(env.DB, lines) });
+      }
+      if (url.pathname === "/api/sugestoes" && request.method === "POST") {
+        const body = (await request.json().catch(() => null)) as { names?: { name?: unknown; token?: unknown }[] } | null;
+        const queries = (Array.isArray(body?.names) ? body.names : [])
+          .filter((q): q is { name: string; token?: unknown } => typeof q?.name === "string" && q.name.trim().length >= 2)
+          .map((q) => ({ name: q.name.trim().slice(0, 200), token: q.token === true }));
+        if (!queries.length) return problem(400, "Envie { names: [{ name }] }.");
+        return json({ results: await suggestions(env.DB, queries) });
       }
       if (url.pathname === "/api/cards" && request.method === "POST") {
         const body = (await request.json().catch(() => null)) as { ids?: unknown } | null;

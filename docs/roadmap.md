@@ -13,12 +13,12 @@
 - Pesquisa: uma rede pequena treinada para imitar o LaMa nas caixas de carta (destilação, como o MI-GAN foi feito), para o acabamento ficar rápido também na CPU. Pede semanas de treino em placa de vídeo.
 - Cartas modais: traduzir a faixa do pé da carta com o resumo do outro lado (hoje continua em inglês).
 - Planeswalkers lotados (Will e Rowan Kenrith, CLB): o texto em PT é mais longo e a faixa mais apertada encolhe a letra de todas. Deixar a faixa de lealdade avançar no espaço vazio do bloco de baixo.
-- Edição manual do texto antes de imprimir.
+- Edição manual do texto antes de imprimir. (Pedido guardado no navegador, link do pedido, "Você quis dizer…?" e filtro da prova pela legenda: feito em 25/11/2026, ver ADR 0028. Regressão visual no repositório: feito em 25/11/2026, ver ADR 0027.)
 - Emblemas na moldura de 2003 e as cartas de apoio (Monarca, Iniciativa, masmorras). (Fichas, emblemas, fichas de duas faces e fichas de 2003: feito em 17/11/2026, ver ADRs 0009 e 0010.)
 - Exportar PNGs avulsos.
 - Tradução não oficial, o que falta: as linhas das cartas novas sem texto oficial, quando saírem (`data/pipeline/faltam.py`, pela ordem do EDHREC). (Texto das 87 impressões em PT que o Scryfall tem só na imagem, transcrito dela: feito em 25/11/2026, ver ADR 0026. Tradução não oficial das cartas sem texto em PT, com 5.293 linhas e todas as cartas legais no Commander em PT, fora as folhas de adesivos de Unfinity: feito em 21/11/2026, ver ADR 0025.)
 - Tabela de correções de texto do Arena (ex.: Lunar Convocation) e botão "reportar tradução", que serve também para a tradução não oficial.
-- PWA para funcionar offline depois da primeira visita.
+- PWA para funcionar offline depois da primeira visita (o manifesto e os ícones já existem desde 25/11/2026; falta o service worker com o modelo e as cartas guardadas).
 
 ## Precisa de decisão do João
 

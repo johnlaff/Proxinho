@@ -26,7 +26,8 @@ Quem quer jogar "em português" costuma imprimir um proxy (uma cópia de papel) 
 O Proxinho pega **qualquer impressão em inglês**, apaga o nome, o tipo e o texto e escreve no lugar o **texto oficial em português**, vindo do MTG Arena ou das impressões oficiais (as 87 que o Scryfall tem só na imagem foram transcritas dela; e, nas cartas que nunca saíram em PT, uma tradução não oficial, marcada como tal). A arte, a moldura, o custo de mana, o artista e o copyright continuam os da carta. No fim, entrega um PDF com as cartas no tamanho exato (63 × 88 mm), marcas de corte e uma régua para conferir a escala.
 
 - 84,0% das cartas legais no Commander têm tradução oficial; entre as 1.000 mais jogadas, 98,4%. Com a tradução não oficial (ADR 0025), 99,8% saem em português: todas, fora as 48 folhas de adesivos de Unfinity, que não vão no deck (medido em 25/11/2026).
-- Cola a lista de qualquer site (Archidekt, Moxfield, Liga Magic, MTGO, Arena), importa por link ou busca pelo nome em português.
+- Cola a lista de qualquer site (Archidekt, Moxfield, Liga Magic, MTGO, Arena), importa por link ou busca pelo nome em português. Nome com erro de digitação ganha um "Você quis dizer…?".
+- O pedido fica guardado no navegador, com as artes escolhidas, e vai para um amigo num link, sem cadastro e sem nada guardado no servidor (ADR 0028).
 - As cartas mais jogadas chegam prontas: o mesmo motor que roda no navegador monta tudo de antemão no servidor (ADR 0022), e o que ainda não está lá é montado no aparelho, na hora.
 - Grátis, sem cadastro, sem anúncio.
 
@@ -53,7 +54,7 @@ flowchart LR
 ```
 
 1. **Dados.** Todo dia, um script em Python cruza o banco de cartas do Scryfall com os textos em português do Arena e das impressões oficiais e carrega o resultado no Cloudflare D1 (33.830 cartas, 795 fichas e 89 emblemas, 104 mil impressões).
-2. **Lista.** Um leitor único entende os formatos de exportação mais comuns, com seções (inclusive "Tokens"), coleção, número e nomes em português. O resumo do pedido sugere as fichas que as cartas do deck criam.
+2. **Lista.** Um leitor único entende os formatos de exportação mais comuns, com seções (inclusive "Tokens"), coleção, número e nomes em português. O resumo do pedido sugere as fichas que as cartas do deck criam e nomes parecidos para os que não achou, e filtra a prova pelo resultado ("Em inglês…"). O pedido é guardado como lista, com as artes escolhidas, e vira link (`#pedido=…`).
 3. **Carta.** No navegador, um canvas baixa o PNG oficial da impressão, apaga o texto em inglês reconstruindo a textura da moldura (máscara + preenchimento em pirâmide; nas caixas translúcidas dos planeswalkers e das artes sem borda, uma rede neural de inpainting, o LaMa, rodando no próprio navegador) e escreve o português com quebra de linha, símbolos de mana e corpo ajustado para caber.
 4. **PDF.** As cartas são paginadas 3 × 3 em A4 ou Carta, com ou sem sangria, a 300 ou 480 dpi.
 
@@ -96,6 +97,7 @@ Para ter o banco completo localmente: `pnpm data:build` e depois `pnpm exec wran
 | `pnpm test:e2e` | Testes de ponta a ponta no desktop e no celular |
 | `pnpm test:coverage` | Cobertura dos testes de unidade |
 | `pnpm test:data` | Testes de unidade do pipeline de dados (Python) |
+| `pnpm regressao` | Regressão visual: monta ~630 cartas com o código desta árvore e com o da main e compara pixel a pixel (ADR 0027) |
 | `pnpm build` | Build de produção |
 
 ## Como foi construído
