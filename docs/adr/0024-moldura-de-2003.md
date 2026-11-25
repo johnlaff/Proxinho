@@ -21,7 +21,7 @@ O nome e o tipo são impressos em Matrix Bold (Emigre, 1990), e as regras em MPl
 
 ## Decisão
 
-**Pipeline.** `frame_supported` aceita a moldura de 2003 por `frame2003_supported`: layout `normal`, borda preta ou branca, sem nenhum efeito de moldura (o céu estrelado de Theros, a lápide de Odyssey, o milagre e as cores trocadas de Planar Chaos mudam o desenho), sem planeswalker (a caixa é outra), sem marca-d'água (`WATERMARKS_2003_OK`) e fora de duas coleções de promos com outro desenho que o Scryfall não marca (`SETS_2003_OFF`): as de Champs and States, com a arte atrás do tipo e da caixa (o motor desistia das 11, Rakdos Guildmage PCMP 3), e a Viscera Seer espelhada da Secret Lair (SLD VS). As demais regras da M15 valem igual (`full_art`, `textless`, Game Day, moldura desenhada à mão).
+**Pipeline.** `frame_supported` aceita a moldura de 2003 por `frame2003_supported`: layout `normal`, borda preta ou branca, sem efeito de moldura, salvo o céu estrelado de Theros (a lápide de Odyssey, o milagre e as cores trocadas de Planar Chaos mudam o desenho; ver o adendo abaixo), sem planeswalker (a caixa é outra), sem marca-d'água (`WATERMARKS_2003_OK`) e fora de duas coleções de promos com outro desenho que o Scryfall não marca (`SETS_2003_OFF`): as de Champs and States, com a arte atrás do tipo e da caixa (o motor desistia das 11, Rakdos Guildmage PCMP 3), e a Viscera Seer espelhada da Secret Lair (SLD VS). As demais regras da M15 valem igual (`full_art`, `textless`, Game Day, moldura desenhada à mão).
 
 **Motor.** O caminho é o da carta comum (`renderCard`), com `frame2003` em `m15Layout`:
 
@@ -50,3 +50,10 @@ O nome e o tipo são impressos em Matrix Bold (Emigre, 1990), e as regras em MPl
 - As 1.854 impressões de 2003 com marca-d'água seguem na original. O próximo passo é guardar a marca-d'água inteira: apagar só as letras e refazer o desenho por baixo delas.
 - Split, flip, leveler e as de duas faces de 2003 seguem de fora, cada uma com o próprio desenho.
 - Publicar pede a Matrix Bold no KV antes do código novo (`wrangler kv key put --remote --binding FONTES matrix-bold.ttf`): sem ela, o site no ar troca `o|o` por `b|o` e deixa de achar as cartas do servidor.
+
+## Adendo (25/11/2026): o céu estrelado de Theros e o símbolo da coleção
+
+**Céu estrelado.** As criaturas e os artefatos encantamento de Theros, Born of the Gods e Journey into Nyx (`frame_effects` `enchantment`: 109 impressões de cartas sem marca-d'água) têm as estrelas só na moldura em volta: as barras, a caixa e a caixa de P/R são as da moldura comum de 2003. `frame2003_supported` passa a aceitar esse efeito (só ele). Conferidas 34 impressões de THS, BNG, JOU, The List e das promos de pré-estreia: nome, tipo e caixa limpos, entre elas Archetype of Endurance, Erebos, Athreos e Karametra.
+
+**Símbolo da coleção.** Nessa conferência apareceu um defeito que já estava no site: o símbolo da coleção saía sem a metade da esquerda. A ponta da barra de tipo de 2003 é mais funda que a da M15 (o contorno de dentro começa em x ≈ 686), e a busca do símbolo ia até o fim da M15 (711): o contorno e a moldura colorida depois dele formavam um bloco de 25 px, largo demais para passar por fio da ponta, e eram tomados pelo símbolo. O símbolo de verdade ficava "antes do símbolo", com o tipo, e o apagamento ia até 654 (o limite de `m15Layout`). Num sorteio de 240 impressões suportadas, 66 (27%) tinham o símbolo cortado (Magma Spray JOU 103, Gods Willing THS 16, o "M10" de M10 166). Na de 2003 a busca vai até x = 684 (`TYPE_BAR_END_2003`), como nas fichas, que passam o fim da barra: nas 240, nenhum símbolo cortado. Nas outras 174 o corte muda no máximo 3 px, salvo o selo "M10" de M10 166, que perdia a ponta da esquerda: o corte começava 14 px dentro dele.
+

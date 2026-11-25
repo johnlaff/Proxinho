@@ -115,7 +115,7 @@ Como jogador, quero imprimir em português as artes da moldura de 2003 a 2014, i
 - [x] O nome e o tipo saem em Matrix Bold, a fonte da época, no tamanho e na altura das letras da carta impressa, começando onde começavam nas cartas da mesma época.
 - [x] A ponta arredondada das barras do nome e do tipo fica como está, e o tipo começa onde começa na carta impressa.
 - [x] Quando a carta tem uma arte na moldura atual, ela continua sendo a padrão; a de 2003 aparece na gaveta para escolher, e vira a padrão só quando é a única em PT.
-- [x] As impressões com marca-d'água, com efeito de moldura (céu estrelado, lápide, milagre, cores trocadas), os planeswalkers de 2003 e as promos com outro desenho (Champs and States, a Secret Lair espelhada) saem na original, e a etiqueta diz que saem em inglês.
+- [x] As impressões com marca-d'água, com efeito de moldura (lápide, milagre, cores trocadas; o céu estrelado de Theros entra, com as barras e a caixa da comum), os planeswalkers de 2003 e as promos com outro desenho (Champs and States, a Secret Lair espelhada) saem na original, e a etiqueta diz que saem em inglês.
 
 ### H15. Tradução não oficial (entregue em 21/11/2026, ADR 0025)
 Como jogador, quero imprimir em português as cartas que nunca saíram em PT, sabendo que a tradução não é oficial.

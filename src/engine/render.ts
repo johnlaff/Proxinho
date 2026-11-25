@@ -45,6 +45,7 @@ import {
   MDFC_STRIP,
   mdfcCostLeft,
   ptProtect,
+  TYPE_BAR_END_2003,
   type FrameLayout,
   type Rect,
 } from "./geometry";
@@ -1913,7 +1914,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // (na sem borda a barra de tipo acaba no aro da caixa, uns 20 px antes da M15: com a busca
   // até o fim da M15, o aro entrava como bloco, o fim do traço do símbolo da Secret Lair
   // grudava nele e a estrela, solta, ficava de fora e era apagada, Lord of the Pit SLD 1857)
-  const symbolEnd = frameBox ? Math.round((frameBox.x1 + 4) * fx) : undefined;
+  // (na de 2003 a barra acaba antes, ver TYPE_BAR_END_2003)
+  const symbolEnd = frameBox ? Math.round((frameBox.x1 + 4) * fx) : print.frame === "2003" ? Math.round(TYPE_BAR_END_2003 * fx) : undefined;
   const setLeft =
     findSetSymbolLeft(
       data,

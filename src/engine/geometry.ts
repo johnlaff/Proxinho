@@ -92,6 +92,16 @@ export function frame2003Start(released: string | null | undefined): { title: nu
   return { title: 67, type: 75 }; // de Planar Chaos em diante
 }
 
+/**
+ * Até onde vai a busca do símbolo da coleção na barra de tipo de 2003: a ponta da barra é mais
+ * funda que na M15, e o contorno de dentro começa em x ≈ 686. Com a busca até o fim da M15
+ * (711), o contorno e a moldura colorida depois dele viravam um bloco de 25 px, largo demais
+ * para passar por fio, e eram tomados pelo símbolo: o símbolo de verdade ficava antes dele,
+ * do lado do tipo, e o apagamento levava a metade da esquerda (27% das cartas de 2003 num
+ * sorteio de 240; Magma Spray, JOU 103; Gods Willing, THS 16; o "M10" de M10 166).
+ */
+export const TYPE_BAR_END_2003 = 684;
+
 /** Medidas das cartas de duas faces (Scryfall PNG, conferidas em MID, VOW, MOM, ZNR, KHM, TLA). */
 const DFC = {
   /** o nome começa depois do ícone (x ≈ 35–108) */

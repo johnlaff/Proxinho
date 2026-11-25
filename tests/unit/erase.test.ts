@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findSetSymbolLeft, textMask, textPolarity } from "../../src/engine/erase";
+import { TYPE_BAR_END_2003 } from "../../src/engine/geometry";
 
 /** Imagem falsa 745×1040: fundo claro, com blocos escuros na linha de tipo. */
 function fakeImage(blocks: [number, number][]): ImageData {
@@ -33,6 +34,17 @@ describe("findSetSymbolLeft", () => {
       632,
     );
     expect(left).toBe(654);
+  });
+
+  it("na moldura de 2003 a busca para antes do contorno da barra (Magma Spray, JOU 103)", () => {
+    // símbolo de 636 a 676; o contorno da ponta da barra e a moldura colorida, de 686 ao fim
+    const img = fakeImage([
+      [636, 676],
+      [686, 745],
+    ]);
+    // até o fim da M15, o contorno com a moldura passava por símbolo e o de verdade era apagado
+    expect(findSetSymbolLeft(img, 594, 632)).toBeGreaterThanOrEqual(680);
+    expect(findSetSymbolLeft(img, 594, 632, TYPE_BAR_END_2003)).toBe(636);
   });
 });
 

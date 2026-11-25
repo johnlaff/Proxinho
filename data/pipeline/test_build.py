@@ -369,6 +369,11 @@ class FrameSupported(unittest.TestCase):
     def test_moldura_comum(self) -> None:
         self.assertTrue(frame_supported({**self.base, "promo_types": ["setpromo"]}))
 
+    def test_serie_spree_tem_a_moldura_comum(self) -> None:
+        # a aba do "+" fica fora da barra do nome (Requisition Raid OTJ 26), também na arte estendida
+        self.assertTrue(frame_supported({**self.base, "frame_effects": ["spree"]}))
+        self.assertTrue(frame_supported({**self.base, "frame_effects": ["extendedart", "spree"]}))
+
     def test_game_day_com_a_arte_atras_da_caixa(self) -> None:
         # Thunderbreak Regent (pdtk 162): o Scryfall não marca full_art
         self.assertFalse(frame_supported({**self.base, "full_art": False, "promo_types": ["setpromo", "gameday"]}))
@@ -404,9 +409,13 @@ class FrameSupported(unittest.TestCase):
         # ADR 0024: a moldura comum de 2003 a 2014 entra (Uncontrollable Anger 10E 244)
         m03 = {**self.base, "frame": "2003"}
         self.assertTrue(frame_supported(m03))
-        # com efeito o desenho muda: céu de Theros, lápide de Odyssey, milagre, cores trocadas
-        for effect in ("enchantment", "tombstone", "miracle", "colorshifted"):
+        # o céu estrelado de Theros fica só na moldura em volta: barras e caixa iguais
+        # (Archetype of Endurance BNG 116)
+        self.assertTrue(frame_supported({**m03, "frame_effects": ["enchantment"]}))
+        # com outro efeito o desenho muda: lápide de Odyssey, milagre, cores trocadas
+        for effect in ("tombstone", "miracle", "colorshifted"):
             self.assertFalse(frame_supported({**m03, "frame_effects": [effect]}), effect)
+            self.assertFalse(frame_supported({**m03, "frame_effects": ["enchantment", effect]}), effect)
         # planeswalker de 2003 tem caixa própria
         self.assertFalse(frame_supported({**m03, "type_line": "Legendary Planeswalker — Jace"}))
         # marca-d'água: a de guilda ficava em cacos (Darksteel Relic NPH 134) e a de promo em

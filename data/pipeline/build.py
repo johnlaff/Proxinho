@@ -1205,7 +1205,9 @@ def load_oracle(offline: bool) -> list[dict]:
         return [json.loads(line) for line in fh if line.strip()]
 
 
-UNSUPPORTED_EFFECTS = {"showcase", "etched", "inverted", "fullart", "borderless", "textless", "colorshifted", "spree", "upsidedowndfc"}
+# (a aba do "+" das cartas com Série, Spree, de OTJ fica fora da barra do nome, que é a da M15:
+# entram, conferidas nas 33 impressões)
+UNSUPPORTED_EFFECTS = {"showcase", "etched", "inverted", "fullart", "borderless", "textless", "colorshifted", "upsidedowndfc"}
 UNSUPPORTED_TYPES = ("Planeswalker", "Saga", "Class", "Battle", "Case", "Room")
 # planeswalkers de layout normal já são reescritos (src/engine/planeswalker.ts)
 UNSUPPORTED_TYPES_NORMAL = tuple(t for t in UNSUPPORTED_TYPES if t != "Planeswalker")
@@ -1270,13 +1272,15 @@ def frame_supported(card: dict) -> bool:
 
 def frame2003_supported(card: dict) -> bool:
     """Moldura de 2003 a 2014 (ADR 0024): as barras e a caixa ficam quase onde estão na M15, e o
-    motor muda só a caixa e a ponta das barras (`frame2003` em `m15Layout`). Só a moldura comum:
-    com qualquer efeito (o céu estrelado de Theros, a lápide de Odyssey no começo do nome, a faixa
-    do milagre, as cores trocadas de Planar Chaos) o desenho muda, e os planeswalkers de 2003
-    têm caixa própria. E duas coleções de promos (`SETS_2003_OFF`)."""
+    motor muda só a caixa e a ponta das barras (`frame2003` em `m15Layout`). A comum e a do céu
+    estrelado de Theros (`enchantment`, nas criaturas encantamento de THS, BNG e JOU: as estrelas
+    ficam só na moldura em volta, e as barras e a caixa são as mesmas, conferido em 34 cartas).
+    Com outro efeito (a lápide de Odyssey no começo do nome, a faixa do milagre, as cores trocadas
+    de Planar Chaos) o desenho muda, e os planeswalkers de 2003 têm caixa própria. E duas coleções
+    de promos (`SETS_2003_OFF`)."""
     return (
         card.get("frame") == "2003"
-        and not card.get("frame_effects")
+        and set(card.get("frame_effects") or []) <= {"enchantment"}
         and "Planeswalker" not in card.get("type_line", "")
         and card.get("watermark") in WATERMARKS_2003_OK
         and card.get("set") not in SETS_2003_OFF
