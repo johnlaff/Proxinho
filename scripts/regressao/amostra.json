@@ -4936,6 +4936,78 @@
     "grupo": "ficha de duas faces"
   },
   {
+    "id": "0f279560-7e9f-4a6d-9fd6-6c8c6bd94a1b",
+    "oracle_id": "9842734c-1eac-4509-a731-4c22017ae586",
+    "set": "cmr",
+    "number": "456",
+    "nome": "Wear // Tear",
+    "grupo": "fundir"
+  },
+  {
+    "id": "f8e1bd2d-ff66-4e68-9ad0-0be9c134e6f5",
+    "oracle_id": "9842734c-1eac-4509-a731-4c22017ae586",
+    "set": "dmc",
+    "number": "174",
+    "nome": "Wear // Tear",
+    "grupo": "fundir"
+  },
+  {
+    "id": "01ce2601-ae94-4ab5-bbd2-65f47281ca28",
+    "oracle_id": "41841bbf-1c51-494b-b299-c997cce88e44",
+    "set": "gk1",
+    "number": "45",
+    "nome": "Turn // Burn",
+    "grupo": "fundir"
+  },
+  {
+    "id": "e01cc65a-0e38-4f41-b9ed-796ef0355d0b",
+    "oracle_id": "9842734c-1eac-4509-a731-4c22017ae586",
+    "set": "moc",
+    "number": "343",
+    "nome": "Wear // Tear",
+    "grupo": "fundir"
+  },
+  {
+    "id": "427d7eab-24e3-41de-8444-d9a2c96f526f",
+    "oracle_id": "9842734c-1eac-4509-a731-4c22017ae586",
+    "set": "pip",
+    "number": "222",
+    "nome": "Wear // Tear",
+    "grupo": "fundir"
+  },
+  {
+    "id": "63ac6703-85f0-48df-bcca-983f49df63fa",
+    "oracle_id": "9842734c-1eac-4509-a731-4c22017ae586",
+    "set": "pip",
+    "number": "750",
+    "nome": "Wear // Tear",
+    "grupo": "fundir"
+  },
+  {
+    "id": "c0b94a92-48d5-4d08-a8fa-6f3a992db941",
+    "oracle_id": "cb3072c7-393c-43d9-a2c9-f918bd0fd7be",
+    "set": "tmc",
+    "number": "35",
+    "nome": "Double Jump // Flying Kick",
+    "grupo": "fundir"
+  },
+  {
+    "id": "a15c30fe-fe57-4551-ace5-42e5568809b3",
+    "oracle_id": "d4424585-9564-4ec2-8267-3f5438e1f29e",
+    "set": "who",
+    "number": "131",
+    "nome": "Gallifrey Falls // No More",
+    "grupo": "fundir"
+  },
+  {
+    "id": "6265bf1d-07a8-4f84-a39f-ee02d9921771",
+    "oracle_id": "d4424585-9564-4ec2-8267-3f5438e1f29e",
+    "set": "who",
+    "number": "736",
+    "nome": "Gallifrey Falls // No More",
+    "grupo": "fundir"
+  },
+  {
     "id": "fba6332c-acba-43f9-877c-ca6c5328aae9",
     "oracle_id": "a37314cf-bbbd-4003-b94d-0e6e60edfc15",
     "set": "eoe",

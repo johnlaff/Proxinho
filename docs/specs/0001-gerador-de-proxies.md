@@ -95,6 +95,12 @@ Como jogador, quero imprimir as Aventuras em português na arte que eu escolher.
 - [x] A sombra do papel perto da lombada continua igual depois de apagar o inglês.
 - [x] Quando o motor não acha o livro na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
 
+### H11f. Fundir na moldura atual (entregue em 25/11/2026, ADR 0036)
+Como jogador, quero imprimir as cartas com Fundir da moldura atual (Wear // Tear, Turn // Burn) em português na arte que eu escolher.
+- [x] As de borda preta saem em português: o nome, o tipo e o texto das duas metades, e a faixa do pé com o lembrete oficial do Fundir.
+- [x] O nome de cada metade é a parte dela do nome da carta inteira (Transformar // Queimar), também onde o Arena dá outro.
+- [x] Quando o motor não acha a faixa na imagem, ou não há o lembrete oficial, a carta sai na original e a etiqueta diz que sai em inglês.
+
 ### H11e. Consequência (entregue em 25/11/2026, ADR 0035)
 Como jogador, quero imprimir as cartas com Consequência (Dusk // Dawn, Commit // Memory) em português na arte que eu escolher.
 - [x] As de borda preta saem em português: o nome, o tipo e o texto das duas metades, a de baixo de lado como na carta impressa, com o custo, o símbolo da coleção e o selo holográfico no lugar.

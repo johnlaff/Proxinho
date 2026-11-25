@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import aftermath_supported, split_supported, swap_half_names, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
+from build import FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -1121,6 +1121,32 @@ class Divididas(unittest.TestCase):
         self.assertFalse(split_supported({**self.base, "card_faces": [{**f, "type_line": "Enchantment — Room"} for f in self.faces]}))
         self.assertFalse(split_supported({**self.base, "frame": "2003"}))
 
+    def test_fundir(self):
+        fuse = {**self.base, "name": "Wear // Tear", "set": "cmr", "keywords": ["Fuse"]}
+        self.assertTrue(fuse_supported(fuse))
+        self.assertFalse(split_supported(fuse))
+        self.assertFalse(fuse_supported(self.base))
+        # as de Dragon's Maze (moldura de 2003) e a carta de teste do Unknown Event ficam de fora
+        self.assertFalse(fuse_supported({**fuse, "frame": "2003", "set": "dgm"}))
+        self.assertFalse(fuse_supported({**fuse, "set": "unk"}))
+
+    def test_lembrete_do_fundir(self):
+        pt = "Você pode conjurar uma ou ambas as metades deste card da sua mão."
+        self.assertEqual(without_fuse("Destrua o artefato alvo.\nFundir"), "Destrua o artefato alvo.")
+        self.assertEqual(without_fuse(f"Destrua o artefato alvo.\nFundir ({pt})"), "Destrua o artefato alvo.")
+        self.assertEqual(without_fuse("Fundir os dois."), "Fundir os dois.")
+        oracle = [{"oracle_id": "w", "layout": "split", "keywords": ["Fuse"]}, {"oracle_id": "f", "layout": "split", "keywords": []}]
+        rows = [
+            {"oracle_id": "w", "faces": [{"text_pt": "Destrua o artefato alvo.\nFundir"}, {"text_pt": f"Destrua o encantamento alvo.\nFundir ({pt})"}]},
+            {"oracle_id": "f", "faces": [{"text_pt": "Destrua.\nFundir"}]},
+        ]
+        self.assertEqual(add_fuse_reminders(rows, oracle, {"*": {FUSE_EN: pt}}), 1)
+        self.assertEqual([f["text_pt"] for f in rows[0]["faces"]], ["Destrua o artefato alvo.", "Destrua o encantamento alvo."])
+        self.assertEqual(rows[0]["faces"][1]["reminder_pt"], f"Fundir ({pt})")
+        self.assertNotIn("reminder_pt", rows[1]["faces"][0])
+        # sem o lembrete oficial, nada muda
+        self.assertEqual(add_fuse_reminders([{"oracle_id": "w", "faces": [{"text_pt": "A\nFundir"}]}], oracle, {}), 0)
+
     def test_consequencia(self):
         self.assertTrue(aftermath_supported(self.aftermath))
         self.assertTrue(aftermath_supported({**self.aftermath, "set": "c19"}))
@@ -1201,6 +1227,13 @@ class Salas(unittest.TestCase):
             {"name_en": "Bustle", "name_pt": "Agitação"},
         ]
         self.assertEqual([f["name_pt"] for f in half_names(faces)], ["Burburinho // Agitação", "Burburinho", "Agitação"])
+        # Turn // Burn: o Arena dá às metades "turno" e "A Queima"; a carta impressa é Transformar // Queimar
+        turn = [
+            {"name_en": "Turn // Burn", "name_pt": "Transformar // Queimar"},
+            {"name_en": "Turn", "name_pt": "turno"},
+            {"name_en": "Burn", "name_pt": "A Queima"},
+        ]
+        self.assertEqual([f["name_pt"] for f in half_names(turn)[1:]], ["Transformar", "Queimar"])
         # sem a carta inteira na frente (as de duas faces), nada muda
         dfc = [{"name_en": "Delver of Secrets", "name_pt": "A // B"}, {"name_en": "Insectile Aberration", "name_pt": "C"}]
         self.assertEqual(half_names(dfc)[0]["name_pt"], "A // B")

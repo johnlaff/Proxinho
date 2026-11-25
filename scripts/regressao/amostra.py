@@ -10,7 +10,7 @@ A amostra tem dois pedaços:
    cartas com texto em PT: a moldura comum de 2015, a de 2003 (sem e com marca-d'água), a antiga
    (1997), a sem borda, a arte estendida, as de duas faces, os planeswalkers, as fichas, os
    emblemas, as Sagas, Aventuras, Classes, cartas com Preparar, as Salas de Duskmourn, as
-   outras divididas e a Consequência, naves e a tradução não oficial.
+   outras divididas, a Consequência e o Fundir, naves e a tradução não oficial.
 
 Lê o banco montado pelo pipeline (data/out/cards.sql, depois de `pnpm data:build`). A amostra é
 versionada e só cresce: rodar de novo mantém as impressões que já estão nela e acrescenta as
@@ -60,6 +60,7 @@ GROUPS: dict[str, int] = {
     "sala": 10,
     "dividida": 15,
     "consequência": 15,
+    "fundir": 9,
 }
 
 
@@ -72,7 +73,7 @@ def group_of(row: sqlite3.Row) -> str | None:
     if frame == "1997":
         return "1997"
     # (e depois a marca-d'água de 2003, ADR 0024, o Preparar, ADR 0032, as Salas, ADR 0033, as
-    # outras divididas, ADR 0034, e a Consequência, ADR 0035)
+    # outras divididas, ADR 0034, a Consequência, ADR 0035, e o Fundir, ADR 0036)
     if frame == "2003" and row["watermark"]:
         return "2003 com marca-d'água"
     if layout == "prepare":
@@ -80,7 +81,9 @@ def group_of(row: sqlite3.Row) -> str | None:
     if layout == "split":
         if "Room" in type_line:
             return "sala"
-        return "consequência" if "Consequência" in (row["text_pt"] or "") else "dividida"
+        if "Consequência" in (row["text_pt"] or ""):
+            return "consequência"
+        return "fundir" if "Fundir (" in (row["text_pt"] or "") else "dividida"
     if row["source"] == "nao-oficial":
         return "não oficial"
     if layout == "emblem":

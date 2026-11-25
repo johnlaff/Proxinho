@@ -39,3 +39,4 @@ Cada arquivo registra uma decisão de arquitetura: o contexto, o que foi decidid
 | [0033](0033-salas-de-duskmourn.md) | Salas de Duskmourn: a carta dividida deitada, girada para apagar e escrever, as faixas translúcidas do meio refeitas pela rede neural e o lembrete das Salas da dica do Arena | Aceita |
 | [0034](0034-cartas-divididas.md) | Cartas divididas da moldura atual: as duas metades lado a lado na carta deitada, cada uma como uma M15 pequena, conferidas na imagem, e os nomes das metades que o Scryfall tem em inglês transcritos da imagem | Aceita |
 | [0035](0035-consequencia.md) | Consequência: a metade de cima apagada e escrita na carta de pé, a de baixo, impressa de lado, na carta girada, com as barras e as caixas das duas conferidas na imagem | Aceita |
+| [0036](0036-fundir.md) | Fundir na moldura atual: a faixa do pé achada na imagem e escrita com o lembrete oficial das impressas, as caixas até o fio acima dela | Aceita |

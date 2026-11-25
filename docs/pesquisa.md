@@ -261,6 +261,20 @@ Medidas nas imagens do Scryfall, nas 69 impressões de borda preta (AKH, HOU, as
 
 As 25 de Amonkhet Remastered e a promo do MTGO são só digitais; a de vitrine de MH2 e a da Secret Lair com a MSCHF ficam de fora.
 
+### Fundir (25/11/2026)
+
+As cartas com Fundir da moldura atual são reimpressões das de Dragon's Maze (moldura de 2003): Turn // Burn (GK1), Wear // Tear (CMR, DMC, MOC, PIP), Gallifrey Falls // No More (WHO) e Double Jump // Flying Kick (TMC), 9 impressões de borda preta com texto em PT. Deitada, a carta é a dividida da moldura atual (acima) com as caixas mais curtas e a faixa do Fundir no pé.
+
+Medidas nas imagens do Scryfall, na carta deitada (1040 × 745):
+
+| Medida | Valor |
+|---|---|
+| Caixas | acabam em y ≈ 665, num fio escuro, nas duas metades |
+| Faixa do Fundir | papel de y ≈ 672 a 704 (675 a 707 nas de MOC) e de x ≈ 95 a 990, com as pontas arredondadas; passa por cima da borda preta entre as metades, com o degradê das cores das duas |
+| Texto em inglês da faixa | "Fuse (You may cast one or both halves of this card from your hand.)", centralizado, de x ≈ 147 a 932; o lembrete em itálico |
+
+Nos dados: o Arena (Pioneer Masters) tem o "Fundir" só no fim do texto da carta inteira, sem o lembrete, e dá às metades do Turn // Burn os nomes "turno" e "A Queima" (a carta inteira e a impressa em PT, no Gatherer, são "Transformar // Queimar"). O lembrete oficial em PT está no Wear // Tear impresso em PT (CMR e DMC): "Você pode conjurar uma ou ambas as metades deste card da sua mão."
+
 ### Marcas-d'água na moldura de 2003 (25/11/2026)
 
 Como as ferramentas existentes fazem: o Proxyshop não reaproveita a imagem; ele monta a carta do zero e põe a marca-d'água como uma camada vetorial, desenhada à parte a partir do nome que o Scryfall dá (`watermark`). O Proxinho escreve sobre a digitalização, então a marca já está lá e precisa ficar: apagar a caixa inteira levava a marca junto, e apagar só onde as letras passam deixava a marca em cacos. A saída é a mesma da arte sem borda (ADR 0012): só as letras saem da máscara, e a rede neural (LaMa) refaz o que estava por baixo delas, a marca inclusive.

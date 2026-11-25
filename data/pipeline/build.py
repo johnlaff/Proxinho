@@ -131,16 +131,18 @@ def arena_name(name: str | None) -> str | None:
 
 def half_names(faces: list[dict]) -> list[dict]:
     """
-    Nas divididas do Arena a carta inteira vem antes das metades (ver `en_face_of`), e uma metade
-    pode vir com o nome da carta inteira ("Burburinho // Agitação" na Hustle, MKM 249): o nome
-    inteiro saía na barra da metade da esquerda. Cada metade fica com a parte dela.
+    Nas divididas do Arena a carta inteira vem antes das metades (ver `en_face_of`), e o nome de
+    uma metade pode vir errado: o da carta inteira ("Burburinho // Agitação" na Hustle, MKM 249,
+    que saía inteiro na barra da metade da esquerda) ou outra palavra ("turno" e "A Queima" no
+    Turn // Burn, que é Transformar // Queimar; "Armados" no Armed // Dangerous). O nome da carta
+    inteira é o da carta impressa: cada metade fica com a parte dela.
     """
     if len(faces) < 3 or " // " not in (faces[0].get("name_en") or ""):
         return faces
-    for i, f in enumerate(faces[1:]):
-        parts = (f.get("name_pt") or "").split(" // ")
-        if len(parts) == len(faces) - 1:
-            f["name_pt"] = parts[i]
+    parts = (faces[0].get("name_pt") or "").split(" // ")
+    if len(parts) == len(faces) - 1:
+        for f, part in zip(faces[1:], parts):
+            f["name_pt"] = part
     return faces
 
 
@@ -1605,6 +1607,58 @@ def aftermath_supported(card: dict) -> bool:
     )
 
 
+def fuse_supported(card: dict) -> bool:
+    """Cartas com Fundir na moldura atual (as reimpressões de Dragon's Maze nos decks de Commander,
+    em Commander Legends e nos Guild Kits, e as de Doctor Who, Fallout e das Tartarugas Ninja): a
+    dividida de 2015 (split_supported) com a caixa mais curta e a faixa do Fundir no pé, de uma
+    metade à outra (src/engine/split.ts, ADR 0036)."""
+    faces = card.get("card_faces") or []
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "split"
+        and card.get("border_color") == "black"
+        and not card.get("frame_effects")
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+        and card.get("set") not in SPLIT_SETS_OFF
+        and len(faces) == 2
+        and "Fuse" in (card.get("keywords") or [])
+    )
+
+
+FUSE_EN = "You may cast one or both halves of this card from your hand."
+
+
+def without_fuse(text: str | None) -> str | None:
+    """O texto de uma metade sem a linha do Fundir ("Fundir", sozinho no Arena, ou com o lembrete),
+    que vai na faixa do pé da carta e não na caixa."""
+    if text is None:
+        return None
+    return "\n".join(x for x in text.split("\n") if not re.fullmatch(r"Fundir(\s*\(.*\))?", x.strip()))
+
+
+def add_fuse_reminders(rows: list[dict], oracle, by_group: dict[str, dict[str, str]]) -> int:
+    """
+    O Fundir de cada carta, na faixa do pé (`reminder_pt`), com o lembrete oficial das impressas
+    em PT (Wear // Tear de DMC e CMR), e sem a linha dele no texto das metades. Sem o lembrete
+    oficial, nada muda (e a carta sai na original).
+    """
+    pt = by_group.get("*", {}).get(FUSE_EN)
+    if not pt:
+        return 0
+    fused = {c.get("oracle_id") for c in oracle if c.get("layout") == "split" and "Fuse" in (c.get("keywords") or [])}
+    done = 0
+    for r in rows:
+        if r["oracle_id"] not in fused or not r["faces"]:
+            continue
+        for f in r["faces"]:
+            f["text_pt"] = without_fuse(f.get("text_pt"))
+            f["reminder_pt"] = f"Fundir ({pt})"
+        done += 1
+    return done
+
+
 def is_room(type_line: str | None) -> bool:
     return "Room" in (type_line or "").split("—")[-1].split()
 
@@ -1924,6 +1978,7 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or room_supported(c)
         or split_supported(c)
         or aftermath_supported(c)
+        or fuse_supported(c)
         or class_supported(c)
         or station_supported(c)
         or bool(sides and sides[0]["supported"]),
@@ -2418,6 +2473,8 @@ def build(offline: bool) -> list[dict]:
     unofficial = add_unofficial(rows, oracle, reminders, by_group, by_card)
     # o lembrete das Salas, na faixa do meio (da dica do Arena, também nas de tradução não oficial)
     log(f"Salas com o lembrete em PT: {add_room_reminders(rows, oracle, raw_hints)}")
+    # o Fundir, na faixa do pé (o lembrete oficial das impressas em PT)
+    log(f"cartas com Fundir, com o lembrete em PT: {add_fuse_reminders(rows, oracle, by_group)}")
     log(
         f"cartas: {len(rows)} | texto do Arena: {stats['arena']} | impresso: {stats['impresso']} | "
         f"tradução não oficial: {unofficial} | sem PT: {stats['sem'] - unofficial}"

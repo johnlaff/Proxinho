@@ -141,7 +141,7 @@ import { mdfcHint, type MdfcHint } from "./mdfc";
 import { OLD, oldCostLeft, oldLetters, oldTypeEnds } from "./old";
 import { prepareFrame, prepareLayout } from "./prepare";
 import { ROOM, roomCostLeft, roomFrame } from "./room";
-import { SPLIT, splitBoxes, splitCostLeft, splitFrame } from "./split";
+import { fuseBar, SPLIT, splitBoxes, splitCostLeft, splitFrame } from "./split";
 import { AFTERMATH, aftermathBox, aftermathCostLeft, aftermathFrame } from "./aftermath";
 import { preloadSymbols } from "./symbols";
 import {
@@ -1740,6 +1740,11 @@ async function renderSplit(p: {
   rctx.setTransform(1, 0, 0, 1, 0, 0);
   const data = rctx.getImageData(0, 0, rot.width, rot.height);
   if (!splitFrame(data)) return false;
+  // o Fundir (ADR 0036): a faixa no pé, com o lembrete dele em `reminder_pt`; sem um dos dois, a
+  // carta sai na original
+  const fuse = fuseBar(data);
+  const fuseText = halves[0].reminder_pt ?? halves[1].reminder_pt ?? null;
+  if (!fuse !== !fuseText) return false;
   const fx = rot.width / SPLIT.width;
   const fy = rot.height / SPLIT.height;
   const toImg = (r: Rect) => roundRect({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
@@ -1749,21 +1754,27 @@ async function renderSplit(p: {
   const nameRects = SPLIT.names.map((n, i) => toImg({ x0: n.x0, y0: nameY.y0, x1: costs[i] - 6, y1: nameY.y1 }));
   const costGuard = SPLIT.names.map((n, i) => toImg({ x0: costs[i] - 4, y0: nameY.y0 - 2, x1: n.x1 + 4, y1: nameY.y1 + 1 }));
   const typeRects = SPLIT.types.map((t) => toImg({ x0: t.x0, y0: typeY.y0, x1: t.x1, y1: typeY.y1 }));
-  const boxes = splitBoxes(data);
+  const boxes = splitBoxes(data, fuse);
   const boxRects = boxes.map(toImg);
-  // texto curto centralizado no original (Boom // Bust, TSR) sai centralizado
-  const centered = boxRects.map((r, i) => (halves[i].text_pt?.trim() ? measureCentered(data, r, [], fx) === true : false));
+  const F = SPLIT.fuse;
+  const fuseRects = fuse ? [toImg({ x0: F.x0, y0: fuse.y0 + 1, x1: F.x1, y1: fuse.y1 - 1 })] : [];
+  // texto curto centralizado no original (Boom // Bust, TSR) sai centralizado. As duas metades são
+  // compostas do mesmo jeito: a que não dá para dizer (uma linha que enche a caixa, "Destroy target
+  // enchantment." no Wear // Tear) segue a outra
+  const measured = boxRects.map((r, i) => (halves[i].text_pt?.trim() ? measureCentered(data, r, [], fx) : false));
+  const centered = measured.map((c, i) => c === true || (c === null && measured[1 - i] === true));
   const inks = eraseRegions(
     data,
     [
       ...nameRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
       ...typeRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
       ...boxRects.map((rect) => ({ rect, threshold: 14, colorThreshold: 34, stains: true, dividers: true })),
+      ...fuseRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
     ],
     costGuard,
     costGuard,
     // (a ponta arredondada da esquerda de cada barra fica como está, ver barCapGuard)
-    [...nameRects, ...typeRects].flatMap((r) => barCapGuard(data, r, "left")),
+    [...nameRects, ...typeRects, ...fuseRects].flatMap((r) => barCapGuard(data, r, "left")),
   );
   rctx.putImageData(data, 0, 0);
 
@@ -1794,6 +1805,11 @@ async function renderSplit(p: {
       h.ability_words,
     );
     drawLayout(ctx, res, box, k, inks[4 + i] ?? "dark", symbols, m, centered[i]);
+  }
+  if (fuse && fuseText) {
+    const bar = { x0: F.textX0, y0: fuse.y0, x1: F.textX1, y1: fuse.y1 };
+    const res = fitText(fuseText, null, bar.x1 - bar.x0, bar.y1 - bar.y0, m, F.maxSize, F.minSize);
+    drawLayout(ctx, res, bar, k, inks[6] ?? "dark", new Map(), m, true);
   }
   ctx.restore();
   return true;

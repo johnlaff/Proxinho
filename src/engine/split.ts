@@ -58,6 +58,27 @@ export const SPLIT = {
   /** corpo do texto das caixas (o inglês chega a 34, como na M15) */
   maxSize: 34,
   minSize: 15,
+  /**
+   * a faixa do Fundir (ADR 0036), de uma metade à outra no pé da carta: o papel vai de 672 a 704
+   * (3 px abaixo em algumas reimpressões) e de x ≈ 95 a 990, logo abaixo de um fio escuro que
+   * encurta as caixas (o pé delas fica em ≈ 665). `probe`: os trechos da faixa sem letras, antes
+   * do "Fuse" e depois do fim do lembrete; `x0`/`x1`: o apagamento, entre as pontas arredondadas;
+   * `textX0`/`textX1`: o português, centralizado
+   */
+  fuse: {
+    y0: 640,
+    y1: 725,
+    probe: [
+      { x0: 104, x1: 140 },
+      { x0: 946, x1: 982 },
+    ],
+    x0: 104,
+    x1: 978,
+    textX0: 120,
+    textX1: 962,
+    maxSize: 27,
+    minSize: 18,
+  },
 } as const;
 
 const lum = (d: Uint8ClampedArray, i: number) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
@@ -98,6 +119,35 @@ export function splitFrame(img: ImageData): boolean {
   return percentile(img, { x0: 527, y0: 60, x1: 549, y1: 700 }, 0.5) < 80;
 }
 
+/**
+ * A faixa do Fundir no pé da carta deitada (ADR 0036): o trecho claro de 26 a 40 px que começa
+ * depois de um escuro (o fio que fecha as caixas), pela mediana de cada linha nos trechos da
+ * faixa sem letras, e que passa clara também entre as metades, onde as outras divididas têm a
+ * borda preta de cima a baixo (o pé de uma última linha de texto perto do fim da caixa deixava um
+ * trecho claro do mesmo tamanho). Sem ela: `null`.
+ */
+export function fuseBar(img: ImageData): { y0: number; y1: number; center: number } | null {
+  const F = SPLIT.fuse;
+  const fy = img.height / SPLIT.height;
+  const step = 1 / fy;
+  const light = (y: number) => F.probe.every((p) => percentile(img, { x0: p.x0, y0: y, x1: p.x1, y1: y + step }, 0.5) >= 140);
+  let start: number | null = null;
+  let seenDark = false;
+  for (let y = F.y0; y <= F.y1; y += step) {
+    const l = y < F.y1 && light(y);
+    if (!l) {
+      if (start !== null && seenDark) {
+        const len = y - start;
+        const across = percentile(img, { x0: 520, y0: start + 4, x1: 556, y1: y - 4 }, 0.5) >= 120;
+        if (len >= 26 && len <= 40 && across) return { y0: start, y1: y, center: (start + y) / 2 };
+      }
+      start = null;
+      seenDark = true;
+    } else if (start === null) start = y;
+  }
+  return null;
+}
+
 /** Onde começa o custo de mana de uma metade, no fim da barra do nome dela (escala-base deitada). */
 export function splitCostLeft(manaCost: string | null | undefined, half: 0 | 1): number {
   const symbols = manaCost?.match(/\{[^}]+\}/g) ?? [];
@@ -111,8 +161,11 @@ export function splitCostLeft(manaCost: string | null | undefined, half: 0 | 1):
  * do meio), dentro dos limites de `SPLIT.boxes` e nunca menor que `SPLIT.boxCore`. Na moldura
  * branca o fio em volta da caixa tem a cor do papel e a medida fica no limite de fora menos 3 px.
  */
-export function splitBoxes(img: ImageData): Rect[] {
-  return paperBoxes(img, SPLIT.boxes, SPLIT.boxCore, { w: SPLIT.width, h: SPLIT.height });
+export function splitBoxes(img: ImageData, fuse?: { y0: number } | null): Rect[] {
+  // com o Fundir, as caixas acabam no fio acima da faixa dele
+  const lims = fuse ? SPLIT.boxes.map((b) => ({ ...b, y1: fuse.y0 - 2 })) : SPLIT.boxes;
+  const cores = fuse ? SPLIT.boxCore.map((b) => ({ ...b, y1: fuse.y0 - 12 })) : SPLIT.boxCore;
+  return paperBoxes(img, lims, cores, { w: SPLIT.width, h: SPLIT.height });
 }
 
 /**

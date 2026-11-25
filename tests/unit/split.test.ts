@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SPLIT, splitBoxes, splitCostLeft, splitFrame } from "../../src/engine/split";
+import { fuseBar, SPLIT, splitBoxes, splitCostLeft, splitFrame } from "../../src/engine/split";
 
 // a carta deitada (ver split.ts)
 const W = 1040;
@@ -87,5 +87,40 @@ describe("splitBoxes", () => {
     const [w] = splitBoxes(split({ white: true }).img);
     expect(w.x0).toBeGreaterThanOrEqual(SPLIT.boxes[0].x0);
     expect(w.y1).toBeLessThanOrEqual(SPLIT.boxes[0].y1);
+  });
+});
+
+/**
+ * Dividida com Fundir (Wear // Tear, CMR 456): as caixas acabam em 665, num fio escuro, e a faixa
+ * do Fundir vai de 672 a 704, de uma metade à outra, passando por cima da borda entre elas.
+ */
+function fused(dy = 0) {
+  const c = split();
+  for (const dx of [0, 480]) c.fill(92 + dx, 666, 512 + dx, 717, gray(70));
+  c.fill(90, 666 + dy, 992, 711 + dy, gray(70));
+  c.fill(95, 672 + dy, 990, 704 + dy, gray(225));
+  for (let x = 150; x < 935; x += 14) c.fill(x, 680 + dy, x + 7, 697 + dy, gray(30));
+  return c;
+}
+
+describe("fuseBar", () => {
+  it("acha a faixa do Fundir, também 3 px abaixo, e encurta as caixas até o fio", () => {
+    const bar = fuseBar(fused().img);
+    expect(bar?.y0).toBeCloseTo(672, 0);
+    expect(bar?.y1).toBeCloseTo(704, 0);
+    expect(fuseBar(fused(3).img)?.y0).toBeCloseTo(675, 0);
+    expect(splitFrame(fused().img)).toBe(true);
+    const [a, b] = splitBoxes(fused().img, bar);
+    expect(a.y1).toBeLessThanOrEqual(666);
+    expect(b.y1).toBeLessThanOrEqual(666);
+  });
+
+  it("não acha faixa nas divididas sem o Fundir, nem com a última linha de texto no pé da caixa", () => {
+    expect(fuseBar(split().img)).toBeNull();
+    // o pé de uma linha comprida em 676 deixa 37 px claros até o fio de baixo: a borda entre as
+    // metades continua escura ali
+    const low = split();
+    for (const dx of [0, 480]) low.fill(100 + dx, 660, 505 + dx, 676, gray(30));
+    expect(fuseBar(low.img)).toBeNull();
   });
 });
