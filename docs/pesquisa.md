@@ -254,7 +254,7 @@ Como a dica se compara ao lembrete da carta (comparação com os lembretes do Or
 
 Qualidade: dos 194 lembretes que as cartas impressas em PT já traziam e que uma dica também cobre, 81 são idênticos ao impresso e a semelhança mediana é de 98,7% (a diferença típica é "para cada" contra "por cada"). As diferenças grandes eram o impresso antigo: o atropelar dos Fractius da M14 e o toque mortífero de antes de 2010, que não dizem o mesmo que o lembrete de hoje.
 
-Resultado: 164 lembretes em inglês ganham texto em PT, em 643 cartas (632 de papel). Os maiores grupos: Posicionar (as naves e planetas), Preparar (61 cartas de Secrets of Strixhaven), "Liguem seus motores!" (39), Exaustão (33), Dobra Espacial (29), Definhar (29), Bushido (26), Manifestar Pavor (22) e Cria (20). Ficam de fora as cartas com número por extenso ("Mobilize 2" diz "two", e a dica sairia "2"), as dicas que dizem outra coisa (Prototype, Suspend sem o "it has haste", Partner com "Parceiro" onde a carta diz "this ability") e a "it" que não é a própria carta (o Changeling da ficha do Stalactite Dagger).
+Resultado: 164 lembretes em inglês ganham texto em PT, em 643 cartas (632 de papel). Os maiores grupos: Posicionar (as naves e planetas), Preparar (61 cartas de Secrets of Strixhaven), "Liguem seus motores!" (39), Exaustão (33), Dobra Espacial (29), Definhar (29), Bushido (26), Manifestar Pavor (22) e Cria (20). As cartas com número por extenso ("Mobilize 2" diz "two") entraram em 25/11/2026, com o número por extenso em PT ("crie duas fichas"): com elas, 692 cartas. Ficam de fora as dicas que dizem outra coisa (Prototype, Suspend sem o "it has haste", Partner com "Parceiro" onde a carta diz "this ability") e a "it" que não é a própria carta (o Changeling da ficha do Stalactite Dagger).
 
 ## Cartas prontas no servidor (21/11/2026)
 
@@ -288,6 +288,16 @@ O João pediu o Proxinho "perfeito e completo", com arquitetura, UI/UX e desempe
 - **Regressão.** A regressão de 630 cartas, exigida antes de toda publicação que muda o desenho, vivia fora do repositório e se perdia com a máquina. As ferramentas de mercado (Percy, Chromatic, o `toHaveScreenshot` do Playwright) guardam as imagens de referência num serviço ou no repositório, e as do Proxinho não podem ir para um repositório público (são cartas da Wizards).
 
 As escolhas: o pedido como lista no `localStorage` e num link `#pedido=` comprimido com o `CompressionStream` do navegador, "Você quis dizer…?" no Worker com Damerau-Levenshtein sobre os nomes do banco (ADR 0028), e a regressão no repositório, com a amostra versionada e as imagens só na máquina (ADR 0027).
+
+## A faixa das cartas modais (25/11/2026)
+
+A faixa do pé das cartas modais de duas faces resume o outro lado, e nenhum dado do Scryfall a traz. Conferida nas imagens das 99 cartas (em inglês) e nas impressões em PT de ZNR, KHM, STX e MH3:
+
+- **O que ela diz.** Terreno do outro lado: "Land" e a última habilidade de mana ("{T}: Add {W} or {B}."). Sem subtipo: o tipo sem os supertipos ("Artifact" para "Legendary Snow Artifact"). Com subtipo: o último em ZNR, KHM e STX ("Cleric", "God", "Tibalt", "Vehicle"); em MH3, "Human" (Witch Enchanter), "Elf" (Disciple of Freyalise) e "Monk" (Pinnacle Monk). Desde Marvel's Spider-Man (setembro de 2025): "4/4 Creature", e o mesmo em Marvel Super Heroes e Marvel's Deadpool.
+- **Em PT.** As impressões traduzem a palavra pela linha de tipo oficial ("Clérigo", "Deus", "Mago", "Ave", "Humano", "Mágica Instantânea" apertada até o custo, "Veículo", "Aura") e a habilidade pelo texto oficial ("{T}: Adicione {W} ou {B}.", num corpo menor que o da palavra quando falta lugar).
+- **Medidas.** O miolo vai de y ≈ 927 a 965 (925 a 964 nas digitalizações de 744 px), a palavra começa em x ≈ 52 e o custo e a habilidade acabam em x ≈ 320, com ~24 px por símbolo (~27 nos híbridos).
+
+A escolha (ADR 0029): a faixa montada do texto oficial da outra face, com as regras por coleção e as duas exceções de MH3.
 
 ## Lado legal e o caminho seguro
 

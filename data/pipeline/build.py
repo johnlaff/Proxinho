@@ -892,6 +892,21 @@ _HINT_SELF = {
     *(f"this {t}" for t in ("creature", "card", "permanent", "artifact", "enchantment", "land", "spell", "vehicle", "spacecraft", "planet")),
 }
 _SYMBOL = re.compile(r"^\{[^}]+\}$")
+# Número por extenso no lembrete do Oracle ("Mobilize 2 (… create two tapped and attacking …)",
+# "Empower Jace 6. (Put six loyalty counters …)") onde a dica tem a variável: em PT ele sai por
+# extenso também, como nas cartas impressas ("crie duas fichas"). "Um" e "dois" concordam com a
+# palavra seguinte na dica em PT.
+_NUMBER_WORDS = {w: n for n, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve".split()) if n}
+_PT_NUMBERS = {3: "três", 4: "quatro", 5: "cinco", 6: "seis", 7: "sete", 8: "oito", 9: "nove", 10: "dez", 11: "onze", 12: "doze"}
+_PT_FEMININE = re.compile(r"^(?:fichas?|criaturas?|vez|vezes|mágicas?|cores?|cópias?|habilidades?|cartas?|vidas?)$", re.IGNORECASE)
+
+
+def pt_number(n: int, after: str) -> str:
+    """O número `n` por extenso em PT, concordando com a palavra seguinte (`after`) no 1 e no 2."""
+    if n in (1, 2):
+        fem = bool(_PT_FEMININE.match(after))
+        return ("uma" if fem else "um") if n == 1 else ("duas" if fem else "dois")
+    return _PT_NUMBERS[n]
 
 
 def extract_hints(mtga: Path) -> list[dict[str, str]]:
@@ -959,7 +974,11 @@ def _hint_fill_ordered(rem: list[str], hint: list[str], own: bool) -> dict[str, 
             continue
         if len(b) == 1 and _HINT_VAR.match(b[0]):
             cost = b[0].lower() in _HINT_COST_VARS
-            if not a or not all(_SYMBOL.match(t) if cost else t.isdigit() for t in a) or (not cost and len(a) > 1):
+            # (o número por extenso vale "#2", e vira "duas" ou "dois" na dica em PT; nunca no
+            # bônus, "+2/+2", que a carta sempre escreve em algarismos)
+            if not cost and len(a) == 1 and a[0] in _NUMBER_WORDS and (i1 == 0 or rem[i1 - 1] != "+"):
+                a = [f"#{_NUMBER_WORDS[a[0]]}"]
+            elif not a or not all(_SYMBOL.match(t) if cost else t.isdigit() for t in a) or (not cost and len(a) > 1):
                 return None
             if values.setdefault(b[0], "".join(a)) != "".join(a):
                 return None
@@ -1017,6 +1036,10 @@ def hint_reminder(reminder: str, en: str, pt: str, own: bool = False) -> str | N
         if values is None:
             continue
         for name, value in values.items():
+            if value.startswith("#"):
+                n = int(value[1:])
+                p = re.sub(re.escape(name) + r"(\s+)([\w-]+)", lambda m, n=n: pt_number(n, m.group(2)) + m.group(1) + m.group(2), p, flags=re.IGNORECASE)
+                value = pt_number(n, "")
             p = re.sub(re.escape(name), value, p, flags=re.IGNORECASE)
         if any(_HINT_VAR.match(t) for t in _HINT_TOKEN.findall(p)):
             continue

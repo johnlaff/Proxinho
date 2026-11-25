@@ -191,7 +191,17 @@ export function renderInput(entry: Entry, side: Side = 0) {
   const flavor = !face ? null : flavorApplies(entry.card, print) ? (face.flavor_pt ?? null) : (print.flavor_pt?.[side] ?? null);
   // (Aventura: a segunda face é o feitiço da página da esquerda, na mesma imagem)
   const adventure = face && print.layout === "adventure" ? (entry.card.faces[1] ?? null) : null;
-  return { print, face, side, typeLine: entry.card.type_line, flavor, ...(adventure ? { adventure } : {}) };
+  // (carta modal: a outra face, resumida na faixa de baixo, ver mdfc.ts)
+  const otherFace = face && print.layout === "modal_dfc" ? (entry.card.faces[side === 1 ? 0 : 1] ?? null) : null;
+  return {
+    print,
+    face,
+    side,
+    typeLine: entry.card.type_line,
+    flavor,
+    ...(adventure ? { adventure } : {}),
+    ...(otherFace ? { otherFace } : {}),
+  };
 }
 
 function toBlob(canvas: HTMLCanvasElement): Promise<Blob> {

@@ -34,7 +34,20 @@ import {
   restoreBevel,
 } from "./classCard";
 import { bodyFont, loadCardFonts, titleFont, type TitleFont } from "./fonts";
-import { BACK_PT_NOTCH, BASE_H, BASE_W, costLeft, hasLeftIcon, m15Layout, ptProtect, type FrameLayout, type Rect } from "./geometry";
+import {
+  BACK_PT_NOTCH,
+  BASE_H,
+  BASE_W,
+  beside,
+  costLeft,
+  hasLeftIcon,
+  m15Layout,
+  MDFC_STRIP,
+  mdfcCostLeft,
+  ptProtect,
+  type FrameLayout,
+  type Rect,
+} from "./geometry";
 import {
   barCapGuard,
   centralSpan,
@@ -71,8 +84,12 @@ import {
   isTallPlaneswalker,
   measureBoxBottom,
   measureTallPlaneswalker,
+  moveBands,
+  planeswalkerBounds,
   planeswalkerRows,
   PW,
+  PW_PLAN,
+  type PwRow,
   rowRects,
   splitAbilities,
 } from "./planeswalker";
@@ -117,8 +134,20 @@ import {
   withoutFrame,
   type StationText,
 } from "./station";
+import { mdfcHint, type MdfcHint } from "./mdfc";
 import { preloadSymbols } from "./symbols";
-import { SYMBOL_EM, TABLE_ROW, chunkWidth, fitRows, fitText, lineText, rowsAt, type LayoutResult, type Measurer } from "./text";
+import {
+  SYMBOL_EM,
+  TABLE_ROW,
+  chunkWidth,
+  fitRows,
+  fitText,
+  lineText,
+  rowsAt,
+  type LayoutResult,
+  type Measurer,
+  type TextRow,
+} from "./text";
 import {
   findPlaque2003,
   findBoxHighlight,
@@ -156,6 +185,8 @@ export interface RenderOptions {
   side?: 0 | 1;
   /** cartas de Aventura: o feitiço da página da esquerda (a segunda face da carta) */
   adventure?: PtFace | null;
+  /** cartas modais de duas faces: a outra face, resumida na faixa de baixo (ver mdfc.ts) */
+  otherFace?: PtFace | null;
   /** linha de tipo em inglês da carta (reconhece planeswalkers mesmo sem o tipo em PT) */
   typeLine?: string | null;
   /**
@@ -417,6 +448,7 @@ async function renderPlaneswalker(p: {
     rows = planeswalkerRows(data, paragraphs.length, loyalty, tall, sides);
   }
   if (!rows) return false;
+  const measuredRows = rows;
   // cada faixa leva os parágrafos dela (as estáticas de um bloco só vão juntas)
   let next = 0;
   const texts = rows.map((r) => paragraphs.slice(next, (next += r.paragraphs)).join("\n"));
@@ -468,17 +500,13 @@ async function renderPlaneswalker(p: {
   p.plan(1);
   await lamaBox(data, masks, area, protect, boxPolarity, `${print.id}:${data.width}:${paragraphs.length}`, { neural: p.neural });
   const inks = [...barInks, ...masks.map((m) => m.polarity)];
-  p.sctx.putImageData(data, 0, 0);
-  ctx.drawImage(p.src, 0, 0, p.W, p.H);
 
   const k = p.W / BASE_W;
-  drawLine(ctx, face.name_pt ?? face.name_en, 66, PW.title.centerY, cost - 12 - 66, 35, k, INK[inks[0]]);
-  if (face.type_pt) drawLine(ctx, face.type_pt, 66, tb.centerY, setLeft - 10 - 66, 30, k, INK[inks[1]]);
-
   const symbols = await preloadSymbols(face.text_pt);
   const m = measurer(ctx, k);
-  const layouts = fitRows(
-    rects.map(({ text }, i) => {
+  const spec = (rs: PwRow[]): TextRow[] =>
+    rs.map((r, i) => {
+      const { text } = rowRects(r);
       // a faixa de baixo desvia da caixa da lealdade inicial
       const under = text.y1 - PW.loyaltyBox.y0;
       return {
@@ -487,15 +515,64 @@ async function renderPlaneswalker(p: {
         height: text.y1 - text.y0,
         notch: under > 0 ? { width: text.x1 - PW.loyaltyBox.x0 + 6, height: under } : undefined,
       };
-    }),
-    m,
-  );
+    });
+  let layouts = fitRows(spec(rows), m);
+  // com as divisas em outro lugar, o texto em PT cabe num corpo maior: elas mudam de lugar na
+  // imagem já sem o texto, antes de ela ir para o canvas
+  const planned = planRows(rows, spec, m, layouts);
+  if (planned) {
+    moveBands(
+      data,
+      rows[0].y0,
+      rows[rows.length - 1].y1,
+      measuredRows.slice(1).map((r) => r.y0),
+      planned.rows.slice(1).map((r) => r.y0),
+      [PW.loyaltyBox],
+    );
+    rows = planned.rows;
+    layouts = planned.layouts;
+  }
+  p.sctx.putImageData(data, 0, 0);
+  ctx.drawImage(p.src, 0, 0, p.W, p.H);
+
+  drawLine(ctx, face.name_pt ?? face.name_en, 66, PW.title.centerY, cost - 12 - 66, 35, k, INK[inks[0]]);
+  if (face.type_pt) drawLine(ctx, face.type_pt, 66, tb.centerY, setLeft - 10 - 66, 30, k, INK[inks[1]]);
+
   layouts.forEach((res, i) => {
-    const text = rects[i].text;
-    const box = alignOnIcon(text, res.height, rows[i].icon, text.y1 > PW.loyaltyBox.y0);
+    const text = rowRects(rows![i]).text;
+    const box = alignOnIcon(text, res.height, rows![i].icon, text.y1 > PW.loyaltyBox.y0);
     drawLayout(ctx, res, box, k, inks[2 + i], symbols, m);
   });
   return true;
+}
+
+/**
+ * As faixas do planeswalker com as divisas em outro lugar, quando o texto em PT cabe assim num
+ * corpo pelo menos 1 px maior que com as divisas do inglês (`fit`): com elas, a habilidade que
+ * mais cresceu na tradução encolhia a letra de todas, com espaço sobrando nas outras (Will Kenrith,
+ * BBD 1; Kaito Shizuki, NEO 226). Procura do maior corpo para baixo: as divisas que
+ * `planeswalkerBounds` acha para cada faixa ter o texto com folga, conferidas diagramando de novo.
+ * Texto que não cabia nem no menor corpo também ganha as divisas novas, se couber com elas.
+ */
+function planRows(
+  rows: PwRow[],
+  spec: (rs: PwRow[]) => TextRow[],
+  m: Measurer,
+  fit: LayoutResult[],
+): { rows: PwRow[]; layouts: LayoutResult[] } | null {
+  const base = spec(rows);
+  const overflow = fit.some((l, i) => l.height > base[i].height);
+  const floor = overflow ? 15 : (fit[0]?.size ?? 32) + 1;
+  for (let size = 32; size >= floor; size -= 0.5) {
+    const need = rowsAt(base, m, size).map((l) => l.height + 6 + 2 * PW_PLAN.pad);
+    const bounds = planeswalkerBounds(rows, need);
+    if (!bounds) continue;
+    const next = rows.map((r, i) => ({ ...r, y0: i ? bounds[i - 1] : r.y0, y1: i < rows.length - 1 ? bounds[i] : r.y1 }));
+    const rowsSpec = spec(next);
+    const res = rowsAt(rowsSpec, m, size);
+    if (res.every((l, i) => l.height <= rowsSpec[i].height)) return { rows: next, layouts: res };
+  }
+  return null;
 }
 
 /**
@@ -1184,6 +1261,103 @@ function drawLayout(
   });
 }
 
+/**
+ * A faixa de baixo das cartas modais (ver mdfc.ts): a palavra em Beleren à esquerda e, nos
+ * terrenos, a habilidade de mana em MPlantin, encostada no fim da faixa. A palavra fica no corpo
+ * da carta; a habilidade diminui (e depois aperta) até caber depois dela, como na impressão em
+ * PT ("Terreno ⓣ: Adicione ⓦ ou ⓑ.", Glasswing Grace, MH3 254). Sem habilidade, a palavra vai
+ * até perto do custo (`end`), apertada se precisar ("Mágica Instantânea", Hagra Mauling, ZNR).
+ */
+/**
+ * O símbolo de mana como na faixa clara das modais: o desenho na cor `rgb` e o disco quase
+ * transparente (`MDFC_STRIP.disc`), com `px` de lado. Na faixa clara a carta impressa traz
+ * "{T}: Add {G}." com o desenho preto e só um halo do disco (na escura, com os discos
+ * coloridos). Cada pixel vira desenho na proporção em que escurece o disco (a cor mais comum do
+ * símbolo): a borda suavizada entre o disco e o desenho fica suave.
+ */
+function faintDisc(icon: CanvasImageSource, px: number, rgb: [number, number, number]): HTMLCanvasElement {
+  const n = Math.max(1, Math.round(px));
+  const out = document.createElement("canvas");
+  out.width = n;
+  out.height = n;
+  const c = out.getContext("2d")!;
+  c.drawImage(icon, 0, 0, n, n);
+  const img = c.getImageData(0, 0, n, n);
+  const d = img.data;
+  const lum = (i: number) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+  // o disco: a mediana dos pixels opacos e claros
+  const light: number[] = [];
+  for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200 && lum(i) > 90) light.push(i);
+  light.sort((a, b) => lum(a) - lum(b));
+  const ref = light.length ? light[light.length >> 1] : -1;
+  const disc = ref < 0 ? [255, 255, 255] : [d[ref], d[ref + 1], d[ref + 2]];
+  const discLum = ref < 0 ? 255 : lum(ref);
+  const halo = MDFC_STRIP.disc;
+  for (let i = 0; i < d.length; i += 4) {
+    const t = Math.min(1, Math.max(0, 1 - lum(i) / discLum));
+    const a = t + halo * (1 - t);
+    for (let ch = 0; ch < 3; ch++) d[i + ch] = Math.round((rgb[ch] * t + disc[ch] * halo * (1 - t)) / a);
+    d[i + 3] = Math.round(d[i + 3] * a);
+  }
+  c.putImageData(img, 0, 0);
+  return out;
+}
+
+function drawMdfcHint(
+  ctx: CanvasRenderingContext2D,
+  hint: MdfcHint,
+  end: number,
+  k: number,
+  ink: "dark" | "light",
+  symbols: Map<string, CanvasImageSource>,
+) {
+  const color = INK[ink];
+  const S = MDFC_STRIP;
+  const t = titleFont();
+  ctx.font = `${t.weight} ${S.wordSize * t.scale * k}px ${t.family}`;
+  const natural = ctx.measureText(hint.word).width / k;
+  if (!hint.mana) {
+    drawLine(ctx, hint.word, S.wordX, S.wordCenterY, end - 4 - S.wordX, S.wordSize, k, color, t);
+    return;
+  }
+  const f = bodyFont();
+  const runs = hint.mana.split(/(\{[^}]+\})/).filter(Boolean);
+  const widthAt = (size: number) => {
+    ctx.font = `${size * f.scale * k}px ${f.family}`;
+    return runs.reduce((w, r) => w + (r.startsWith("{") ? (S.symbol * size) / S.manaSize + 2 : ctx.measureText(r).width / k), 0);
+  };
+  // a palavra no corpo dela, com pelo menos 10 px até a habilidade
+  const wordWidth = Math.min(natural, S.right - S.wordX - 10 - widthAt(15) * 0.85);
+  drawLine(ctx, hint.word, S.wordX, S.wordCenterY, wordWidth, S.wordSize, k, color, t);
+  const room = S.right - (S.wordX + wordWidth + 10);
+  let size = S.manaSize;
+  while (size > 15 && widthAt(size) > room) size -= 0.5;
+  const width = widthAt(size);
+  const sx = width > room ? room / width : 1;
+  const sym = (S.symbol * size) / S.manaSize;
+  // (linha de base no pé das maiúsculas da carta, ≈ 953,5; o símbolo centrado na faixa)
+  const baseline = S.centerY + size * 0.39;
+  ctx.save();
+  ctx.translate((S.right - width * sx) * k, 0);
+  ctx.scale(sx, 1);
+  ctx.font = `${size * f.scale * k}px ${f.family}`;
+  ctx.fillStyle = color;
+  ctx.textBaseline = "alphabetic";
+  let x = 0;
+  for (const r of runs) {
+    if (r.startsWith("{")) {
+      const icon = symbols.get(r.slice(1, -1));
+      const glyph = icon && ink === "dark" ? faintDisc(icon, sym * k, [11, 11, 11]) : icon;
+      if (glyph) ctx.drawImage(glyph, (x + 1) * k, (S.centerY - sym / 2) * k, sym * k, sym * k);
+      x += sym + 2;
+    } else {
+      ctx.fillText(r, x * k, baseline * k);
+      x += ctx.measureText(r).width / k;
+    }
+  }
+  ctx.restore();
+}
+
 /** Lembrete de poder/resistência do verso, em cinza, no canto da caixa de texto. */
 function drawBackPt(ctx: CanvasRenderingContext2D, pt: string, centerY: number, k: number, ink: "dark" | "light") {
   const t = titleFont();
@@ -1622,6 +1796,19 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     frame2003: print.frame === "2003",
     released: print.released,
   });
+  // Carta modal: a faixa de baixo resume o outro lado ("Land  {T}: Add {R}.", "Cleric  1{W}"). A
+  // palavra e a habilidade de mana saem em português; o custo é desenho e fica (ver mdfc.ts)
+  const otherSide: 0 | 1 = side === 1 ? 0 : 1;
+  const hint =
+    print.layout === "modal_dfc" && opts.otherFace
+      ? mdfcHint(opts.otherFace, opts.typeLine?.split(" // ")[otherSide] ?? "", print.sides?.[otherSide]?.pt ?? null, print.released)
+      : null;
+  const stripRect = hint
+    ? { ...MDFC_STRIP.erase, x1: hint.mana ? MDFC_STRIP.erase.x1 : mdfcCostLeft(print.sides?.[otherSide]?.mana_cost) - 4 }
+    : null;
+  // (o ponto final de "Add {W}." encosta no fim da faixa, que é inclinado: no meio dela o
+  // apagamento vai até onde a ponta começa, e nos cantos fica antes do fio dela)
+  const stripCorners = hint?.mana ? MDFC_STRIP.corners : [];
   // caixa escura ou sem os fios da barra de tipo: não é a moldura da M15 (ver notM15Frame).
   // Na sem borda a caixa é escura de propósito: valem o aro da caixa e a barra do nome (com
   // arte clara atrás, a letra branca só se lê pelo contorno, ver lightBorderlessBox; com
@@ -1806,7 +1993,18 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       .flatMap((r) => barCapGuard(data, toImg(r), "left", Boolean(frameBox))),
     ...(!manaCost && !rightIcon ? barCapGuard(data, toImg(layout.erase[0].rect), "right", Boolean(frameBox)) : []),
   ];
-  const opaque = [...stampGuard, ...layout.protect.map(toImg), ...symbolGuard];
+  // (a faixa das modais só na moldura comum: as sem borda e as Aventuras não são modais)
+  const strip = stripRect && !frameBox && !advLayout ? stripRect : null;
+  // Na faixa das modais, o selo fica à direita dela: a proteção dele (que segue a borda preta
+  // ligada à cúpula) entrava na faixa e o ponto final de "Add {U}." ficava (Barkchannel
+  // Pathway, KHM 251). Nas linhas da faixa, ela começa onde a faixa acaba.
+  const stampKept = strip ? beside(stampGuard, roundRect(toImg(strip))) : stampGuard;
+  const opaque = [...stampKept, ...layout.protect.map(toImg), ...symbolGuard, ...(strip ? stripCorners.map(toImg) : [])];
+  // Os símbolos da habilidade de mana em inglês têm as duas cores: o disco claro e o desenho
+  // preto. Com a máscara de uma cor só, o miolo do desenho, longe da beira do disco, ficava
+  // (um pingo preto no meio do "Adicione", Drowner of Truth, MH3 253): a faixa passa de novo
+  // com a outra cor.
+  const stripPolarity = strip ? textPolarity(data, roundRect(toImg(strip))) : undefined;
   // as páginas da Aventura escurecem em direção à lombada: a sombra sai antes de apagar e volta
   // depois (ver pageShade)
   const shaded = advLeft && measuredBox ? [measuredBox, advLeft].map((rect) => ({ rect, shade: pageShade(data, rect) })) : [];
@@ -1838,6 +2036,23 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       // (com o limiar mais baixo que o das barras do nome e do tipo, ver ADVENTURE.barThreshold)
       ...advBars.map((r) => ({ rect: toImg(r), threshold: ADVENTURE.barThreshold, fill: "rows" as const })),
       ...(advLeft ? [{ rect: advLeft, threshold: 14, colorThreshold: 34, stains: true, attachedBelow: ADVENTURE.attachedBelow * fy }] : []),
+      // (a faixa das modais é uma barra: fundo e preenchimento linha a linha)
+      ...(strip ? [{ rect: roundRect(toImg(strip)), threshold: 28, fill: "rows" as const, polarity: stripPolarity }] : []),
+      ...(strip && hint?.mana
+        ? [
+            {
+              rect: roundRect(toImg(strip)),
+              threshold: 28,
+              fill: "rows" as const,
+              polarity: stripPolarity === "dark" ? ("light" as const) : ("dark" as const),
+            },
+          ]
+        : []),
+      // na faixa clara, os símbolos têm um halo do disco, até ~24 tons mais escuro que a faixa: o
+      // que o português não cobria ficava (um arco claro no "Ad" do Cragcrown Pathway, ZNR 261)
+      ...(strip && hint?.mana && stripPolarity === "dark"
+        ? [{ rect: roundRect(toImg(strip)), threshold: 14, fill: "rows" as const, polarity: "dark" as const }]
+        : []),
     ],
     [],
     // o selo de promoção (oval holográfico), a aba das cartas de duas faces e a caixa de
@@ -1928,6 +2143,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const typeInk = frameBox ? "light" : (measured[1] ?? "light");
   const boxInk = measured[2] ?? boxPolarity ?? "light";
   const advInks = advLayout ? inks.slice(-3) : [];
+  const stripInk = strip ? stripPolarity : undefined;
   // o lembrete do verso pode passar do lado da caixa, no canto que avança para a moldura (SOI)
   if (backPt && measuredBox && !keepBox) {
     const y1 = layout.box.y1;
@@ -1961,8 +2177,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   if (backPt) drawBackPt(ctx, backPt, layout.box.y1 - BACK_PT_NOTCH.height / 2, k, boxInk);
 
   const box = layout.box;
-  const symbols = await preloadSymbols(face.text_pt, opts.flavor, adv?.text_pt);
+  const symbols = await preloadSymbols(face.text_pt, opts.flavor, adv?.text_pt, strip ? hint?.mana : null);
   const m = measurer(ctx, k);
+  if (strip && hint) drawMdfcHint(ctx, hint, strip.x1, k, stripInk ?? "light", symbols);
   if (advLayout && adv && advCenters) {
     const centers = advCenters;
     drawLine(

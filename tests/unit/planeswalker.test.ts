@@ -8,7 +8,10 @@ import {
   isTallPlaneswalker,
   measureBoxBottom,
   measureTallPlaneswalker,
+  moveBands,
+  planeswalkerBounds,
   planeswalkerRows,
+  type PwRow,
   splitAbilities,
   stripLoyaltyCost,
 } from "../../src/engine/planeswalker";
@@ -193,5 +196,79 @@ describe("countLoyaltyAbilities", () => {
   });
   it("acha os custos mesmo sem quebra de linha (texto impresso)", () => {
     expect(countLoyaltyAbilities("+1: Compre um card.−2: Revele.−7: Você recebe um emblema.")).toBe(3);
+  });
+});
+
+describe("planeswalkerBounds (as divisas mudam de lugar para o texto em PT caber)", () => {
+  // como o Will Kenrith (BBD 1): três escudos e as duas estáticas embaixo
+  const rows: PwRow[] = [
+    { y0: 588, y1: 673, loyalty: true, paragraphs: 1, icon: 625 },
+    { y0: 673, y1: 757, loyalty: true, paragraphs: 1, icon: 712 },
+    { y0: 757, y1: 850, loyalty: true, paragraphs: 1, icon: 800 },
+    { y0: 850, y1: 944, loyalty: false, paragraphs: 2 },
+  ];
+
+  it("com o texto cabendo, as divisas ficam onde estão", () => {
+    expect(planeswalkerBounds(rows, [80, 80, 90, 60])).toEqual([673, 757, 850]);
+  });
+
+  it("a faixa que cresceu toma o espaço das outras, sem passar da folga dos escudos", () => {
+    // o −8 em PT tem uma linha a mais; a estática de baixo é curta e cede o espaço
+    expect(planeswalkerBounds(rows, [70, 80, 120, 50])).toEqual([673, 757, 877]);
+    // o −2, preso entre dois escudos: as duas divisas dele se afastam até a folga deles
+    expect(planeswalkerBounds(rows, [70, 100, 80, 50])).toEqual([670, 770, 850]);
+    expect(planeswalkerBounds(rows, [50, 115, 80, 50])).toEqual([655, 770, 850]);
+  });
+
+  it("sem como caber, nada muda", () => {
+    expect(planeswalkerBounds(rows, [80, 200, 80, 50])).toBeNull();
+    expect(planeswalkerBounds(rows, [80, 80, 90, 120])).toBeNull();
+  });
+
+  it("estática em cima: a divisa desce até a folga do primeiro escudo", () => {
+    const top: PwRow[] = [
+      { y0: 656, y1: 700, loyalty: false, paragraphs: 1 },
+      { y0: 700, y1: 790, loyalty: true, paragraphs: 1, icon: 745 },
+      { y0: 790, y1: 944, loyalty: true, paragraphs: 1, icon: 860 },
+    ];
+    expect(planeswalkerBounds(top, [58, 80, 80])).toEqual([714, 794]);
+    expect(planeswalkerBounds(top, [60, 80, 80])).toBeNull();
+  });
+});
+
+describe("moveBands", () => {
+  /** caixa de 745×1040 com o tom 216 em cima e 200 embaixo, com a rampa de 5 linhas em `edge` */
+  function bands(edge: number): ImageData {
+    const width = 745;
+    const height = 1040;
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let y = 0; y < height; y++) {
+      const t = Math.min(1, Math.max(0, (y - (edge - 2) + 1) / 6));
+      const v = 216 + (200 - 216) * t;
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        data[i] = data[i + 1] = data[i + 2] = Math.round(v);
+        data[i + 3] = 255;
+      }
+    }
+    return { width, height, data, colorSpace: "srgb" } as ImageData;
+  }
+  const at = (img: ImageData, y: number, x = 400) => img.data[(y * img.width + x) * 4];
+
+  it("leva a divisa para o lugar novo e deixa o resto como estava", () => {
+    const img = bands(700);
+    moveBands(img, 656, 944, [700], [720]);
+    expect(at(img, 660)).toBe(216);
+    for (let y = 690; y < 716; y++) expect(Math.abs(at(img, y) - 216)).toBeLessThanOrEqual(1);
+    for (let y = 724; y < 940; y++) expect(Math.abs(at(img, y) - 200)).toBeLessThanOrEqual(1);
+    // fora da caixa (x < 90), nada muda
+    expect(at(img, 710, 60)).toBe(200);
+  });
+
+  it("sem mudança de tom, nada muda", () => {
+    const img = bands(2000);
+    const before = img.data.slice();
+    moveBands(img, 656, 944, [700], [720]);
+    expect(img.data).toEqual(before);
   });
 });

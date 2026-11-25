@@ -910,6 +910,24 @@ class ArenaHints(unittest.TestCase):
         # dica em PT ainda em inglês (DiscoverN) não serve
         self.assertIsNone(hint_reminder("Look at the top two cards of your library.", dread["en"], dread["en"]))
 
+    def test_numero_por_extenso(self):
+        # "two" na carta e {numeral} na dica: em PT sai por extenso, concordando com a palavra seguinte
+        mobilize = {
+            "en": "Whenever this creature attacks, create {numeral} tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step.",
+            "pt": "Toda vez que esta criatura atacar, crie {numeral} fichas de criatura Guerreiro vermelha 1/1 viradas e atacando. Sacrifique-as no início da próxima etapa final.",
+        }
+        rem = "Whenever this creature attacks, create two tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step."
+        self.assertEqual(
+            hint_reminder(rem, mobilize["en"], mobilize["pt"]),
+            "Toda vez que esta criatura atacar, crie duas fichas de criatura Guerreiro vermelha 1/1 viradas e atacando. Sacrifique-as no início da próxima etapa final.",
+        )
+        self.assertIn("crie três fichas", hint_reminder(rem.replace("two", "three"), mobilize["en"], mobilize["pt"]))
+        empower = {"en": "Put {numeral} loyalty counters on a Jace token you control.", "pt": "Coloque {numeral} marcadores de lealdade em uma ficha de Jace que você controla."}
+        self.assertEqual(hint_reminder("Put two loyalty counters on a Jace token you control.", empower["en"], empower["pt"]), "Coloque dois marcadores de lealdade em uma ficha de Jace que você controla.")
+        self.assertEqual(hint_reminder("Put six loyalty counters on a Jace token you control.", empower["en"], empower["pt"]), "Coloque seis marcadores de lealdade em uma ficha de Jace que você controla.")
+        # o artigo não é número: o singular tem a dica dele (Mobilize_1)
+        self.assertIsNone(hint_reminder("Whenever this creature attacks, create a tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step.", mobilize["en"], mobilize["pt"]))
+
     def test_it_so_quando_e_a_propria_carta(self):
         # "It deals damage…" vira "Este card causa dano…" no Wither da própria carta, nunca no da criatura equipada (Fists of the Demigod)
         wither = {"key": "AbilityHanger/Keyword/Wither_Body", "en": "This deals damage to creatures in the form of -1/-1 counters.", "pt": "Este card causa dano a criaturas na forma de marcadores -1/-1."}

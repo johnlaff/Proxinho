@@ -108,6 +108,60 @@ const DFC = {
 };
 
 /**
+ * A faixa de baixo das cartas modais (ADR 0029), medida em ZNR, KHM, STX, MH3, SPM e MSH: o
+ * miolo vai de y ≈ 927 a 965 (925 a 964 nas digitalizações novas, de 744 px), o triângulo
+ * acaba em x ≈ 44 e a ponta da direita começa em ≈ 322. A palavra começa em x ≈ 52,5, com as
+ * maiúsculas de 937 a 954; o custo e a habilidade de mana acabam em x ≈ 320, e os símbolos têm
+ * ~24 px. O apagamento fica dentro do miolo nas duas digitalizações.
+ */
+export const MDFC_STRIP = {
+  /**
+   * o que se apaga; com a habilidade de mana, até 327 (o ponto final de "Add {W}." vai até
+   * ≈ 324, Hengegate Pathway, KHM 260), menos os cantos, onde o fio inclinado da ponta da
+   * faixa começa antes disso (de x ≈ 320 em y 929 a 326 em 938, e de 326 em 957 a 322 em
+   * 961, medido nas 382 faces modais)
+   */
+  erase: { x0: 48, y0: 929, x1: 327, y1: 962 },
+  corners: [
+    { x0: 320, y0: 929, x1: 327, y1: 939 },
+    { x0: 321, y0: 956, x1: 327, y1: 962 },
+  ],
+  /** onde a palavra é escrita (a Beleren recua 3 px, ver `titleFont`: a primeira letra cai em ≈ 52,5) */
+  wordX: 55,
+  right: 320,
+  /** o centro dos símbolos, e o das maiúsculas da palavra (de ≈ 937 a 954) */
+  centerY: 945,
+  wordCenterY: 946,
+  /** opacidade do disco dos símbolos na faixa clara (ver `faintDisc` em render.ts) */
+  disc: 0.45,
+  /** corpo da palavra (Beleren) e da habilidade de mana (MPlantin), e o diâmetro dos símbolos */
+  wordSize: 22.5,
+  manaSize: 22,
+  symbol: 24,
+};
+
+/**
+ * Onde começa o custo de mana na faixa das modais: cada símbolo ocupa ~24 px e os híbridos
+ * ~27 (o {W/B} de Glasswing Grace, MH3 254), e o último acaba em x ≈ 320.
+ */
+export function mdfcCostLeft(manaCost: string | null | undefined): number {
+  const symbols = manaCost?.match(/\{[^}]+\}/g) ?? [];
+  return MDFC_STRIP.right - symbols.reduce((w, s) => w + (s.includes("/") ? 27 : 24), 0);
+}
+
+/** `rects` sem o que fica à esquerda do fim de `hole`, nas linhas dele (o resto fica igual). */
+export function beside(rects: Rect[], hole: Rect): Rect[] {
+  return rects.flatMap((r) => {
+    if (r.y1 <= hole.y0 || r.y0 >= hole.y1 || r.x0 >= hole.x1) return [r];
+    const parts: Rect[] = [];
+    if (r.y0 < hole.y0) parts.push({ ...r, y1: hole.y0 });
+    if (r.x1 > hole.x1) parts.push({ x0: hole.x1, y0: Math.max(r.y0, hole.y0), x1: r.x1, y1: Math.min(r.y1, hole.y1) });
+    if (r.y1 > hole.y1) parts.push({ ...r, y0: hole.y1 });
+    return parts;
+  });
+}
+
+/**
  * Proteção da caixa de P/R (escala-base), a partir do topo e do lado esquerdo medidos
  * (`ptBoxTop`, `ptBoxLeft`, este 22 px abaixo do topo). O canto de cima da caixa é
  * arredondado: nas primeiras linhas ela começa uns pixels mais à direita. Com um

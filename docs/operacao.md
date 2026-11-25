@@ -38,9 +38,10 @@ curl -s https://proxinho.johnlaff.com/api/health    # dataUpdatedAt de hoje
 pnpm regressao                          # ~630 cartas desta árvore contra origin/main (as da main ficam guardadas)
 pnpm regressao -- --sem-rede            # rodada rápida, sem as faces da rede neural
 pnpm regressao -- --grupo "sem borda"   # só um grupo da amostra
-pnpm regressao -- --base HEAD --ruido   # o ruído: o mesmo código montado duas vezes (deve dar zero fora da rede neural)
+pnpm regressao -- --base HEAD --ruido   # o ruído: o mesmo código montado duas vezes (deve dar zero; deu zero nas 649 faces em 25/11)
+pnpm regressao -- --amostra modais.json # outra lista de impressões (todas as de uma moldura, ao mexer nela)
 ```
-Abra `.regressao/relatorio/index.html`: cada carta que mudou vem com antes, depois, a diferença e o zoom no trecho que mudou. Toda mudança tem de ser a pretendida; a que não for é regressão e segura a publicação. As imagens ficam só em `.regressao/` (fora do Git: o repositório é público). Sem download de navegador, `PW_CHROMIUM_PATH=/caminho/do/chrome`. Para trocar a amostra de propósito (uma moldura nova, um erro novo no AGENTS.md), `pnpm data:build` e `python3 scripts/regressao/amostra.py`, e diga no commit por quê; as cartas citadas no AGENTS.md e nos ADRs como "COLEÇÃO NÚMERO" entram sozinhas.
+Abra `.regressao/relatorio/index.html`: cada carta que mudou vem com antes, depois, a diferença e o zoom no trecho que mudou. Toda mudança tem de ser a pretendida; a que não for é regressão e segura a publicação. As imagens ficam só em `.regressao/` (fora do Git: o repositório é público). Sem download de navegador, `PW_CHROMIUM_PATH=/caminho/do/chrome`. Cada rodada sobe a página de cada lado num `vite preview` em porta livre e o encerra no fim: um servidor que sobre de uma rodada interrompida não responde no lugar do código novo. Para trocar a amostra de propósito (uma moldura nova, um erro novo no AGENTS.md), `pnpm data:build` e `python3 scripts/regressao/amostra.py`, e diga no commit por quê; as cartas citadas no AGENTS.md e nos ADRs como "COLEÇÃO NÚMERO" entram sozinhas.
 
 **Ícones do app e prévia do link:** `node scripts/marca.mjs` regrava `public/icone-*.png`, `public/apple-touch-icon.png` e `public/og.png` a partir da marca (desenhada no próprio script, com as cores e a fonte do DESIGN.md).
 

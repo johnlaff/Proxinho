@@ -20,6 +20,9 @@
  *                     http://localhost:5173
  *   --sem-rede        pula as faces que passam pela rede neural (sem borda, planeswalkers, naves)
  *   --grupo NOME      só um grupo da amostra ("sem borda", "2003", "citada nos documentos"...)
+ *   --amostra ARQUIVO outra lista de impressões, no formato de amostra.json (para conferir todas as
+ *                     impressões de uma moldura ao mexer nela; a regra de publicar continua sendo a
+ *                     amostra fixa)
  *   --paginas N       montagens comuns ao mesmo tempo (padrão 3; a rede neural tem uma à parte)
  *   --de-novo         monta as duas de novo, sem as montagens guardadas
  *   --ruido           monta o lado novo de novo do zero (com --base HEAD, mede a variação entre duas
@@ -35,6 +38,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { createServer } from "node:net";
 import { join, resolve } from "node:path";
 import { drawingHash } from "../codigo.ts";
 
@@ -51,6 +55,7 @@ const API = opt("--api", "https://proxinho.johnlaff.com").replace(/\/$/, "");
 const PAGES = Number(opt("--paginas", "3"));
 const THRESHOLD = Number(opt("--limiar", "24"));
 const GROUP = opt("--grupo");
+const SAMPLE = opt("--amostra");
 const NO_NEURAL = flag("--sem-rede");
 const KIND = "impressao:padrao";
 
@@ -59,7 +64,7 @@ const run = (cmd, argv, cwd = ROOT) => execFileSync(cmd, argv, { cwd, stdio: ["i
 
 /** A amostra, ou só um grupo dela. */
 function sample() {
-  const all = JSON.parse(readFileSync(join(import.meta.dirname, "amostra.json"), "utf8"));
+  const all = JSON.parse(readFileSync(SAMPLE ? resolve(SAMPLE) : join(import.meta.dirname, "amostra.json"), "utf8"));
   return GROUP ? all.filter((s) => s.grupo === GROUP) : all;
 }
 
@@ -93,26 +98,53 @@ function buildPage(dir, hash) {
   return out;
 }
 
-/** Serve um build da página com o isolamento de origem (as threads da rede neural pedem). */
-async function serve(outDir, port) {
+/** Uma porta livre agora (o sistema escolhe). */
+function freePort() {
+  return new Promise((ok, fail) => {
+    const srv = createServer();
+    srv.once("error", fail);
+    srv.listen(0, "127.0.0.1", () => {
+      const { port } = srv.address();
+      srv.close(() => ok(port));
+    });
+  });
+}
+
+/**
+ * Serve um build da página com o isolamento de origem (as threads da rede neural pedem). Numa porta
+ * livre e num grupo de processos próprio, parado inteiro no fim: com uma porta fixa, o `vite
+ * preview` de uma rodada anterior (o `pnpm` morria e o `vite` ficava) respondia no lugar do build
+ * novo, e a rodada comparava o código velho com ele mesmo sem nenhum aviso.
+ */
+async function serve(outDir) {
+  const port = await freePort();
   const child = spawn(
     "pnpm",
     ["exec", "vite", "preview", "--config", "vite.montagem.config.ts", "--outDir", outDir, "--port", String(port), "--strictPort"],
     {
       cwd: ROOT,
       stdio: "ignore",
+      detached: true,
     },
   );
+  const stop = () => {
+    try {
+      process.kill(-child.pid, "SIGTERM");
+    } catch {
+      /* já parou */
+    }
+  };
+  process.once("exit", stop);
   const url = `http://localhost:${port}/scripts/montagem/index.html`;
   for (let i = 0; i < 100; i++) {
     try {
-      if ((await fetch(url)).ok) return { url, stop: () => child.kill() };
+      if ((await fetch(url)).ok) return { url, stop };
     } catch {
       /* ainda subindo */
     }
     await new Promise((r) => setTimeout(r, 200));
   }
-  child.kill();
+  stop();
   throw new Error(`a página do montador não subiu em ${url}`);
 }
 
@@ -369,8 +401,8 @@ async function main() {
 
   const { chromium } = createRequire(import.meta.url)("@playwright/test");
   const browser = await chromium.launch({ args: ["--enable-unsafe-webgpu"], executablePath: process.env.PW_CHROMIUM_PATH || undefined });
-  const sA = await serve(basePage, 5301);
-  const sB = baseHash === newHash ? sA : await serve(newPage, 5302);
+  const sA = await serve(basePage);
+  const sB = baseHash === newHash ? sA : await serve(newPage);
   try {
     // cada montagem fica guardada pelo resumo do código e pela data dos dados (o resumo cobre todo
     // arquivo que muda o desenho, como a chave das cartas do servidor; `--de-novo` monta tudo de novo)
@@ -381,8 +413,12 @@ async function main() {
     const newDir = flag("--ruido") ? `${tag(newHash)}-ruido` : tag(newHash);
     if (flag("--ruido")) rmSync(newDir, { recursive: true, force: true });
     if (flag("--de-novo")) for (const d of [baseDir, newDir]) rmSync(d, { recursive: true, force: true });
-    const baseMeta = await renderAll(browser, sA.url, baseDir, items);
-    const newMeta = await renderAll(browser, sB.url, newDir, items);
+    // (a pasta de cada lado guarda as faces de todas as rodadas; a comparação fica só com as desta
+    // amostra, senão um `--grupo` ou `--amostra` listava as outras como "saiu da amostra")
+    const prints = new Set(items.map((s) => `${s.set}|${s.number}`));
+    const only = (meta) => Object.fromEntries(Object.entries(meta).filter(([, m]) => prints.has(`${m.set}|${m.number}`)));
+    const baseMeta = only(await renderAll(browser, sA.url, baseDir, items));
+    const newMeta = only(await renderAll(browser, sB.url, newDir, items));
     const outDir = join(WORK, "relatorio");
     const rows = await compare(browser, baseDir, newDir, baseMeta, newMeta, outDir);
     const total = Object.keys(newMeta).length;
