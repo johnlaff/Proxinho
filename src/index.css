@@ -473,13 +473,55 @@ a:hover {
   list-style: none;
 }
 .missing li {
+  padding: 2px 0;
+  border-bottom: 1px solid var(--paper-2);
+  font-variant-numeric: tabular-nums;
+}
+.missing-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 2px 0;
-  border-bottom: 1px solid var(--paper-2);
-  font-variant-numeric: tabular-nums;
+}
+/* "Você quis dizer": as cartas parecidas, cada uma um botão que põe a carta no pedido */
+.missing-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0 0 8px;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+.hint-btn {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--cyan-ink);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  color: var(--cyan-ink);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.hint-btn:hover:not(:disabled) {
+  background: var(--cyan-wash);
+}
+.hint-btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+.msg--action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding-block: 4px;
+}
+.msg .input {
+  width: 100%;
+  margin-top: 6px;
 }
 
 /* resumo com legenda */
@@ -493,14 +535,36 @@ a:hover {
   padding: 0;
   list-style: none;
 }
+/* cada linha da legenda filtra a prova (aria-pressed): toque de novo para ver todas */
 .legend-row {
   display: grid;
   grid-template-columns: 14px 1fr auto;
   align-items: center;
   gap: 10px;
-  padding: 7px 0;
+  width: 100%;
+  min-height: 44px;
+  padding: 7px 6px;
+  border: 0;
   border-bottom: 1px solid var(--rule);
+  background: none;
+  color: inherit;
+  font: inherit;
   font-size: 0.9375rem;
+  text-align: left;
+  cursor: pointer;
+}
+.legend-row:hover {
+  background: var(--paper-2);
+}
+.legend-row[aria-pressed="true"] {
+  background: var(--y);
+  font-weight: 650;
+}
+.order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+  margin-top: 4px;
 }
 .legend-num {
   font-weight: 700;
@@ -740,9 +804,17 @@ a:hover {
   border-bottom: 2px solid var(--k);
 }
 .proof-bar-count {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
   font-weight: 700;
   font-stretch: 90%;
   font-variant-numeric: tabular-nums;
+}
+.proof-bar-count .btn--quiet {
+  min-height: 44px;
+  padding-block: 0;
 }
 .sheets {
   display: grid;
@@ -1008,6 +1080,7 @@ button.slot:focus-visible .slot-card {
   justify-content: space-between;
   gap: 4px;
   min-height: 1.3em;
+  line-height: 1.3;
   font-size: clamp(0.6875rem, 1.3vw, 0.8125rem);
   font-weight: 600;
   font-stretch: 72%;

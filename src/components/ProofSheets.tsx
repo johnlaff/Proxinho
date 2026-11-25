@@ -12,12 +12,32 @@ import { usePreview } from "./usePreview";
 import { ColorBar, CropCorners, RegMark } from "./RegMark";
 import { OutcomeTag } from "./OutcomeTag";
 
-export function ProofSheets({ entries, slug, onOpen }: { entries: Entry[]; slug: string; onOpen: (key: string) => void }) {
+/**
+ * `filtered`: as folhas mostram só as cartas de um resultado da legenda (o PDF continua com
+ * todas), e a folha diz "Filtro" para não passar pela folha de verdade com esse número.
+ */
+export function ProofSheets({
+  entries,
+  slug,
+  onOpen,
+  filtered = false,
+}: {
+  entries: Entry[];
+  slug: string;
+  onOpen: (key: string) => void;
+  filtered?: boolean;
+}) {
   const sheets = toSheets(entries);
+  const name = filtered ? "Filtro" : "Folha";
   return (
     <div className="sheets">
       {sheets.map((slots, si) => (
-        <Sheet key={si} label={`Folha ${si + 1}/${sheets.length}`} slug={slug} ariaLabel={`Folha ${si + 1} de ${sheets.length}`}>
+        <Sheet
+          key={si}
+          label={`${name} ${si + 1}/${sheets.length}`}
+          slug={slug}
+          ariaLabel={`${filtered ? "Cartas filtradas, folha" : "Folha"} ${si + 1} de ${sheets.length}`}
+        >
           <ol className="sheet-grid">
             {slots.map(({ entry, side }, i) => (
               <li key={`${entry.key}-${side}-${i}`}>
@@ -83,6 +103,8 @@ export function BlankSlots({ count }: { count: number }) {
           <div className="slot-card">
             <CropCorners />
           </div>
+          {/* a linha da legenda, vazia: sem ela, a folha de exemplo crescia quando as cartas chegavam (CLS) */}
+          <span className="slot-caption" />
         </li>
       ))}
     </>

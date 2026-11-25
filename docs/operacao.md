@@ -33,6 +33,17 @@ pnpm build && pnpm exec wrangler deploy             # site e API
 curl -s https://proxinho.johnlaff.com/api/health    # dataUpdatedAt de hoje
 ```
 
+**Regressão visual antes de publicar uma mudança no desenho** (ADR 0027): toda mudança que muda `node scripts/codigo.ts` (o motor, as fontes livres, a entrada da carta) passa por ela antes de publicar.
+```bash
+pnpm regressao                          # ~630 cartas desta árvore contra origin/main (as da main ficam guardadas)
+pnpm regressao -- --sem-rede            # rodada rápida, sem as faces da rede neural
+pnpm regressao -- --grupo "sem borda"   # só um grupo da amostra
+pnpm regressao -- --base HEAD --ruido   # o ruído: o mesmo código montado duas vezes (deve dar zero fora da rede neural)
+```
+Abra `.regressao/relatorio/index.html`: cada carta que mudou vem com antes, depois, a diferença e o zoom no trecho que mudou. Toda mudança tem de ser a pretendida; a que não for é regressão e segura a publicação. As imagens ficam só em `.regressao/` (fora do Git: o repositório é público). Sem download de navegador, `PW_CHROMIUM_PATH=/caminho/do/chrome`. Para trocar a amostra de propósito (uma moldura nova, um erro novo no AGENTS.md), `pnpm data:build` e `python3 scripts/regressao/amostra.py`, e diga no commit por quê; as cartas citadas no AGENTS.md e nos ADRs como "COLEÇÃO NÚMERO" entram sozinhas.
+
+**Ícones do app e prévia do link:** `node scripts/marca.mjs` regrava `public/icone-*.png`, `public/apple-touch-icon.png` e `public/og.png` a partir da marca (desenhada no próprio script, com as cores e a fonte do DESIGN.md).
+
 **Voltar o site para a versão anterior:**
 ```bash
 pnpm exec wrangler deployments list
@@ -80,6 +91,9 @@ pnpm exec wrangler d1 execute proxinho --remote --command "SELECT count(*) FROM 
 | Cartas novas do Arena sem português | Untapped ainda não publicou o arquivo novo | Esperar o próximo ciclo; rodar o workflow manualmente |
 | Prévias não carregam ("Não carregou") | CDN do Scryfall lento ou fora | Nada a fazer do nosso lado; o botão tenta de novo |
 | Importar do Archidekt falha | Deck privado ou API mudou | Testar `GET /api/import?url=...`; ver `worker/importers.ts` |
+| "Este link de pedido veio cortado ou alterado" | O app de mensagens cortou o link ou trocou caracteres | Pedir o link de novo (copiado inteiro); o pedido guardado de quem abriu não é apagado. Ver `decodeOrder` em `src/app/order.ts` |
+| Pedido guardado não volta ao recarregar | Navegador em modo anônimo, armazenamento do site apagado, ou a API fora do ar na hora de abrir (o pedido continua guardado e volta na próxima visita) | Ver `proxinho:pedido` no `localStorage` (Ferramentas do desenvolvedor → Aplicativo) |
+| "Você quis dizer…?" não aparece | `POST /api/sugestoes` falhou (a lista de nomes não encontrados continua, sem sugestões) ou nada parecido passou da nota 6 | Testar `curl -s -X POST https://proxinho.johnlaff.com/api/sugestoes -H 'content-type: application/json' -d '{"names":[{"name":"Sol Rng"}]}'`; ver `src/lib/suggest.ts` |
 | Busca vazia por alguns segundos às 04h17 | Recarga do banco (apaga e reinsere) | Esperado; ver ADR 0004 |
 | Planeswalker com mancha borrada na caixa de texto | O LaMa não carregou e o motor usou o preenchimento simples | Ver o console do navegador ("preenchimento por rede neural indisponível"); conferir se `/modelos/` foi publicado (o build avisa se o download falhou) |
 | Prévia de planeswalker ou de arte sem borda parada no rascunho, sem a parte avançar | A rede neural travou (uma thread do WebAssembly que não sobe, como no Firefox do celular) ou está lenta na CPU | O vigia troca a worker pela do degrau seguinte (o console diz "a rede neural falhou; tentando num modo mais simples"); o limite de cada quadro segue o ritmo medido. Ver `LIMITS`, `MODES`, `nextMode` e `runLimit` em `src/engine/lama.ts` e `pnpm test` (`tests/unit/lama.test.ts`) |

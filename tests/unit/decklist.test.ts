@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeLines, parseDecklist } from "../../src/lib/decklist";
+import { mergeLines, parseDecklist, renameInList } from "../../src/lib/decklist";
 
 describe("parseDecklist", () => {
   it("lê o formato simples do MTGO", () => {
@@ -18,6 +18,14 @@ describe("parseDecklist", () => {
 
   it("lê coleção e número no formato Arena/Moxfield", () => {
     expect(parseDecklist("1 Sol Ring (C21) 263 *F*")).toMatchObject([{ name: "Sol Ring", set: "c21", number: "263", foil: true }]);
+  });
+
+  it("lê a marca *PT* do próprio Proxinho (a imagem oficial em português)", () => {
+    expect(parseDecklist("1 Sensory Deprivation *PT*\n1 Spirit (TSTX) 3 *pt*")).toMatchObject([
+      { name: "Sensory Deprivation", pt: true },
+      { name: "Spirit", set: "tstx", number: "3", pt: true },
+    ]);
+    expect(parseDecklist("1 Sol Ring")[0].pt).toBeUndefined();
   });
 
   it("limpa categorias e tags do Archidekt", () => {
@@ -70,5 +78,20 @@ describe("parseDecklist", () => {
 describe("mergeLines", () => {
   it("soma linhas repetidas", () => {
     expect(mergeLines(parseDecklist("1 Forest\n2 Forest"))).toMatchObject([{ name: "Forest", quantity: 3 }]);
+  });
+
+  it("não junta a imagem em português com a arte em inglês da mesma carta", () => {
+    expect(mergeLines(parseDecklist("1 Sensory Deprivation\n1 Sensory Deprivation *PT*"))).toHaveLength(2);
+  });
+});
+
+describe("renameInList", () => {
+  it("troca só o nome, só nas linhas daquela carta", () => {
+    const text = "Deck\n2x Sol Rng (C21) 263 [Ramp]\n1 Sol Rngs\nSB: 1 Sol Rng";
+    expect(renameInList(text, "Sol Rng", "Sol Ring")).toBe("Deck\n2x Sol Ring (C21) 263 [Ramp]\n1 Sol Rngs\nSB: 1 Sol Ring");
+  });
+
+  it("não mexe em cabeçalhos com o mesmo texto", () => {
+    expect(renameInList("Deck\n1 Deck", "Deck", "Decree of Pain")).toBe("Deck\n1 Decree of Pain");
   });
 });

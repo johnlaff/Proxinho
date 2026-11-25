@@ -13,7 +13,7 @@ Qualquer pessoa cola a lista do deck e, em poucos minutos, baixa um PDF com as c
 Como jogador, quero colar a lista exportada de qualquer site para não digitar carta por carta.
 - [x] Aceita "1 Nome", "1x Nome", "Nome", "1 Nome (SET) 123", "*F*", seções Commander/Comandante/Sideboard, categorias do Archidekt e nomes em português.
 - [x] Ignora o maybeboard. A seção "Tokens"/"Fichas" entra como fichas (desde 17/11/2026).
-- [x] Mostra os nomes não encontrados, com a quantidade, e permite ignorá-los.
+- [x] Mostra os nomes não encontrados, com a quantidade, e permite ignorá-los; sugere até três nomes parecidos para cada um (desde 25/11/2026, H17).
 
 ### H2. Importar por link
 - [x] Link público do Archidekt importa comandante e deck, sem o maybeboard.
@@ -130,3 +130,12 @@ Como jogador, quero o texto oficial das cartas que saíram em PT mesmo quando o 
 - [x] As 86 cartas de Dragon's Maze saem com o texto oficial, transcrito da imagem da carta em PT, com o nome, o tipo e o flavor dela, e a etiqueta de texto oficial.
 - [x] O texto é o da carta física, com os erros dela; a carta de 1995 com as regras daquele tempo (Sewers of Estark) fica só com o nome em PT e a tradução não oficial.
 - [x] Quando o Scryfall trouxer o texto, ele entra no lugar sozinho.
+
+### H17. Pedido guardado, link do pedido e nomes parecidos (entregue em 25/11/2026, ADR 0028)
+Como jogador, quero que o pedido revisado continue lá quando eu voltar, mandar o mesmo pedido a um amigo e corrigir um nome errado sem refazer a lista.
+- [x] O pedido volta como estava ao recarregar ou reabrir o navegador: as cartas, as quantidades, as artes escolhidas (inclusive a imagem oficial em PT), as fichas e os nomes não encontrados, com o aviso "Seu último pedido voltou como você deixou.".
+- [x] "Começar outro pedido" apaga o pedido e a lista colada, com "Desfazer".
+- [x] "Copiar link do pedido" copia um link com o pedido inteiro (no celular, abre o compartilhar do sistema); quem abre recebe as mesmas cartas e artes, e a lista na aba "Colar lista". O pedido vai depois do `#` e nunca chega ao servidor. Link cortado ou alterado dá um aviso e não apaga o pedido guardado.
+- [x] A linha com coleção e número acha a impressão pedida mesmo entre fichas de mesmo nome e em cartas com mais de 80 impressões.
+- [x] Cada nome não encontrado mostra até três cartas parecidas ("Você quis dizer…?": erro de digitação, nome pela metade, palavras do nome); tocar numa põe a carta no pedido com a quantidade da linha e corrige o nome na lista colada.
+- [x] Cada linha da legenda do resumo filtra a prova pelas cartas daquele resultado (por exemplo, só as que saem em inglês); as folhas filtradas dizem "Filtro" e o PDF continua com todas.

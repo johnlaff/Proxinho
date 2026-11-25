@@ -106,35 +106,38 @@ function PastePanel({
     onBuild();
   }
   return (
-    <form id={id} role="tabpanel" aria-labelledby={labelledBy} className="panel" onSubmit={submit}>
-      <label className="field-label" htmlFor={`${id}-text`}>
-        Lista do deck
-      </label>
-      <textarea
-        id={`${id}-text`}
-        className="decklist"
-        value={text}
-        onChange={(e) => onText(e.target.value)}
-        aria-describedby={help}
-        spellCheck={false}
-        autoComplete="off"
-        placeholder={"1 Sol Ring\n1 Anel Solar\n1x Llanowar Elves (M19) 314\n…"}
-        rows={11}
-      />
-      <p id={help} className="hint">
-        Vale lista do Archidekt, Moxfield, Liga Magic, MTGO ou Arena, com nomes em inglês ou português.
-      </p>
-      <div className="actions">
-        <button type="submit" className="btn btn--primary" disabled={busy || !text.trim()}>
-          {busy ? "Montando…" : "Montar folhas"}
-        </button>
-        {!text.trim() && (
-          <button type="button" className="btn btn--quiet" onClick={() => onText(EXAMPLE_LIST)}>
-            Usar uma lista de exemplo
+    // o papel de aba fica num div: num <form> o ARIA não aceita "tabpanel" (axe: aria-allowed-role)
+    <div id={id} role="tabpanel" aria-labelledby={labelledBy}>
+      <form className="panel" onSubmit={submit}>
+        <label className="field-label" htmlFor={`${id}-text`}>
+          Lista do deck
+        </label>
+        <textarea
+          id={`${id}-text`}
+          className="decklist"
+          value={text}
+          onChange={(e) => onText(e.target.value)}
+          aria-describedby={help}
+          spellCheck={false}
+          autoComplete="off"
+          placeholder={"1 Sol Ring\n1 Anel Solar\n1x Llanowar Elves (M19) 314\n…"}
+          rows={11}
+        />
+        <p id={help} className="hint">
+          Vale lista do Archidekt, Moxfield, Liga Magic, MTGO ou Arena, com nomes em inglês ou português.
+        </p>
+        <div className="actions">
+          <button type="submit" className="btn btn--primary" disabled={busy || !text.trim()}>
+            {busy ? "Montando…" : "Montar folhas"}
           </button>
-        )}
-      </div>
-    </form>
+          {!text.trim() && (
+            <button type="button" className="btn btn--quiet" onClick={() => onText(EXAMPLE_LIST)}>
+              Usar uma lista de exemplo
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -142,39 +145,38 @@ function LinkPanel({ id, labelledBy, busy, onImport }: { id: string; labelledBy:
   const [url, setUrl] = useState("");
   const help = useId();
   return (
-    <form
-      id={id}
-      role="tabpanel"
-      aria-labelledby={labelledBy}
-      className="panel"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (url.trim()) onImport(url.trim());
-      }}
-    >
-      <label className="field-label" htmlFor={`${id}-url`}>
-        Link do deck no Archidekt ou no Moxfield
-      </label>
-      <input
-        id={`${id}-url`}
-        className="input"
-        type="url"
-        inputMode="url"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        placeholder="https://archidekt.com/decks/…"
-        aria-describedby={help}
-        autoComplete="off"
-      />
-      <p id={help} className="hint">
-        O deck precisa estar público. Se o Moxfield recusar, use Exportar → Copiar texto lá e cole na aba “Colar lista”.
-      </p>
-      <div className="actions">
-        <button type="submit" className="btn btn--primary" disabled={busy || !url.trim()}>
-          {busy ? "Importando…" : "Importar deck"}
-        </button>
-      </div>
-    </form>
+    <div id={id} role="tabpanel" aria-labelledby={labelledBy}>
+      <form
+        className="panel"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (url.trim()) onImport(url.trim());
+        }}
+      >
+        <label className="field-label" htmlFor={`${id}-url`}>
+          Link do deck no Archidekt ou no Moxfield
+        </label>
+        <input
+          id={`${id}-url`}
+          className="input"
+          type="url"
+          inputMode="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://archidekt.com/decks/…"
+          aria-describedby={help}
+          autoComplete="off"
+        />
+        <p id={help} className="hint">
+          O deck precisa estar público. Se o Moxfield recusar, use Exportar → Copiar texto lá e cole na aba “Colar lista”.
+        </p>
+        <div className="actions">
+          <button type="submit" className="btn btn--primary" disabled={busy || !url.trim()}>
+            {busy ? "Importando…" : "Importar deck"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 

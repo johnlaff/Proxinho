@@ -4,9 +4,9 @@
  * Este componente guarda o estado do pedido e liga as partes:
  * ordem de serviço (esquerda) → prova das folhas (direita) → PDF.
  */
-import { Download, ExternalLink } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { cardsById, importFromUrl, resolveNames, type Resolved, type SearchHit } from "./app/api";
+import { Download, ExternalLink, Link2, RotateCcw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { cardsById, importFromUrl, resolveNames, suggestNames, type NameSuggestion, type Resolved, type SearchHit } from "./app/api";
 import type { ExportProgress } from "./app/exportPdf";
 import { warmPrints, type Quality } from "./app/printFaces";
 import {
@@ -15,30 +15,32 @@ import {
   entriesFrom,
   mergeEntries,
   orderedCards,
+  outcomeOf,
   tokenSuggestions,
   totalCards,
   type Choice,
   type Entry,
-  type Missing,
-  type OrderLine,
   type Outcome,
 } from "./app/model";
+import { decodeOrder, encodeOrder, lineQueries, orderCode, orderFrom, orderToText, type Line, type MissingLine } from "./app/order";
 import { engineMisses, onEngineMiss } from "./app/preview";
 import { loadStoredFonts, toFiles, type StoredFonts } from "./app/userFonts";
 import { CardDrawer } from "./components/CardDrawer";
 import { FontPicker } from "./components/FontPicker";
 import { applyCustomFonts } from "./engine/fonts";
 import { OrderPanel, type Tab } from "./components/OrderPanel";
-import { OUTCOME_LABEL } from "./app/labels";
+import { OUTCOME_FILTER, OUTCOME_LABEL } from "./app/labels";
 import { BlankSlots, ProofSheets, Sheet, Slot } from "./components/ProofSheets";
 import { RegMark } from "./components/RegMark";
 import { TokenSuggestions } from "./components/TokenSuggestions";
-import { mergeLines, parseDecklist } from "./lib/decklist";
+import { mergeLines, parseDecklist, renameInList } from "./lib/decklist";
 import type { Paper, PrintMode } from "./lib/pdf";
 
 const REPO = "https://github.com/johnlaff/proxinho";
 const DRAFT_KEY = "proxinho:rascunho";
 const SETTINGS_KEY = "proxinho:acabamento";
+/** O pedido como lista, com as artes escolhidas (src/app/order.ts, ADR 0028): volta como estava ao recarregar. */
+const ORDER_KEY = "proxinho:pedido";
 
 interface Settings {
   paper: Paper;
@@ -70,6 +72,25 @@ function save(key: string, value: string) {
     /* modo anônimo ou armazenamento cheio: segue sem lembrar */
   }
 }
+function forget(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* sem armazenamento: nada guardado */
+  }
+}
+
+/** Linhas de uma lista, como o pedido as entende. */
+const readList = (text: string): Line[] => mergeLines(parseDecklist(text));
+
+/** O pedido a abrir ao carregar a página: o do link ("#pedido=…") ou o guardado da última visita. */
+function initialOrder(): { link: string | null; saved: string; draft: string } {
+  const link = typeof location === "undefined" ? null : orderCode(location.hash);
+  return { link, saved: loadText(ORDER_KEY).trim(), draft: loadText(DRAFT_KEY) };
+}
+
+/** "Sol Ring", ou "Treasure (ficha)" quando a carta sugerida é uma ficha. */
+const suggestionLabel = (s: NameSuggestion) => (s.token ? `${s.name_en} (ficha)` : s.name_en);
 
 const PAPER_LABEL: Record<Paper, string> = { a4: "A4", letter: "Carta" };
 const MODE_LABEL: Record<PrintMode, string> = { sleeve: "na frente da carta", full: "carta inteira" };
@@ -83,7 +104,7 @@ export default function App() {
   const [text, setText] = useState(() => loadText(DRAFT_KEY));
   const [tab, setTab] = useState<Tab>("colar");
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [missing, setMissing] = useState<Missing[]>([]);
+  const [missing, setMissing] = useState<MissingLine[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -107,6 +128,23 @@ export default function App() {
   useEffect(() => save(DRAFT_KEY, text), [text]);
   useEffect(() => save(SETTINGS_KEY, JSON.stringify(settings)), [settings]);
 
+  // O pedido fica guardado como lista (ADR 0028). Só depois de aberto o da última visita: antes
+  // disso, o pedido ainda vazio apagaria o guardado (e uma falha de rede ao abrir também).
+  const [initial] = useState(initialOrder);
+  const [persist, setPersist] = useState(() => !initial.link && !initial.saved);
+  useEffect(() => {
+    if (!persist) return;
+    if (entries.length || missing.length) save(ORDER_KEY, orderToText(entries, missing));
+    else forget(ORDER_KEY);
+  }, [persist, entries, missing]);
+  // "Começar outro pedido" guarda o anterior para o "Desfazer"
+  const [undo, setUndo] = useState<{ entries: Entry[]; missing: MissingLine[]; text: string } | null>(null);
+  // filtro da prova pela legenda: só as cartas de um resultado ("Em inglês…"), para achar as que pedem atenção
+  const [only, setOnly] = useState<Outcome | null>(null);
+  const [shared, setShared] = useState<string | null>(null);
+  // o pedido que a pessoa tinha antes de abrir um link: "Voltar ao meu pedido"
+  const [previous, setPrevious] = useState<{ list: string; draft: string } | null>(null);
+
   // PDF adiantado: enquanto a pessoa revisa, as cartas já vão sendo montadas para a impressão
   // (só depois das prévias; ver printFaces.ts). O respiro deixa a folha começar antes.
   useEffect(() => {
@@ -118,6 +156,8 @@ export default function App() {
   const cardsLabel = countLabel(orderedCards(entries), total);
   const misses = useSyncExternalStore(onEngineMiss, engineMisses);
   const counts = useMemo(() => countOutcomes(entries, misses), [entries, misses]);
+  const filter = only && counts[only] > 0 ? only : null;
+  const shown = useMemo(() => (filter ? entries.filter((e) => outcomeOf(e, misses) === filter) : entries), [entries, misses, filter]);
   const openEntry = entries.find((e) => e.key === openKey) ?? null;
   const slug = [
     PAPER_LABEL[settings.paper],
@@ -127,27 +167,28 @@ export default function App() {
   ].join(" · ");
 
   /** Resolve linhas na API e junta (ou substitui) o pedido. */
-  const resolveLines = useCallback(async (lines: OrderLine[], mode: "replace" | "append") => {
+  const resolveLines = useCallback(async (lines: Line[], mode: "replace" | "append") => {
     setBusy(true);
     setError(null);
     setNotice(null);
+    setUndo(null);
+    setShared(null);
+    setPrevious(null);
     try {
-      // linhas da seção de fichas preferem a ficha quando há carta com o mesmo nome
-      const names = [
-        ...new Map(
-          lines.map((l) => [`${l.section === "tokens"}:${l.name.trim()}`, { name: l.name.trim(), token: l.section === "tokens" }]),
-        ).values(),
-      ];
-      const resolved = await resolveNames(names);
-      const order = buildOrder(lines, resolved);
+      // a seção de fichas prefere a ficha quando há carta com o mesmo nome, e a coleção e o
+      // número acham a ficha certa entre as de mesmo nome (o pedido guardado e o link do pedido)
+      const resolved = await resolveNames(lineQueries(lines));
+      const order = orderFrom(lines, resolved);
       if (mode === "replace") {
         setEntries(order.entries);
         setMissing(order.missing);
+        setOnly(null);
         if (!order.entries.length) setError("Não reconhecemos nenhuma carta nessa lista. Confira se há um nome por linha.");
       } else {
         setEntries((prev) => mergeEntries(prev, order.entries));
         setMissing((prev) => [...prev, ...order.missing]);
       }
+      setPersist(true);
       return order;
     } catch (err) {
       setError((err as Error).message);
@@ -157,8 +198,74 @@ export default function App() {
     }
   }, []);
 
+  /**
+   * Abre o pedido de um link ("#pedido=…"), ou o guardado (`saved`) quando não há link ou ele
+   * veio quebrado. `saved` e `draft` são o pedido e a lista colada de antes: com o link, voltam
+   * por "Voltar ao meu pedido".
+   */
+  const openOrder = useCallback(
+    async ({ link, saved, draft }: { link: string | null; saved: string; draft: string }) => {
+      let listText = saved;
+      let fromLink = false;
+      const broken = "Este link de pedido veio cortado ou alterado. Peça para enviarem o link de novo.";
+      if (link) {
+        // o endereço volta ao normal: recarregar não abre o link de novo por cima das mudanças
+        history.replaceState(null, "", location.pathname + location.search);
+        try {
+          listText = await decodeOrder(link);
+          if (!listText.trim()) throw new Error("link vazio");
+          fromLink = true;
+        } catch {
+          listText = saved;
+          setError(broken);
+        }
+      }
+      if (!listText) {
+        setPersist(true);
+        return;
+      }
+      if (fromLink) {
+        setText(listText);
+        setTab("colar");
+      }
+      const order = await resolveLines(readList(listText), "replace");
+      // com o link quebrado, volta o pedido guardado, e o aviso do link fica
+      if (link && !fromLink) setError(broken);
+      else if (order?.entries.length)
+        setNotice(
+          fromLink
+            ? "Pedido aberto pelo link, com as mesmas artes. A lista também ficou na aba “Colar lista”."
+            : "Seu último pedido voltou como você deixou.",
+        );
+      if (fromLink && order && saved && saved !== listText) setPrevious({ list: saved, draft });
+    },
+    [resolveLines],
+  );
+
+  // ao carregar: o pedido do link, ou o da última visita, uma vez só (o StrictMode roda os efeitos duas vezes)
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current || (!initial.link && !initial.saved)) return;
+    opened.current = true;
+    void openOrder(initial);
+  }, [initial, openOrder]);
+
+  // um link do pedido colado na barra de endereço com o Proxinho já aberto só muda o "#": a página não recarrega
+  const current = useRef({ list: "", draft: "" });
+  useEffect(() => {
+    current.current = { list: entries.length || missing.length ? orderToText(entries, missing) : "", draft: text };
+  }, [entries, missing, text]);
+  useEffect(() => {
+    const onHash = () => {
+      const link = orderCode(location.hash);
+      if (link) void openOrder({ link, saved: current.current.list, draft: current.current.draft });
+    };
+    addEventListener("hashchange", onHash);
+    return () => removeEventListener("hashchange", onHash);
+  }, [openOrder]);
+
   function buildFromText() {
-    const lines = mergeLines(parseDecklist(text));
+    const lines = readList(text);
     if (!lines.length) {
       setError("Não achamos nenhuma carta. Cole uma carta por linha, por exemplo “1 Sol Ring”.");
       return;
@@ -173,6 +280,7 @@ export default function App() {
   async function importDeck(url: string) {
     setBusy(true);
     setError(null);
+    setUndo(null);
     try {
       const deck = await importFromUrl(url);
       const listText = deck.cards
@@ -194,6 +302,7 @@ export default function App() {
     try {
       const found = await cardsById([hit.oracle_id]);
       setEntries((prev) => mergeEntries(prev, entriesFrom(found)));
+      setPersist(true);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -226,6 +335,99 @@ export default function App() {
   }, [suggestedIds, tokenCache]);
   const suggestions = suggestedIds.map((id) => tokenCache.get(id)).filter((r): r is Resolved => Boolean(r?.card && r.prints.length));
   const addTokens = (items: Resolved[]) => setEntries((prev) => mergeEntries(prev, entriesFrom(items, "tokens")));
+
+  // "Você quis dizer…?": cartas parecidas com cada nome não encontrado (pedidas uma vez por nome)
+  const [hints, setHints] = useState<ReadonlyMap<string, NameSuggestion[]>>(() => new Map());
+  useEffect(() => {
+    const want = missing.filter((m) => !hints.has(m.key));
+    if (!want.length) return;
+    const ctrl = new AbortController();
+    suggestNames(
+      want.map((m) => ({ name: m.query, token: m.section === "tokens" })),
+      ctrl.signal,
+    )
+      .then((found) =>
+        setHints((prev) => {
+          const next = new Map(prev);
+          want.forEach((m, i) => next.set(m.key, found[i] ?? []));
+          return next;
+        }),
+      )
+      .catch(() => {
+        /* sem sugestões, a lista dos nomes não encontrados fica como era */
+      });
+    return () => ctrl.abort();
+  }, [missing, hints]);
+
+  /** Aceita a sugestão: a carta entra no pedido com a quantidade da linha, e o nome é corrigido na lista colada. */
+  async function acceptHint(m: MissingLine, s: NameSuggestion) {
+    setBusy(true);
+    setError(null);
+    try {
+      const found = await cardsById([s.oracle_id]);
+      const add = entriesFrom(found, m.section).map((e) => ({ ...e, quantity: m.quantity }));
+      if (!add.length) throw new Error("Essa carta não veio agora. Tente de novo em instantes.");
+      setEntries((prev) => mergeEntries(prev, add));
+      setMissing((prev) => prev.filter((x) => x.key !== m.key));
+      setText((t) => renameInList(t, m.query, s.name_en));
+      setPersist(true);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Copia o link do pedido (no celular, abre o compartilhar do sistema). */
+  async function shareOrder() {
+    setError(null);
+    setShared(null);
+    const link = `${location.origin}/#pedido=${await encodeOrder(orderToText(entries, missing))}`;
+    if (navigator.share && matchMedia("(pointer: coarse)").matches) {
+      try {
+        await navigator.share({ title: "Pedido no Proxinho", url: link });
+        return;
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(link);
+      setNotice("Link do pedido copiado. Quem abrir vê estas cartas, com as mesmas artes e quantidades.");
+    } catch {
+      setShared(link); // sem acesso à área de transferência: o link fica à mostra para copiar
+    }
+  }
+
+  function startOver() {
+    setUndo({ entries, missing, text });
+    setEntries([]);
+    setMissing([]);
+    setText("");
+    setOnly(null);
+    setOpenKey(null);
+    setError(null);
+    setNotice(null);
+    setShared(null);
+    setPrevious(null);
+    setTab("colar");
+    setPersist(true);
+  }
+
+  /** Desfaz a troca feita pelo link: o pedido e a lista colada de antes voltam. */
+  function backToPrevious() {
+    if (!previous) return;
+    setText(previous.draft);
+    void resolveLines(readList(previous.list), "replace");
+  }
+
+  function undoStartOver() {
+    if (!undo) return;
+    setEntries(undo.entries);
+    setMissing(undo.missing);
+    setText(undo.text);
+    setUndo(null);
+  }
 
   const setChoice = (key: string, choice: Choice) => setEntries((prev) => prev.map((e) => (e.key === key ? { ...e, choice } : e)));
   const setQuantity = (key: string, quantity: number) =>
@@ -306,25 +508,75 @@ export default function App() {
               </p>
             )}
             {notice && <p className="msg msg--ok">{notice}</p>}
+            {undo && (
+              <p className="msg msg--ok msg--action">
+                <span>Pedido apagado. A lista colada também saiu.</span>
+                <button type="button" className="btn btn--quiet" onClick={undoStartOver}>
+                  Desfazer
+                </button>
+              </p>
+            )}
+            {previous && (
+              <p className="msg msg--ok msg--action">
+                <span>O pedido que você tinha aqui foi trocado pelo do link.</span>
+                <button type="button" className="btn btn--quiet" onClick={backToPrevious} disabled={busy}>
+                  Voltar ao meu pedido
+                </button>
+              </p>
+            )}
+            {shared && (
+              <div className="msg msg--ok">
+                <label className="field-label" htmlFor="link-do-pedido">
+                  Copie o link do pedido
+                </label>
+                <input id="link-do-pedido" className="input" readOnly value={shared} onFocus={(e) => e.currentTarget.select()} />
+              </div>
+            )}
           </div>
 
           {missing.length > 0 && (
             <details className="missing" open={missing.length <= 5}>
               <summary>{plural(missing.length, "nome não encontrado", "nomes não encontrados")}</summary>
               <ul>
-                {missing.map((m) => (
-                  <li key={m.key}>
-                    <span>
-                      {m.quantity} {m.query}
-                    </span>
-                    <button type="button" className="link-btn" onClick={() => setMissing((prev) => prev.filter((x) => x.key !== m.key))}>
-                      Ignorar
-                    </button>
-                  </li>
-                ))}
+                {missing.map((m) => {
+                  const options = hints.get(m.key) ?? [];
+                  return (
+                    <li key={m.key}>
+                      <div className="missing-row">
+                        <span>
+                          {m.quantity} {m.query}
+                        </span>
+                        <button
+                          type="button"
+                          className="link-btn"
+                          onClick={() => setMissing((prev) => prev.filter((x) => x.key !== m.key))}
+                        >
+                          Ignorar
+                        </button>
+                      </div>
+                      {options.length > 0 && (
+                        <div className="missing-hint" role="group" aria-label={`Você quis dizer, no lugar de ${m.query}`}>
+                          <span>Você quis dizer</span>
+                          {options.map((s) => (
+                            <button
+                              key={s.oracle_id}
+                              type="button"
+                              className="hint-btn"
+                              onClick={() => void acceptHint(m, s)}
+                              disabled={busy}
+                            >
+                              {suggestionLabel(s)}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
               <p className="hint">
-                Confira a grafia ou procure pela aba “Buscar carta”. Fichas entram pela busca ou pela seção “Tokens” da lista.
+                Toque no nome certo para pôr a carta no pedido, confira a grafia ou procure pela aba “Buscar carta”. Fichas entram pela
+                busca ou pela seção “Tokens” da lista.
               </p>
             </details>
           )}
@@ -340,14 +592,33 @@ export default function App() {
                 {(Object.keys(counts) as Outcome[])
                   .filter((k) => counts[k] > 0)
                   .map((k) => (
-                    <li key={k} className="legend-row">
-                      <span className={`swatch swatch--${k}`} aria-hidden="true" />
-                      <span className="legend-label">{OUTCOME_LABEL[k]}</span>
-                      <span className="legend-num">{counts[k]}</span>
+                    <li key={k}>
+                      <button
+                        type="button"
+                        className="legend-row"
+                        aria-pressed={filter === k}
+                        onClick={() => setOnly((cur) => (cur === k ? null : k))}
+                      >
+                        <span className={`swatch swatch--${k}`} aria-hidden="true" />
+                        <span className="legend-label">{OUTCOME_LABEL[k]}</span>
+                        <span className="legend-num">{counts[k]}</span>
+                      </button>
                     </li>
                   ))}
               </ul>
-              <p className="hint">Toque ou clique numa carta da folha para trocar a arte ou a quantidade.</p>
+              <p className="hint">
+                Toque numa linha acima para ver só essas cartas na prova. Toque numa carta da folha para trocar a arte ou a quantidade.
+              </p>
+              <div className="order-actions">
+                <button type="button" className="btn btn--quiet" onClick={() => void shareOrder()} disabled={busy}>
+                  <Link2 size={17} aria-hidden="true" />
+                  Copiar link do pedido
+                </button>
+                <button type="button" className="btn btn--quiet" onClick={startOver} disabled={busy || Boolean(progress)}>
+                  <RotateCcw size={17} aria-hidden="true" />
+                  Começar outro pedido
+                </button>
+              </div>
               <TokenSuggestions
                 tokens={suggestions}
                 onAdd={addTokens}
@@ -426,16 +697,29 @@ export default function App() {
         <section className="proof" aria-label="Prova das folhas">
           {total > 0 && (
             <div className="proof-bar">
-              <span className="proof-bar-count">
-                {cardsLabel} · {plural(sheetsFor(total), "folha", "folhas")} {PAPER_LABEL[settings.paper]}
-              </span>
+              {filter ? (
+                <span className="proof-bar-count">
+                  Só as cartas {OUTCOME_FILTER[filter]}: {orderedCards(shown).toLocaleString("pt-BR")}
+                  <button type="button" className="btn btn--quiet" onClick={() => setOnly(null)}>
+                    Mostrar todas
+                  </button>
+                </span>
+              ) : (
+                <span className="proof-bar-count">
+                  {cardsLabel} · {plural(sheetsFor(total), "folha", "folhas")} {PAPER_LABEL[settings.paper]}
+                </span>
+              )}
               <button type="button" className="btn btn--primary btn--small" onClick={download} disabled={Boolean(progress) || busy}>
                 <Download size={17} aria-hidden="true" />
                 {progress ? `${progress.done}/${progress.total}` : "Baixar PDF"}
               </button>
             </div>
           )}
-          {total > 0 ? <ProofSheets entries={entries} slug={slug} onOpen={setOpenKey} /> : <EmptySheet busy={busy} slug={slug} />}
+          {total > 0 ? (
+            <ProofSheets entries={shown} slug={slug} onOpen={setOpenKey} filtered={Boolean(filter)} />
+          ) : (
+            <EmptySheet busy={busy} slug={slug} />
+          )}
         </section>
       </main>
 

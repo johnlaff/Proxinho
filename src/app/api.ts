@@ -3,6 +3,10 @@ import type { CardRecord, PrintRecord } from "../engine/types";
 
 export interface Resolved {
   query: string;
+  /** a coleção, o número e a seção de fichas pedidos, ecoados (ver `lineKey` em order.ts) */
+  set?: string;
+  number?: string;
+  token?: boolean;
   card: CardRecord | null;
   prints: PrintRecord[];
 }
@@ -27,10 +31,15 @@ async function call<T>(input: string, init?: RequestInit): Promise<T> {
   return body;
 }
 
-/** Um nome a procurar; `token` prefere a ficha quando há carta e ficha com o mesmo nome. */
+/**
+ * Um nome a procurar; `token` prefere a ficha quando há carta e ficha com o mesmo nome; `set` e
+ * `number` pedem uma impressão (e acham, entre as fichas de mesmo nome, a dessa impressão).
+ */
 export interface NameQuery {
   name: string;
   token?: boolean;
+  set?: string;
+  number?: string;
 }
 
 export async function resolveNames(names: (string | NameQuery)[], signal?: AbortSignal): Promise<Resolved[]> {
@@ -60,6 +69,26 @@ export async function cardsById(ids: string[], signal?: AbortSignal): Promise<Re
     signal,
   });
   return body.results;
+}
+
+/** Uma carta parecida com um nome que não foi achado ("Você quis dizer…?"). */
+export interface NameSuggestion {
+  oracle_id: string;
+  name_en: string;
+  name_pt: string | null;
+  token: boolean;
+}
+
+/** Até três cartas parecidas para cada nome não encontrado, na ordem pedida. */
+export async function suggestNames(names: { name: string; token?: boolean }[], signal?: AbortSignal): Promise<NameSuggestion[][]> {
+  if (!names.length) return [];
+  const body = await call<{ results: { suggestions: NameSuggestion[] }[] }>("/api/sugestoes", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ names }),
+    signal,
+  });
+  return body.results.map((r) => r.suggestions);
 }
 
 export async function searchCards(q: string, signal?: AbortSignal): Promise<SearchHit[]> {
