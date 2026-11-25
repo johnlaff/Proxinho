@@ -12,7 +12,7 @@
  *
  * A ordem é a combinada (ADR 0022): primeiro as artes que passam pela rede neural (as lentas no
  * aparelho), depois a arte que o site escolhe sozinho das cartas mais jogadas (EDHREC), depois as
- * outras artes, até o limite do depósito (5 GB): a cota grátis do R2 é da conta inteira.
+ * outras artes, até o limite do depósito (6 GB): a cota grátis do R2, de 10 GB, é da conta inteira.
  *
  * Opções:
  *   --enviar            grava no servidor (`--api`), só as que faltam; só monta se o site no ar
@@ -23,7 +23,7 @@
  *   --escolhidas        só a arte que o site escolhe sozinho de cada carta
  *   --cartas A,B        só estas cartas (oracle_id)
  *   --limite N          no máximo N faces
- *   --limite-bytes N    o depósito inteiro não passa de N bytes (padrão 5e9)
+ *   --limite-bytes N    o depósito inteiro não passa de N bytes (padrão 6e9)
  *   --partes N          o trabalho dividido em N máquinas (padrão 1) ...
  *   --parte K           ... e esta é a K-ésima (de 1 a N); cada uma fica com 1/N do que cabe
  *   --prazo-min M       não começa carta nova depois de M minutos (padrão: sem prazo)
@@ -49,7 +49,7 @@ const OUT = opt("--saida");
 const SEND = flag("--enviar") || flag("--conferir") || flag("--apagar-velhas");
 const TOKEN = process.env.CARTAS_TOKEN ?? "";
 const LIMIT = Number(opt("--limite", "0")) || Infinity;
-const LIMIT_BYTES = Number(opt("--limite-bytes", "5e9"));
+const LIMIT_BYTES = Number(opt("--limite-bytes", "6e9"));
 const PARTS = Number(opt("--partes", "1"));
 const PART = Number(opt("--parte", "1"));
 const DEADLINE = Date.now() + (Number(opt("--prazo-min", "0")) || Infinity) * 60_000;
