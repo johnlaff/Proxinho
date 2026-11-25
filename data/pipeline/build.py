@@ -1586,6 +1586,25 @@ def split_supported(card: dict) -> bool:
     )
 
 
+def aftermath_supported(card: dict) -> bool:
+    """Consequência na moldura atual (Amonkhet, Hour of Devastation e as reimpressões): a metade de
+    cima de pé, como uma M15 mais baixa, e a da Consequência deitada embaixo (src/engine/aftermath.ts,
+    ADR 0035). O motor confere as barras e as caixas das duas metades na imagem; sem elas, a arte
+    sai como está. Ficam de fora as de vitrine e as sem borda."""
+    faces = card.get("card_faces") or []
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "split"
+        and card.get("border_color") == "black"
+        and not card.get("frame_effects")
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+        and len(faces) == 2
+        and "Aftermath" in (card.get("keywords") or [])
+    )
+
+
 def is_room(type_line: str | None) -> bool:
     return "Room" in (type_line or "").split("—")[-1].split()
 
@@ -1904,6 +1923,7 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or prepare_supported(c)
         or room_supported(c)
         or split_supported(c)
+        or aftermath_supported(c)
         or class_supported(c)
         or station_supported(c)
         or bool(sides and sides[0]["supported"]),

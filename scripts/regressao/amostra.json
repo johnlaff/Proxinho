@@ -408,6 +408,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "5f664827-e22e-43af-82f1-861b3c7607f1",
+    "oracle_id": "e294d85f-caf2-4939-99d3-7ca5bba2b8d1",
+    "set": "mkm",
+    "number": "249",
+    "nome": "Hustle // Bustle",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "1cd477f5-53e9-446a-b717-5796d87672ba",
     "oracle_id": "11ad6e75-9bbd-40ea-b04a-e6a61db3bcda",
     "set": "moc",
@@ -4038,6 +4046,126 @@
     "number": "13",
     "nome": "Leader's Talent",
     "grupo": "classe"
+  },
+  {
+    "id": "06c9e2e8-2b4c-4087-9141-6aa25a506626",
+    "oracle_id": "56fd8895-3be2-4591-86fa-87567d9cdc14",
+    "set": "akh",
+    "number": "211",
+    "nome": "Commit // Memory",
+    "grupo": "consequência"
+  },
+  {
+    "id": "a47070a0-fd05-4ed9-a175-847a864478da",
+    "oracle_id": "980f6341-3c13-4405-8550-b838b228f788",
+    "set": "akh",
+    "number": "214",
+    "nome": "Mouth // Feed",
+    "grupo": "consequência"
+  },
+  {
+    "id": "5cf5c549-1e2a-4c47-baf7-e608661b3088",
+    "oracle_id": "7ebde396-6672-491a-a6ce-1de49b12379b",
+    "set": "akh",
+    "number": "217",
+    "nome": "Destined // Lead",
+    "grupo": "consequência"
+  },
+  {
+    "id": "b9623c8c-01b4-4e8f-a5b9-eeea408ec027",
+    "oracle_id": "ed8184f8-f6a7-4f97-9f4e-bf72077af754",
+    "set": "akh",
+    "number": "221",
+    "nome": "Failure // Comply",
+    "grupo": "consequência"
+  },
+  {
+    "id": "f295b713-1d6a-43fd-910d-fb35414bf58a",
+    "oracle_id": "7bc3f92f-68a2-4934-afc4-89f6d0e8cf98",
+    "set": "clb",
+    "number": "691",
+    "nome": "Dusk // Dawn",
+    "grupo": "consequência"
+  },
+  {
+    "id": "1ca644e3-4fb3-4d38-b714-e3d7459bd8b9",
+    "oracle_id": "e2b152ea-82d5-465e-8e13-3d62aacd6692",
+    "set": "hou",
+    "number": "154",
+    "nome": "Reason // Believe",
+    "grupo": "consequência"
+  },
+  {
+    "id": "054b07d8-99ae-430b-8e54-f9601fa572e7",
+    "oracle_id": "7db22241-fe43-4071-9af9-de1cf394f7f5",
+    "set": "hou",
+    "number": "156",
+    "nome": "Refuse // Cooperate",
+    "grupo": "consequência"
+  },
+  {
+    "id": "7713ba59-dd4c-4b49-93a7-292728df86b8",
+    "oracle_id": "87fca901-678d-4c9a-be4a-9dce2a53074b",
+    "set": "hou",
+    "number": "157",
+    "nome": "Driven // Despair",
+    "grupo": "consequência"
+  },
+  {
+    "id": "ef94afa5-0110-4a12-bf37-c1d3310f52c4",
+    "oracle_id": "56fd8895-3be2-4591-86fa-87567d9cdc14",
+    "set": "ncc",
+    "number": "216",
+    "nome": "Commit // Memory",
+    "grupo": "consequência"
+  },
+  {
+    "id": "d653b755-1e09-45c4-8d44-8a950151ca51",
+    "oracle_id": "abcb5b99-bf5e-402f-97a2-abb1ab39dd72",
+    "set": "ncc",
+    "number": "46",
+    "nome": "Indulge // Excess",
+    "grupo": "consequência"
+  },
+  {
+    "id": "d3c99f65-2355-444b-b49a-c6b916f268b1",
+    "oracle_id": "7bc3f92f-68a2-4934-afc4-89f6d0e8cf98",
+    "set": "pakh",
+    "number": "210s",
+    "nome": "Dusk // Dawn",
+    "grupo": "consequência"
+  },
+  {
+    "id": "2b1cdcb8-7449-4e08-a6ad-f99207c090a8",
+    "oracle_id": "fed7a6ad-68d8-4923-9ef0-619f73bfd6c2",
+    "set": "pakh",
+    "number": "220s",
+    "nome": "Prepare // Fight",
+    "grupo": "consequência"
+  },
+  {
+    "id": "ccb6c790-c010-4ade-b2fb-0365bc681efd",
+    "oracle_id": "c2c66419-c2ca-4259-afc6-eaec6d3bb897",
+    "set": "pakh",
+    "number": "222s",
+    "nome": "Rags // Riches",
+    "grupo": "consequência"
+  },
+  {
+    "id": "2af805f9-3d72-462f-934b-53ad93b8a826",
+    "oracle_id": "dff5d16f-3a41-4873-8188-076e77f18c75",
+    "set": "phou",
+    "number": "153s",
+    "nome": "Leave // Chance",
+    "grupo": "consequência"
+  },
+  {
+    "id": "a5a5fec0-ff2c-4d8d-960f-21f3962b534a",
+    "oracle_id": "87fca901-678d-4c9a-be4a-9dce2a53074b",
+    "set": "phou",
+    "number": "157s",
+    "nome": "Driven // Despair",
+    "grupo": "consequência"
   },
   {
     "id": "099b1265-11a5-48e2-9529-24fa3ea46377",

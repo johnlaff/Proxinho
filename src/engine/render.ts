@@ -142,6 +142,7 @@ import { OLD, oldCostLeft, oldLetters, oldTypeEnds } from "./old";
 import { prepareFrame, prepareLayout } from "./prepare";
 import { ROOM, roomCostLeft, roomFrame } from "./room";
 import { SPLIT, splitBoxes, splitCostLeft, splitFrame } from "./split";
+import { AFTERMATH, aftermathBox, aftermathCostLeft, aftermathFrame } from "./aftermath";
 import { preloadSymbols } from "./symbols";
 import {
   SYMBOL_EM,
@@ -1798,6 +1799,162 @@ async function renderSplit(p: {
   return true;
 }
 
+/**
+ * Consequência (ADR 0035): a metade de cima é apagada e escrita na carta de pé, a de baixo na
+ * carta girada 90° no sentido anti-horário, onde ela fica de pé. Sem as barras e as caixas das duas
+ * metades na imagem, a carta sai na original.
+ */
+async function renderAftermath(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  halves: [PtFace, PtFace];
+  W: number;
+  H: number;
+}): Promise<boolean> {
+  const { ctx, src, halves, W, H } = p;
+  if (halves.some((h) => !h.type_pt)) return false;
+  const canvas2d = (w: number, h: number) => {
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const c2 = c.getContext("2d", { willReadFrequently: true });
+    if (!c2) throw new Error("Seu navegador não liberou o canvas 2D.");
+    return [c, c2] as const;
+  };
+  const [up, uctx] = canvas2d(src.width, src.height);
+  uctx.drawImage(src, 0, 0);
+  const [turned, tctx] = canvas2d(src.height, src.width);
+  const turn = (from: HTMLCanvasElement) => {
+    tctx.setTransform(1, 0, 0, 1, 0, 0);
+    tctx.translate(0, turned.height);
+    tctx.rotate(-Math.PI / 2);
+    tctx.drawImage(from, 0, 0);
+    tctx.setTransform(1, 0, 0, 1, 0, 0);
+  };
+  turn(src);
+  const upData = uctx.getImageData(0, 0, up.width, up.height);
+  const frame = aftermathFrame(upData, tctx.getImageData(0, 0, turned.width, turned.height));
+  if (!frame) return false;
+  const pad = AFTERMATH.boxPad;
+
+  // a metade de cima, na carta de pé (como a M15: o custo e o símbolo da coleção no lugar de sempre)
+  const fx = up.width / BASE_W;
+  const fy = up.height / BASE_H;
+  const toUp = (r: Rect) => roundRect({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
+  const T = AFTERMATH.top;
+  const cost = costLeft(halves[0].mana_cost);
+  const tn = frame.top.name;
+  const tt = frame.top.type;
+  const inset = (tt.y1 - tt.y0) * 0.22;
+  const setLeft = Math.min(
+    Math.max(findSetSymbolLeft(upData, Math.round((tt.y0 + inset) * fy), Math.round((tt.y1 - inset) * fy)) / fx, 560),
+    660,
+  );
+  const topName = { x0: T.name.x0, y0: tn.y0 + 1, x1: cost - 6, y1: tn.y1 - 1 };
+  const topGuard = { x0: cost - 4, y0: tn.y0 - 1, x1: BASE_W, y1: tn.y1 + 1 };
+  const topType = { x0: T.type.x0, y0: tt.y0 + 1, x1: setLeft - 6, y1: tt.y1 - 1 };
+  const topBox = aftermathBox(upData, "top");
+  const topCentered = halves[0].text_pt?.trim() ? measureCentered(upData, toUp(topBox), [], fx) === true : false;
+  const topRects = [toUp(topName), toUp(topType)];
+  const topInks = eraseRegions(
+    upData,
+    [
+      ...topRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
+      { rect: toUp(topBox), threshold: 14, colorThreshold: 34, stains: true, dividers: true },
+    ],
+    [toUp(topGuard)],
+    [toUp(topGuard)],
+    topRects.flatMap((r) => barCapGuard(upData, r, "left")),
+  );
+  uctx.putImageData(upData, 0, 0);
+
+  // a metade de baixo, na carta girada (feita da de pé já apagada)
+  turn(up);
+  const tData = tctx.getImageData(0, 0, turned.width, turned.height);
+  const gx = turned.width / BASE_H;
+  const gy = turned.height / BASE_W;
+  const toTurned = (r: Rect) => roundRect({ x0: r.x0 * gx, y0: r.y0 * gy, x1: r.x1 * gx, y1: r.y1 * gy });
+  const B = AFTERMATH.bottom;
+  const bCost = aftermathCostLeft(halves[1].mana_cost);
+  const bn = frame.bottom.name;
+  const bt = frame.bottom.type;
+  const bottomName = { x0: B.name.x0, y0: bn.y0 + 1, x1: bCost - 6, y1: bn.y1 - 1 };
+  const bottomGuard = { x0: bCost - 4, y0: bn.y0 - 1, x1: B.name.costRight + 8, y1: bn.y1 + 1 };
+  const bottomType = { x0: B.type.x0, y0: bt.y0 + 1, x1: B.type.x1, y1: bt.y1 - 1 };
+  const bottomBox = aftermathBox(tData, "bottom");
+  const bottomCentered = halves[1].text_pt?.trim() ? measureCentered(tData, toTurned(bottomBox), [], gx) === true : false;
+  const bottomRects = [toTurned(bottomName), toTurned(bottomType)];
+  const bottomInks = eraseRegions(
+    tData,
+    [
+      ...bottomRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
+      { rect: toTurned(bottomBox), threshold: 14, colorThreshold: 34, stains: true, dividers: true },
+    ],
+    [toTurned(bottomGuard)],
+    [toTurned(bottomGuard)],
+    bottomRects.flatMap((r) => barCapGuard(tData, r, "left")),
+  );
+  tctx.putImageData(tData, 0, 0);
+
+  // a carta apagada, de pé de novo
+  ctx.save();
+  ctx.translate(W, 0);
+  ctx.rotate(Math.PI / 2);
+  ctx.drawImage(turned, 0, 0, H, W);
+  ctx.restore();
+
+  const writeHalf = async (
+    h: PtFace,
+    k: number,
+    name: { x: number; center: number; maxWidth: number },
+    type: { x: number; center: number; maxWidth: number },
+    b: Rect,
+    inks: ("dark" | "light")[],
+    centered: boolean,
+  ) => {
+    const m = measurer(ctx, k);
+    drawLine(ctx, h.name_pt ?? h.name_en, name.x, name.center, name.maxWidth, AFTERMATH.nameSize, k, INK[inks[0] ?? "dark"]);
+    drawLine(ctx, h.type_pt ?? "", type.x, type.center, type.maxWidth, AFTERMATH.typeSize, k, INK[inks[1] ?? "dark"]);
+    const box = { x0: b.x0 + pad.x0, y0: b.y0 + pad.y0, x1: b.x1 - pad.x1, y1: b.y1 - pad.y1 };
+    const symbols = await preloadSymbols(h.text_pt, h.flavor_pt);
+    const res = fitText(
+      h.text_pt,
+      h.flavor_pt,
+      box.x1 - box.x0,
+      box.y1 - box.y0,
+      m,
+      AFTERMATH.maxSize,
+      AFTERMATH.minSize,
+      undefined,
+      h.ability_words,
+    );
+    drawLayout(ctx, res, box, k, inks[2] ?? "dark", symbols, m, centered);
+  };
+  await writeHalf(
+    halves[0],
+    W / BASE_W,
+    { x: T.name.x, center: tn.center, maxWidth: cost - 12 - T.name.x },
+    { x: T.type.x, center: tt.center, maxWidth: setLeft - 10 - T.type.x },
+    topBox,
+    topInks,
+    topCentered,
+  );
+  ctx.save();
+  ctx.translate(W, 0);
+  ctx.rotate(Math.PI / 2);
+  await writeHalf(
+    halves[1],
+    H / BASE_H,
+    { x: B.name.x, center: bn.center, maxWidth: bCost - 10 - B.name.x },
+    { x: B.type.x, center: bt.center, maxWidth: B.type.x1 - B.type.x },
+    bottomBox,
+    bottomInks,
+    bottomCentered,
+  );
+  ctx.restore();
+  return true;
+}
+
 async function renderToken(p: {
   ctx: CanvasRenderingContext2D;
   src: HTMLCanvasElement;
@@ -2102,7 +2259,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     },
   };
 
-  // cartas divididas: só as Salas, deitadas (ver renderRoom); as outras saem na original
+  // cartas divididas: as Salas (renderRoom), as da moldura atual (renderSplit) e as com
+  // Consequência (renderAftermath); as outras saem na original
   if (print.layout === "split") {
     const other = opts.split ?? null;
     const halves: [PtFace, PtFace] | null = other?.name_pt && other.text_pt !== null ? [face, other] : null;
@@ -2110,7 +2268,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       ? false
       : room
         ? await renderRoom({ ctx, src, halves, print, W, H, neural, plan })
-        : (await renderSplit({ ctx, src, halves, W, H }))
+        : (await renderSplit({ ctx, src, halves, W, H })) || (await renderAftermath({ ctx, src, halves, W, H }))
           ? "ok"
           : false;
     if (done === "ok") return { canvas: out, translated: true };

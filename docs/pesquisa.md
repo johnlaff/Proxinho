@@ -244,6 +244,23 @@ Medidas nas imagens do Scryfall giradas 90° no sentido horário (1040 × 745), 
 
 As de Commander 2016 (Trial // Error, Order // Chaos) têm as metades mais altas (caixa até y ≈ 664, com o copyright no pé da carta deitada) e as cartas de teste dos Mystery Boosters e do Unknown Event, a moldura de rascunho: ficam de fora. Em 18 cartas divididas impressas em PT o Scryfall põe o nome de cada metade em inglês (ou o nome inteiro da carta em inglês em cada metade) com o texto em PT; os nomes foram transcritos das imagens oficiais.
 
+### Consequência (25/11/2026)
+
+Como as ferramentas existentes fazem: não achamos, na documentação e nas versões publicadas do Proxyshop, modelo próprio para a Consequência. Aqui a moldura é a da imagem, e o que importa são as medidas, tiradas das impressões. A metade de cima é uma M15 mais baixa, de pé; a de baixo fica de pé com a carta girada 90° no sentido anti-horário.
+
+Medidas nas imagens do Scryfall, nas 69 impressões de borda preta (AKH, HOU, as promos de pré-estreia, The List, MH2, CLB e os decks de Commander), a de cima de pé (745 × 1040) e a de baixo na carta girada (1040 × 745):
+
+| Medida | Valor |
+|---|---|
+| Barra do nome de cima | papel de y ≈ 52 a 105 (49 a 103 em algumas reimpressões); o custo no lugar da M15 |
+| Barra de tipo de cima | papel de y ≈ 358 a 410, com o símbolo da coleção no fim, entre x 560 e 660 |
+| Caixa de cima | papel de x ≈ 55 a 689 e de y ≈ 422 a 557; na moldura branca o fio em volta tem a cor do papel |
+| Barra do nome de baixo | papel de y ≈ 57 a 110, de x ≈ 576 a 955; o custo acaba em x ≈ 947, ~37,4 px por símbolo (o híbrido, 44) |
+| Barra de tipo de baixo | papel de y ≈ 345 a 397; acaba em x ≈ 940, antes do selo holográfico das raras |
+| Caixa de baixo | papel de x ≈ 585 a 952 e de y ≈ 408 a 690 |
+
+As 25 de Amonkhet Remastered e a promo do MTGO são só digitais; a de vitrine de MH2 e a da Secret Lair com a MSCHF ficam de fora.
+
 ### Marcas-d'água na moldura de 2003 (25/11/2026)
 
 Como as ferramentas existentes fazem: o Proxyshop não reaproveita a imagem; ele monta a carta do zero e põe a marca-d'água como uma camada vetorial, desenhada à parte a partir do nome que o Scryfall dá (`watermark`). O Proxinho escreve sobre a digitalização, então a marca já está lá e precisa ficar: apagar a caixa inteira levava a marca junto, e apagar só onde as letras passam deixava a marca em cacos. A saída é a mesma da arte sem borda (ADR 0012): só as letras saem da máscara, e a rede neural (LaMa) refaz o que estava por baixo delas, a marca inclusive.

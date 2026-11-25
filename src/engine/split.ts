@@ -62,10 +62,18 @@ export const SPLIT = {
 
 const lum = (d: Uint8ClampedArray, i: number) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
 
-/** Percentil `q` (0 a 1) dos tons de um retângulo da carta deitada (escala-base), de 2 em 2 px. */
-function percentile(img: ImageData, r: Rect, q: number): number {
-  const fx = img.width / SPLIT.width;
-  const fy = img.height / SPLIT.height;
+/**
+ * Percentil `q` (0 a 1) dos tons de um retângulo, de 2 em 2 px, na escala-base `base` (a da carta
+ * deitada, se não for dita).
+ */
+export function percentile(
+  img: ImageData,
+  r: Rect,
+  q: number,
+  base: { w: number; h: number } = { w: SPLIT.width, h: SPLIT.height },
+): number {
+  const fx = img.width / base.w;
+  const fy = img.height / base.h;
   const v: number[] = [];
   for (let y = Math.round(r.y0 * fy); y < Math.round(r.y1 * fy); y += 2)
     for (let x = Math.round(r.x0 * fx); x < Math.round(r.x1 * fx); x += 2) v.push(lum(img.data, (y * img.width + x) * 4));
@@ -104,11 +112,20 @@ export function splitCostLeft(manaCost: string | null | undefined, half: 0 | 1):
  * branca o fio em volta da caixa tem a cor do papel e a medida fica no limite de fora menos 3 px.
  */
 export function splitBoxes(img: ImageData): Rect[] {
-  const fx = img.width / SPLIT.width;
-  const fy = img.height / SPLIT.height;
-  return SPLIT.boxes.map((lim, i) => {
-    const core = SPLIT.boxCore[i];
-    const light = (x0: number, y0: number, x1: number, y1: number) => percentile(img, { x0, y0, x1, y1 }, 0.8) >= 145;
+  return paperBoxes(img, SPLIT.boxes, SPLIT.boxCore, { w: SPLIT.width, h: SPLIT.height });
+}
+
+/**
+ * O papel de caixas de texto, medido na imagem (escala-base `base`): de cada lado, onde acaba o
+ * trecho claro que passa pelo meio da caixa, dentro dos limites `lims` e nunca menor que `cores`
+ * (ver `splitBoxes`; também as caixas da Consequência, aftermath.ts).
+ */
+export function paperBoxes(img: ImageData, lims: readonly Rect[], cores: readonly Rect[], base: { w: number; h: number }): Rect[] {
+  const fx = img.width / base.w;
+  const fy = img.height / base.h;
+  return lims.map((lim, i) => {
+    const core = cores[i];
+    const light = (x0: number, y0: number, x1: number, y1: number) => percentile(img, { x0, y0, x1, y1 }, 0.8, base) >= 145;
     // de dentro para fora, até a primeira coluna (ou linha) escura
     const walk = (from: number, to: number, test: (v: number) => boolean) => {
       const dir = to > from ? 1 : -1;

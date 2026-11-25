@@ -95,6 +95,11 @@ Como jogador, quero imprimir as Aventuras em português na arte que eu escolher.
 - [x] A sombra do papel perto da lombada continua igual depois de apagar o inglês.
 - [x] Quando o motor não acha o livro na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
 
+### H11e. Consequência (entregue em 25/11/2026, ADR 0035)
+Como jogador, quero imprimir as cartas com Consequência (Dusk // Dawn, Commit // Memory) em português na arte que eu escolher.
+- [x] As de borda preta saem em português: o nome, o tipo e o texto das duas metades, a de baixo de lado como na carta impressa, com o custo, o símbolo da coleção e o selo holográfico no lugar.
+- [x] Quando o motor não acha as barras e as caixas das duas metades na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
+
 ### H11d. Cartas divididas da moldura atual (entregue em 25/11/2026, ADR 0034)
 Como jogador, quero imprimir as cartas divididas (Find // Finality, Fire // Ice, Expansion // Explosion) em português na arte que eu escolher.
 - [x] As divididas de borda preta da moldura atual saem em português: o nome, o tipo e o texto de cada metade, com o custo e o símbolo da coleção no lugar.
