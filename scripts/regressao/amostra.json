@@ -8,6 +8,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "be8061c6-21b8-4146-8917-c73a82060ffe",
+    "oracle_id": "20dbfc9a-172e-4065-bfde-d40de3131787",
+    "set": "bbd",
+    "number": "1",
+    "nome": "Will Kenrith",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "4c72e177-d95d-41df-91b3-4e489175b6aa",
     "oracle_id": "d3a0b660-358c-41bd-9cd2-41fbf3491b1a",
     "set": "blc",
@@ -69,6 +77,14 @@
     "set": "dka",
     "number": "77",
     "nome": "Undying Evil",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "60ada52e-073c-4775-a190-310d51569682",
+    "oracle_id": "3853ef6a-6771-4708-8ed5-d667f646de5a",
+    "set": "dmr",
+    "number": "264",
+    "nome": "Glory",
     "grupo": "citada nos documentos"
   },
   {
@@ -208,6 +224,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "b6de14ae-0132-4261-af00-630bf15918cd",
+    "oracle_id": "59d22de5-e310-44d7-89cf-ef3529e40cef",
+    "set": "khm",
+    "number": "251",
+    "nome": "Barkchannel Pathway // Tidechannel Pathway",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "e19cd136-0541-4db0-997f-20a58ec8d028",
     "oracle_id": "8b755881-a72d-4e21-a369-d2924eb4585a",
     "set": "lcc",
@@ -296,6 +320,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "7a1d3c1d-1373-4ac4-bb26-9780976efc4f",
+    "oracle_id": "db19a27a-ee22-4931-ae3c-0ce21f456ea6",
+    "set": "mh3",
+    "number": "253",
+    "nome": "Drowner of Truth // Drowned Jungle",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "cc264d1d-689d-41ac-b624-3fc7bb890e58",
     "oracle_id": "4ec0b64d-c793-47a6-9c26-9ad4d9e9c182",
     "set": "mkm",
@@ -349,6 +381,14 @@
     "set": "nph",
     "number": "134",
     "nome": "Darksteel Relic",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "f2c79e64-91bf-4e87-a4fd-3136ea67c5bb",
+    "oracle_id": "2d4e0e0f-7167-40a4-ad76-2d5b45223eaa",
+    "set": "ons",
+    "number": "116",
+    "nome": "Standardize",
     "grupo": "citada nos documentos"
   },
   {
@@ -576,6 +616,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "4f55fdb1-4c4e-4bc7-aa22-d00b43d5cfa5",
+    "oracle_id": "36a6925a-621e-47d6-8cb3-1b2886e1986e",
+    "set": "sld",
+    "number": "2517",
+    "nome": "Mogg Assassin",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "12be804d-b1bd-4299-9ab0-c65966c518f9",
     "oracle_id": "3233af43-7826-4895-b67e-03c6102c2cd5",
     "set": "sld",
@@ -712,12 +760,340 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "14ddb2e7-6bc6-43ce-aeec-175a0ce17ed5",
+    "oracle_id": "cfca44cb-8ca5-4ebb-bd5c-b621eca41944",
+    "set": "unf",
+    "number": "178",
+    "nome": "Space Beleren",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "f0cb7bbb-9216-43b7-abd8-387f6c7864e6",
     "oracle_id": "d1cd7a93-4b83-4755-90bc-17cb64bfb131",
     "set": "vow",
     "number": "329",
     "nome": "Circle of Confinement",
     "grupo": "citada nos documentos"
+  },
+  {
+    "id": "5026d8d4-bafd-4d98-8dee-23fb43b45e89",
+    "oracle_id": "f75f9006-217d-4ec8-9c35-ceefe1c5ae4e",
+    "set": "30a",
+    "number": "403",
+    "nome": "Frozen Shade",
+    "grupo": "1997"
+  },
+  {
+    "id": "5f7003be-4464-4eab-a77d-ab0346643613",
+    "oracle_id": "218d9277-c179-4de3-9c7f-79b5a6d4fa38",
+    "set": "5ed",
+    "number": "104",
+    "nome": "Merfolk of the Pearl Trident",
+    "grupo": "1997"
+  },
+  {
+    "id": "346eef90-35c3-4153-a64a-55f4d7b232e2",
+    "oracle_id": "51708bd1-23db-4597-84a7-f36abd93c537",
+    "set": "5ed",
+    "number": "244†",
+    "nome": "Ironclaw Curse",
+    "grupo": "1997"
+  },
+  {
+    "id": "00a4ffc1-7731-42d9-b970-2a8d84cba14d",
+    "oracle_id": "78826359-fe63-44ad-adc4-a17ffcd710e4",
+    "set": "5ed",
+    "number": "316",
+    "nome": "Nature's Lore",
+    "grupo": "1997"
+  },
+  {
+    "id": "cdf5d88e-1699-4ce3-a4aa-3e8d1ef2bc39",
+    "oracle_id": "a3fb7228-e76b-4e96-a40e-20b5fed75685",
+    "set": "5ed",
+    "number": "444",
+    "nome": "Mountain",
+    "grupo": "1997"
+  },
+  {
+    "id": "5c94f13f-6e7a-4bb1-a9a0-5c885e231d5c",
+    "oracle_id": "ed836d84-ff1e-4af8-b4b8-314569b3faec",
+    "set": "7ed",
+    "number": "323",
+    "nome": "Wall of Spears",
+    "grupo": "1997"
+  },
+  {
+    "id": "e11c8aa0-ea14-43a4-a341-29f01affe64a",
+    "oracle_id": "9ec43ec6-b625-4be8-8f79-3679e6657dbc",
+    "set": "brc",
+    "number": "150",
+    "nome": "Mycosynth Wellspring",
+    "grupo": "1997"
+  },
+  {
+    "id": "19d809c1-e674-40b8-816d-c45d77c66722",
+    "oracle_id": "c6ad434b-6e34-439b-8046-f0047c06e371",
+    "set": "exo",
+    "number": "124",
+    "nome": "Skyshroud War Beast",
+    "grupo": "1997"
+  },
+  {
+    "id": "3b69e57a-5b19-450c-9cf5-c189e8505781",
+    "oracle_id": "025bbfc8-bccd-4062-b758-7f9e1f8ad420",
+    "set": "inv",
+    "number": "200",
+    "nome": "Nomadic Elf",
+    "grupo": "1997"
+  },
+  {
+    "id": "f6b5c765-619c-4db9-b509-91892fb65e8f",
+    "oracle_id": "5aa66cb0-86b9-4e85-9a17-df78416d682d",
+    "set": "inv",
+    "number": "30",
+    "nome": "Restrain",
+    "grupo": "1997"
+  },
+  {
+    "id": "6da0d4f3-9216-406c-8f3e-b9bb0a11dc75",
+    "oracle_id": "09bfc3b1-cc40-4cb9-87e4-86b0018caa75",
+    "set": "inv",
+    "number": "93",
+    "nome": "Andradite Leech",
+    "grupo": "1997"
+  },
+  {
+    "id": "d13138c1-e98f-4803-8c68-ffc80139c168",
+    "oracle_id": "a215e813-df7e-4f21-9718-eb264eb62813",
+    "set": "jud",
+    "number": "13",
+    "nome": "Guided Strike",
+    "grupo": "1997"
+  },
+  {
+    "id": "a9319039-db2f-47bf-9ef0-8d3a381d54fb",
+    "oracle_id": "6e93cb9a-44c8-49fb-b6a7-bfdf7bd725fe",
+    "set": "mir",
+    "number": "7",
+    "nome": "Civic Guildmage",
+    "grupo": "1997"
+  },
+  {
+    "id": "d3567b4e-6e31-40b0-83ea-4a2a58bd637c",
+    "oracle_id": "50bbbb39-4709-478f-bb51-716c7e4f8323",
+    "set": "nem",
+    "number": "46",
+    "nome": "Stronghold Machinist",
+    "grupo": "1997"
+  },
+  {
+    "id": "d672110d-b7c4-4233-9c46-73323be7204d",
+    "oracle_id": "dbd86a37-8ac1-4bdb-9ba1-7caee99ab5f7",
+    "set": "nem",
+    "number": "47",
+    "nome": "Stronghold Zeppelin",
+    "grupo": "1997"
+  },
+  {
+    "id": "04462629-fb03-40e8-84e6-4a66e4d5392b",
+    "oracle_id": "2f8c4805-694d-4408-8eb5-9fb7ce278ded",
+    "set": "ody",
+    "number": "272",
+    "nome": "Springing Tiger",
+    "grupo": "1997"
+  },
+  {
+    "id": "150d5229-b1a5-42cf-bf6a-04d246f1124f",
+    "oracle_id": "8b21146d-3e92-46e7-b5d9-8240fba5088e",
+    "set": "ons",
+    "number": "268",
+    "nome": "Kamahl, Fist of Krosa",
+    "grupo": "1997"
+  },
+  {
+    "id": "ee4d3acb-68be-409d-beb7-92a7cbc0402f",
+    "oracle_id": "77a963a3-473a-4c34-bc46-8ef016a92c0c",
+    "set": "pcy",
+    "number": "106",
+    "nome": "Veteran Brawlers",
+    "grupo": "1997"
+  },
+  {
+    "id": "cdbf8959-6598-413f-b2dd-d46bf955e998",
+    "oracle_id": "7c259e83-1d85-4267-a2e6-1a0fbacae3fe",
+    "set": "plst",
+    "number": "LGN-25",
+    "nome": "Ward Sliver",
+    "grupo": "1997"
+  },
+  {
+    "id": "86ef74ec-15f9-4305-ac87-db56a076c53f",
+    "oracle_id": "d8377869-f8f7-4b4b-93ad-3ad3c4826b1a",
+    "set": "plst",
+    "number": "MIR-77",
+    "nome": "Mind Bend",
+    "grupo": "1997"
+  },
+  {
+    "id": "d8b149b2-5003-4a69-99ed-1e5a155a480f",
+    "oracle_id": "147e0e74-f76b-4f0a-951f-d39afdd72c02",
+    "set": "plst",
+    "number": "MMQ-93",
+    "nome": "Rishadan Cutpurse",
+    "grupo": "1997"
+  },
+  {
+    "id": "26019c5d-5caf-4fb2-b35c-e3d37b8bb9e2",
+    "oracle_id": "e12f00f4-89f2-4d1d-94cf-460945d80a4e",
+    "set": "plst",
+    "number": "ONS-295",
+    "nome": "Venomspout Brackus",
+    "grupo": "1997"
+  },
+  {
+    "id": "e6e31407-2038-45b0-ac15-79c55a3119c4",
+    "oracle_id": "97db6c39-e690-49b6-93a6-e51b8dfad10b",
+    "set": "plst",
+    "number": "PCY-126",
+    "nome": "Spore Frog",
+    "grupo": "1997"
+  },
+  {
+    "id": "03909585-77ee-45b4-9ded-cb3540afa07a",
+    "oracle_id": "bc01d36b-dea3-47d4-afdf-0dbbba7ca7b2",
+    "set": "plst",
+    "number": "USG-215",
+    "nome": "Shivan Raptor",
+    "grupo": "1997"
+  },
+  {
+    "id": "891860b6-3e68-4b8e-8bde-1e5c4c1a4366",
+    "oracle_id": "0230de18-8d15-4cfa-9d42-7ccddd9f9570",
+    "set": "rvr",
+    "number": "461",
+    "nome": "Supreme Verdict",
+    "grupo": "1997"
+  },
+  {
+    "id": "c78aa06d-fb54-4bbf-8031-ccc8db973d23",
+    "oracle_id": "b2c6aa39-2d2a-459c-a555-fb48ba993373",
+    "set": "s99",
+    "number": "158",
+    "nome": "Island",
+    "grupo": "1997"
+  },
+  {
+    "id": "a7a4a023-8867-4fb4-baf9-df7540b61725",
+    "oracle_id": "67a3541c-8408-40c8-b44f-90035b860f57",
+    "set": "s99",
+    "number": "41",
+    "nome": "Man-o'-War",
+    "grupo": "1997"
+  },
+  {
+    "id": "7485da91-a051-4680-8a25-c81fdaa77130",
+    "oracle_id": "e75b2a97-b28d-43fe-8b1e-ba87a09f339c",
+    "set": "scg",
+    "number": "111",
+    "nome": "Ambush Commander",
+    "grupo": "1997"
+  },
+  {
+    "id": "6fc44e66-7ff8-4fcd-9f98-e53707590d67",
+    "oracle_id": "8866272d-89cb-478c-82ae-20e1d510eab7",
+    "set": "tsb",
+    "number": "44",
+    "nome": "Funeral Charm",
+    "grupo": "1997"
+  },
+  {
+    "id": "a83420d1-c51a-4fb7-8f1d-b376a0083d95",
+    "oracle_id": "92d6af2f-728e-4e41-87cb-5c90878a2f2f",
+    "set": "tsb",
+    "number": "58",
+    "nome": "Disintegrate",
+    "grupo": "1997"
+  },
+  {
+    "id": "ec18fa41-6948-4d94-8dcc-31fb63fb53ec",
+    "oracle_id": "caa02547-66e3-4e27-a2d3-5e94f3e7a069",
+    "set": "tsr",
+    "number": "305",
+    "nome": "Thraben Inspector",
+    "grupo": "1997"
+  },
+  {
+    "id": "4daf00e8-f95b-410f-9e6f-a7fd6c2b8588",
+    "oracle_id": "5bf4d8d9-a2b2-4dba-ac05-9d4470a89db2",
+    "set": "tsr",
+    "number": "328",
+    "nome": "Read the Bones",
+    "grupo": "1997"
+  },
+  {
+    "id": "f82a7ea8-aa1c-4ff9-b1f7-06452492c788",
+    "oracle_id": "d0d35864-1edc-4af1-9b89-3d7e94908011",
+    "set": "tsr",
+    "number": "409",
+    "nome": "Ramunap Ruins",
+    "grupo": "1997"
+  },
+  {
+    "id": "ed3d5a10-6d4b-4383-b400-7323f2b4670e",
+    "oracle_id": "372e2d6e-427c-4152-b936-27dcf536ca84",
+    "set": "uds",
+    "number": "24",
+    "nome": "Voice of Reason",
+    "grupo": "1997"
+  },
+  {
+    "id": "f042a8c7-f07b-42bd-8251-c588d890683c",
+    "oracle_id": "b445482a-9422-41c7-bedb-3b9f500d2f27",
+    "set": "usg",
+    "number": "133",
+    "nome": "Eastern Paladin",
+    "grupo": "1997"
+  },
+  {
+    "id": "afe5e4ec-9c0e-4b1a-b3c6-e9631cf214eb",
+    "oracle_id": "80e08ee2-4272-4783-9a0d-90079600b594",
+    "set": "usg",
+    "number": "235",
+    "nome": "Argothian Swine",
+    "grupo": "1997"
+  },
+  {
+    "id": "905506cc-f77e-4214-8eb3-6f141997336c",
+    "oracle_id": "f67df84f-667e-41cf-80f9-911abafe70ac",
+    "set": "usg",
+    "number": "244",
+    "nome": "Citanul Hierophants",
+    "grupo": "1997"
+  },
+  {
+    "id": "b8324f44-c7f5-41ee-bc8d-16822bd8942f",
+    "oracle_id": "fa683059-b9de-4063-ae71-597ed4e2df30",
+    "set": "vis",
+    "number": "125",
+    "nome": "Wind Shear",
+    "grupo": "1997"
+  },
+  {
+    "id": "7e129be5-e2c5-4f69-b8e8-539ac2085c7a",
+    "oracle_id": "c39112ab-ee1f-4f00-b18b-692b5fe32b80",
+    "set": "vis",
+    "number": "126",
+    "nome": "Army Ants",
+    "grupo": "1997"
+  },
+  {
+    "id": "ae869780-27e8-4a6d-9ac6-cdab617725e2",
+    "oracle_id": "72e9a207-dad9-4c51-8040-e90a36bd35e6",
+    "set": "wth",
+    "number": "78",
+    "nome": "Razortooth Rats",
+    "grupo": "1997"
   },
   {
     "id": "74adb3f7-2453-4133-a08b-4a2b1dc714b9",

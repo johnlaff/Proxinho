@@ -30,22 +30,35 @@ export function lineText(chunks: Chunk[]): string {
   return chunks.map((c) => c.map((r) => (r.kind === "symbol" ? `{${r.value}}` : r.value)).join("")).join(" ");
 }
 
-/** Quebra uma linha de texto em runs, marcando itálico nos parênteses. */
+/**
+ * Quebra uma linha de texto em runs, marcando itálico nos parênteses. No flavor (`italicAll`), o
+ * trecho entre asteriscos sai em pé, como na carta impressa: o título do livro citado e a palavra
+ * enfatizada ("— *Pergaminho dos Primórdios*", "Reforço *e* refresco!"). Sem isso os asteriscos
+ * do texto saíam na carta. Só com os asteriscos aos pares.
+ */
 export function tokenize(line: string, italicAll = false): Run[] {
   const runs: Run[] = [];
   let depth = 0;
   let buf = "";
+  const stars = italicAll && (line.match(/\*/g)?.length ?? 0) % 2 === 0;
+  let upright = false;
+  const italicNow = () => (italicAll && !upright) || depth > 0;
   const flush = () => {
-    if (buf) runs.push({ kind: "text", value: buf, italic: italicAll || depth > 0 });
+    if (buf) runs.push({ kind: "text", value: buf, italic: italicNow() });
     buf = "";
   };
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
+    if (ch === "*" && stars) {
+      flush();
+      upright = !upright;
+      continue;
+    }
     if (ch === "{") {
       const end = line.indexOf("}", i);
       if (end > i) {
         flush();
-        runs.push({ kind: "symbol", value: line.slice(i + 1, end), italic: italicAll || depth > 0 });
+        runs.push({ kind: "symbol", value: line.slice(i + 1, end), italic: italicNow() });
         i = end;
         continue;
       }

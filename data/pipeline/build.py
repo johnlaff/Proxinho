@@ -1245,8 +1245,8 @@ def drawn_frame(card: dict) -> bool:
 
 
 def frame_supported(card: dict) -> bool:
-    """O motor do Proxinho reescreve a moldura moderna (2015+) e a de 2003 a 2014 (ADR 0024),
-    de layout normal.
+    """O motor do Proxinho reescreve a moldura moderna (2015+), a de 2003 a 2014 (ADR 0024) e a
+    antiga, de 1997 a 2003 e das reimpressões retrô (ADR 0031), de layout normal.
 
     Outras molduras entram por etapas (docs/roadmap.md). Quando a impressão não é
     suportada, o site mostra a imagem oficial em PT (se houver) ou avisa.
@@ -1254,7 +1254,7 @@ def frame_supported(card: dict) -> bool:
     effects = set(card.get("frame_effects") or [])
     type_line = card.get("type_line", "")
     return (
-        (card.get("frame") == "2015" or frame2003_supported(card))
+        (card.get("frame") == "2015" or frame2003_supported(card) or frame1997_supported(card))
         and card.get("layout") == "normal"
         and card.get("border_color") in {"black", "white"}
         and not card.get("full_art")
@@ -1271,7 +1271,7 @@ def frame_supported(card: dict) -> bool:
 def frame2003_supported(card: dict) -> bool:
     """Moldura de 2003 a 2014 (ADR 0024): as barras e a caixa ficam quase onde estão na M15, e o
     motor muda só a caixa e a ponta das barras (`frame2003` em `m15Layout`). Só a moldura comum:
-    com qualquer efeito (o céu estrelado de Theros, a lápide de Odyssey no canto da caixa, a faixa
+    com qualquer efeito (o céu estrelado de Theros, a lápide de Odyssey no começo do nome, a faixa
     do milagre, as cores trocadas de Planar Chaos) o desenho muda, e os planeswalkers de 2003
     têm caixa própria. E duas coleções de promos (`SETS_2003_OFF`)."""
     return (
@@ -1281,6 +1281,28 @@ def frame2003_supported(card: dict) -> bool:
         and card.get("watermark") in WATERMARKS_2003_OK
         and card.get("set") not in SETS_2003_OFF
     )
+
+
+def frame1997_supported(card: dict) -> bool:
+    """Moldura antiga (ADR 0031): de Mirage a Scourge, das edições básicas de 5ª a 7ª, de Portal e
+    das reimpressões retrô (TSR, MH2, DMR, BRO, RVR...). O nome e o tipo são letras brancas com
+    sombra sobre a moldura texturizada, que a rede neural apaga; a caixa é de papel. Só a comum:
+    sem efeito, salvo a lápide de Odyssey a Scourge, antes do nome (fica como está, e o nome em PT
+    começa onde começava o inglês, depois dela), sem marca-d'água (os logotipos das promos e o
+    "wotc" das reimpressões de 30 anos, no meio da caixa), sem planeswalker (as retrô de MH3 têm
+    caixa própria) e fora das coleções com o desenho refeito (`SETS_1997_OFF`)."""
+    return (
+        card.get("frame") == "1997"
+        and set(card.get("frame_effects") or []) <= {"tombstone"}
+        and "Planeswalker" not in card.get("type_line", "")
+        and not card.get("watermark")
+        and card.get("set") not in SETS_1997_OFF
+    )
+
+
+# Coleções da moldura antiga com o desenho refeito, sem nada que o Scryfall marque: a Secret Lair
+# escreve o nome e o tipo à mão ou em outras letras ("CREATURE - Goblin" em versalete, SLD 2517).
+SETS_1997_OFF = {"sld"}
 
 
 # Promos de 2003 com outro desenho, sem nada que o Scryfall marque: as de Champs and States (PCMP)

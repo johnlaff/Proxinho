@@ -34,6 +34,18 @@ describe("tokenize", () => {
     expect(runs[0].italic).toBe(false);
   });
 
+  it("no flavor, o trecho entre asteriscos sai em pé, sem os asteriscos (Glory, DMR 264)", () => {
+    const runs = tokenize("— *Pergaminho dos Primórdios*", true);
+    expect(runs.map((r) => [r.value, r.italic])).toEqual([
+      ["— ", true],
+      ["Pergaminho dos Primórdios", false],
+    ]);
+    expect(tokenize("Reforço *e* refresco!", true).map((r) => r.italic)).toEqual([true, false, true]);
+    // asterisco sozinho fica como está, e nas regras o asterisco não muda nada
+    expect(tokenize("Poder *", true)[0].value).toBe("Poder *");
+    expect(tokenize("ganha +*/+0 e *x*")[0].value).toBe("ganha +*/+0 e *x*");
+  });
+
   it("mantém o símbolo grudado na pontuação ao quebrar em pedaços", () => {
     const chunks = toChunks(tokenize("{T}: Adicione {G}."));
     expect(chunks[0].map((r) => r.value)).toEqual(["T", ":"]);

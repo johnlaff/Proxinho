@@ -17,7 +17,9 @@
  *   --base REF        commit de comparação (padrão: origin/main)
  *   --api URL         de onde vêm os dados e as fontes oficiais (padrão: o site no ar); para
  *                     testar dados novos do pipeline, suba o `pnpm dev` com o D1 local e passe
- *                     http://localhost:5173
+ *                     http://localhost:5173. Uma fonte que está em `.fontes-oficiais/` (a mesma
+ *                     pasta do `pnpm fonts:local`) vem de lá: a fonte nova de uma moldura nova
+ *                     ainda não está no KV do site antes da publicação (a `medieval.ttf`, ADR 0031)
  *   --sem-rede        pula as faces que passam pela rede neural (sem borda, planeswalkers, naves)
  *   --grupo NOME      só um grupo da amostra ("sem borda", "2003", "citada nos documentos"...)
  *   --amostra ARQUIVO outra lista de impressões, no formato de amostra.json (para conferir todas as
@@ -39,7 +41,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { drawingHash } from "../codigo.ts";
 
 const ROOT = resolve(import.meta.dirname, "..", "..");
@@ -164,6 +166,8 @@ async function openPage(browser, url) {
   // as fontes oficiais vêm da API (a página do montador não tem a API)
   await page.route("**/api/fontes/**", async (route) => {
     const u = new URL(route.request().url());
+    const local = join(ROOT, ".fontes-oficiais", basename(u.pathname));
+    if (existsSync(local)) return route.fulfill({ status: 200, body: readFileSync(local), headers: { "content-type": "font/ttf" } });
     const r = await fetch(API + u.pathname + u.search);
     await route.fulfill({
       status: r.status,

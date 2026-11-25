@@ -429,6 +429,27 @@ class FrameSupported(unittest.TestCase):
             self.assertTrue(frame_supported({**self.base, "set": code}), code)
 
 
+    def test_moldura_antiga(self) -> None:
+        # ADR 0031: a moldura de 1997 a 2003 e das retrô entra (Catastrophe USG 6)
+        old = {**self.base, "frame": "1997"}
+        self.assertTrue(frame_supported(old))
+        self.assertTrue(frame_supported({**old, "border_color": "white"}))
+        # a lápide de Odyssey fica antes do nome, e o nome em PT começa depois dela (Seize the Day,
+        # ODY 220); os outros efeitos mudam o desenho
+        self.assertTrue(frame_supported({**old, "frame_effects": ["tombstone"]}))
+        self.assertFalse(frame_supported({**old, "frame_effects": ["tombstone", "legendary"]}))
+        # marca-d'água no meio da caixa: os logotipos das promos e o "wotc" das de 30 anos
+        for mark in ("wotc", "arena", "dci", "junior"):
+            self.assertFalse(frame_supported({**old, "watermark": mark}), mark)
+        # planeswalker retrô (MH3) tem caixa própria; as de World Championship têm borda dourada
+        self.assertFalse(frame_supported({**old, "type_line": "Legendary Planeswalker — Urza"}))
+        self.assertFalse(frame_supported({**old, "border_color": "gold"}))
+        for layout in ("split", "transform", "token"):
+            self.assertFalse(frame_supported({**old, "layout": layout}), layout)
+        # Secret Lair na antiga: o tipo em outras letras (SLD 2517)
+        self.assertFalse(frame_supported({**old, "set": "sld"}))
+
+
 class BorderlessSupported(unittest.TestCase):
     """Arte sem borda entra só na moldura padrão, com a caixa escura ("inverted")."""
 

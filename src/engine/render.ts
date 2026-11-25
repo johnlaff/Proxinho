@@ -33,7 +33,7 @@ import {
   pasteStrip,
   restoreBevel,
 } from "./classCard";
-import { bodyFont, loadCardFonts, titleFont, type TitleFont } from "./fonts";
+import { bodyFont, loadCardFonts, oldNameFont, titleFont, type TitleFont } from "./fonts";
 import {
   BACK_PT_NOTCH,
   BASE_H,
@@ -135,6 +135,7 @@ import {
   type StationText,
 } from "./station";
 import { mdfcHint, type MdfcHint } from "./mdfc";
+import { OLD, oldCostLeft, oldLetters, oldTypeEnds } from "./old";
 import { preloadSymbols } from "./symbols";
 import {
   SYMBOL_EM,
@@ -1211,6 +1212,8 @@ function drawLayout(
   center = false,
   /** faixas da tabela de d20, medidas no original (ver `liftShadedBands`) */
   shade?: { x0: number; x1: number; color: string },
+  /** o fio antes do flavor (a moldura antiga não tem: só o espaço, ADR 0031) */
+  rule = true,
 ) {
   let y = box.y0 + (box.y1 - box.y0 - res.height) / 2;
   if (shade) drawTableBands(ctx, res, y, k, shade);
@@ -1220,7 +1223,7 @@ function drawLayout(
   ctx.textBaseline = "alphabetic";
   res.lines.forEach((line, i) => {
     if (i > 0 && line.first) y += res.paragraphGap;
-    if (i === res.flavorStart && i > 0) {
+    if (i === res.flavorStart && i > 0 && rule) {
       // fio separador do texto de ambientação
       const gy = y + res.paragraphGap * 0.7;
       const grad = ctx.createLinearGradient(box.x0 * k, 0, box.x1 * k, 0);
@@ -1233,7 +1236,7 @@ function drawLayout(
       ctx.fillRect((box.x0 + 6) * k, gy * k, (box.x1 - box.x0 - 12) * k, Math.max(1, 1.6 * k));
       ctx.fillStyle = ink;
       y += res.paragraphGap * 1.4;
-    }
+    } else if (i === res.flavorStart && i > 0) y += res.paragraphGap * 1.4;
     const baseline = y + res.lineHeight * 0.8;
     let x = box.x0 + (center ? 0 : (line.indent ?? 0));
     if (center) {
@@ -1445,6 +1448,140 @@ function emblemTitle(
  * Ficha: nome em versalete no alto, linha de tipo de altura variável e caixa de
  * texto entre ela e o pé (ver token.ts). Devolve false se a moldura não bater.
  */
+/**
+ * Uma linha da moldura antiga: letras brancas com a sombra preta 2 px abaixo e à direita, com a
+ * primeira letra (o desenho dela, sem o recuo da fonte) em `x`; comprime como `drawLine`.
+ */
+function drawOldLine(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  baseline: number,
+  maxWidth: number,
+  size: number,
+  k: number,
+  t: TitleFont,
+) {
+  let s = size * t.scale;
+  const measure = () => {
+    ctx.font = `${t.weight} ${s * k}px ${t.family}`;
+    const m = ctx.measureText(text);
+    return { left: m.actualBoundingBoxLeft / k, width: (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) / k };
+  };
+  let m = measure();
+  while (m.width * 0.82 > maxWidth && s > 18) {
+    s -= 0.5;
+    m = measure();
+  }
+  const sx = m.width > maxWidth ? maxWidth / m.width : 1;
+  for (const [d, color] of [
+    [OLD.shadow, OLD.shadowInk],
+    [0, OLD.ink],
+  ] as const) {
+    ctx.save();
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = color;
+    ctx.translate((x + d) * k, (baseline + d) * k);
+    ctx.scale(sx, 1);
+    ctx.fillText(text, m.left * k, 0);
+    ctx.restore();
+  }
+}
+
+/**
+ * Moldura antiga (ADR 0031): o nome e o tipo são letras brancas com sombra direto sobre a
+ * moldura texturizada, e saem pela rede neural, num quadro só; a caixa de texto, de papel,
+ * sai pelo apagamento de sempre. Devolve "neural" quando a rede neural não rodou e `false`
+ * quando a imagem não tem as letras onde a moldura as põe (a carta sai na original).
+ */
+async function renderOld(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  sctx: CanvasRenderingContext2D;
+  data: ImageData;
+  toImg: (r: Rect) => Rect;
+  face: PtFace;
+  print: PrintRecord;
+  flavor: string | null;
+  side: number;
+  W: number;
+  H: number;
+  neural: Neural;
+  plan: (frames: number) => void;
+}): Promise<"ok" | "neural" | false> {
+  const { ctx, src, sctx, data, toImg, face, print, W, H, neural } = p;
+  const fx = data.width / BASE_W;
+  const fy = data.height / BASE_H;
+  const cost = oldCostLeft(print.mana_cost);
+  const nameRect = roundRect(toImg({ x0: OLD.name.x0, y0: OLD.name.y0, x1: cost - 4, y1: OLD.name.y1 }));
+  const typeRect = roundRect(toImg({ x0: OLD.type.x0, y0: OLD.type.y0, x1: OLD.type.x1, y1: OLD.type.y1 }));
+  const name = oldLetters(data, nameRect);
+  const type = oldLetters(data, typeRect);
+  // sem letras perto do começo das duas linhas, não é a moldura que o motor conhece
+  const startsNear = (l: typeof name) => l.blocks.length > 0 && Math.abs(l.blocks[0].x0 / fx - OLD.name.x) <= 12;
+  if (!startsNear(name) || !startsNear(type)) return false;
+  const ends = oldTypeEnds(data, type);
+  // as letras do tipo vão até o fim do texto em inglês: o símbolo da coleção fica fora da máscara
+  const typeMask = { ...type, mask: type.mask.slice() };
+  const tw = typeRect.x1 - typeRect.x0;
+  const cut = Math.min(tw, ends.textEnd + Math.round(4 * fx) - typeRect.x0);
+  for (let y = 0; y < typeRect.y1 - typeRect.y0; y++) typeMask.mask.fill(0, y * tw + Math.max(0, cut), (y + 1) * tw);
+  // o custo de mana e o símbolo da coleção ficam escondidos da rede neural (a cor deles não vaza)
+  const hide = [
+    roundRect(toImg({ x0: cost - 2, y0: OLD.name.y0, x1: 700, y1: OLD.name.y1 })),
+    ...(ends.symbol !== null ? [{ x0: ends.symbol - Math.round(2 * fx), y0: typeRect.y0, x1: typeRect.x1, y1: typeRect.y1 }] : []),
+  ];
+  // a caixa: o bisel de dentro, medido na imagem; o texto em inglês sai pelo apagamento de sempre
+  const outer = OLD.box;
+  const boxRect = insideBoxSides(data, toImg(outer), 16 * fx, false);
+  const boxBase = { x0: boxRect.x0 / fx, y0: boxRect.y0 / fy, x1: boxRect.x1 / fx, y1: boxRect.y1 / fy };
+  const hasText = Boolean((face.text_pt ?? "").trim() || p.flavor);
+  const centered = hasText ? measureCentered(data, roundRect(boxRect), [], fx) === true : false;
+  const inks = eraseRegions(
+    data,
+    [{ rect: roundRect(boxRect), threshold: 14, colorThreshold: 34, stains: true, attachedBelow: roundRect(boxRect).y1 }],
+    [],
+  );
+  p.plan(1);
+  const area = { x0: nameRect.x0, y0: nameRect.y0, x1: typeRect.x1, y1: typeRect.y1 };
+  const clean = await lamaBox(
+    data,
+    [
+      { rect: nameRect, mask: name.mask, polarity: "light" },
+      { rect: typeRect, mask: typeMask.mask, polarity: "light" },
+    ],
+    area,
+    hide,
+    "light",
+    `${print.id}:${data.width}:${p.side}:antiga`,
+    { art: true, grow: Math.round(fx * 1), gap: 0, simple: false, neural },
+  );
+  if (!clean) return "neural";
+  sctx.putImageData(data, 0, 0);
+  ctx.drawImage(src, 0, 0, W, H);
+
+  const k = W / BASE_W;
+  // a linha de base medida no inglês, se estiver perto da da moldura (as retrô ficam 2 px abaixo)
+  const near = (v: number | null, expected: number) => (v !== null && Math.abs(v / fy - expected) <= 5 ? v / fy : expected);
+  const nameBase = near(name.baseline, OLD.name.baseline);
+  const typeBase = near(type.baseline, OLD.type.baseline);
+  const typeEnd = ends.symbol !== null ? ends.symbol / fx - 12 : OLD.typeEnd;
+  drawOldLine(ctx, face.name_pt ?? face.name_en, OLD.name.x, nameBase, cost - 12 - OLD.name.x, OLD.name.size, k, oldNameFont());
+  if (face.type_pt) {
+    const body = bodyFont();
+    const t: TitleFont = { family: body.family, weight: "400", scale: body.scale, dx: 0, baseline: "alphabetic", rise: 0 };
+    drawOldLine(ctx, face.type_pt, OLD.type.x, typeBase, typeEnd - OLD.type.x, OLD.type.size, k, t);
+  }
+  if (!hasText) return "ok";
+  const pad = OLD.boxPad;
+  const box = { x0: boxBase.x0 + pad.x0, y0: boxBase.y0 + pad.y0, x1: boxBase.x1 - pad.x1, y1: boxBase.y1 - pad.y1 };
+  const symbols = await preloadSymbols(face.text_pt, p.flavor);
+  const m = measurer(ctx, k);
+  const res = fitText(face.text_pt, p.flavor, box.x1 - box.x0, box.y1 - box.y0, m, 34, 15, undefined, face.ability_words);
+  drawLayout(ctx, res, box, k, inks[0] ?? "dark", symbols, m, centered, undefined, false);
+  return "ok";
+}
+
 async function renderToken(p: {
   ctx: CanvasRenderingContext2D;
   src: HTMLCanvasElement;
@@ -1645,13 +1782,14 @@ const isPlaneswalker = (print: PrintRecord, face: PtFace | null, typeLine?: stri
   !print.sides && /planeswalker/i.test(face?.type_pt ?? typeLine ?? "");
 
 /**
- * A montagem passa pela rede neural (lama.ts): português a escrever num planeswalker ou numa arte
- * sem borda. A prévia usa para mostrar o andamento enquanto espera por ela.
+ * A montagem passa pela rede neural (lama.ts): português a escrever num planeswalker, numa arte
+ * sem borda ou na moldura antiga. A prévia usa para mostrar o andamento enquanto espera por ela.
  */
 export function usesNeuralFill(print: PrintRecord, face: PtFace | null, side: 0 | 1 = 0, typeLine?: string | null): boolean {
   const supported = print.sides ? Boolean(print.sides[side]?.supported) : print.supported;
   return (
-    Boolean(supported && face?.name_pt && face.text_pt !== null) && (print.border === "borderless" || isPlaneswalker(print, face, typeLine))
+    Boolean(supported && face?.name_pt && face.text_pt !== null) &&
+    (print.border === "borderless" || isPlaneswalker(print, face, typeLine) || (print.frame === "1997" && print.layout === "normal"))
   );
 }
 
@@ -1674,7 +1812,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const klass = print.layout === "class" && !borderless;
   // e as naves com Posicionar: a caixa translúcida vai para a rede neural
   const stationParts = !borderless && print.layout === "normal" ? stationText(face?.text_pt) : null;
-  const version = pw || borderless || saga || klass || stationParts ? "png" : (opts.imageVersion ?? "png");
+  // e a moldura antiga: o nome e o tipo, sobre a moldura texturizada, vão para a rede neural
+  const old = print.frame === "1997" && !borderless && print.layout === "normal";
+  const version = pw || borderless || saga || klass || stationParts || old ? "png" : (opts.imageVersion ?? "png");
   const [img] = await Promise.all([opts.source ?? loadImage(printImage(print, version, side)), loadCardFonts()]);
 
   const W = Math.round(BASE_W * scale);
@@ -1747,6 +1887,13 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     const done = await renderClass({ ctx, src, sctx, data, toImg, face, print, W, H });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: done };
+  }
+
+  if (old) {
+    const done = await renderOld({ ctx, src, sctx, data, toImg, face, print, flavor: opts.flavor ?? null, side, W, H, neural, plan });
+    if (done === "ok") return { canvas: out, translated: true };
+    ctx.drawImage(img, 0, 0, W, H);
+    return done === "neural" ? { canvas: out, translated: false, reason: "neural" } : { canvas: out, translated: false };
   }
 
   // Algumas artes estendidas têm a caixa de texto mais curta e a linha de tipo mais

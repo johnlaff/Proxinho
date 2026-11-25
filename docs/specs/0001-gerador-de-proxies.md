@@ -61,9 +61,9 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 
 ## Fora do escopo da v1
 
-Molduras além da 2015 normal (a de 2003 entrou em 21/11/2026, H14), edição manual do texto, tradução não oficial (entrou em 21/11/2026, H15), fichas. Ver [roadmap](../roadmap.md).
+Molduras além da 2015 normal (a de 2003 entrou em 21/11/2026, H14; a antiga, em 25/11/2026, H18), edição manual do texto, tradução não oficial (entrou em 21/11/2026, H15), fichas. Ver [roadmap](../roadmap.md).
 
-Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008). Em 19/11/2026: artes sem borda na moldura padrão, com o nome de crossover mantido no alto e o nome em PT na linha de baixo, e a sangria do PDF com a própria arte (ADR 0012). Em 20/11/2026: Sagas na moldura padrão (ADR 0016) e Aventuras na moldura de livro (ADR 0017). Em 25/11/2026: a faixa de baixo das cartas modais em PT (ADR 0029) e as faixas dos planeswalkers do tamanho do texto em PT (ADR 0030).
+Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008). Em 19/11/2026: artes sem borda na moldura padrão, com o nome de crossover mantido no alto e o nome em PT na linha de baixo, e a sangria do PDF com a própria arte (ADR 0012). Em 20/11/2026: Sagas na moldura padrão (ADR 0016) e Aventuras na moldura de livro (ADR 0017). Em 25/11/2026: a faixa de baixo das cartas modais em PT (ADR 0029) e as faixas dos planeswalkers do tamanho do texto em PT (ADR 0030), e a moldura antiga (ADR 0031).
 
 ### H8. Fichas (entregue em 17/11/2026, ADR 0009)
 Como jogador, quero imprimir as fichas que o meu deck cria, em português, junto com as cartas.
@@ -139,3 +139,11 @@ Como jogador, quero que o pedido revisado continue lá quando eu voltar, mandar 
 - [x] A linha com coleção e número acha a impressão pedida mesmo entre fichas de mesmo nome e em cartas com mais de 80 impressões.
 - [x] Cada nome não encontrado mostra até três cartas parecidas ("Você quis dizer…?": erro de digitação, nome pela metade, palavras do nome); tocar numa põe a carta no pedido com a quantidade da linha e corrige o nome na lista colada.
 - [x] Cada linha da legenda do resumo filtra a prova pelas cartas daquele resultado (por exemplo, só as que saem em inglês); as folhas filtradas dizem "Filtro" e o PDF continua com todas.
+
+### H18. Moldura antiga (entregue em 25/11/2026, ADR 0031)
+Como jogador, quero imprimir em português as artes da moldura antiga (Mirage a Scourge, as edições básicas de 5ª a 7ª e as reimpressões retrô), inclusive das cartas que só têm arte nela.
+- [x] As cartas normais na moldura antiga, com borda preta ou branca, saem em português: o nome e o tipo em letras brancas com a sombra preta, como na carta, sobre a moldura refeita pela rede neural (sem barra pintada por cima).
+- [x] O nome sai na Goudy Medieval da época, com os acentos e a cedilha do português; o tipo e as regras, na MPlantin. O texto fica centrado na altura da caixa, sem o fio do flavor, como na carta antiga.
+- [x] O custo de mana e o símbolo da coleção ficam como estão, e o tipo em PT vai até o símbolo.
+- [x] Quando a carta tem arte na moldura atual ou na de 2003, ela continua sendo a padrão; a antiga aparece na gaveta e vira a padrão só quando é a única em PT.
+- [x] Sem a rede neural, a carta sai na original, e a etiqueta diz que o apagador de texto não rodou. O nome em PT começa depois da lápide de Odyssey a Scourge, que fica como está. As impressões com marca-d'água, os planeswalkers e a Secret Lair na moldura antiga saem na original, e a etiqueta diz que saem em inglês.

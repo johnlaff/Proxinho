@@ -7,12 +7,15 @@ A amostra tem dois pedaços:
    em que o motor já errou: "Faramir, Field Commander, LTR 14", "Sol Ring, SLD 2467"...). Uma
    correção nova nunca pode trazer de volta um erro velho.
 2. Um sorteio fixo (semente 20261125) por grupo de moldura, entre as impressões suportadas de
-   cartas com texto em PT: a moldura comum de 2015, a de 2003, a sem borda, a arte estendida, as
-   de duas faces, os planeswalkers, as fichas, os emblemas, as Sagas, Aventuras, Classes, naves e
-   a tradução não oficial.
+   cartas com texto em PT: a moldura comum de 2015, a de 2003, a antiga (1997), a sem borda, a
+   arte estendida, as de duas faces, os planeswalkers, as fichas, os emblemas, as Sagas,
+   Aventuras, Classes, naves e a tradução não oficial.
 
 Lê o banco montado pelo pipeline (data/out/cards.sql, depois de `pnpm data:build`). A amostra é
-versionada: rode de novo só para trocar a amostra de propósito (e diga no commit por quê).
+versionada e só cresce: rodar de novo mantém as impressões que já estão nela e acrescenta as
+citadas nos documentos depois e o que falta em cada grupo (um grupo novo, como a moldura antiga,
+sai inteiro). Sortear tudo de novo mudava as cartas de todos os grupos a cada citação nova. Para
+trocar a amostra de propósito, apague o arquivo (e diga no commit por quê).
 
     python3 scripts/regressao/amostra.py            # grava scripts/regressao/amostra.json
 """
@@ -49,6 +52,8 @@ GROUPS: dict[str, int] = {
     "classe": 8,
     "nave": 10,
     "não oficial": 40,
+    # por último: um grupo novo no fim não muda o sorteio dos de antes
+    "1997": 40,
 }
 
 
@@ -57,6 +62,9 @@ def group_of(row: sqlite3.Row) -> str | None:
     layout, frame, border = row["layout"], row["frame"], row["border"]
     effects = set((row["effects"] or "").split(","))
     type_line = row["type_line"] or ""
+    # a moldura antiga entrou depois (ADR 0031): antes de tudo, para não mudar os outros grupos
+    if frame == "1997":
+        return "1997"
     if row["source"] == "nao-oficial":
         return "não oficial"
     if layout == "emblem":
@@ -123,6 +131,11 @@ def main() -> None:
     by_key = {(r["set_code"], r["number"]): r for r in rows}
 
     picked: dict[str, dict] = {}
+    if OUT.exists():
+        ids = {r["id"] for r in rows}
+        for it in json.loads(OUT.read_text()):
+            if it["id"] in ids:
+                picked[it["id"]] = it
 
     def take(r: sqlite3.Row, group: str) -> None:
         picked.setdefault(
@@ -144,11 +157,12 @@ def main() -> None:
             pools[g].append(r)
     for g, n in GROUPS.items():
         pool = pools[g]
-        for r in rng.sample(pool, min(n, len(pool))):
+        have = sum(1 for it in picked.values() if it["grupo"] == g)
+        for r in rng.sample(pool, min(max(0, n - have), len(pool))):
             take(r, g)
 
     items = sorted(picked.values(), key=lambda x: (x["grupo"] != "citada nos documentos", x["grupo"], x["set"], x["number"]))
-    OUT.write_text(json.dumps(items, ensure_ascii=False, indent=1) + "\n")
+    OUT.write_text(json.dumps(items, ensure_ascii=False, indent=2) + "\n")
     counts: dict[str, int] = {}
     for it in items:
         counts[it["grupo"]] = counts.get(it["grupo"], 0) + 1
