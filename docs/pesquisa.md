@@ -24,19 +24,19 @@ Levantamento feito em 17/11/2026, antes de escrever a primeira linha de código.
 
 ## Cobertura da tradução oficial
 
-Cruzando a lista de cartas do Scryfall com o texto do Arena e com as impressões em português (21/11/2026):
+Cruzando a lista de cartas do Scryfall com o texto do Arena e com as impressões em português (25/11/2026):
 
 | Cartas legais no Commander | Cartas | % |
 |---|---:|---:|
 | Total | 31.597 | 100 |
 | Com o texto PT-BR do Arena | 15.734 | 49,8 |
-| Só com o texto de uma impressão em português | 10.730 | 34,0 |
-| Com texto oficial (uma das duas) | 26.464 | 83,8 |
-| Sem texto, com a imagem oficial em português | 87 | 0,3 |
+| Só com o texto de uma impressão em português | 10.816 | 34,2 |
+| Com texto oficial (uma das duas) | 26.550 | 84,0 |
+| Sem texto, com a imagem oficial em português | 1 | 0,0 |
 | Sem nada em português | 5.046 | 16,0 |
 | Entre as 1.000 mais jogadas (EDHREC), com texto oficial | 984 | 98,4 |
 
-Algumas impressões em português aparecem no Scryfall só com a imagem, sem o texto (Advent of the Wurm em DGM): essas não contam como tradução. E 9.819 impressões em português, quase todas de 1995 a 2001, não têm nem a imagem: no lugar dela, o Scryfall põe a carta em inglês com o selo "Localized Image Not Available", e só o nome impresso vale. Elas não viram "imagem oficial em português" (`real_image` no pipeline). A medição de 17/11 contava essas cartas como traduzidas (92,4% no total e 98,9% nas 1.000 mais jogadas). O texto impresso que existe às vezes vem com habilidades coladas, sem a quebra de linha ("reserva de mana.{3}{W}", "VoarAterragem", "Ímpeto{T}: Adicione"), e o pipeline devolve a quebra (ADR 0011); no Arena, duas regras perdem o espaço antes do símbolo ("Adicione{B}"), que volta. Criaturas sem habilidades também vêm sem o texto, mas com o tipo em PT: o texto delas é vazio de verdade, e elas contam como tradução (eram 139 cartas saindo em inglês). Uns 20 lembretes, nas duas fontes, vêm sem o "(" ou sem o ")", e um bônus do Arena vem como "+1/++1": o pipeline repõe só a pontuação, nunca palavras. Umas 17 regras trazem uma palavra repetida ("Toda vez que que"), e a cópia sai. No Arena, alguns planeswalkers vêm com uma habilidade sem o custo de lealdade no texto em PT; o custo é um número da regra, não texto traduzido, e o pipeline o copia do Oracle.
+Algumas impressões em português aparecem no Scryfall só com a imagem, sem o texto (as 86 de Dragon's Maze, como o Advent of the Wurm): sozinhas não contam como tradução, e o texto delas foi transcrito da imagem (ADR 0026; até 21/11 elas contavam na linha "sem texto, com a imagem"). A que sobra nessa linha é a Sewers of Estark de 1995, com as regras daquele tempo, que fica só com o nome. E 9.819 impressões em português, quase todas de 1995 a 2001, não têm nem a imagem: no lugar dela, o Scryfall põe a carta em inglês com o selo "Localized Image Not Available", e só o nome impresso vale. Elas não viram "imagem oficial em português" (`real_image` no pipeline). A medição de 17/11 contava essas cartas como traduzidas (92,4% no total e 98,9% nas 1.000 mais jogadas). O texto impresso que existe às vezes vem com habilidades coladas, sem a quebra de linha ("reserva de mana.{3}{W}", "VoarAterragem", "Ímpeto{T}: Adicione"), e o pipeline devolve a quebra (ADR 0011); no Arena, duas regras perdem o espaço antes do símbolo ("Adicione{B}"), que volta. Criaturas sem habilidades também vêm sem o texto, mas com o tipo em PT: o texto delas é vazio de verdade, e elas contam como tradução (eram 139 cartas saindo em inglês). Uns 20 lembretes, nas duas fontes, vêm sem o "(" ou sem o ")", e um bônus do Arena vem como "+1/++1": o pipeline repõe só a pontuação, nunca palavras. Umas 17 regras trazem uma palavra repetida ("Toda vez que que"), e a cópia sai. No Arena, alguns planeswalkers vêm com uma habilidade sem o custo de lealdade no texto em PT; o custo é um número da regra, não texto traduzido, e o pipeline o copia do Oracle.
 
 O Arena tira a explicação das palavras-chave (o lembrete entre parênteses), que a carta física traz. Das faces com texto do Arena, 5.468 têm lembrete no Oracle e 5.295 vêm sem; das impressões em PT desde o Magic 2010 saem 1.121 lembretes com texto oficial, casados linha a linha com o Oracle, e 3.879 cartas ganham a explicação (ADR 0018). As mecânicas que nunca saíram impressas em PT ficam sem.
 
@@ -274,7 +274,7 @@ Depois de tirar a falsa imagem em PT do Scryfall, 7.384 cartas ficavam sem texto
 
 - **Padrão de mercado.** O MtG Proxy Printer, o concorrente mais próximo, troca o texto por uma caixa lisa e usa tradução de máquina (um tradutor de IA, o Google ou a Microsoft), com um selo "MT" na carta. Erra a terminologia que o Arena escreve sempre igual ("terra" por "terreno", "lançar" por "conjurar").
 - **Estado da arte.** Tradução guiada por glossário e por exemplos aprovados (memória de tradução). Na tarefa de terminologia do WMT 2025, dar a terminologia certa melhorou a qualidade e o acerto dos termos, e os melhores sistemas chegaram perto de 100% de acerto por frase. Traduzir e depois revisar impondo os termos (DuTerm, 2025) e buscar exemplos aprovados na hora de traduzir são o que a localização de jogos usa hoje.
-- **A memória que já existe.** As 26.416 faces oficiais dão 29.629 linhas distintas pareadas com o Oracle. Nas 3.307 cartas que ganharam a tradução até agora, 42% das linhas já tinham saído iguais numa carta oficial e 5% só mudavam nos números (o molde da oficial serve); 53% precisaram de tradução.
+- **A memória que já existe.** As 26.416 faces oficiais dão 29.629 linhas distintas pareadas com o Oracle. Nas 5.305 cartas que têm a tradução (25/11), 35% das linhas já tinham saído iguais numa carta oficial e 4% só mudavam nos números (o molde da oficial serve); 62% precisaram de tradução.
 
 A escolha (ADR 0025): a linha oficial igual, depois o molde, depois a tradução feita uma vez, com os pares oficiais parecidos à vista e o glossário das cartas oficiais, guardada no repositório e conferida nos números e símbolos. A carta só ganha a tradução quando todas as linhas e o tipo têm tradução, e a interface a marca como não oficial.
 

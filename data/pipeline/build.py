@@ -400,6 +400,36 @@ def load_arena_tokens() -> dict[tuple, dict]:
     return out
 
 
+# o que a impressão em PT traz escrito, nos campos do Scryfall
+TRANSCRIBED = ("printed_name", "printed_type_line", "printed_text", "flavor_text")
+
+
+def load_transcribed() -> dict[str, dict]:
+    """As impressões em PT transcritas da imagem oficial, por "coleção/número" (ADR 0026)."""
+    return json.loads((TRANSLATION_DIR / "transcritas.json").read_text())
+
+
+def transcribe(card: dict, table: dict[str, dict]) -> dict:
+    """
+    A impressão em PT que o Scryfall tem só na imagem, sem tipo nem texto (as 86 de Dragon's
+    Maze), com o que a carta traz escrito, transcrito da imagem em `data/traducao/transcritas.json`
+    (ADR 0026). A transcrição vale também para o nome, que o Scryfall às vezes tem errado ("Mao
+    do Bico de Bronze" no Moa do Bico de Bronze). A entrada só vale para a carta de mesmo nome
+    naquela coleção e número e deixa de valer quando o Scryfall trouxer o tipo ou o texto.
+    """
+    t = table.get(f"{card.get('set')}/{card.get('collector_number')}")
+    if not t or t["name"] != card.get("name") or card.get("card_faces") or card.get("printed_type_line") or card.get("printed_text") is not None:
+        return card
+    return {**card, **{k: t[k] if k in t else card.get(k) for k in TRANSCRIBED}, "_transcribed": f"{card['set']}/{card['collector_number']}"}
+
+
+def read_printed_pt(table: dict[str, dict]):
+    """As impressões em PT do cache do Scryfall, com as transcritas completadas (`transcribe`)."""
+    with open(CACHE / "scryfall_pt.jsonl") as fh:
+        for line in fh:
+            yield transcribe(json.loads(line), table)
+
+
 def load_printed_pt(offline: bool) -> dict[str, dict]:
     """Impressão em português mais recente de cada carta (Scryfall lang:pt)."""
     cache = CACHE / "scryfall_pt.jsonl"
@@ -418,9 +448,12 @@ def load_printed_pt(offline: bool) -> dict[str, dict]:
                 if page % 25 == 0:
                     log(f"Scryfall PT: página {page}")
                 time.sleep(0.1)  # Scryfall pede 50-100 ms entre chamadas
-    with open(cache) as fh:
-        best = pick_printed(json.loads(line) for line in fh)
-    log(f"Scryfall: {len(best)} cartas com impressão em português")
+    table = load_transcribed()
+    best = pick_printed(read_printed_pt(table))
+    used = {c["_text"].get("_transcribed") for c in best.values()} - {None}
+    log(f"Scryfall: {len(best)} cartas com impressão em português ({len(used)} com o texto transcrito da imagem)")
+    if stale := sorted(set(table) - used):
+        log(f"AVISO: {len(stale)} entradas de data/traducao/transcritas.json não valem mais (ex.: {stale[0]}): o Scryfall já traz o texto ou a carta mudou de número")
     return best
 
 
@@ -1652,11 +1685,17 @@ _ANY_REMINDER = re.compile(r"\s*\([^()]*\)")
 _MOLD_MARK = re.compile(r"\{[^}]+\}|[+-]?\d+(?:/[+-]?\d+)?")
 
 
-def line_key(line: str, names: list[str | None]) -> str:
-    """A linha do Oracle sem o lembrete e com o nome da carta trocado por "~" (o nome mais comprido primeiro)."""
+def line_key(line: str, names: list[str | None], pt: bool = False) -> str:
+    """
+    A linha do Oracle sem o lembrete e com o nome da carta trocado por "~" (o nome mais comprido
+    primeiro). No inglês, depois de "a" ou "an" o nome é o de um tipo, não a carta: "becomes a
+    Coward" no Coward // Killer fica, para sair "Covarde" e não o nome da carta. No PT (`pt`) o "a"
+    é preposição ("causado a Leão Fulgente") e o nome sempre sai.
+    """
     s = _ANY_REMINDER.sub("", line).strip()
+    article = "" if pt else r"(?<!\ba )(?<!\ban )"
     for n in sorted({n for n in names if n}, key=len, reverse=True):
-        s = s.replace(n, "~")
+        s = re.sub(article + re.escape(n), "~", s)
     return s
 
 
@@ -1694,7 +1733,7 @@ def official_lines(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str,
             continue
         for e, p in zip(faces_en, r["faces"]):
             en = [x for x in (line_key(x, [e.get("name"), card["name"]]) for x in (e.get("oracle_text") or "").split("\n")) if x]
-            pt = [x for x in (line_key(x, [p.get("name_pt"), r.get("name_pt")]) for x in (p.get("text_pt") or "").split("\n")) if x]
+            pt = [x for x in (line_key(x, [p.get("name_pt"), r.get("name_pt")], pt=True) for x in (p.get("text_pt") or "").split("\n")) if x]
             if len(en) != len(pt) or not en:
                 continue
             for a, b in zip(en, pt):
@@ -1713,10 +1752,18 @@ def official_types(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str,
     """
     A linha de tipo em PT: a parte antes do travessão inteira ("Legendary Artifact Creature" →
     "Criatura Artefato Lendária") e cada subtipo, das faces oficiais com o mesmo número de
-    subtipos nos dois idiomas (o do Arena na frente).
+    subtipos nos dois idiomas (o do Arena na frente). O PT nem sempre segue a ordem do inglês
+    ("Elder Dragon" é "Dragão Ancião", "Zubera Spirit" é "Espírito Zubera"): casar palavra por
+    palavra dava "Dragão" ao "Elder". Em cada linha, o subtipo mais comum fica primeiro com o nome
+    dele e os outros dividem o que sobra, na ordem. A sequência inteira de dois ou mais subtipos
+    também entra (com a chave em inglês), para `translate_type` seguir a ordem oficial, quando ela
+    sai mais vezes que a ordem do inglês (o Arena na frente, como nas linhas): "Human Spellshaper"
+    sai das duas maneiras nas impressas e fica "Humano Magimodelador".
     """
     heads: dict[str, Counter] = {}
-    subs: dict[str, Counter] = {}
+    whole: dict[str, Counter] = {}
+    arena: dict[str, Counter] = {}
+    pairs: list[tuple[list[str], list[str], int]] = []
     for r in rows:
         card = oracle.get(r["oracle_id"])
         if not r["source"] or r["source"] == "nao-oficial" or not card:
@@ -1734,10 +1781,37 @@ def official_types(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str,
             heads.setdefault(he, Counter())[hp] += weight
             se_words, sp_words = se.split(), sp.split()
             if se_words and len(se_words) == len(sp_words):
-                for a, b in zip(se_words, sp_words):
-                    subs.setdefault(a, Counter())[b] += weight
+                pairs.append((se_words, sp_words, weight))
+                if len(se_words) > 1:
+                    whole.setdefault(se, Counter())[sp] += 1
+                    if r["source"] == "arena":
+                        arena.setdefault(se, Counter())[sp] += 1
     pick = lambda c: max(c.items(), key=lambda kv: (kv[1], kv[0]))[0]  # noqa: E731
-    return {h: pick(c) for h, c in heads.items()}, {s: pick(c) for s, c in subs.items()}
+    first: dict[str, Counter] = {}
+    for se_words, sp_words, weight in pairs:
+        for a, b in zip(se_words, sp_words):
+            first.setdefault(a, Counter())[b] += weight
+    top = {a: pick(c) for a, c in first.items()}
+    total = {a: sum(c.values()) for a, c in first.items()}
+    subs: dict[str, Counter] = {}
+    for se_words, sp_words, weight in pairs:
+        left, rest = list(sp_words), []
+        for i in sorted(range(len(se_words)), key=lambda i: -total[se_words[i]]):
+            if top[se_words[i]] in left:
+                left.remove(top[se_words[i]])
+                subs.setdefault(se_words[i], Counter())[top[se_words[i]]] += weight
+            else:
+                rest.append(i)
+        for i, b in zip(sorted(rest), left):
+            subs.setdefault(se_words[i], Counter())[b] += weight
+    words = {a: pick(c) for a, c in subs.items()}
+    order: dict[str, str] = {}
+    for se, c in whole.items():
+        votes = arena.get(se) or c
+        seq, en_order = pick(votes), " ".join(words[a] for a in se.split())
+        if seq != en_order and votes[seq] > votes.get(en_order, 0):
+            order[se] = seq
+    return {h: pick(c) for h, c in heads.items()}, {**words, **order}
 
 
 def translate_type(type_line: str | None, heads: dict[str, str], subs: dict[str, str], extra: dict[str, str]) -> str | None:
@@ -1763,7 +1837,44 @@ def translate_type(type_line: str | None, heads: dict[str, str], subs: dict[str,
         if not pt:
             return None
         words.append(pt)
+    # a ordem oficial da sequência inteira, quando ela tem as mesmas palavras ("Dragão Ancião")
+    seq = subs.get(se) if " " in se else None
+    if seq and sorted(seq.split()) == sorted(" ".join(words).split()):
+        return f"{head} — {seq}"
     return f"{head} — {' '.join(words)}"
+
+
+def subtype_mismatches(lines: dict[str, str], subs: dict[str, str], extra: dict[str, str]) -> list[tuple[str, str, str]]:
+    """
+    As linhas traduzidas que citam um subtipo sem o nome oficial dele em PT: "Wall" é "Barreira"
+    nas cartas oficiais, e "Muralha" no texto deixava o texto diferente da linha de tipo. Devolve
+    (linha em inglês, subtipo, nome oficial). Fica de fora o subtipo dentro de um nome próprio:
+    colado por hífen ("Ghost-Spider"), depois de outra palavra com maiúscula no meio da frase
+    ("Nathan Drake") ou de "The" ("The Beast"), antes de outra palavra com maiúscula ("Bear
+    Witness") ou de "of" ("Eye of Chaos"). O plural em PT muda o fim da palavra ("Cão", "Cães";
+    "Boneco Cabeçudo", "Bonecos Cabeçudos"): basta o começo da primeira, sem acento.
+    """
+    def plain(s: str) -> str:
+        return norm(s).replace(" ", "")
+
+    names = {**subs, **extra}
+    found = []
+    for en, pt in lines.items():
+        pt_plain = plain(pt)
+        for sub, sub_pt in names.items():
+            if " " in sub or len(sub) < 3 or not sub[0].isupper() or plain(sub) == plain(sub_pt):
+                continue
+            for m in re.finditer(rf"(?<![\w-])(?:non-)?{re.escape(sub)}(?:e?s)?(?![\w-])", en):
+                before = en[: m.start()].rstrip()
+                prev = before.split(" ")[-1] if before else ""
+                inside = bool(prev) and prev[0].isupper() and prev[-1].isalpha() and not re.search(r"(^|[.:—•])\s*\S+$", before)
+                if inside or prev == "The" or re.match(r" (of |[A-Z]\w)", en[m.end() :]):
+                    continue
+                stem = plain(re.split(r"[ -]", sub_pt)[0])
+                if stem[: -2 if len(stem) > 4 else -1] not in pt_plain:
+                    found.append((en, sub, sub_pt))
+                break
+    return found
 
 
 def load_unofficial() -> tuple[dict[str, str], dict[str, str]]:
@@ -1853,6 +1964,9 @@ def add_unofficial(rows: list[dict], oracle: list[dict], reminders: dict[str, st
         r.update(source="nao-oficial", faces=faces, name_pt=r["name_pt"] or " // ".join(f["name_pt"] for f in faces))
         done += 1
     log(f"tradução não oficial, de onde vêm as linhas: {used['oficial']} iguais a uma oficial, {used['molde']} pelo molde de uma oficial, {used['traduzida']} traduzidas")
+    wrong = subtype_mismatches(lines, subs, types)
+    if wrong:
+        log(f"AVISO: {len(wrong)} linhas de data/traducao/linhas.json sem o nome oficial do subtipo (ex.: {wrong[0][1]} é {wrong[0][2]}): rode data/pipeline/faltam.py")
     return done
 
 
@@ -1865,8 +1979,7 @@ def build(offline: bool) -> list[dict]:
     ITALIC_WORDS.update(load_italic_words(offline))
     reminders = top_reminders(printed)
     log(f"lembretes do alto de Saga e Classe em PT (das impressas): {len(reminders)}")
-    with open(CACHE / "scryfall_pt.jsonl") as fh:
-        by_group, by_card = reminder_texts((json.loads(line) for line in fh), {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle})
+    by_group, by_card = reminder_texts(read_printed_pt(load_transcribed()), {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle})
     log(f"lembretes de palavra-chave em PT (das impressas): {len(by_group.get('*', {}))}")
     # e os das dicas do Arena, onde nenhuma impressa traz o lembrete (o Posicionar, ADR 0021)
     hints = arena_reminders(oracle, load_hints(), set(by_group.get("*", {})))
