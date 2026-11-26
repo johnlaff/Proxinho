@@ -385,6 +385,25 @@ Nenhuma saiu em PT com texto no Scryfall, e o bloco de Kamigawa não está no Ar
 
 A escolha (ADR 0044): como a Consequência, cada metade apagada e escrita na orientação dela (a de baixo na carta girada 180°), com as barras de tipo achadas pelos fios, a caixa de P/R pelo fio de dentro, a caixa pelo papel; o nome fica.
 
+### Protótipo (26/11/2026)
+
+As regras (718.1) descrevem a moldura: uma moldura menor embutida abaixo da linha de tipo, com a palavra-chave e o segundo custo, poder e resistência; a MTG Wiki ("Prototype") completa: a caixa de texto partida em duas na horizontal, a parte de cima com um fio da cor do custo do protótipo. São 21 cartas: 17 de The Brothers' War, a Frogmyr Enforcer de Modern Horizons 3 e duas do Alchemy (só digitais). O Proxyshop (`PrototypeTemplate`, `PrototypeLayout`) parte o Oracle na primeira linha: dela tira o custo e o P/R do protótipo, que vão em camadas próprias (a aba e a caixa), e o resto vai na caixa de baixo; a palavra com o lembrete fica numa camada de texto da faixa.
+
+Medidas nas imagens do Scryfall (745 × 1040), nas 40 impressões de papel (BRO, as promos de PBRO, The List e MH3, com as de arte estendida):
+
+| Medida | Valor |
+|---|---|
+| Faixa | da cor do custo do protótipo, com grão como o papel; começa em y 658 a 662 (666 na Woodcaller de arte estendida, BRO 377), depois de um fio de 2 a 10 px (claro e fino na branca, da cor da faixa nas outras), e tem 98 px de altura |
+| Pé da faixa | um filete claro de 2 a 8 px, o fio (4 a 7 px nas coloridas, um traço cinza na branca) e o papel 108 a 118 px abaixo do alto da faixa (113 ou 114 em quase todas) |
+| Aba do custo | lado esquerdo em x 574 com três símbolos e 607 com dois (de 568 a 604 nas de arte estendida e na MH3); contorno escuro, ao menos 50 tons abaixo da faixa |
+| Caixa de P/R da faixa | lado esquerdo em x 576 a 583, de ~42 px abaixo do alto da faixa até o pé dela |
+| Lembrete em inglês | três linhas, a primeira acabando em x ≈ 556, antes da aba; letra preta, como no papel |
+| Impressa em PT | "Protótipo (Você pode conjurar esta mágica com custo de mana, cor e tamanho diferentes. Ela permanece com suas habilidades e tipos.)" em três linhas, com a mesma letra do papel |
+
+O Arena traz a palavra junto das outras da primeira linha, sem o custo e sem o lembrete ("Protótipo, voar"); as 19 cartas de papel têm impressa em PT, com o lembrete na linha entre o custo e o P/R do protótipo (o Scryfall marca a faixa com "//PRT-Prototype_Mech//").
+
+A escolha (ADR 0045): como a Mutação, a caixa partida em duas, com a faixa medida na imagem e as abas como estão; o texto do Arena com o lembrete das impressas no alto.
+
 ### Moldura de 1993 (26/11/2026)
 
 A moldura que o Scryfall chama de `1993` vai de Alpha (1993) a Alliances (1996), com as edições básicas até a 4ª, as Collectors' Editions, Chronicles, Summer Magic, os decks de introdução da época e as promos (Arena League, livros, Harper Prism): 3.090 impressões em inglês, 1.754 de borda preta, 1.100 de borda branca e 236 douradas, do Campeonato Mundial.

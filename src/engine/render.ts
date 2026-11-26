@@ -142,6 +142,7 @@ import {
 } from "./station";
 import { mdfcHint, type MdfcHint } from "./mdfc";
 import { mutateBoxes, mutateRule, mutateText } from "./mutate";
+import { prototypeBoxes, prototypeErase, prototypeFrame, prototypeText } from "./prototype";
 import { type LevelerFrame, levelerBoxes, levelerErase, levelerFrame, levelerText, levelerWords, levelerWordSpots } from "./leveler";
 import { fillAcross, OLD, oldCostLeft, oldLetters, oldTypeEnds } from "./old";
 import {
@@ -3327,6 +3328,13 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const mutateParts = mutate ? mutateText(face.text_pt, face.ability_words) : null;
   const rule = mutateParts ? mutateRule(data) : null;
   if (mutate && !rule) return original();
+  // Protótipo: o lembrete vai na faixa do alto da caixa, à esquerda das abas do custo e do P/R do
+  // protótipo, que ficam, e o resto no papel abaixo do fio (ver prototype.ts). Sem a faixa no
+  // lugar, ou sem o Protótipo na frente do texto, sai a original.
+  const prototype = print.layout === "prototype" && !borderless;
+  const protoParts = prototype ? prototypeText(face.text_pt, face.ability_words) : null;
+  const proto = protoParts ? prototypeFrame(data, face.prototype_cost) : null;
+  if (prototype && !proto) return original();
   // Níveis (Level up): a caixa tem três faixas fixas, cada uma com o seu texto e a sua caixa de P/R,
   // e os selos dos níveis ("LEVEL 2-6") à esquerda das duas de baixo (ver leveler.ts). O texto de
   // cada faixa vai no lugar do dela, com a mesma letra nas três, e o selo ganha o "NÍVEL" da
@@ -3464,7 +3472,15 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // (nos níveis as faixas são apagadas cada uma à parte, sem os selos e as caixas de P/R)
   const wholeBox = boxErase && !levels ? boxRect(boxErase.rect) : null;
   // (na Mutação a caixa medida é o papel, abaixo do fio; a faixa vai à rede neural, logo abaixo)
-  const measuredBox = wholeBox && rule ? { ...wholeBox, y0: Math.round((rule.bottom + 1) * fy) } : wholeBox;
+  // (no Protótipo também: a faixa sai à parte, com a beira medida como a da caixa)
+  const measuredBox =
+    wholeBox && rule
+      ? { ...wholeBox, y0: Math.round((rule.bottom + 1) * fy) }
+      : wholeBox && proto
+        ? { ...wholeBox, y0: Math.round(proto.paper * fy) }
+        : wholeBox;
+  const protoBand =
+    wholeBox && proto ? roundRect(insideBoxSides(data, toImg(prototypeErase(proto, boxErase?.rect.x0 ?? 58)), 30 * fx)) : null;
   const mutateBand = wholeBox && rule ? { ...wholeBox, y1: Math.round(rule.top * fy) } : null;
   const found = findCardStamp(data, frameBox?.y1);
   // nas cartas a última linha de texto desce até perto do selo: a folga de cima fica
@@ -3579,6 +3595,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
             ...levelerWords(levels).map((w) => ({ rect: roundRect(toImg(w.rect)), threshold: 20, force: [roundRect(toImg(w.word))] })),
           ]
         : []),
+      // (a faixa do Protótipo como a caixa: papel com grão, da cor do protótipo, e letra preta)
+      ...(protoBand ? [{ rect: protoBand, threshold: 14, colorThreshold: 34, stains: true }] : []),
       // (as barras da aventura como as do nome e do tipo; a página da esquerda como a caixa)
       // (com o limiar mais baixo que o das barras do nome e do tipo, ver ADVENTURE.barThreshold e PREPARE.barThreshold)
       ...advBars.map((r) => ({ rect: toImg(r), threshold: advLayout?.barThreshold ?? 20, fill: "rows" as const })),
@@ -3814,6 +3832,28 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       [
         { text: mutateParts.band, width: box.x1 - box.x0, height: parts.band.y1 - parts.band.y0 },
         { text: mutateParts.rest, width: box.x1 - box.x0, height: parts.paper.y1 - parts.paper.y0, italic: mutateParts.italic },
+      ],
+      m,
+      34,
+      15,
+    );
+    drawLayout(ctx, band, parts.band, k, "dark", symbols, m);
+    drawLayout(ctx, paper, parts.paper, k, boxInk, symbols, m, centered);
+    return { canvas: out, translated: true };
+  }
+  // Protótipo: o lembrete na faixa, o resto (com o flavor) no papel, com a mesma letra, como na impressa em PT
+  if (protoParts && proto) {
+    const parts = prototypeBoxes(box, proto);
+    const [band, paper] = fitRows(
+      [
+        { text: protoParts.band, width: parts.band.x1 - parts.band.x0, height: parts.band.y1 - parts.band.y0 },
+        {
+          text: protoParts.rest,
+          width: parts.paper.x1 - parts.paper.x0,
+          height: parts.paper.y1 - parts.paper.y0,
+          italic: protoParts.italic,
+          flavor: opts.flavor ?? null,
+        },
       ],
       m,
       34,

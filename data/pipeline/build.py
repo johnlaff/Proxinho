@@ -2013,6 +2013,69 @@ def flip_supported(card: dict) -> bool:
     )
 
 
+def prototype_supported(card: dict) -> bool:
+    """As criaturas com Protótipo (The Brothers' War e Modern Horizons 3, ADR 0045): a caixa da carta
+    comum partida em duas, com a faixa do protótipo no alto (o lembrete à esquerda, a aba do custo e
+    a caixa de P/R dele à direita) e o papel de sempre embaixo (src/engine/prototype.ts). O motor
+    confere a faixa, o fio dela e as abas na imagem. A arte estendida tem a mesma caixa."""
+    return (
+        card.get("layout") == "prototype"
+        and card.get("frame") == "2015"
+        and card.get("border_color") == "black"
+        and set(card.get("frame_effects") or []) <= {"extendedart"}
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+    )
+
+
+# a linha do Protótipo no Oracle ("Prototype {1}{W}{W} — 3/3 (You may cast…)") e o lembrete das impressas em PT
+PROTOTYPE_EN = re.compile(r"^Prototype ((?:\{[^}]+\})+) — \d+/\d+ \(")
+PROTOTYPE_PT = re.compile(r"^Protótipo \(.+\)$")
+
+
+def prototype_reminders(printed: dict[str, dict]) -> tuple[dict[str, str], str | None]:
+    """
+    O lembrete do Protótipo em PT de cada carta impressa ("Protótipo (Você pode conjurar esta mágica
+    com custo de mana, cor e tamanho diferentes. …)"), na linha do texto impresso entre o custo e o
+    P/R do protótipo, e o da impressa mais nova, para as que não têm impressa em PT. Nunca montado.
+    """
+    by_card: dict[str, str] = {}
+    newest = ("", None)
+    for oid, p in printed.items():
+        text = p.get("_text", p)
+        if text.get("layout") != "prototype":
+            continue
+        line = next((x.strip() for x in (printed_faces(p)[0].get("text_pt") or "").split("\n") if PROTOTYPE_PT.match(x.strip())), None)
+        if line:
+            by_card[oid] = line
+            newest = max(newest, (text.get("released_at") or "", line), key=lambda t: t[0])
+    return by_card, newest[1]
+
+
+def prototype_cost(oracle_text: str | None) -> str | None:
+    """O custo do protótipo, da linha dele no Oracle ("{1}{W}{W}"): o motor acha a aba dele pelo número de símbolos."""
+    return next((m.group(1) for line in (oracle_text or "").split("\n") if (m := PROTOTYPE_EN.match(line.strip()))), None)
+
+
+def prototype_text(text_pt: str | None, reminder: str | None) -> str | None:
+    """
+    O texto do Arena com o Protótipo no alto, como na carta impressa: o Arena junta a palavra-chave
+    às da primeira linha, sem o custo nem o lembrete ("Protótipo, voar"), e a carta imprime o
+    lembrete sozinho na faixa do alto, com o custo e o P/R nas abas, e o resto no papel ("Voar").
+    O lembrete vem das impressas em PT (`prototype_reminders`); sem ele, fica só a palavra. Sem o
+    Protótipo na frente, `None`: o texto não bate com a moldura.
+    """
+    if not text_pt:
+        return None
+    lines = text_pt.split("\n")
+    m = re.match(r"^Protótipo(?:, (.+))?$", lines[0].strip())
+    if not m:
+        return None
+    rest = [m.group(1)[:1].upper() + m.group(1)[1:]] if m.group(1) else []
+    return "\n".join([reminder or "Protótipo", *rest, *lines[1:]])
+
+
 def class_supported(card: dict) -> bool:
     """Classe na moldura de Adventures in the Forgotten Realms em diante: a arte à esquerda e a
     coluna de texto à direita, com o lembrete no alto e uma barra por nível (src/engine/classCard.ts).
@@ -2232,6 +2295,7 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or leveler_supported(c)
         or meld_supported(c)
         or flip_supported(c)
+        or prototype_supported(c)
         or bool(sides and sides[0]["supported"]),
         "sides": sides,
         # nome de crossover no alto (o nome de jogo vai numa linha pequena abaixo da barra)
@@ -2638,6 +2702,8 @@ def build(offline: bool) -> list[dict]:
             # o texto impresso da própria carta ganha da dica
             by_card.setdefault(oid, {}).setdefault(en, pt)
     log(f"lembretes de palavra-chave em PT (das dicas do Arena): {len({en for t in hints.values() for en in t})}, em {len(hints)} cartas")
+    proto_by_card, proto_newest = prototype_reminders(printed)
+    log(f"lembretes do Protótipo em PT (das impressas): {len(proto_by_card)} cartas")
     added = 0
 
     rows = []
@@ -2673,6 +2739,15 @@ def build(offline: bool) -> list[dict]:
         for i, f in enumerate(faces):
             if f.get("text_pt"):
                 f["text_pt"] = restore_cost_keyword(en_face_of(card, faces, i).get("oracle_text"), f["text_pt"])
+
+        # Protótipo: o lembrete na faixa do alto da caixa e o resto no papel, como na carta impressa
+        # (antes dos lembretes de palavra-chave: "Afinidade por artefatos" sozinha na linha ganha o dela)
+        if source == "arena" and card.get("layout") == "prototype" and faces:
+            text_pt = prototype_text(faces[0].get("text_pt"), proto_by_card.get(oid, proto_newest))
+            cost = prototype_cost(card.get("oracle_text"))
+            if text_pt is not None and cost:
+                faces[0]["text_pt"] = text_pt
+                faces[0]["prototype_cost"] = cost
 
         # Saga: o número de cada capítulo na frente, para o motor casar capítulo e faixa (e o
         # lembrete do alto das Sagas e das Classes)

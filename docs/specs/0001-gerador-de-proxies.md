@@ -233,3 +233,9 @@ Como jogador, quero imprimir em português as cartas viradas de Kamigawa, como B
 - [x] As duas metades saem em português, a de baixo de cabeça para baixo como na carta impressa: o tipo e o texto de cada uma, com a tradução não oficial e o nome em inglês.
 - [x] A caixa de P/R de cada metade e a sombra dela ficam inteiras, e o símbolo da coleção da moldura atual também.
 - [x] As da moldura de 2003 e da atual, de borda preta e branca, saem em PT; as fichas de Papel de Wilds of Eldraine e a de Unhinged saem na original.
+
+### H25. As criaturas com Protótipo (entregue em 26/11/2026, ADR 0045)
+Como jogador, quero imprimir em português as criaturas com Protótipo, como Steel Seraph e Phyrexian Fleshgorger.
+- [x] O lembrete do Protótipo sai na faixa colorida do alto da caixa, com o texto oficial das impressas em PT, e o resto do texto no papel, com a mesma letra, como na carta impressa.
+- [x] A aba do custo e a caixa de P/R do protótipo ficam inteiras, nas faixas de todas as cores.
+- [x] As de The Brothers' War, as promos, as de The List, as de arte estendida e a de Modern Horizons 3 saem em PT.

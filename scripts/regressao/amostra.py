@@ -13,7 +13,7 @@ A amostra tem dois pedaços:
    outras divididas, a Consequência e o Fundir (as da moldura atual e as de 2003), as divididas
    da moldura antiga, a moldura de 1993, as criaturas com Mutação e com Subir de Nível, as
    Invocações de Final Fantasy, a frente das cartas de fundir (meld), as cartas viradas de
-   Kamigawa (flip), naves e a tradução não oficial.
+   Kamigawa (flip), as criaturas com Protótipo, naves e a tradução não oficial.
 
 Lê o banco montado pelo pipeline (data/out/cards.sql, depois de `pnpm data:build`). A amostra é
 versionada e só cresce: rodar de novo mantém as impressões que já estão nela e acrescenta as
@@ -73,6 +73,7 @@ GROUPS: dict[str, int] = {
     "invocações": 10,
     "fundir (meld)": 10,
     "viradas (flip)": 10,
+    "protótipo": 10,
 }
 
 
@@ -103,6 +104,9 @@ def group_of(row: sqlite3.Row) -> str | None:
     # (e as cartas viradas de Kamigawa, ADR 0044)
     if layout == "flip":
         return "viradas (flip)"
+    # (e as criaturas com Protótipo, ADR 0045)
+    if layout == "prototype":
+        return "protótipo"
     if frame == "1997":
         return "1997"
     # (e depois a marca-d'água de 2003, ADR 0024, o Preparar, ADR 0032, as Salas, ADR 0033, as

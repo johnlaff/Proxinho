@@ -23,6 +23,11 @@ export interface PtFace {
    * na Bruna), como o do verso nas de transformar (ADR 0043).
    */
   meld_pt?: string;
+  /**
+   * Nas criaturas com Protótipo: o custo do protótipo ("{1}{W}{W}"), impresso na aba à direita da
+   * faixa do alto da caixa; o motor acha a aba pelo número de símbolos (ADR 0045).
+   */
+  prototype_cost?: string;
 }
 
 /**

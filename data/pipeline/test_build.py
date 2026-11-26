@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import add_meld_data, flip_supported, is_meld_result, meld_supported, own_faces, join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
+from build import add_meld_data, flip_supported, prototype_cost, prototype_reminders, prototype_supported, prototype_text, is_meld_result, meld_supported, own_faces, join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -916,6 +916,52 @@ class CartasViradas(unittest.TestCase):
         # a de Unhinged, de borda prateada
         self.assertFalse(flip_supported({**self.base, "border_color": "silver"}))
         self.assertFalse(flip_supported({**self.base, "layout": "normal"}))
+
+
+class Prototipo(unittest.TestCase):
+    base = {
+        "name": "Steel Seraph",
+        "frame": "2015",
+        "layout": "prototype",
+        "border_color": "black",
+        "type_line": "Artifact Creature — Angel",
+        "oracle_text": "Prototype {1}{W}{W} — 3/3 (You may cast this spell with different mana cost, color, and size. It keeps its abilities and types.)\nFlying",
+    }
+    REMINDER = "Protótipo (Você pode conjurar esta mágica com custo de mana, cor e tamanho diferentes. Ela permanece com suas habilidades e tipos.)"
+
+    def test_moldura(self):
+        # BRO, as promos e a arte estendida
+        self.assertTrue(prototype_supported(self.base))
+        self.assertTrue(prototype_supported({**self.base, "frame_effects": ["extendedart"]}))
+        # vitrine, sem borda e as de outro layout
+        self.assertFalse(prototype_supported({**self.base, "frame_effects": ["showcase"]}))
+        self.assertFalse(prototype_supported({**self.base, "border_color": "borderless"}))
+        self.assertFalse(prototype_supported({**self.base, "layout": "normal"}))
+
+    def test_custo_do_oracle(self):
+        self.assertEqual(prototype_cost(self.base["oracle_text"]), "{1}{W}{W}")
+        self.assertIsNone(prototype_cost("Flying"))
+
+    def test_texto_do_arena(self):
+        # o Arena junta a palavra-chave às da primeira linha, sem o custo nem o lembrete
+        self.assertEqual(prototype_text("Protótipo, voar\nNo início do combate…", self.REMINDER), f"{self.REMINDER}\nVoar\nNo início do combate…")
+        self.assertEqual(prototype_text("Protótipo, ameaçar, vínculo com a vida", self.REMINDER), f"{self.REMINDER}\nAmeaçar, vínculo com a vida")
+        # sozinha na linha
+        self.assertEqual(prototype_text("Protótipo\nQuando esta criatura entrar…", self.REMINDER), f"{self.REMINDER}\nQuando esta criatura entrar…")
+        # sem lembrete impresso, só a palavra
+        self.assertEqual(prototype_text("Protótipo, voar", None), "Protótipo\nVoar")
+        # sem o Protótipo na frente
+        self.assertIsNone(prototype_text("Voar", self.REMINDER))
+        self.assertIsNone(prototype_text(None, self.REMINDER))
+
+    def test_lembrete_das_impressas(self):
+        def pt(oid, released, layout="prototype"):
+            text = f"Voar\n//PRT-Prototype_Mech//\n{{1}}{{W}}{{W}}\n{self.REMINDER}\n3/3"
+            return {"layout": layout, "released_at": released, "printed_text": text, "printed_type_line": "Criatura Artefato — Anjo", "printed_name": "Serafim de Aço", "name": "Steel Seraph"}
+        by_card, newest = prototype_reminders({"a": pt("a", "2022-11-18"), "b": pt("b", "2024-06-14"), "c": pt("c", "2024-06-14", "normal")})
+        self.assertEqual(by_card, {"a": self.REMINDER, "b": self.REMINDER})
+        self.assertEqual(newest, self.REMINDER)
+        self.assertEqual(prototype_reminders({}), ({}, None))
 
 
 class CartasDeFundir(unittest.TestCase):

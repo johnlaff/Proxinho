@@ -168,6 +168,22 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "a1c4622d-eecb-449c-acd4-c05ed4094b20",
+    "oracle_id": "7644148f-3b26-447d-9f52-28c94c111b69",
+    "set": "bro",
+    "number": "351",
+    "nome": "Rootwire Amalgam",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "37065a61-3883-49fa-a931-8f1566451795",
+    "oracle_id": "124c3af4-8545-479a-b44c-446da1c8b535",
+    "set": "bro",
+    "number": "377",
+    "nome": "Woodcaller Automaton",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "8b76ba96-9630-44fb-849e-3c3848c03876",
     "oracle_id": "fb98f6b7-5986-4c5d-98fc-e5c4106f48bf",
     "set": "c13",
@@ -944,6 +960,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "981fdd21-a650-4360-9ea5-550399d1da91",
+    "oracle_id": "ccc7de36-aafc-4d87-80f7-fc2effc976eb",
+    "set": "mh3",
+    "number": "120",
+    "nome": "Frogmyr Enforcer",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "7a1d3c1d-1373-4ac4-bb26-9780976efc4f",
     "oracle_id": "db19a27a-ee22-4931-ae3c-0ce21f456ea6",
     "set": "mh3",
@@ -1029,6 +1053,14 @@
     "set": "otp",
     "number": "39",
     "nome": "Crime // Punishment",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "8b9b1f6c-2c72-4cbb-ac96-20b486e20ea5",
+    "oracle_id": "792f8235-f23b-4858-bdd4-c7a186b7a470",
+    "set": "pbro",
+    "number": "75s",
+    "nome": "Arcane Proxy",
     "grupo": "citada nos documentos"
   },
   {
@@ -7326,6 +7358,86 @@
     "number": "46",
     "nome": "Encouraging Aviator // Jump",
     "grupo": "preparar"
+  },
+  {
+    "id": "9d927dfd-ae66-4235-a61b-39c85d0c1222",
+    "oracle_id": "02457c7f-eced-4bf3-9b61-309b4ceab2d5",
+    "set": "bro",
+    "number": "120",
+    "nome": "Goring Warplow",
+    "grupo": "protótipo"
+  },
+  {
+    "id": "e4e5529a-848b-486c-97fb-1def35df7837",
+    "oracle_id": "19f344ee-031d-4346-9553-c5d32b02df43",
+    "set": "bro",
+    "number": "158",
+    "nome": "Blitz Automaton",
+    "grupo": "protótipo"
+  },
+  {
+    "id": "6e6e5338-9b95-4ac7-a57c-5efaa6423531",
+    "oracle_id": "82caf3e2-da42-4851-b4db-546e2403c4bf",
+    "set": "bro",
+    "number": "197",
+    "nome": "Boulderbranch Golem",
+    "grupo": "protótipo"
+  },
+  {
+    "id": "d5dee863-e6ef-4061-a877-ddd3c4dbe87e",
+    "oracle_id": "3afdc98e-aeeb-43e9-bdcd-0c51da44d2f8",
+    "set": "bro",
+    "number": "34",
+    "nome": "Autonomous Assembler",
+    "grupo": "protótipo"
+  },
+  {
+    "id": "d6d74d2e-7382-4fe3-ac3e-6906203ffcc7",
+    "oracle_id": "792f8235-f23b-4858-bdd4-c7a186b7a470",
+    "set": "bro",
+    "number": "75",
+    "nome": "Arcane Proxy",
+    "grupo": "protótipo"
+  },
+  {
+    "id": "34e09173-a92d-4cc3-9d02-bf18ab0850ec",
+    "oracle_id": "f376f4c6-4526-4ae3-a84a-e8ea50fe78b6",
+    "set": "bro",
+    "number": "78",
+    "nome": "Depth Charge Colossus",
+    "grupo": "protótipo"
+  },
+  {
+    "id": "431024b1-c1da-49c4-bc43-7a1b283676b6",
+    "oracle_id": "d3a5a830-cd14-49da-9412-c50049c74c92",
+    "set": "pbro",
+    "number": "121p",
+    "nome": "Phyrexian Fleshgorger",
+    "grupo": "protótipo"
+  },
+  {
+    "id": "a66b963d-1a01-46b4-bd68-8081489341ac",
+    "oracle_id": "d3a5a830-cd14-49da-9412-c50049c74c92",
+    "set": "pbro",
+    "number": "121s",
+    "nome": "Phyrexian Fleshgorger",
+    "grupo": "protótipo"
+  },
+  {
+    "id": "4bd6895c-9f61-4a35-be99-45fd58c7edb3",
+    "oracle_id": "7644148f-3b26-447d-9f52-28c94c111b69",
+    "set": "pbro",
+    "number": "203p",
+    "nome": "Rootwire Amalgam",
+    "grupo": "protótipo"
+  },
+  {
+    "id": "3c365c74-e61c-4b6e-8262-fc58f60d23b4",
+    "oracle_id": "7ff8940f-d798-41eb-b82e-a1eba2163fe7",
+    "set": "pbro",
+    "number": "38s",
+    "nome": "Steel Seraph",
+    "grupo": "protótipo"
   },
   {
     "id": "0d5e4d9a-34e1-46eb-814b-8e3bd4475b8a",
