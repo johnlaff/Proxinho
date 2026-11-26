@@ -227,3 +227,9 @@ Como jogador, quero imprimir em português as cartas de fundir (meld), como Brun
 - [x] O lembrete "(Funde-se com …)" sai com o texto oficial das cartas impressas em PT; sem impressa, a carta fica sem ele.
 - [x] O nome de cada carta de fundir é o dela, sem o da carta fundida ("Fang, l’Cie Destemida", não "Fang, l’Cie Destemida // Ragnarok, Salvação Divina").
 - [x] As cartas fundidas e as sem borda saem na original, e a etiqueta diz que saem em inglês.
+
+### H24. As cartas viradas de Kamigawa (entregue em 26/11/2026, ADR 0044)
+Como jogador, quero imprimir em português as cartas viradas de Kamigawa, como Budoka Gardener e Nezumi Graverobber.
+- [x] As duas metades saem em português, a de baixo de cabeça para baixo como na carta impressa: o tipo e o texto de cada uma, com a tradução não oficial e o nome em inglês.
+- [x] A caixa de P/R de cada metade e a sombra dela ficam inteiras, e o símbolo da coleção da moldura atual também.
+- [x] As da moldura de 2003 e da atual, de borda preta e branca, saem em PT; as fichas de Papel de Wilds of Eldraine e a de Unhinged saem na original.

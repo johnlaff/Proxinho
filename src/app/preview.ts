@@ -193,6 +193,8 @@ export function renderInput(entry: Entry, side: Side = 0) {
   const flavor = !face ? null : flavorApplies(entry.card, print) ? (face.flavor_pt ?? null) : (print.flavor_pt?.[side] ?? null);
   // (Aventura e Preparar: a segunda face é a mágica da outra caixa, na mesma imagem)
   const adventure = face && (print.layout === "adventure" || print.layout === "prepare") ? (entry.card.faces[1] ?? null) : null;
+  // (carta virada de Kamigawa: a metade de baixo, de cabeça para baixo na mesma imagem, ver flip.ts)
+  const flip = face && print.layout === "flip" ? (entry.card.faces[1] ?? null) : null;
   // (carta modal: a outra face, resumida na faixa de baixo, ver mdfc.ts)
   const otherFace = face && print.layout === "modal_dfc" ? (entry.card.faces[side === 1 ? 0 : 1] ?? null) : null;
   return {
@@ -202,6 +204,7 @@ export function renderInput(entry: Entry, side: Side = 0) {
     typeLine: entry.card.type_line,
     flavor,
     ...(adventure ? { adventure } : {}),
+    ...(flip ? { flip } : {}),
     ...(otherFace ? { otherFace } : {}),
     ...(halves ? { split: halves[1] } : {}),
   };

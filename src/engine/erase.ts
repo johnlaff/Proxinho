@@ -1624,7 +1624,13 @@ export function typeBarTop(img: ImageData): number | null {
  * que as letras descem mais e o pé do "y" ficava fora do apagamento). `from` e `to` limitam a
  * busca do fio de cima: na Saga a barra fica no pé da carta (ver saga.ts).
  */
-export function typeBarEdges(img: ImageData, from = 570, to = 780): { top: number; bottom: number } | null {
+export function typeBarEdges(
+  img: ImageData,
+  from = 570,
+  to = 780,
+  /** a altura da barra, do fio de cima ao de baixo (nas cartas viradas, a de cada moldura) */
+  span: readonly [number, number] = [45, 70],
+): { top: number; bottom: number } | null {
   const fx = img.width / 745;
   const fy = img.height / 1040;
   const x0 = Math.round(80 * fx);
@@ -1640,10 +1646,11 @@ export function typeBarEdges(img: ImageData, from = 570, to = 780): { top: numbe
   }
   // o fio de cima só vale com o de baixo (pé da barra e topo da caixa) 45 a 70 abaixo:
   // sem isso, um fio de cima perdido na arte fazia o pé da barra passar por topo
-  for (let i = 0; i + 70 < edge.length; i++) {
+  const [lo, hi] = span;
+  for (let i = 0; i + hi < edge.length; i++) {
     if (!edge[i]) continue;
-    const j = edge.slice(i + 45, i + 71).indexOf(true);
-    if (j >= 0) return { top: from + i, bottom: from + i + 45 + j };
+    const j = edge.slice(i + lo, i + hi + 1).indexOf(true);
+    if (j >= 0) return { top: from + i, bottom: from + i + lo + j };
   }
   return null;
 }

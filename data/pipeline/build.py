@@ -1993,6 +1993,26 @@ def meld_supported(card: dict) -> bool:
     )
 
 
+def flip_supported(card: dict) -> bool:
+    """As cartas viradas de Kamigawa (Champions, Betrayers e Saviors of Kamigawa e as reimpressões,
+    na moldura de 2003 e na atual; ADR 0044): a metade de cima de pé, acima da arte, e a virada de
+    cabeça para baixo, abaixo dela, cada uma com a barra do nome, a caixa e a barra de tipo
+    (src/engine/flip.ts). O motor confere as barras de tipo e as caixas de P/R na imagem. Ficam de
+    fora as fichas de Papel de Wilds of Eldraine (o layout delas também é "flip") e a de Unhinged,
+    de borda prateada."""
+    return (
+        card.get("layout") == "flip"
+        and card.get("frame") in {"2003", "2015"}
+        and card.get("border_color") in {"black", "white"}
+        and not card.get("frame_effects")
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+        and not card.get("type_line", "").startswith("Token")
+        and len(card.get("card_faces") or []) == 2
+    )
+
+
 def class_supported(card: dict) -> bool:
     """Classe na moldura de Adventures in the Forgotten Realms em diante: a arte à esquerda e a
     coluna de texto à direita, com o lembrete no alto e uma barra por nível (src/engine/classCard.ts).
@@ -2211,6 +2231,7 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or mutate_supported(c)
         or leveler_supported(c)
         or meld_supported(c)
+        or flip_supported(c)
         or bool(sides and sides[0]["supported"]),
         "sides": sides,
         # nome de crossover no alto (o nome de jogo vai numa linha pequena abaixo da barra)
@@ -2334,17 +2355,25 @@ def fill_mold(line: str, pt_mold: str) -> str:
     return re.sub("#", lambda _: next(marks), pt_mold.split("|")[0])
 
 
+# termos que o PT deixou depois do Magic 2010: o "custo de mana convertido" virou "valor de mana"
+# (2021) e o "a sua reserva de mana" saiu do "Adicione {G}" (2019)
+_OUTDATED_PT = re.compile(r"custo de mana convertido|reserva de mana")
+
+
 def official_lines(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str, str], dict[str, str]]:
     """
     As linhas oficiais, do inglês do Oracle para o PT (sem lembrete, nome como "~"), e os moldes
     delas. Só casa as faces com o mesmo número de linhas nos dois idiomas; de cada linha fica o
-    texto mais comum do Arena, senão o das impressas.
+    texto mais comum do Arena, senão o das impressas. As impressas antes do Magic 2010 ficam de
+    fora (`_old_text`): com elas, a tradução não oficial saía com "Quando ~ entrar em jogo" e
+    "Toda vez que você jogar uma mágica" (Budoka Pupil, BOK 122). E as linhas com um termo que
+    saiu depois (`_OUTDATED_PT`) também: "custo de mana convertido" no Ramosian Captain.
     """
     votes: dict[str, Counter] = {}
     arena: dict[str, Counter] = {}
     for r in rows:
         card = oracle.get(r["oracle_id"])
-        if not r["source"] or r["source"] == "nao-oficial" or not card:
+        if not r["source"] or r["source"] == "nao-oficial" or r.get("_old_text") or not card:
             continue
         faces_en = card.get("card_faces") or [card]
         if len(faces_en) != len(r["faces"]):
@@ -2355,6 +2384,8 @@ def official_lines(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str,
             if len(en) != len(pt) or not en:
                 continue
             for a, b in zip(en, pt):
+                if _OUTDATED_PT.search(b):
+                    continue
                 votes.setdefault(a, Counter())[b] += 1
                 if r["source"] == "arena":
                     arena.setdefault(a, Counter())[b] += 1
@@ -2689,6 +2720,10 @@ def build(offline: bool) -> list[dict]:
                 "source": source,
                 "text_print": text_print,
                 "_flavor_ref": a["flavor_en"] if source == "arena" else None,
+                # o texto impresso antes do Magic 2010 segue a terminologia velha ("entra em jogo",
+                # "jogar uma mágica"): vale para a carta, nunca de molde para a tradução não oficial
+                # (fica no cards.jsonl, que o `faltam.py` lê; o banco só leva as `COLUMNS`)
+                "_old_text": source == "impresso" and p["_text"].get("released_at", "") < _REMINDER_SINCE,
                 "faces": [
                     {**f, "name_en": f.get("name_en") or en_face_of(card, faces, i).get("name")}
                     for i, f in enumerate(faces)

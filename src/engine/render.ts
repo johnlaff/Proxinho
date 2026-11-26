@@ -33,6 +33,7 @@ import {
   pasteStrip,
   restoreBevel,
 } from "./classCard";
+import { FLIP_2003, FLIP_2015, flipBar, flipBox, flipPtLine, flipTypeEnd } from "./flip";
 import { bodyFont, loadCardFonts, oldNameFont, titleFont, type TitleFont } from "./fonts";
 import {
   BACK_PT_NOTCH,
@@ -236,6 +237,8 @@ export interface RenderOptions {
   side?: 0 | 1;
   /** cartas de Aventura e de Preparar: a mágica da outra caixa (a segunda face da carta) */
   adventure?: PtFace | null;
+  /** cartas viradas de Kamigawa: a metade de baixo, de cabeça para baixo (a segunda face, ver flip.ts) */
+  flip?: PtFace | null;
   /** cartas modais de duas faces: a outra face, resumida na faixa de baixo (ver mdfc.ts) */
   otherFace?: PtFace | null;
   /** cartas divididas (as Salas de Duskmourn, ver room.ts): a metade da direita; a da esquerda é `face` */
@@ -2710,6 +2713,149 @@ async function renderAftermath(p: {
   return true;
 }
 
+/**
+ * Carta virada de Kamigawa (flip, ADR 0044): a metade de cima é apagada e escrita na carta de pé, e
+ * a de baixo, impressa de cabeça para baixo, na carta girada 180° (ver flip.ts). Só o tipo e a caixa
+ * de cada metade mudam: o nome fica (a tradução não oficial o deixa em inglês). A caixa de P/R e o
+ * símbolo da coleção ficam fora do apagamento. Devolve `false` quando a imagem não tem as barras de
+ * tipo onde a moldura as põe, ou a caixa de P/R não bate com o tipo (só a criatura a tem).
+ */
+async function renderFlip(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  halves: [PtFace, PtFace];
+  /** a moldura de 2003: as medidas de `FLIP_2003` e o tipo na Matrix Bold */
+  frame2003: boolean;
+  W: number;
+  H: number;
+}): Promise<boolean> {
+  const { ctx, src, halves, W, H } = p;
+  const G = p.frame2003 ? FLIP_2003 : FLIP_2015;
+  if (halves.some((h) => !h.type_pt || (h.name_pt ?? h.name_en) !== h.name_en)) return false;
+  const canvas2d = () => {
+    const c = document.createElement("canvas");
+    c.width = src.width;
+    c.height = src.height;
+    const c2 = c.getContext("2d", { willReadFrequently: true });
+    if (!c2) throw new Error("Seu navegador não liberou o canvas 2D.");
+    return [c, c2] as const;
+  };
+  const [up, uctx] = canvas2d();
+  uctx.drawImage(src, 0, 0);
+  const [turned, tctx] = canvas2d();
+  const turn = (from: HTMLCanvasElement) => {
+    tctx.setTransform(1, 0, 0, 1, 0, 0);
+    tctx.translate(turned.width, turned.height);
+    tctx.rotate(Math.PI);
+    tctx.drawImage(from, 0, 0);
+    tctx.setTransform(1, 0, 0, 1, 0, 0);
+  };
+  turn(src);
+  const datas = [uctx.getImageData(0, 0, up.width, up.height), tctx.getImageData(0, 0, turned.width, turned.height)];
+  const fx = src.width / BASE_W;
+  const fy = src.height / BASE_H;
+  const toImg = (r: Rect) => roundRect({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
+
+  // as medidas das duas metades, antes de apagar
+  const plans = [];
+  for (const i of [0, 1] as const) {
+    const img = datas[i];
+    const h = halves[i];
+    const half = G.halves[i];
+    const bar = flipBar(img, G, i);
+    if (!bar) return false;
+    // a caixa de P/R só na criatura (na de baixo das Ascendentes de Saviors, encantamento, não há)
+    const ptLine = flipPtLine(img, G, bar);
+    if ((ptLine !== null) !== /Criatura/.test(h.type_pt ?? "")) return false;
+    const rows = { y0: bar.top + G.typeErase.dy0, y1: bar.bottom + G.typeErase.dy1 };
+    const end = ptLine !== null ? ptLine - G.pt.gap : G.pt.barEnd;
+    // o símbolo da coleção, na de cima da moldura atual (só o miolo da barra, sem os fios)
+    const inset = (rows.y1 - rows.y0) * 0.22;
+    const setLeft =
+      G.setSymbol && i === 0
+        ? findSetSymbolLeft(img, Math.round((rows.y0 + inset) * fy), Math.round((rows.y1 - inset) * fy), Math.round(end * fx)) / fx
+        : null;
+    if (setLeft !== null && (setLeft < 520 || setLeft > end)) return false;
+    // sem o símbolo, o apagamento para logo depois do inglês (ver flipTypeEnd)
+    const inkEnd = setLeft === null ? flipTypeEnd(img, { x0: half.typeX + 4, y0: rows.y0, x1: end, y1: rows.y1 }) : null;
+    const typeX1 = setLeft !== null ? setLeft - 6 : Math.min(end, (inkEnd ?? end) + 6);
+    const c = textBandCenter(img, toImg({ x0: half.typeX, y0: rows.y0 + 2, x1: Math.max(half.typeX + 60, typeX1 - 2), y1: rows.y1 - 2 }));
+    const expected = bar.top + G.typeCenter;
+    const center = c !== null && Math.abs(c / fy - expected) <= 6 ? c / fy : expected;
+    const box = flipBox(img, G, i);
+    plans.push({
+      bar,
+      ptLine,
+      typeRect: { x0: G.typeErase.x0, y0: rows.y0, x1: typeX1, y1: rows.y1 },
+      // (a Beleren, 2 px acima do centro medido, como nas barras da Aventura)
+      typeCenter: G.frame2003 ? center : center - 2,
+      typeMax: (setLeft !== null ? setLeft - 10 : end - 3) - half.typeX,
+      box,
+      centered: h.text_pt?.trim() ? measureCentered(img, toImg(box), [], fx) === true : false,
+    });
+  }
+
+  // o apagamento: a de cima na carta de pé, a de baixo na girada (feita da de pé já apagada)
+  const inks: ("dark" | "light")[][] = [];
+  for (const i of [0, 1] as const) {
+    if (i === 1) {
+      turn(up);
+      datas[1] = tctx.getImageData(0, 0, turned.width, turned.height);
+    }
+    const img = datas[i];
+    const pl = plans[i];
+    const typeRect = toImg(pl.typeRect);
+    // a caixa de P/R sobe uns pixels acima da barra, até o canto da caixa de texto
+    const guard = pl.ptLine !== null ? [toImg({ x0: pl.ptLine - G.pt.gap, y0: pl.bar.top - 8, x1: BASE_W, y1: pl.bar.bottom + 4 })] : [];
+    inks.push(
+      eraseRegions(
+        img,
+        [
+          { rect: typeRect, threshold: 28, fill: "rows" },
+          { rect: toImg(pl.box), threshold: 14, colorThreshold: 34, stains: true, dividers: true },
+        ],
+        guard,
+        guard,
+        // (a ponta arredondada da barra, na moldura atual, fica como está: ver barCapGuard)
+        G.typeErase.x0 <= 50 ? barCapGuard(img, typeRect, "left") : [],
+      ),
+    );
+    (i === 0 ? uctx : tctx).putImageData(img, 0, 0);
+  }
+
+  // a carta apagada, de pé de novo
+  ctx.save();
+  ctx.translate(W, H);
+  ctx.rotate(Math.PI);
+  ctx.drawImage(turned, 0, 0, W, H);
+  ctx.restore();
+
+  const k = W / BASE_W;
+  const tf = titleFont(G.frame2003);
+  for (const i of [0, 1] as const) {
+    const h = halves[i];
+    const pl = plans[i];
+    const half = G.halves[i];
+    ctx.save();
+    if (i === 1) {
+      ctx.translate(W, H);
+      ctx.rotate(Math.PI);
+    }
+    const m = measurer(ctx, k);
+    // (a primeira letra da Matrix Bold fica 1 px depois da posição da linha)
+    const typeX = G.frame2003 ? half.typeX - 1 : half.typeX;
+    drawLine(ctx, h.type_pt ?? "", typeX, pl.typeCenter, pl.typeMax, G.typeSize, k, INK[inks[i][0] ?? "dark"], tf);
+    const b = pl.box;
+    const pad = G.boxPad;
+    const box = { x0: b.x0 + pad.x0, y0: b.y0 + pad.y0, x1: b.x1 - pad.x1, y1: b.y1 - pad.y1 };
+    const symbols = await preloadSymbols(h.text_pt, h.flavor_pt);
+    const res = fitText(h.text_pt, h.flavor_pt, box.x1 - box.x0, box.y1 - box.y0, m, G.maxSize, G.minSize, undefined, h.ability_words);
+    drawLayout(ctx, res, box, k, inks[i][1] ?? "dark", symbols, m, pl.centered);
+    ctx.restore();
+  }
+  return true;
+}
+
 async function renderToken(p: {
   ctx: CanvasRenderingContext2D;
   src: HTMLCanvasElement;
@@ -3047,6 +3193,18 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     if (done === "ok") return { canvas: out, translated: true };
     ctx.drawImage(img, 0, 0, W, H);
     return done === "neural" ? { canvas: out, translated: false, reason: "neural" } : { canvas: out, translated: false };
+  }
+
+  // cartas viradas de Kamigawa: as duas metades na mesma imagem, a de baixo de cabeça para baixo
+  // (renderFlip, ADR 0044)
+  if (print.layout === "flip") {
+    const other = opts.flip ?? null;
+    const done =
+      other?.name_pt && other.text_pt !== null
+        ? await renderFlip({ ctx, src, halves: [face, other], frame2003: print.frame === "2003", W, H })
+        : false;
+    if (!done) ctx.drawImage(img, 0, 0, W, H);
+    return { canvas: out, translated: done };
   }
 
   if (pw) {

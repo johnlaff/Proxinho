@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import add_meld_data, is_meld_result, meld_supported, own_faces, join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
+from build import add_meld_data, flip_supported, is_meld_result, meld_supported, own_faces, join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -893,6 +893,31 @@ class LevelerSupported(unittest.TestCase):
         self.assertFalse(leveler_supported({**self.base, "frame_effects": ["showcase"]}))
 
 
+class CartasViradas(unittest.TestCase):
+    base = {
+        "name": "Budoka Gardener // Dokai, Weaver of Life",
+        "frame": "2003",
+        "layout": "flip",
+        "border_color": "black",
+        "type_line": "Creature — Human Monk // Legendary Creature — Human Monk",
+        "card_faces": [{"name": "Budoka Gardener"}, {"name": "Dokai, Weaver of Life"}],
+    }
+
+    def test_kamigawa_e_reimpressoes(self):
+        # Champions of Kamigawa (2003), Commander 2018 (moldura atual) e a Hachette, de borda branca
+        self.assertTrue(flip_supported(self.base))
+        self.assertTrue(flip_supported({**self.base, "frame": "2015"}))
+        self.assertTrue(flip_supported({**self.base, "border_color": "white"}))
+
+    def test_fichas_e_unhinged(self):
+        # as fichas de Papel de Wilds of Eldraine também têm o layout "flip"
+        role = {**self.base, "frame": "2015", "type_line": "Token Enchantment — Aura Role // Token Enchantment — Aura Role"}
+        self.assertFalse(flip_supported(role))
+        # a de Unhinged, de borda prateada
+        self.assertFalse(flip_supported({**self.base, "border_color": "silver"}))
+        self.assertFalse(flip_supported({**self.base, "layout": "normal"}))
+
+
 class CartasDeFundir(unittest.TestCase):
     parts = [
         {"component": "meld_part", "name": "Bruna, the Fading Light"},
@@ -1655,6 +1680,28 @@ class TraducaoNaoOficial(unittest.TestCase):
         self.assertEqual(best["When ~ enters, you gain 3 life."], "Quando ~ entrar, você ganha 3 pontos de vida.")
         self.assertNotIn("Vigilance", best)
         self.assertEqual(molds[mold("When ~ enters, you gain 5 life.")], mold("Quando ~ entrar, você ganha 3 pontos de vida."))
+
+    def test_impressas_velhas_nao_dao_linha(self) -> None:
+        # antes do Magic 2010 o texto impresso é de terminologia velha ("Toda vez que você jogar uma
+        # mágica", Budoka Pupil, BOK 122), e depois o "custo de mana convertido" virou "valor de mana"
+        oracle = {
+            "k": {"name": "Ki Card", "oracle_text": "Whenever you cast a Spirit or Arcane spell, you may put a ki counter on Ki Card.", "type_line": "Creature — Human"},
+            "r": {"name": "Rebel Card", "oracle_text": "{2}, {T}: Search your library for a Rebel permanent card with mana value 2 or less, put it onto the battlefield, then shuffle.", "type_line": "Creature — Human Rebel"},
+            "n": {"name": "New Card", "oracle_text": "Flying", "type_line": "Creature — Bird"},
+        }
+
+        def row(oid: str, text: str, old: bool) -> dict:
+            return {"oracle_id": oid, "source": "impresso", "name_pt": "Carta", "_old_text": old, "faces": [{"name_pt": "Carta", "type_pt": "Criatura", "text_pt": text}]}
+
+        best, _ = official_lines(
+            [
+                row("k", "Toda vez que você jogar uma mágica Arcana ou de Espírito, você pode colocar um marcador de ki em Carta.", True),
+                row("r", "{2}, {T}: Procure em seu grimório um card de permanente do tipo Rebelde com custo de mana convertido igual ou inferior a 2, coloque-o no campo de batalha e embaralhe seu grimório.", False),
+                row("n", "Voar", False),
+            ],
+            oracle,
+        )
+        self.assertEqual(best, {"Flying": "Voar"})
 
     def test_tipo_pelo_que_ja_saiu_oficial(self) -> None:
         heads, subs = official_types(self.rows(), self.oracle())

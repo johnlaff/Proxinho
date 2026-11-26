@@ -365,6 +365,26 @@ Na imagem do Scryfall (745 × 1040), nas 34 frentes de borda preta: a moldura da
 
 A escolha (ADR 0043): o caminho da carta comum com o ícone e o P/R do verso, o P/R vindo da carta fundida e o lembrete das impressas.
 
+### Cartas viradas de Kamigawa, flip (26/11/2026)
+
+A MTG Wiki ("Flip card") descreve a moldura: a arte no meio, e de cada lado dela a barra do nome com o custo, a caixa de texto e a barra de tipo, com a caixa de P/R no fim da barra quando há; as duas metades viradas para dentro, a de baixo de cabeça para baixo; o artista, o copyright, o número e o símbolo da coleção abaixo da metade de baixo. São 21 cartas (20 de Kamigawa e a Curse of the Fire Penguin, de Unhinged); as fichas de Papel de Wilds of Eldraine também têm o layout `flip` no Scryfall. Não achei molde de carta virada no Proxyshop nem no Card Conjurer.
+
+Medidas nas imagens do Scryfall (745 × 1040), nas 33 impressões de borda preta e branca; a de baixo, girada 180°:
+
+| Medida | Moldura de 2003 | Moldura atual (C18, CM2) |
+|---|---|---|
+| Caixa da de cima | papel de x 60 a 678 e de y 131 a 257 (na branca, a borda tem a cor do papel) | de x 58 a 690 e de y 99 a 231 |
+| Barra de tipo da de cima | fio de cima em 257 a 259, o de baixo em 311 a 314 | de 232 (o fio grosso até 243) a 296 |
+| Caixa da de baixo | de x 66 a 684 e de y 159 a 285 (6 px mais à direita) | de x 57 a 689 e de y 179 a 312 |
+| Barra de tipo da de baixo | de 285 a 341; na branca, um fio do fim da caixa 10 px acima | de 313 a 377 |
+| Tipo | começa em x ≈ 63 a 67; o centro das minúsculas 33 a 36 px abaixo do fio de cima | começa em x ≈ 63; 38 a 41 px abaixo |
+| Caixa de P/R | o fio escuro de dentro em x ≈ 593 a 599, com a sombra começando 6 a 11 px antes (até 24 nas digitalizações da Hachette); só na criatura | o fio em 599 a 606; o símbolo da coleção de 555 a 591, só na de cima |
+| Texto | alinhado à esquerda; centralizado no texto curto (Rune-Tail, SOK 27) | alinhado à esquerda |
+
+Nenhuma saiu em PT com texto no Scryfall, e o bloco de Kamigawa não está no Arena: todas têm só a tradução não oficial, com o nome em inglês. A Erayo, Soratami Ascendant, banida no Commander, não tem nem ela.
+
+A escolha (ADR 0044): como a Consequência, cada metade apagada e escrita na orientação dela (a de baixo na carta girada 180°), com as barras de tipo achadas pelos fios, a caixa de P/R pelo fio de dentro, a caixa pelo papel; o nome fica.
+
 ### Moldura de 1993 (26/11/2026)
 
 A moldura que o Scryfall chama de `1993` vai de Alpha (1993) a Alliances (1996), com as edições básicas até a 4ª, as Collectors' Editions, Chronicles, Summer Magic, os decks de introdução da época e as promos (Arena League, livros, Harper Prism): 3.090 impressões em inglês, 1.754 de borda preta, 1.100 de borda branca e 236 douradas, do Campeonato Mundial.

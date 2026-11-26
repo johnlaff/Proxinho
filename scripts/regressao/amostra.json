@@ -144,6 +144,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "73636ca0-2309-4bb3-9300-8bd0c0bb5b31",
+    "oracle_id": "6f571092-7244-4223-aa14-f5133cc000d8",
+    "set": "bok",
+    "number": "122",
+    "nome": "Budoka Pupil // Ichiga, Who Topples Oaks",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "deeb6a21-23b0-44f1-b70e-5899bb9d4a84",
     "oracle_id": "42bccda5-1754-4619-b94f-7a72f934a718",
     "set": "bro",
@@ -173,6 +181,14 @@
     "set": "c16",
     "number": "268",
     "nome": "Rakdos Signet",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "58164521-aeec-43fc-9db9-d595432dea6f",
+    "oracle_id": "cb952c81-c7bb-4670-938d-296d35551986",
+    "set": "c18",
+    "number": "134",
+    "nome": "Budoka Gardener // Dokai, Weaver of Life",
     "grupo": "citada nos documentos"
   },
   {
@@ -240,6 +256,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "864ad989-19a6-4930-8efc-bbc077a18c32",
+    "oracle_id": "82959ca2-cd96-4cca-9ce0-afb8db209860",
+    "set": "chk",
+    "number": "2",
+    "nome": "Bushi Tenderfoot // Kenzo the Hardhearted",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "52263b78-9829-4778-b7a9-8c4a97d1c6df",
     "oracle_id": "32fbb638-ab14-4e8b-a07a-d4c44e3496f2",
     "set": "chr",
@@ -261,6 +285,14 @@
     "set": "clb",
     "number": "617",
     "nome": "Mocking Doppelganger",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "a00a7180-49bd-4ead-852a-67b6b5e4b933",
+    "oracle_id": "1373fa8d-0a39-4451-a482-ce2071438dc8",
+    "set": "cm2",
+    "number": "71",
+    "nome": "Nezumi Graverobber // Nighteyes the Desecrator",
     "grupo": "citada nos documentos"
   },
   {
@@ -1040,6 +1072,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "2a253b6f-d5b8-4667-855d-c7213c595d5f",
+    "oracle_id": "1373fa8d-0a39-4451-a482-ce2071438dc8",
+    "set": "phuk",
+    "number": "38",
+    "nome": "Nezumi Graverobber // Nighteyes the Desecrator",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "31ea9180-2a4a-4c69-848e-002cf2ccf921",
     "oracle_id": "07a0cba9-8768-4fd9-a3d5-b0f83b4bf8e8",
     "set": "pip",
@@ -1397,6 +1437,22 @@
     "set": "soc",
     "number": "49",
     "nome": "Lorehold Archivist // Restore Relic",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "42ba0e13-d20f-47f9-9c86-2b0b13c39ada",
+    "oracle_id": "710f1f8a-e5f7-4889-9f12-2611f42d5c73",
+    "set": "sok",
+    "number": "27",
+    "nome": "Rune-Tail, Kitsune Ascendant // Rune-Tail's Essence",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "0b61d772-2d8b-4acf-9dd2-b2e8b03538c8",
+    "oracle_id": "d83bb32d-f409-421a-9d93-bd7ea3240b47",
+    "set": "sok",
+    "number": "35",
+    "nome": "Erayo, Soratami Ascendant // Erayo's Essence",
     "grupo": "citada nos documentos"
   },
   {
@@ -7870,5 +7926,85 @@
     "number": "99",
     "nome": "Sneak Attack",
     "grupo": "sem borda"
+  },
+  {
+    "id": "758abd53-6ad2-406e-8615-8e48678405b4",
+    "oracle_id": "2358ffc2-6663-4ef3-b3a4-b036a4733ac6",
+    "set": "bok",
+    "number": "3",
+    "nome": "Faithful Squire // Kaiso, Memory of Loyalty",
+    "grupo": "viradas (flip)"
+  },
+  {
+    "id": "ca03131a-9bd4-4fba-b95c-90f1831e86e7",
+    "oracle_id": "7ceaddba-6301-45f8-86a1-ad4c6e6d3297",
+    "set": "bok",
+    "number": "31",
+    "nome": "Callow Jushi // Jaraku the Interloper",
+    "grupo": "viradas (flip)"
+  },
+  {
+    "id": "c8265c39-d287-4c5a-baba-f2f09dd80a1c",
+    "oracle_id": "45c8e860-5ce5-4a1c-aebe-97ddffcb2f74",
+    "set": "chk",
+    "number": "131",
+    "nome": "Nezumi Shortfang // Stabwhisker the Odious",
+    "grupo": "viradas (flip)"
+  },
+  {
+    "id": "b3523b8e-065f-427c-8d5b-eb731ca91ede",
+    "oracle_id": "5b18d2fd-bc65-49a2-b812-c217f125571d",
+    "set": "chk",
+    "number": "173",
+    "nome": "Initiate of Blood // Goka the Unjust",
+    "grupo": "viradas (flip)"
+  },
+  {
+    "id": "f2ddf1a3-e6fa-4dd0-b80d-1a585b51b934",
+    "oracle_id": "b269770d-2b48-4314-a1b8-0d79beb879a3",
+    "set": "chk",
+    "number": "28",
+    "nome": "Kitsune Mystic // Autumn-Tail, Kitsune Sage",
+    "grupo": "viradas (flip)"
+  },
+  {
+    "id": "9de1eebf-5725-438c-bcf0-f3a4d8a89fb0",
+    "oracle_id": "59eab251-af80-4091-98de-9ed413c14cdc",
+    "set": "chk",
+    "number": "93",
+    "nome": "Student of Elements // Tobita, Master of Winds",
+    "grupo": "viradas (flip)"
+  },
+  {
+    "id": "0ecac065-c807-4bf4-935c-badd3c64407d",
+    "oracle_id": "6f571092-7244-4223-aa14-f5133cc000d8",
+    "set": "pbok",
+    "number": "122★",
+    "nome": "Budoka Pupil // Ichiga, Who Topples Oaks",
+    "grupo": "viradas (flip)"
+  },
+  {
+    "id": "8b2e46cf-c8d7-416e-a0a5-31cf7d72659c",
+    "oracle_id": "1373fa8d-0a39-4451-a482-ce2071438dc8",
+    "set": "phuk",
+    "number": "39",
+    "nome": "Nezumi Graverobber // Nighteyes the Desecrator",
+    "grupo": "viradas (flip)"
+  },
+  {
+    "id": "4912a0a5-2fec-4c6b-9545-9ab0c4e25268",
+    "oracle_id": "1373fa8d-0a39-4451-a482-ce2071438dc8",
+    "set": "plst",
+    "number": "CHK-129",
+    "nome": "Nezumi Graverobber // Nighteyes the Desecrator",
+    "grupo": "viradas (flip)"
+  },
+  {
+    "id": "84b1a2d9-9b48-4eeb-8971-b1ebe1b0e0cb",
+    "oracle_id": "45c8e860-5ce5-4a1c-aebe-97ddffcb2f74",
+    "set": "plst",
+    "number": "CHK-131",
+    "nome": "Nezumi Shortfang // Stabwhisker the Odious",
+    "grupo": "viradas (flip)"
   }
 ]
