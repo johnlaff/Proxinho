@@ -275,6 +275,23 @@ Medidas nas imagens do Scryfall, na carta deitada (1040 × 745):
 
 Nos dados: o Arena (Pioneer Masters) tem o "Fundir" só no fim do texto da carta inteira, sem o lembrete, e dá às metades do Turn // Burn os nomes "turno" e "A Queima" (a carta inteira e a impressa em PT, no Gatherer, são "Transformar // Queimar"). O lembrete oficial em PT está no Wear // Tear impresso em PT (CMR e DMC): "Você pode conjurar uma ou ambas as metades deste card da sua mão."
 
+### Divididas de 2003 (26/11/2026)
+
+As divididas da moldura de 2003 são as de Dissension (DIS 149 a 158), Planar Chaos (PLC 112 a 114), as quinze com Fundir de Dragon's Maze (DGM 121 a 135) e as reimpressões na moldura de 2003 (Duel Decks, Planechase, Archenemy, Commander, Commander 2013, The List e a promo de pré-estreia do Breaking // Entering): 48 impressões de papel de borda preta, de 35 cartas. Deitada, cada metade é uma carta pequena da moldura de 2003, a da direita 501 px adiante.
+
+Medidas nas imagens do Scryfall, na carta deitada (1040 × 745):
+
+| Medida | Valor |
+|---|---|
+| Barra do nome | papel de y ≈ 50 a 101 e de x ≈ 52 a 490 (contorno da ponta em x ≈ 47); minúsculas de 72 a 91; o nome começa em x ≈ 59 e 560 |
+| Custo | acaba em x ≈ 483 e 984; 36 px por símbolo (o círculo tem 32), 42 no híbrido |
+| Barra de tipo | papel de y ≈ 420 a 453 (contorno da ponta em x ≈ 50); minúsculas de 433 a 447; a perna do "y" de "Sorcery" desce até 455, no chanfro do pé |
+| Símbolo da coleção | a partir de x ≈ 446 e 946; o da Friday Night Magic de 2006, o mais largo, em 435 e 927 |
+| Caixa | papel de y ≈ 465 a 663 e de x ≈ 53 a 483, num fio escuro, sem bisel claro; o texto em inglês chega a x 481 (Flesh // Blood) |
+| Faixa do Fundir | caixas até y ≈ 613; papel da faixa de 617 a 658 e de x ≈ 52 a 985; "Fuse" em x ≈ 60 e o lembrete alinhado à esquerda logo depois, até ≈ 963; nas douradas, papel de 145 a 160 de brilho |
+
+As letras, na Matrix Bold: o nome tem maiúsculas de 27 px, como na carta de pé de 2003 (ADR 0024), e o tipo de 20 (23 na carta de pé). Nos dados, das 35 cartas, 14 têm o texto impresso em PT, 12 o do Arena e 9 só a tradução não oficial; as duas da Friday Night Magic de 2006 têm o logotipo da FNM como marca-d'água na primeira metade e ficam de fora, como as cartas de pé com ele.
+
 ### Marcas-d'água na moldura de 2003 (25/11/2026)
 
 Como as ferramentas existentes fazem: o Proxyshop não reaproveita a imagem; ele monta a carta do zero e põe a marca-d'água como uma camada vetorial, desenhada à parte a partir do nome que o Scryfall dá (`watermark`). O Proxinho escreve sobre a digitalização, então a marca já está lá e precisa ficar: apagar a caixa inteira levava a marca junto, e apagar só onde as letras passam deixava a marca em cacos. A saída é a mesma da arte sem borda (ADR 0012): só as letras saem da máscara, e a rede neural (LaMa) refaz o que estava por baixo delas, a marca inclusive.

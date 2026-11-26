@@ -1564,17 +1564,16 @@ def room_supported(card: dict) -> bool:
 SPLIT_SETS_OFF = {"c16", "cmb1", "cmb2", "mb2", "unk"}
 
 
-def split_supported(card: dict) -> bool:
-    """Cartas divididas de 2015 (Guilds of Ravnica, Ravnica Allegiance, Murders at Karlov Manor e
-    as reimpressões na moldura atual): duas cartas pequenas da M15 lado a lado na carta deitada,
-    cada uma com a barra do nome, a barra de tipo e a caixa (src/engine/split.ts, ADR 0034). O
-    motor confere as barras e as caixas na imagem; sem elas, a arte sai como está. Ficam de fora
-    as Salas (room_supported), a Consequência e o Fundir, que têm outro desenho, e as de borda
-    branca, prateada e sem borda."""
+def split_frame_ok(card: dict) -> bool:
+    """A moldura das divididas que o motor reescreve: a de 2015 (ADR 0034) e a de 2003 (ADR 0037,
+    as de Dissension, Planar Chaos e Dragon's Maze e as reimpressões), de borda preta, sem efeito
+    de moldura e fora das coleções de `SPLIT_SETS_OFF`. Na de 2003 a marca-d'água de cada metade
+    (das guildas) sai com o texto, como nas de 2015; o logotipo da Friday Night Magic (as promos
+    de 2006), não: fica de fora, como nas cartas de 2003 (`WATERMARKS_2003_OK`)."""
     faces = card.get("card_faces") or []
-    keywords = set(card.get("keywords") or [])
+    frame = card.get("frame")
     return (
-        card.get("frame") == "2015"
+        (frame == "2015" or (frame == "2003" and all(f.get("watermark") in WATERMARKS_2003_OK for f in faces)))
         and card.get("layout") == "split"
         and card.get("border_color") == "black"
         and not card.get("frame_effects")
@@ -1583,6 +1582,21 @@ def split_supported(card: dict) -> bool:
         and not drawn_frame(card)
         and card.get("set") not in SPLIT_SETS_OFF
         and len(faces) == 2
+    )
+
+
+def split_supported(card: dict) -> bool:
+    """Cartas divididas de 2015 (Guilds of Ravnica, Ravnica Allegiance, Murders at Karlov Manor e
+    as reimpressões na moldura atual): duas cartas pequenas da M15 lado a lado na carta deitada,
+    cada uma com a barra do nome, a barra de tipo e a caixa (src/engine/split.ts, ADR 0034); e as
+    da moldura de 2003, pelo mesmo caminho com as medidas delas (ADR 0037). O motor confere as
+    barras e as caixas na imagem; sem elas, a arte sai como está. Ficam de fora as Salas
+    (room_supported), a Consequência e o Fundir, que têm outro desenho, e as de borda branca,
+    prateada e sem borda."""
+    faces = card.get("card_faces") or []
+    keywords = set(card.get("keywords") or [])
+    return (
+        split_frame_ok(card)
         and not any(is_room(f.get("type_line")) for f in faces)
         and not keywords & {"Aftermath", "Fuse"}
     )
@@ -1611,20 +1625,9 @@ def fuse_supported(card: dict) -> bool:
     """Cartas com Fundir na moldura atual (as reimpressões de Dragon's Maze nos decks de Commander,
     em Commander Legends e nos Guild Kits, e as de Doctor Who, Fallout e das Tartarugas Ninja): a
     dividida de 2015 (split_supported) com a caixa mais curta e a faixa do Fundir no pé, de uma
-    metade à outra (src/engine/split.ts, ADR 0036)."""
-    faces = card.get("card_faces") or []
-    return (
-        card.get("frame") == "2015"
-        and card.get("layout") == "split"
-        and card.get("border_color") == "black"
-        and not card.get("frame_effects")
-        and not card.get("full_art")
-        and not card.get("textless")
-        and not drawn_frame(card)
-        and card.get("set") not in SPLIT_SETS_OFF
-        and len(faces) == 2
-        and "Fuse" in (card.get("keywords") or [])
-    )
+    metade à outra (src/engine/split.ts, ADR 0036). E as de Dragon's Maze, na moldura de 2003,
+    com a faixa mais alta e o lembrete alinhado à esquerda (ADR 0037)."""
+    return split_frame_ok(card) and "Fuse" in (card.get("keywords") or [])
 
 
 FUSE_EN = "You may cast one or both halves of this card from your hand."

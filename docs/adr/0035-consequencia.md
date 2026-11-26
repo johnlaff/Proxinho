@@ -40,4 +40,4 @@ As 69 impressões, montadas com o código desta árvore e conferidas em folhas d
 
 - As cartas com Consequência saem em PT nas 69 artes de borda preta, também nas promos de pré-estreia (com a data na arte) e nas reimpressões de Commander e de The List.
 - O motor ganha um terceiro caminho de carta dividida: as duas metades em orientações diferentes na mesma carta.
-- O Fundir (depois, ADR 0036, na moldura atual) e as divididas de 1997 e 2003 continuam na original, até terem as medidas delas.
+- O Fundir (depois, ADR 0036, na moldura atual) e as divididas de 1997 e 2003 (as de 2003 depois, ADR 0037) continuam na original, até terem as medidas delas.

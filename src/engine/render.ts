@@ -141,7 +141,7 @@ import { mdfcHint, type MdfcHint } from "./mdfc";
 import { OLD, oldCostLeft, oldLetters, oldTypeEnds } from "./old";
 import { prepareFrame, prepareLayout } from "./prepare";
 import { ROOM, roomCostLeft, roomFrame } from "./room";
-import { fuseBar, SPLIT, splitBoxes, splitCostLeft, splitFrame } from "./split";
+import { fuseBar, SPLIT, SPLIT_2003, splitBoxes, splitCostLeft, splitFrame } from "./split";
 import { AFTERMATH, aftermathBox, aftermathCostLeft, aftermathFrame } from "./aftermath";
 import { preloadSymbols } from "./symbols";
 import {
@@ -1724,10 +1724,13 @@ async function renderSplit(p: {
   ctx: CanvasRenderingContext2D;
   src: HTMLCanvasElement;
   halves: [PtFace, PtFace];
+  /** a moldura de 2003 (ADR 0037): as medidas de `SPLIT_2003` e o nome e o tipo na Matrix Bold */
+  frame2003: boolean;
   W: number;
   H: number;
 }): Promise<boolean> {
   const { ctx, src, halves, W, H } = p;
+  const L = p.frame2003 ? SPLIT_2003 : SPLIT;
   if (halves.some((h) => !h.type_pt)) return false;
   const rot = document.createElement("canvas");
   rot.width = src.height;
@@ -1739,24 +1742,27 @@ async function renderSplit(p: {
   rctx.drawImage(src, 0, 0);
   rctx.setTransform(1, 0, 0, 1, 0, 0);
   const data = rctx.getImageData(0, 0, rot.width, rot.height);
-  if (!splitFrame(data)) return false;
+  if (!splitFrame(data, L)) return false;
   // o Fundir (ADR 0036): a faixa no pé, com o lembrete dele em `reminder_pt`; sem um dos dois, a
   // carta sai na original
-  const fuse = fuseBar(data);
+  const fuse = fuseBar(data, L);
   const fuseText = halves[0].reminder_pt ?? halves[1].reminder_pt ?? null;
   if (!fuse !== !fuseText) return false;
-  const fx = rot.width / SPLIT.width;
-  const fy = rot.height / SPLIT.height;
+  const fx = rot.width / L.width;
+  const fy = rot.height / L.height;
   const toImg = (r: Rect) => roundRect({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
 
-  const costs = halves.map((h, i) => splitCostLeft(h.mana_cost, i as 0 | 1));
-  const { nameY, typeY } = SPLIT;
-  const nameRects = SPLIT.names.map((n, i) => toImg({ x0: n.x0, y0: nameY.y0, x1: costs[i] - 6, y1: nameY.y1 }));
-  const costGuard = SPLIT.names.map((n, i) => toImg({ x0: costs[i] - 4, y0: nameY.y0 - 2, x1: n.x1 + 4, y1: nameY.y1 + 1 }));
-  const typeRects = SPLIT.types.map((t) => toImg({ x0: t.x0, y0: typeY.y0, x1: t.x1, y1: typeY.y1 }));
-  const boxes = splitBoxes(data, fuse);
+  const costs = halves.map((h, i) => splitCostLeft(h.mana_cost, i as 0 | 1, L));
+  const { nameY, typeY } = L;
+  const nameRects = L.names.map((n, i) => toImg({ x0: n.x0, y0: nameY.y0, x1: costs[i] - 6, y1: nameY.y1 }));
+  const costGuard = L.names.map((n, i) => toImg({ x0: costs[i] - 4, y0: nameY.y0 - 2, x1: n.x1 + 4, y1: nameY.y1 + 1 }));
+  const typeRects = L.types.map((t) => toImg({ x0: t.x0, y0: typeY.y0, x1: t.x1, y1: typeY.y1 }));
+  // (o chanfro do pé da barra de tipo, à parte: ver `typeY.tail`)
+  const tail = typeY.tail;
+  const tailRects = tail ? L.types.map((t) => toImg({ x0: t.x0, y0: tail.y0, x1: t.x1, y1: tail.y1 })) : [];
+  const boxes = splitBoxes(data, fuse, L);
   const boxRects = boxes.map(toImg);
-  const F = SPLIT.fuse;
+  const F = L.fuse;
   const fuseRects = fuse ? [toImg({ x0: F.x0, y0: fuse.y0 + 1, x1: F.x1, y1: fuse.y1 - 1 })] : [];
   // texto curto centralizado no original (Boom // Bust, TSR) sai centralizado. As duas metades são
   // compostas do mesmo jeito: a que não dá para dizer (uma linha que enche a caixa, "Destroy target
@@ -1770,46 +1776,39 @@ async function renderSplit(p: {
       ...typeRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
       ...boxRects.map((rect) => ({ rect, threshold: 14, colorThreshold: 34, stains: true, dividers: true })),
       ...fuseRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
+      // (por último, para não mudar a ordem das tintas acima)
+      ...tailRects.map((rect) => ({ rect, threshold: 28, polarity: "dark" as const, fill: "rows" as const })),
     ],
     costGuard,
     costGuard,
     // (a ponta arredondada da esquerda de cada barra fica como está, ver barCapGuard)
-    [...nameRects, ...typeRects, ...fuseRects].flatMap((r) => barCapGuard(data, r, "left")),
+    [...nameRects, ...typeRects, ...fuseRects, ...tailRects].flatMap((r) => barCapGuard(data, r, "left")),
   );
   rctx.putImageData(data, 0, 0);
 
-  const k = H / SPLIT.width;
+  const k = H / L.width;
   ctx.save();
   ctx.translate(0, H);
   ctx.rotate(-Math.PI / 2);
   ctx.drawImage(rot, 0, 0, H, W);
   const m = measurer(ctx, k);
-  const pad = SPLIT.boxPad;
+  const pad = L.boxPad;
+  const tf = titleFont(L.frame2003);
   for (const [i, h] of halves.entries()) {
-    const n = SPLIT.names[i];
-    drawLine(ctx, h.name_pt ?? h.name_en, n.x, nameY.center, costs[i] - 10 - n.x, SPLIT.nameSize, k, INK[inks[i] ?? "dark"]);
-    const t = SPLIT.types[i];
-    drawLine(ctx, h.type_pt ?? "", t.x, typeY.center, t.x1 - t.x, SPLIT.typeSize, k, INK[inks[2 + i] ?? "dark"]);
+    const n = L.names[i];
+    drawLine(ctx, h.name_pt ?? h.name_en, n.x, nameY.center, costs[i] - 10 - n.x, L.nameSize, k, INK[inks[i] ?? "dark"], tf);
+    const t = L.types[i];
+    drawLine(ctx, h.type_pt ?? "", t.x, typeY.center, t.x1 - t.x, L.typeSize, k, INK[inks[2 + i] ?? "dark"], tf);
     const b = boxes[i];
     const box = { x0: b.x0 + pad.x0, y0: b.y0 + pad.y0, x1: b.x1 - pad.x1, y1: b.y1 - pad.y1 };
     const symbols = await preloadSymbols(h.text_pt, h.flavor_pt);
-    const res = fitText(
-      h.text_pt,
-      h.flavor_pt,
-      box.x1 - box.x0,
-      box.y1 - box.y0,
-      m,
-      SPLIT.maxSize,
-      SPLIT.minSize,
-      undefined,
-      h.ability_words,
-    );
+    const res = fitText(h.text_pt, h.flavor_pt, box.x1 - box.x0, box.y1 - box.y0, m, L.maxSize, L.minSize, undefined, h.ability_words);
     drawLayout(ctx, res, box, k, inks[4 + i] ?? "dark", symbols, m, centered[i]);
   }
   if (fuse && fuseText) {
     const bar = { x0: F.textX0, y0: fuse.y0, x1: F.textX1, y1: fuse.y1 };
     const res = fitText(fuseText, null, bar.x1 - bar.x0, bar.y1 - bar.y0, m, F.maxSize, F.minSize);
-    drawLayout(ctx, res, bar, k, inks[6] ?? "dark", new Map(), m, true);
+    drawLayout(ctx, res, bar, k, inks[6] ?? "dark", new Map(), m, F.centered);
   }
   ctx.restore();
   return true;
@@ -2284,7 +2283,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       ? false
       : room
         ? await renderRoom({ ctx, src, halves, print, W, H, neural, plan })
-        : (await renderSplit({ ctx, src, halves, W, H })) || (await renderAftermath({ ctx, src, halves, W, H }))
+        : (await renderSplit({ ctx, src, halves, frame2003: print.frame === "2003", W, H })) ||
+            (await renderAftermath({ ctx, src, halves, W, H }))
           ? "ok"
           : false;
     if (done === "ok") return { canvas: out, translated: true };

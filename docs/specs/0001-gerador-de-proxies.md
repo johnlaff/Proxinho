@@ -95,6 +95,12 @@ Como jogador, quero imprimir as Aventuras em português na arte que eu escolher.
 - [x] A sombra do papel perto da lombada continua igual depois de apagar o inglês.
 - [x] Quando o motor não acha o livro na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
 
+### H11g. Divididas da moldura de 2003 (entregue em 26/11/2026, ADR 0037)
+Como jogador, quero imprimir as cartas divididas da moldura de 2003 (Crime // Punishment, Boom // Bust e as com Fundir de Dragon's Maze, como Turn // Burn) em português na arte que eu escolher.
+- [x] As de borda preta saem em português: o nome e o tipo das duas metades na letra da moldura de 2003, o texto de cada uma e, nas com Fundir, a faixa do pé com o lembrete oficial.
+- [x] O custo, o símbolo da coleção e a ponta arredondada das barras ficam como na carta impressa.
+- [x] As promos da Friday Night Magic de 2006, com o logotipo como marca-d'água, e as que o motor não reconhece na imagem saem na original, e a etiqueta diz que saem em inglês.
+
 ### H11f. Fundir na moldura atual (entregue em 25/11/2026, ADR 0036)
 Como jogador, quero imprimir as cartas com Fundir da moldura atual (Wear // Tear, Turn // Burn) em português na arte que eu escolher.
 - [x] As de borda preta saem em português: o nome, o tipo e o texto das duas metades, e a faixa do pé com o lembrete oficial do Fundir.

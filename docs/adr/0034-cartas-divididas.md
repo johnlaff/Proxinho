@@ -10,7 +10,7 @@ Depois das Salas (ADR 0033), as cartas divididas de duas metades lado a lado sã
 
 Girada 90° no sentido horário, como a Sala, cada metade é uma carta pequena da moldura M15: a barra do nome no alto (com o custo no fim), a arte, a barra de tipo (com o símbolo da coleção no fim) e a caixa de texto, com a marca-d'água da guilda nas de Ravnica. As duas metades têm o mesmo desenho, a da direita 480 px adiante. As medidas, tiradas das impressões (escala-base deitada, 1040 × 745): barra do nome de 52 a 105, barra de tipo de 405 a 437, caixa de 450 a 713; o lado de dentro da caixa muda uns 9 px entre coleções (de 93 a 102 na metade da esquerda). O custo acaba em x ≈ 505 e 981, com ~36,4 px por símbolo (o híbrido tem um círculo de 41 px). O símbolo da coleção mais largo começa em x ≈ 455 e 934; o tipo em inglês ("Instant", "Sorcery") acaba antes de 200 e de 680.
 
-Ficam para depois, com outro desenho: a Consequência (Amonkhet: a segunda metade impressa de lado; ver ADR 0035), o Fundir (a faixa do Fundir no pé; ver ADR 0036), as divididas de 1997 e 2003, as de Commander 2016 (as metades mais altas, com o copyright no pé) e as cartas de teste dos Mystery Boosters e do Unknown Event.
+Ficam para depois, com outro desenho: a Consequência (Amonkhet: a segunda metade impressa de lado; ver ADR 0035), o Fundir (a faixa do Fundir no pé; ver ADR 0036), as divididas de 1997 e 2003 (as de 2003, ver ADR 0037), as de Commander 2016 (as metades mais altas, com o copyright no pé) e as cartas de teste dos Mystery Boosters e do Unknown Event.
 
 ## Decisão
 
@@ -44,4 +44,4 @@ As 78 impressões, montadas com o código desta árvore e conferidas em folhas d
 - O nome de 18 cartas divididas impressas em PT aparece em PT na interface (antes, em inglês).
 - As 25 divididas com Consequência do Arena e a Crime // Punishment ficam com o texto certo em cada metade, e o nome certo na interface ("Anoitecer // Alvorecer", antes "Anoitecer // Anoitecer /// Alvorecer" em 7 delas).
 - Pain // Suffering, Wax // Wane, Stand // Deliver e Spite // Malice ficam com o nome de cada metade no lugar ("Dor // Sofrimento").
-- A Consequência (depois, ADR 0035), o Fundir (depois, ADR 0036) e as divididas de 1997 e 2003 continuam na original, até terem as medidas delas.
+- A Consequência (depois, ADR 0035), o Fundir (depois, ADR 0036) e as divididas de 1997 e 2003 (as de 2003 depois, ADR 0037) continuam na original, até terem as medidas delas.

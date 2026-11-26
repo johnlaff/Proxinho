@@ -64,6 +64,22 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "02b40fe4-901a-4832-8d52-a6bb5cc07b63",
+    "oracle_id": "0741151a-fec0-4ed3-9295-0d0f56d24165",
+    "set": "dgm",
+    "number": "128",
+    "nome": "Flesh // Blood",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "0eb3ce46-ddd2-43b3-9e45-019ae91df686",
+    "oracle_id": "c41e8a99-e4a8-4323-a59d-265266e29fa9",
+    "set": "dgm",
+    "number": "130",
+    "nome": "Profit // Loss",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "d91a527d-51f1-4fb1-9016-fc923fd43a6a",
     "oracle_id": "e018773f-95b3-49a3-9674-6f04ddef2092",
     "set": "dis",
@@ -509,6 +525,14 @@
     "set": "pip",
     "number": "466",
     "nome": "Chaos Warp",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "0c93c9a0-53eb-44cc-bd79-8103774bfd4c",
+    "oracle_id": "5e2bf834-7f92-4da5-beac-0dad817dc233",
+    "set": "plc",
+    "number": "114",
+    "nome": "Rough // Tumble",
     "grupo": "citada nos documentos"
   },
   {
@@ -4288,6 +4312,86 @@
     "grupo": "dividida"
   },
   {
+    "id": "f855144c-6adb-4cde-8a37-5fb0be775e5d",
+    "oracle_id": "4744b086-fea2-4992-bfef-68c58cdf9cf0",
+    "set": "arc",
+    "number": "101",
+    "nome": "Wax // Wane",
+    "grupo": "dividida de 2003"
+  },
+  {
+    "id": "86ffb576-e33a-40c5-b83e-602cf62a2311",
+    "oracle_id": "5e2bf834-7f92-4da5-beac-0dad817dc233",
+    "set": "c13",
+    "number": "118",
+    "nome": "Rough // Tumble",
+    "grupo": "dividida de 2003"
+  },
+  {
+    "id": "37257329-5946-44df-9f5a-50bd38b6a151",
+    "oracle_id": "814f06aa-b48e-4c7f-b4cd-595d89176d0e",
+    "set": "ddh",
+    "number": "73",
+    "nome": "Rise // Fall",
+    "grupo": "dividida de 2003"
+  },
+  {
+    "id": "2424f2c4-366b-42cf-bf4b-a8a5bfdd2c4b",
+    "oracle_id": "d476f4b3-db63-4756-ab76-4b35f63c2825",
+    "set": "ddj",
+    "number": "77",
+    "nome": "Life // Death",
+    "grupo": "dividida de 2003"
+  },
+  {
+    "id": "ac347ec8-4537-4cdf-aeff-44da1f7be01b",
+    "oracle_id": "60e59923-ecd9-457e-b772-693138e05ab2",
+    "set": "dis",
+    "number": "151",
+    "nome": "Hide // Seek",
+    "grupo": "dividida de 2003"
+  },
+  {
+    "id": "4bb07091-86d6-4735-82b6-6e71e26710f4",
+    "oracle_id": "82922f3a-a444-49cf-b136-f30a3c85f791",
+    "set": "dis",
+    "number": "153",
+    "nome": "Odds // Ends",
+    "grupo": "dividida de 2003"
+  },
+  {
+    "id": "5d48ee48-aaeb-4907-b9dc-32f22e95ae4c",
+    "oracle_id": "fa38394b-6ac4-460c-ae3a-54d50037715b",
+    "set": "dis",
+    "number": "155",
+    "nome": "Research // Development",
+    "grupo": "dividida de 2003"
+  },
+  {
+    "id": "d4628887-bda4-47e4-84d1-d31a8298f9e5",
+    "oracle_id": "d7158101-f6ac-4d61-9570-a3adc3c8b583",
+    "set": "dis",
+    "number": "157",
+    "nome": "Supply // Demand",
+    "grupo": "dividida de 2003"
+  },
+  {
+    "id": "553028fc-eeab-42e2-9887-cf45ea3f01a6",
+    "oracle_id": "a40bebe3-6f00-4754-9f70-351055e3b524",
+    "set": "dis",
+    "number": "158",
+    "nome": "Trial // Error",
+    "grupo": "dividida de 2003"
+  },
+  {
+    "id": "6d3ff7fb-b781-4d5f-b989-3ca24066095f",
+    "oracle_id": "82922f3a-a444-49cf-b136-f30a3c85f791",
+    "set": "plst",
+    "number": "DIS-153",
+    "nome": "Odds // Ends",
+    "grupo": "dividida de 2003"
+  },
+  {
     "id": "c697548f-925b-405e-970a-4e78067d5c8e",
     "oracle_id": "bd43b485-e42e-4c20-adcb-799b0ce18a59",
     "set": "khm",
@@ -5006,6 +5110,70 @@
     "number": "736",
     "nome": "Gallifrey Falls // No More",
     "grupo": "fundir"
+  },
+  {
+    "id": "db84415e-048a-4cfc-9121-5ae17a412198",
+    "oracle_id": "57ad3c3a-6ac7-4a35-bc07-00f6ea0988c5",
+    "set": "dgm",
+    "number": "121",
+    "nome": "Alive // Well",
+    "grupo": "fundir de 2003"
+  },
+  {
+    "id": "66724f4e-59dd-4c70-b09b-49947320e6d1",
+    "oracle_id": "043370fd-9cfe-47ce-8019-e915cee1ae95",
+    "set": "dgm",
+    "number": "124",
+    "nome": "Breaking // Entering",
+    "grupo": "fundir de 2003"
+  },
+  {
+    "id": "22081f95-dc8e-41ed-b609-b6a22ee5428b",
+    "oracle_id": "44c7c6bb-2592-4d7c-8485-1815093e70be",
+    "set": "dgm",
+    "number": "132",
+    "nome": "Ready // Willing",
+    "grupo": "fundir de 2003"
+  },
+  {
+    "id": "d169a3b2-18ae-4414-98ef-d879676fdcc0",
+    "oracle_id": "9842734c-1eac-4509-a731-4c22017ae586",
+    "set": "dgm",
+    "number": "135",
+    "nome": "Wear // Tear",
+    "grupo": "fundir de 2003"
+  },
+  {
+    "id": "50e30e21-0bf7-4d10-b2cc-ed0c52b95955",
+    "oracle_id": "043370fd-9cfe-47ce-8019-e915cee1ae95",
+    "set": "pdgm",
+    "number": "124★",
+    "nome": "Breaking // Entering",
+    "grupo": "fundir de 2003"
+  },
+  {
+    "id": "933d8167-061b-4e4f-a8f4-82658a3a7b08",
+    "oracle_id": "a0593a5b-6f76-4eb3-a1b1-9794d2d36c92",
+    "set": "plst",
+    "number": "DGM-122",
+    "nome": "Armed // Dangerous",
+    "grupo": "fundir de 2003"
+  },
+  {
+    "id": "66b3f745-055b-4338-b6f0-7b7281d63afd",
+    "oracle_id": "5b8472c8-a7e7-46f2-aecf-e954082a5ef5",
+    "set": "plst",
+    "number": "DGM-123",
+    "nome": "Beck // Call",
+    "grupo": "fundir de 2003"
+  },
+  {
+    "id": "e23faf50-64e5-4989-96ba-1048c7e5ef23",
+    "oracle_id": "0741151a-fec0-4ed3-9295-0d0f56d24165",
+    "set": "plst",
+    "number": "DGM-128",
+    "nome": "Flesh // Blood",
+    "grupo": "fundir de 2003"
   },
   {
     "id": "fba6332c-acba-43f9-877c-ca6c5328aae9",

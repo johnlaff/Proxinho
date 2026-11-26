@@ -1119,15 +1119,23 @@ class Divididas(unittest.TestCase):
         self.assertFalse(split_supported(self.aftermath))
         self.assertFalse(split_supported({**self.base, "keywords": ["Fuse"]}))
         self.assertFalse(split_supported({**self.base, "card_faces": [{**f, "type_line": "Enchantment — Room"} for f in self.faces]}))
-        self.assertFalse(split_supported({**self.base, "frame": "2003"}))
+        # a de 2003 entra (ADR 0037), com a marca-d'água das guildas e sem o logotipo da FNM
+        self.assertTrue(split_supported({**self.base, "frame": "2003", "set": "dis"}))
+        guild = [{**f, "watermark": w} for f, w in zip(self.faces, ("azorius", "dimir"))]
+        self.assertTrue(split_supported({**self.base, "frame": "2003", "set": "dis", "card_faces": guild}))
+        fnm = [{**self.faces[0], "watermark": "fnm"}, self.faces[1]]
+        self.assertFalse(split_supported({**self.base, "frame": "2003", "set": "f06", "card_faces": fnm}))
+        self.assertFalse(split_supported({**self.base, "frame": "1997"}))
 
     def test_fundir(self):
         fuse = {**self.base, "name": "Wear // Tear", "set": "cmr", "keywords": ["Fuse"]}
         self.assertTrue(fuse_supported(fuse))
         self.assertFalse(split_supported(fuse))
         self.assertFalse(fuse_supported(self.base))
-        # as de Dragon's Maze (moldura de 2003) e a carta de teste do Unknown Event ficam de fora
-        self.assertFalse(fuse_supported({**fuse, "frame": "2003", "set": "dgm"}))
+        # as de Dragon's Maze, na moldura de 2003, entram (ADR 0037); a carta de teste do Unknown
+        # Event fica de fora
+        self.assertTrue(fuse_supported({**fuse, "frame": "2003", "set": "dgm"}))
+        self.assertFalse(split_supported({**fuse, "frame": "2003", "set": "dgm"}))
         self.assertFalse(fuse_supported({**fuse, "set": "unk"}))
 
     def test_lembrete_do_fundir(self):
