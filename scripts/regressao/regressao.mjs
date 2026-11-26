@@ -182,7 +182,7 @@ async function openPage(browser, url) {
 
 const fileOf = (job) => `${job.set}-${job.number}-${job.side}.jpg`.replace(/[^\w.★-]/g, "_");
 
-/** Monta a amostra com um build e grava cada face em `dir` (pula as que já estão lá). */
+/** Monta a amostra com um build e grava cada face em `dir` (pula as que já estão lá, salvo as que deram erro). */
 async function renderAll(browser, url, dir, items) {
   mkdirSync(dir, { recursive: true });
   const metaFile = join(dir, "faces.json");
@@ -203,7 +203,9 @@ async function renderAll(browser, url, dir, items) {
     jobs.push(...planned.filter((j) => wanted.has(j.printId) && !(NO_NEURAL && j.neural)));
   }
   await planner.close();
-  const todo = jobs.filter((j) => !meta[fileOf(j)]);
+  // a face que deu erro é montada de novo: numa rodada interrompida, as que estavam na fila
+  // falham todas com o navegador fechado, e seriam puladas na seguinte como se estivessem prontas
+  const todo = jobs.filter((j) => !meta[fileOf(j)] || meta[fileOf(j)].erro);
   log(`${jobs.length} faces na amostra, ${todo.length} a montar em ${dir.replace(ROOT + "/", "")}`);
   const pages = [];
   for (let i = 0; i < PAGES; i++) pages.push(await openPage(browser, url));
