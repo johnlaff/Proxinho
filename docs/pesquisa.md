@@ -385,6 +385,20 @@ Nenhuma saiu em PT com texto no Scryfall, e o bloco de Kamigawa não está no Ar
 
 A escolha (ADR 0044): como a Consequência, cada metade apagada e escrita na orientação dela (a de baixo na carta girada 180°), com as barras de tipo achadas pelos fios, a caixa de P/R pelo fio de dentro, a caixa pelo papel; o nome fica.
 
+### Sagas de duas faces (26/11/2026)
+
+O Scryfall tem 126 impressões de papel de cartas de transformar com uma face Saga, todas na moldura atual: a frente Saga de Kamigawa: Neon Dynasty (23 cartas, a Saga que vira criatura encantamento, com o leque das de duas faces, `fandfc`) e de Avatar: The Last Airbender (5), e o verso Saga dos cinco pretores de March of the Machine, da Huatli, Poet of Unity (LCI) e de 8 cartas de Final Fantasy (o verso é uma Invocação, a moldura do ADR 0042). 70 são de borda preta sem arte estendida, vitrine nem sem borda; as outras ficam de fora como as Sagas de uma face. Na frente, o P/R do verso vai no pé da coluna, à esquerda, logo abaixo da ponta da tira dos marcadores, como o "3/4" da The Restoration of Eiganjo; o último capítulo acaba acima dele, e a impressa em PT faz o mesmo.
+
+Medidas nas imagens do Scryfall (745 × 1040):
+
+| Medida | Valor |
+| --- | --- |
+| P/R do verso na frente (NEO, TLA, PTLA) | algarismos de x ≈ 62 a 101–107 e de y 826–834 a 848–856, em cinza (~110), no papel abaixo da ponta da tira |
+| Fio da arte da coluna | x 370 a 374; na variante da The Dragon-Kami Reborn (NEO 181†) a arte quase preta encosta nele até x 383 |
+| Sombra dos fios entre os capítulos, nas duas linhas antes do degrau | até 5% dos pixels 70 tons abaixo do papel (22% na linha mais escura da retícula da PMOM 65s); a linha de base de uma linha de texto cheia de serifas tem 60% ou mais |
+| Degrau dos fios nas promos de pré-estreia de NEO (foil) | 1 tom: o papel lavado não mostra os fios |
+| Ponta da tira dos marcadores, em seta, ao lado do P/R do verso | y ≈ 808 a 834: contorno preto de x ≈ 43 a 71, com a moldura clara à esquerda e o papel à direita: parece um número de marcador em 8 das 34 frentes (NEO 227, TLA 61, 145 e 186 e as promos delas e da PTLA 27s) |
+
 ### Caso (26/11/2026)
 
 As regras (719, "Case") definem o Caso como um tipo de encantamento com três partes: uma habilidade, a condição "To solve" e a habilidade "Solved", que só vale depois de solucionado. A MTG Wiki ("Murders at Karlov Manor") lista os 12 de MKM (5 raros e 7 incomuns) e a variante do Case of the Gorgon's Kiss com o cobertor de outra cor (um dos quebra-cabeças da coleção, sem número próprio: o Scryfall a separa como MKM 79†). A moldura é a coluna da Classe sem as barras: o Scryfall dá às 25 impressões de papel o layout `case`, todas de borda preta na moldura atual (só a Case of the Lost Witness, MBC 62, com o céu estrelado). Não há Caso de vitrine nem sem borda.

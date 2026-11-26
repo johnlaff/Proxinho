@@ -2199,14 +2199,17 @@ export function findSetSymbolLeft(
   // a 50 px ou mais do contorno do fim da barra é texto (os pedaços do contorno que sobram
   // começam a até 37 px dele): aí não há símbolo, e a barra vai até o contorno de fora (`none`;
   // com o tipo comprido até o fim, as últimas letras passavam por camadas do contorno, e o
-  // "ar" de "Avatar" ficava, FIN 451).
-  if (symbolless && start < outerEdge - Math.round(50 * k)) {
+  // "ar" de "Avatar" ficava, FIN 451). Mais perto, o bloco é um pedaço do contorno, e a barra
+  // vai até ele, também sem símbolo: com o limite de onde o símbolo pode começar (x 660, ver
+  // `m15Layout`), a última letra de um tipo que acaba rente ao contorno ficava ao lado do
+  // português (o "n" de "Dragon" no verso da Bahamut, PFIN 16s; o "l" de "Elemental", FIN 185).
+  if (symbolless) {
     if (info) {
       info.none = true;
       info.tight = false;
       info.colored = -1;
     }
-    return outerEdge;
+    return start < outerEdge - Math.round(50 * k) ? outerEdge : start;
   }
   return start;
 }

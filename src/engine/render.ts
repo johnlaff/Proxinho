@@ -102,10 +102,12 @@ import {
 import {
   DIVIDER_SPAN,
   SAGA,
+  SAGA_BACK_PT,
   SUMMON,
   dividerProfile,
   drawDivider,
   sagaArtLeft,
+  sagaBackPt,
   sagaBands,
   sagaBoxes,
   sagaDividers,
@@ -689,6 +691,7 @@ async function renderSaga(p: {
   toImg: (r: Rect) => Rect;
   face: PtFace;
   print: PrintRecord;
+  side: 0 | 1;
   W: number;
   H: number;
 }): Promise<boolean> {
@@ -703,10 +706,23 @@ async function renderSaga(p: {
   // uma faixa por grupo de capítulos, mais a do alto
   const dividers = sagaDividers(data, artLeft);
   if (dividers.length !== parts.chapters.length) return false;
-  const bands = sagaBands(dividers, artLeft);
-  // os números dos marcadores de cada capítulo, conferidos com o grupo ("I, II" são dois)
-  const numerals = sagaNumerals(data, dividers[0], SAGA.column.y1);
-  const edges = [...dividers, SAGA.column.y1];
+  // Na frente das de transformar, o P/R do verso fica no pé da coluna, à esquerda, e o último
+  // capítulo acaba acima dele, como na impressa em PT (ADR 0047): o texto vai até ali, e o P/R,
+  // que é igual em PT, fica como está. O apagamento vai até o pé da coluna, com os algarismos
+  // protegidos: a última linha em inglês pode descer ao lado deles (o pé do "y" de "your" ficava
+  // embaixo do português na promo de pré-estreia da The Legend of Yangchen, PTLA 27s)
+  const backPt = print.layout === "transform" && p.side === 0 && print.sides?.[1]?.pt ? sagaBackPt(data) : undefined;
+  if (backPt === null) return false;
+  const column = backPt === undefined ? SAGA.column : { y0: SAGA.column.y0, y1: backPt.y0 - SAGA_BACK_PT.gap };
+  const bands = sagaBands(dividers, artLeft, column);
+  const eraseBands = backPt ? sagaBands(dividers, artLeft) : bands;
+  const backPtGuard = backPt ? [roundRect(toImg({ x0: SAGA.column.x0, y0: backPt.y0 - 3, x1: backPt.x1 + 4, y1: backPt.y1 + 3 }))] : [];
+  // os números dos marcadores de cada capítulo, conferidos com o grupo ("I, II" são dois), só
+  // até o fim da coluna: ao lado do P/R do verso, a ponta da tira em seta, com a moldura clara
+  // à esquerda, passava por um número, o último capítulo ficava com dois e os fios não mudavam
+  // de lugar (The War of the Kami, NEO 227; The Legend of Yangchen, PTLA 27s)
+  const numerals = sagaNumerals(data, dividers[0], column.y1);
+  const edges = [...dividers, column.y1];
   const markers = parts.chapters.map((c, i) => {
     const inBand = numerals.filter((y) => y > edges[i] && y < edges[i + 1]);
     return inBand.length === c.numerals.split(", ").length ? { first: inBand[0], last: inBand[inBand.length - 1] } : null;
@@ -715,10 +731,26 @@ async function renderSaga(p: {
 
   // a barra de tipo é a da carta comum, mais abaixo (o fio de baixo fica em ~639 na comum)
   const typeShift = bar.bottom - 639;
-  const symbolInfo: { colored: number; lim: number; tight?: boolean } = { colored: -1, lim: 0 };
+  const bars = faceBars(data, print, p.side);
+  const symbolInfo: { colored: number; lim: number; tight?: boolean; none?: boolean } = { colored: -1, lim: 0 };
   const setLeft =
-    findSetSymbolLeft(data, Math.round((594 + typeShift) * fy), Math.round((632 + typeShift) * fy), undefined, 100, symbolInfo) / fx;
-  const layout = m15Layout(print.mana_cost, false, setLeft, { typeShift, leftIcon: hasLeftIcon(print.effects, false, false) });
+    findSetSymbolLeft(
+      data,
+      Math.round((594 + typeShift) * fy),
+      Math.round((632 + typeShift) * fy),
+      undefined,
+      100,
+      symbolInfo,
+      false,
+      bars.symbolless,
+    ) / fx;
+  const layout = m15Layout(bars.manaCost, false, setLeft, {
+    typeShift,
+    leftIcon: bars.leftIcon,
+    rightIcon: bars.rightIcon,
+    indicator: bars.indicator,
+    noSetSymbol: symbolInfo.none,
+  });
   alignBar(data, layout, 0, { x0: 70, y0: 45, x1: 420, y1: 120 }, BAR_CENTER.title, fx, fy);
   alignBar(data, layout, 1, { x0: 70, y0: bar.top + 6, x1: 420, y1: bar.bottom - 1 }, BAR_CENTER.type + typeShift, fx, fy);
   const r = layout.erase[1].rect;
@@ -751,11 +783,12 @@ async function renderSaga(p: {
         hasTop,
         found,
         dividers[0] - TOP_CURVE_CLEAR,
+        column,
       );
     }
   }
   // sem os números, ou sem lugar para os fios: as faixas ficam como estão
-  const boxes = plan ? sagaBoxes(plan, hasTop, artLeft) : rows.map((row) => bands[row.band].text);
+  const boxes = plan ? sagaBoxes(plan, hasTop, artLeft, column) : rows.map((row) => bands[row.band].text);
   if (!plan) {
     layouts = fitRows(
       rows.map((row, i) => ({ text: row.text, width: boxes[i].x1 - boxes[i].x0, height: boxes[i].y1 - boxes[i].y0, italic: row.italic })),
@@ -767,10 +800,7 @@ async function renderSaga(p: {
     if (layouts.some((l, i) => l.height > boxes[i].y1 - boxes[i].y0)) return false;
   }
 
-  const capGuard = [
-    ...layout.erase.slice(0, 2).flatMap((e) => barCapGuard(data, toImg(e.rect), "left")),
-    ...(print.mana_cost ? [] : barCapGuard(data, toImg(layout.erase[0].rect), "right")),
-  ];
+  const capGuard = faceCapGuard(data, layout, toImg, bars);
   const orig = plan ? new ImageData(new Uint8ClampedArray(data.data), data.width, data.height) : null;
   // os fios que mudam de lugar saem junto: a faixa de cada um entra inteira na máscara, com
   // papel em cima e embaixo para o preenchimento
@@ -789,7 +819,7 @@ async function renderSaga(p: {
       // sem crescer a mancha: a marca-d'água de algumas coleções (o redemoinho de Dominaria,
       // o brasão de Benália) atravessa as faixas, e cada faixa levava o pedaço dela; o resto
       // ficava cortado. As letras saem e a marca-d'água fica inteira
-      ...bands.map((b) => ({ rect: roundRect(toImg(b.erase)), threshold: 14, colorThreshold: 34 })),
+      ...eraseBands.map((b) => ({ rect: roundRect(toImg(b.erase)), threshold: 14, colorThreshold: 34 })),
       ...moved.map((d) => ({
         rect: roundRect(toImg({ x0: lineX0, y0: d - DIVIDER_SPAN.above - 10, x1: lineX1, y1: d + DIVIDER_SPAN.below + 8 })),
         threshold: 255,
@@ -797,7 +827,7 @@ async function renderSaga(p: {
       })),
     ],
     [],
-    topFrame,
+    [...topFrame, ...backPtGuard],
     capGuard,
   );
   if (plan && orig) {
@@ -857,6 +887,7 @@ async function renderSummon(p: {
   toImg: (r: Rect) => Rect;
   face: PtFace;
   print: PrintRecord;
+  side: 0 | 1;
   flavor: string | null;
   W: number;
   H: number;
@@ -897,12 +928,31 @@ async function renderSummon(p: {
   // claro, saía como um bloco claro na parte escura. O tom de cada coluna da barra sai antes de
   // achar o símbolo e de apagar, e volta depois, como a sombra das páginas da Aventura (ver
   // shadePage; o percentil 75, porque as letras do tipo ocupam mais da coluna que as do texto)
+  // (no verso das de transformar não há símbolo, e a barra é escura com letras claras ou clara
+  // com o degradê de sempre: o percentil caía nas letras claras, as colunas com letra eram
+  // clareadas até o tom delas e o tipo em inglês ficava embaixo do português, ADR 0047)
+  const bars = faceBars(data, print, p.side);
   const typeBand = roundRect(toImg({ x0: 50, y0: bar.top + 9, x1: BASE_W * 0.955, y1: bar.bottom - 1 }));
-  const unshade = shadePage(data, typeBand, pageShade(data, typeBand, 0.75));
-  const symbolInfo: { colored: number; lim: number; tight?: boolean } = { colored: -1, lim: 0 };
+  const unshade = bars.symbolless ? () => {} : shadePage(data, typeBand, pageShade(data, typeBand, 0.75));
+  const symbolInfo: { colored: number; lim: number; tight?: boolean; none?: boolean } = { colored: -1, lim: 0 };
   const setLeft =
-    findSetSymbolLeft(data, Math.round((594 + typeShift) * fy), Math.round((632 + typeShift) * fy), undefined, 100, symbolInfo) / fx;
-  const layout = m15Layout(print.mana_cost, print.has_pt, setLeft, { typeShift, leftIcon: hasLeftIcon(print.effects, false, false) });
+    findSetSymbolLeft(
+      data,
+      Math.round((594 + typeShift) * fy),
+      Math.round((632 + typeShift) * fy),
+      undefined,
+      100,
+      symbolInfo,
+      false,
+      bars.symbolless,
+    ) / fx;
+  const layout = m15Layout(bars.manaCost, bars.hasPt, setLeft, {
+    typeShift,
+    leftIcon: bars.leftIcon,
+    rightIcon: bars.rightIcon,
+    indicator: bars.indicator,
+    noSetSymbol: symbolInfo.none,
+  });
   alignBar(data, layout, 0, { x0: 70, y0: 45, x1: 420, y1: 120 }, BAR_CENTER.title, fx, fy);
   alignBar(data, layout, 1, { x0: 70, y0: bar.top + 6, x1: 420, y1: bar.bottom - 1 }, BAR_CENTER.type + typeShift, fx, fy);
   const r = layout.erase[1].rect;
@@ -914,7 +964,7 @@ async function renderSummon(p: {
   const sides = insideBoxSides(data, toImg({ ...outer, y1: 920 }), 30 * fx);
   const foot = insideBoxSides(data, { ...toImg(outer), x0: sides.x0, x1: sides.x1 }, 30 * fx, true);
   const bottomRect = roundRect({ x0: sides.x0, y0: sides.y0, x1: sides.x1, y1: foot.y1 });
-  const ptTop = print.has_pt ? ptBoxTop(data, 610 * fx, 670 * fx, 905 * fy, 950 * fy, 890 * fy) : null;
+  const ptTop = bars.hasPt ? ptBoxTop(data, 610 * fx, 670 * fx, 905 * fy, 950 * fy, 890 * fy) : null;
   const ptLeft = ptTop === null ? null : ptBoxLeft(data, ptTop + 22 * fy, 545 * fx, 610 * fx, 890 * fy);
   const ptGuard = ptTop === null ? layout.protect : ptProtect(ptTop / fy, ptLeft === null ? null : ptLeft / fx);
   const stampFound = findCardStamp(data);
@@ -964,10 +1014,7 @@ async function renderSummon(p: {
   if (!top || size < SAGA_MIN_SIZE) return false;
   const boxes = plan ? sagaBoxes(plan, false, artLeft, column) : bands.map((b) => b.text);
 
-  const capGuard = [
-    ...layout.erase.slice(0, 2).flatMap((e) => barCapGuard(data, toImg(e.rect), "left")),
-    ...(print.mana_cost ? [] : barCapGuard(data, toImg(layout.erase[0].rect), "right")),
-  ];
+  const capGuard = faceCapGuard(data, layout, toImg, bars);
   const orig = plan ? new ImageData(new Uint8ClampedArray(data.data), data.width, data.height) : null;
   const lineX0 = SAGA.chapterX0 - 2;
   const lineX1 = artLeft - 4;
@@ -3224,6 +3271,51 @@ const isRoom = (print: PrintRecord, typeLine?: string | null) =>
 /** Lançamento de Kamigawa: Neon Dynasty: dali em diante o verso das cartas de duas faces não tem o símbolo da coleção. */
 const SYMBOLLESS_BACKS_SINCE = "2022-02-18";
 
+/** A linha de tipo em inglês de uma face: nas de duas faces, a parte dela de "Enchantment — Saga // Creature — Plant". */
+const sideTypeLine = (typeLine: string | null | undefined, side: 0 | 1) => (typeLine ?? "").split(" // ")[side] ?? "";
+
+/**
+ * O nome e o tipo de uma face na moldura da Saga (ADR 0047). Na de uma face só, o custo da
+ * impressão e o ícone das Lições. Na face de uma carta de transformar: o custo é o da face; o
+ * ícone das de duas faces fica à esquerda do nome, ou à direita no verso sem custo (os pretores
+ * de March of the Machine, as Invocações de Final Fantasy, `hasRightIcon`); o indicador de cor
+ * começa o tipo; e o verso impresso desde Kamigawa: Neon Dynasty não tem o símbolo da coleção
+ * (ver `SYMBOLLESS_BACKS_SINCE`). Como na carta comum (ver renderCard).
+ */
+function faceBars(data: ImageData, print: PrintRecord, side: 0 | 1) {
+  const sideInfo = print.sides?.[side] ?? null;
+  const manaCost = sideInfo ? sideInfo.mana_cost : print.mana_cost;
+  const rightIcon = Boolean(sideInfo && side === 1 && !manaCost && hasRightIcon(data));
+  return {
+    manaCost,
+    hasPt: sideInfo ? sideInfo.has_pt : print.has_pt,
+    rightIcon,
+    leftIcon: hasLeftIcon(print.effects, Boolean(sideInfo), rightIcon),
+    indicator: sideInfo ? sideInfo.indicator : Boolean(print.indicator),
+    symbolless: Boolean(sideInfo) && side === 1 && print.set_code !== "plst" && (print.released ?? "") >= SYMBOLLESS_BACKS_SINCE,
+  };
+}
+
+/**
+ * As pontas das barras do nome e do tipo que não se apagam (ver `barCapGuard`), como na carta
+ * comum: a da esquerda quando a barra começa na ponta (com o ícone das de duas faces ou o
+ * indicador de cor, a barra começa depois deles) e a da direita do nome sem custo nem ícone.
+ */
+function faceCapGuard(
+  data: ImageData,
+  layout: FrameLayout,
+  toImg: (r: Rect) => Rect,
+  bars: { manaCost: string | null; rightIcon: boolean },
+) {
+  return [
+    ...layout.erase
+      .slice(0, 2)
+      .filter((e) => e.rect.x0 <= 50)
+      .flatMap((e) => barCapGuard(data, toImg(e.rect), "left")),
+    ...(!bars.manaCost && !bars.rightIcon ? barCapGuard(data, toImg(layout.erase[0].rect), "right") : []),
+  ];
+}
+
 export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const { print, face } = opts;
   const side = opts.side ?? 0;
@@ -3235,9 +3327,11 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // A moldura sem borda também: a caixa é translúcida e vai para a mesma rede neural.
   const borderless = print.border === "borderless";
   // Saga também: os fios entre os capítulos são degraus de uma linha, que o JPEG reduzido espalha
-  const saga = print.layout === "saga" && !borderless;
+  // (e a face Saga das cartas de transformar, ADR 0047: a linha de tipo dela é a parte da face)
+  const faceType = sideTypeLine(opts.typeLine, print.layout === "transform" ? side : 0);
+  const saga = (print.layout === "saga" || (print.layout === "transform" && /\bSaga\b/.test(faceType))) && !borderless;
   // (as Invocações de Final Fantasy são criaturas Saga, com outra moldura: ver renderSummon)
-  const summon = saga && /\bCreature\b/.test(opts.typeLine ?? "");
+  const summon = saga && /\bCreature\b/.test(faceType);
   // e Classe: as barras de nível são recortadas e coladas em outra altura
   const klass = print.layout === "class" && !borderless;
   // e Caso: o fio entre as partes é recortado e colado em outra altura (como as barras da Classe)
@@ -3355,8 +3449,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
 
   if (saga) {
     const done = summon
-      ? await renderSummon({ ctx, src, sctx, data, toImg, face, print, flavor: opts.flavor ?? null, W, H })
-      : await renderSaga({ ctx, src, sctx, data, toImg, face, print, W, H });
+      ? await renderSummon({ ctx, src, sctx, data, toImg, face, print, side, flavor: opts.flavor ?? null, W, H })
+      : await renderSaga({ ctx, src, sctx, data, toImg, face, print, side, W, H });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: done };
   }

@@ -552,6 +552,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "0f503360-216a-4629-89b2-d32072850aef",
+    "oracle_id": "947b40a2-e272-4ef6-85fb-3d767a21bc7a",
+    "set": "fin",
+    "number": "185",
+    "nome": "Esper Origins // Summon: Esper Maduin",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "8fcf3fbb-1ddd-437e-81c1-f5a3133f5ee8",
     "oracle_id": "6d3ca5cb-781d-4608-b7f1-38c020536376",
     "set": "fin",
@@ -1048,6 +1056,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "2534caaa-a793-415f-977f-1d0fac3642ab",
+    "oracle_id": "c3a46eb3-38d9-4f47-9b71-26c9ea7ef1ce",
+    "set": "neo",
+    "number": "181",
+    "nome": "The Dragon-Kami Reborn // Dragon-Kami's Egg",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "0fd8c918-62d9-41be-a3e1-32ddac71b7e7",
     "oracle_id": "2bda1fb1-528c-4e66-89f1-bb1a85e9181e",
     "set": "nph",
@@ -1093,6 +1109,14 @@
     "set": "pfin",
     "number": "162s",
     "nome": "Summon: G.F. Cerberus",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "a245ebd2-606c-40dc-981b-d619b00d7a07",
+    "oracle_id": "4a0cc2a2-3711-473a-b2c5-b1e52b34e4fb",
+    "set": "pfin",
+    "number": "16s",
+    "nome": "Dion, Bahamut's Dominant // Bahamut, Warden of Light",
     "grupo": "citada nos documentos"
   },
   {
@@ -1165,6 +1189,14 @@
     "set": "psus",
     "number": "8",
     "nome": "Giant Growth",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "da4c41f1-5584-4c20-a105-f467e8204a55",
+    "oracle_id": "521a63cf-5e83-4649-9800-c62b2fc474d6",
+    "set": "ptla",
+    "number": "27s",
+    "nome": "The Legend of Yangchen // Avatar Yangchen",
     "grupo": "citada nos documentos"
   },
   {
@@ -1573,6 +1605,14 @@
     "set": "thb",
     "number": "160",
     "nome": "The Triumph of Anax",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "a60e8f23-90b2-4bc6-bd54-a95055556389",
+    "oracle_id": "521a63cf-5e83-4649-9800-c62b2fc474d6",
+    "set": "tla",
+    "number": "27",
+    "nome": "The Legend of Yangchen // Avatar Yangchen",
     "grupo": "citada nos documentos"
   },
   {
@@ -7654,6 +7694,86 @@
     "number": "35",
     "nome": "Three Blind Mice",
     "grupo": "saga"
+  },
+  {
+    "id": "4ec91fe8-b3da-47fa-b45e-94b62a260aba",
+    "oracle_id": "b6cebf8d-37e1-42de-b3f1-1c174ab17ac8",
+    "set": "fin",
+    "number": "104",
+    "nome": "Jecht, Reluctant Guardian // Braska's Final Aeon",
+    "grupo": "saga de duas faces"
+  },
+  {
+    "id": "9a069e96-2786-493d-aca8-f70611435dbe",
+    "oracle_id": "ceba3d03-be5a-4dd7-b829-7db216a0f44e",
+    "set": "fin",
+    "number": "133",
+    "nome": "Clive, Ifrit's Dominant // Ifrit, Warden of Inferno",
+    "grupo": "saga de duas faces"
+  },
+  {
+    "id": "fe0aa7d7-73e7-4c8c-92b5-b923817ce461",
+    "oracle_id": "54ca5904-9099-497a-9684-101656025487",
+    "set": "fin",
+    "number": "511",
+    "nome": "Terra, Magical Adept // Esper Terra",
+    "grupo": "saga de duas faces"
+  },
+  {
+    "id": "bf2249e6-af74-4b88-8eb7-144ce8fa7f6b",
+    "oracle_id": "97652492-7906-4d79-983c-fa1dc1239eba",
+    "set": "mom",
+    "number": "125",
+    "nome": "Sheoldred // The True Scriptures",
+    "grupo": "saga de duas faces"
+  },
+  {
+    "id": "4ec18bf7-bd80-408d-acc4-ffaaf7ef6b5b",
+    "oracle_id": "8b1e453a-35a6-4dff-bd37-498f34d0470e",
+    "set": "neo",
+    "number": "109",
+    "nome": "The Long Reach of Night // Animus of Night's Reach",
+    "grupo": "saga de duas faces"
+  },
+  {
+    "id": "24c0d87b-0049-4beb-b9cb-6f813b7aa7dc",
+    "oracle_id": "c0957e5e-c71b-439c-931c-9f55d2f76ace",
+    "set": "neo",
+    "number": "141",
+    "nome": "Fable of the Mirror-Breaker // Reflection of Kiki-Jiki",
+    "grupo": "saga de duas faces"
+  },
+  {
+    "id": "e8a51d2a-1582-4bad-995c-e7fe9f810149",
+    "oracle_id": "02c60b8b-f665-4279-a00f-ae03991df4a6",
+    "set": "neo",
+    "number": "172",
+    "nome": "Azusa's Many Journeys // Likeness of the Seeker",
+    "grupo": "saga de duas faces"
+  },
+  {
+    "id": "4c0c6c2a-4352-4c65-b41d-2a722bbef6c5",
+    "oracle_id": "cb7edb5e-3a90-41c7-ae52-dc564086bf22",
+    "set": "neo",
+    "number": "212",
+    "nome": "Teachings of the Kirin // Kirin-Touched Orochi",
+    "grupo": "saga de duas faces"
+  },
+  {
+    "id": "36052532-5028-43a8-9fc4-56221ec867fd",
+    "oracle_id": "4d23b22b-31a5-4eec-b894-2dd5a7138c5a",
+    "set": "neo",
+    "number": "227",
+    "nome": "The Kami War // O-Kagachi Made Manifest",
+    "grupo": "saga de duas faces"
+  },
+  {
+    "id": "e9e405d7-5282-4b90-b57f-87ce3eff5f4e",
+    "oracle_id": "201b8936-18f4-4881-a1d4-c308cf3832bf",
+    "set": "ptla",
+    "number": "61s",
+    "nome": "The Legend of Kuruk // Avatar Kuruk",
+    "grupo": "saga de duas faces"
   },
   {
     "id": "fe050c16-9be5-42ef-988f-0531a8bb2352",

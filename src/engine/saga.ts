@@ -66,8 +66,11 @@ const lum = (d: Uint8ClampedArray, i: number) => 0.299 * d[i] + 0.587 * d[i + 1]
 
 /**
  * Lado esquerdo da arte (escala-base): a coluna mais escura (mediana das linhas 150 a 850)
- * entre x 360 e 384, onde fica o fio preto que separa a coluna de texto da arte. `null`
- * quando nenhuma coluna ali é escura de verdade (não é a moldura de Saga).
+ * do fio preto que separa a coluna de texto da arte, entre x 360 e 384: o fio começa na primeira
+ * coluna escura (mediana abaixo de 90) e tem até 6 px. Procurada na busca inteira, a coluna mais
+ * escura caía na arte escura logo depois do fio (a variante da The Dragon-Kami Reborn, NEO 181†,
+ * 12 px adiante), e o apagamento da coluna levava o fio e o começo da arte. `null` quando nenhuma
+ * coluna ali é escura de verdade (não é a moldura de Saga).
  */
 export function sagaArtLeft(img: ImageData): number | null {
   const fx = img.width / BASE_W;
@@ -77,23 +80,37 @@ export function sagaArtLeft(img: ImageData): number | null {
   const col = new Float32Array(y1 - y0);
   let best = Infinity;
   let at = -1;
-  for (let x = Math.round(SAGA.art.x0 * fx); x <= Math.round(SAGA.art.x1 * fx); x++) {
+  let first = -1;
+  const end = Math.round(SAGA.art.x1 * fx);
+  for (let x = Math.round(SAGA.art.x0 * fx); x <= end; x++) {
     for (let y = y0; y < y1; y++) col[y - y0] = lum(img.data, (y * img.width + x) * 4);
     const med = col.slice().sort()[col.length >> 1];
+    if (first < 0 && med < 90) first = x;
     if (med < best) {
       best = med;
       at = x;
     }
+    // (do começo do fio, só os 6 px dele)
+    if (first >= 0 && x >= first + Math.round(5 * fx)) break;
   }
   return best < 90 ? at / fx : null;
 }
+
+/** A parte das duas linhas antes do degrau, em média, que pode ser tinta de letra (ver `sagaDividers`). */
+const INK_BEFORE = 0.3;
 
 /**
  * Fios entre as faixas da coluna (escala-base, a linha do degrau claro), de cima para baixo.
  * No degrau, 85% ou mais da largura (de x 100 até 8 px antes da arte) clareia mais de 6 tons
  * em duas linhas (da `y − 2` para a `y`), e a sombra acima dele escurece: a mediana da linha
  * 6 px acima fica 5 tons ou mais acima da linha logo antes do degrau (ou da anterior). O pé das
- * letras clareia só onde havia tinta, longe dos 85%; o grão do papel de MH2 chega a 73%.
+ * letras clareia só onde havia tinta, longe dos 85%; o grão do papel de MH2 chega a 73%. Mas a
+ * linha de base de uma linha comprida e cheia de serifas passa dos 85% e tem a mediana abaixo da
+ * de cima (The Legend of Yangchen, TLA 27, em y 793): a sombra do fio fica 20 a 40 tons abaixo
+ * do papel, e as duas linhas antes do degrau quase não têm pixel 70 tons abaixo dele (até 5%
+ * nas 24 Sagas medidas; 22% na linha mais escura da retícula da promo de pré-estreia da The Great
+ * Synthesis, PMOM 65s, e 2% na outra); a linha de base tem 60% ou mais nas duas. Com a média das
+ * duas acima de `INK_BEFORE`, não é fio.
  */
 export function sagaDividers(img: ImageData, artLeft: number, to = 860): number[] {
   const fx = img.width / BASE_W;
@@ -122,7 +139,16 @@ export function sagaDividers(img: ImageData, artLeft: number, to = 860): number[
     last = y;
     if (!fresh) continue;
     // a linha mais escura da sombra é a de antes do degrau, ou a anterior quando ele se espalha
-    if (Math.max(shadow(y), shadow(y - 1)) >= 5) out.push(y / fy);
+    if (Math.max(shadow(y), shadow(y - 1)) < 5) continue;
+    // e a sombra não é linha de letras: quase nada de tinta nas duas linhas antes do degrau
+    for (let x = x0; x < x1; x++) shade[x - x0] = at(x, y + Math.round(3 * fy));
+    const paper = shade.slice().sort()[w >> 1];
+    const inked = (r: number) => {
+      let n = 0;
+      for (let x = x0; x < x1; x++) if (at(x, r) < paper - 70) n++;
+      return n / w;
+    };
+    if ((inked(y - 1) + inked(y - 2)) / 2 <= INK_BEFORE) out.push(y / fy);
   }
   return out;
 }
@@ -231,6 +257,48 @@ export function sagaNumerals(img: ImageData, from: number, to: number): number[]
     .filter(([a, b]) => (b - a) / fy >= 19 && (b - a) / fy <= 27)
     .map(([a, b]) => (a + b) / 2 / fy)
     .filter((c) => c <= 825);
+}
+
+/**
+ * O P/R do verso na frente das Sagas de transformar (Kamigawa: Neon Dynasty e Avatar, ADR 0047):
+ * fica no pé da coluna, à esquerda, no papel logo abaixo da ponta da tira dos marcadores (os
+ * algarismos vão de x ≈ 62 a 112 e de y ≈ 826 a 854). Procurado entre x 64 e 98, onde o texto dos
+ * capítulos (que começa em 100) não chega e a tira, que acaba em ponta, já ficou para trás; os
+ * algarismos têm de 14 a 30 px de altura. `gap` é a folga acima deles até o fim da coluna; `reach`,
+ * até onde o fim deles é procurado, e `space`, o vão que separa o fim deles de uma letra ao lado.
+ */
+export const SAGA_BACK_PT = { x0: 64, x1: 98, y0: 812, ink: 150, min: 14, max: 30, gap: 4, reach: 150, space: 8 };
+
+/**
+ * O P/R do verso no pé da coluna (escala-base; ver `SAGA_BACK_PT`): o alto (`y0`), o pé (`y1`) e
+ * o fim, à direita (`x1`), dos algarismos; `null` sem ele.
+ */
+export function sagaBackPt(img: ImageData): { y0: number; y1: number; x1: number } | null {
+  const fx = img.width / BASE_W;
+  const fy = img.height / BASE_H;
+  const B = SAGA_BACK_PT;
+  const at = (x: number, y: number) => lum(img.data, (y * img.width + x) * 4);
+  const groups: [number, number][] = [];
+  for (let y = Math.round(B.y0 * fy); y < Math.round(SAGA.column.y1 * fy); y++) {
+    let ink = 0;
+    for (let x = Math.round(B.x0 * fx); x < Math.round(B.x1 * fx); x++) if (at(x, y) < B.ink) ink++;
+    if (ink < 2) continue;
+    const last = groups[groups.length - 1];
+    if (last && y - last[1] <= Math.max(3, Math.round(3 * fy))) last[1] = y;
+    else groups.push([y, y]);
+  }
+  const found = groups.find(([a, b]) => (b - a) / fy >= B.min && (b - a) / fy <= B.max);
+  if (!found) return null;
+  // o fim dos algarismos: a última coluna com tinta antes de um vão de `space` px
+  let x1 = Math.round(B.x0 * fx);
+  for (let x = x1; x < Math.round(B.reach * fx) && x - x1 <= B.space * fx; x++) {
+    for (let y = found[0]; y <= found[1]; y++)
+      if (at(x, y) < B.ink) {
+        x1 = x;
+        break;
+      }
+  }
+  return { y0: found[0] / fy, y1: found[1] / fy, x1: x1 / fx };
 }
 
 /** Meia altura de um marcador (o hexágono tem ~60 px de altura). */

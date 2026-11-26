@@ -75,6 +75,7 @@ GROUPS: dict[str, int] = {
     "viradas (flip)": 10,
     "protótipo": 10,
     "caso": 10,
+    "saga de duas faces": 10,
 }
 
 
@@ -111,6 +112,9 @@ def group_of(row: sqlite3.Row) -> str | None:
     # (e os Casos, ADR 0046)
     if layout == "case":
         return "caso"
+    # (e as Sagas de duas faces, ADR 0047)
+    if layout == "transform" and "Saga" in type_line:
+        return "saga de duas faces"
     if frame == "1997":
         return "1997"
     # (e depois a marca-d'água de 2003, ADR 0024, o Preparar, ADR 0032, as Salas, ADR 0033, as
