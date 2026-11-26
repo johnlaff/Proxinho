@@ -20,7 +20,7 @@ import {
   subtitleLetters,
   whiteTextMask,
 } from "./borderless";
-import { ADVENTURE, adventureBook, adventureLayout, pageShade, shadePage } from "./adventure";
+import { adventureBook, adventureLayout, pageShade, shadePage, type SplitLayout } from "./adventure";
 import {
   CLASS,
   classBars,
@@ -33,8 +33,25 @@ import {
   pasteStrip,
   restoreBevel,
 } from "./classCard";
-import { bodyFont, loadCardFonts, titleFont, type TitleFont } from "./fonts";
-import { BACK_PT_NOTCH, BASE_H, BASE_W, costLeft, hasLeftIcon, m15Layout, ptProtect, type FrameLayout, type Rect } from "./geometry";
+import { FLIP_2003, FLIP_2015, flipBar, flipBox, flipPtLine, flipTypeEnd } from "./flip";
+import { bodyFont, loadCardFonts, oldNameFont, titleFont, type TitleFont } from "./fonts";
+import {
+  BACK_PT_NOTCH,
+  starPoints,
+  BASE_H,
+  BASE_W,
+  beside,
+  costLeft,
+  hasLeftIcon,
+  m15Layout,
+  MDFC_STRIP,
+  mdfcCostLeft,
+  ptProtect,
+  TYPE_BAR_END_2003,
+  WATERMARK_2003,
+  type FrameLayout,
+  type Rect,
+} from "./geometry";
 import {
   barCapGuard,
   centralSpan,
@@ -60,6 +77,7 @@ import {
   regrain,
   tameInvented,
   textBandCenter,
+  textMask,
   textPolarity,
   typeBarEdges,
 } from "./erase";
@@ -71,14 +89,19 @@ import {
   isTallPlaneswalker,
   measureBoxBottom,
   measureTallPlaneswalker,
+  moveBands,
+  planeswalkerBounds,
   planeswalkerRows,
   PW,
+  PW_PLAN,
+  type PwRow,
   rowRects,
   splitAbilities,
 } from "./planeswalker";
 import {
   DIVIDER_SPAN,
   SAGA,
+  SUMMON,
   dividerProfile,
   drawDivider,
   sagaArtLeft,
@@ -117,8 +140,67 @@ import {
   withoutFrame,
   type StationText,
 } from "./station";
+import { mdfcHint, type MdfcHint } from "./mdfc";
+import { mutateBoxes, mutateRule, mutateText } from "./mutate";
+import { prototypeBoxes, prototypeErase, prototypeFrame, prototypeText } from "./prototype";
+import { type LevelerFrame, levelerBoxes, levelerErase, levelerFrame, levelerText, levelerWords, levelerWordSpots } from "./leveler";
+import { fillAcross, OLD, oldCostLeft, oldLetters, oldTypeEnds } from "./old";
+import {
+  addHull,
+  asEngraved,
+  boxCentered93,
+  boxLetters93,
+  paleBox93,
+  paperRect93,
+  paperTint93,
+  ENGRAVED_SETS93,
+  frameEdge93,
+  inkBand,
+  inkLetters,
+  type InkLetters,
+  lineFeet93,
+  maskBounds,
+  OLD93,
+  type OldLayer,
+  old93Layers,
+  oldBox93,
+  oldCostLeft93,
+  softened,
+  tameLow,
+  trimAfterGap,
+  typeEnds93,
+} from "./old93";
+import { prepareFrame, prepareLayout } from "./prepare";
+import { ROOM, roomCostLeft, roomFrame } from "./room";
+import {
+  fuseBar,
+  oldSplitBoxes,
+  oldSplitCostLeft,
+  oldSplitFrame,
+  oldSplitHalf,
+  SPLIT,
+  SPLIT_1997,
+  SPLIT_2003,
+  splitBoxes,
+  splitCostLeft,
+  splitFrame,
+} from "./split";
+import { AFTERMATH, aftermathBox, aftermathCostLeft, aftermathFrame } from "./aftermath";
 import { preloadSymbols } from "./symbols";
-import { SYMBOL_EM, TABLE_ROW, chunkWidth, fitRows, fitText, lineText, rowsAt, type LayoutResult, type Measurer } from "./text";
+import {
+  SYMBOL_EM,
+  TABLE_ROW,
+  buildParagraphs,
+  chunkWidth,
+  fitRows,
+  fitText,
+  layoutAt,
+  lineText,
+  rowsAt,
+  type LayoutResult,
+  type Measurer,
+  type TextRow,
+} from "./text";
 import {
   findPlaque2003,
   findBoxHighlight,
@@ -154,8 +236,14 @@ export interface RenderOptions {
   imageVersion?: "png" | "normal";
   /** cartas de duas faces: 0 = frente, 1 = verso */
   side?: 0 | 1;
-  /** cartas de Aventura: o feitiço da página da esquerda (a segunda face da carta) */
+  /** cartas de Aventura e de Preparar: a mágica da outra caixa (a segunda face da carta) */
   adventure?: PtFace | null;
+  /** cartas viradas de Kamigawa: a metade de baixo, de cabeça para baixo (a segunda face, ver flip.ts) */
+  flip?: PtFace | null;
+  /** cartas modais de duas faces: a outra face, resumida na faixa de baixo (ver mdfc.ts) */
+  otherFace?: PtFace | null;
+  /** cartas divididas (as Salas de Duskmourn, ver room.ts): a metade da direita; a da esquerda é `face` */
+  split?: PtFace | null;
   /** linha de tipo em inglês da carta (reconhece planeswalkers mesmo sem o tipo em PT) */
   typeLine?: string | null;
   /**
@@ -307,7 +395,10 @@ type Neural = { enabled: boolean; tick: (frames?: number) => void };
  * modelo (ver `lamaInpaint`). `art` diz que há arte atrás da caixa (sem borda): a cor que o
  * modelo inventa volta à da vizinhança e o grão da arte volta ao remendo (`tameInvented`,
  * `regrain`). `keep` fica como está, sem sair do buraco nem do que o modelo vê. `grow` e `gap` são a folga da máscara e os
- * vãos entre pedaços dela que entram no buraco (ver `combineMasks`). A prévia e o PDF desenham a mesma arte: a
+ * vãos entre pedaços dela que entram no buraco (ver `combineMasks`). `soften` (px) é a gaussiana da
+ * cópia que o modelo vê (a retícula da moldura de 1993, ver `softened`), e `grainFrom` o retângulo
+ * de onde vem o grão devolvido ao remendo (ver `regrain`); `tint`, que o remendo fica com a cor do
+ * papel em volta (a caixa sem cor da moldura de 1993, ver `paperTint93`). A prévia e o PDF desenham a mesma arte: a
  * caixa limpa fica guardada por `key` para não rodar o modelo de novo (e, se as duas pedem ao
  * mesmo tempo, a segunda espera a primeira). Sem o modelo, volta
  * para o preenchimento simples, salvo com `simple: false`: aí devolve `false` e a imagem fica
@@ -328,7 +419,20 @@ async function lamaBox(
     simple = true,
     neural,
     keep = [],
-  }: { art?: boolean; grow?: number; gap?: number; simple?: boolean; neural?: Neural; keep?: Rect[] } = {},
+    soften = 0,
+    grainFrom,
+    tint = false,
+  }: {
+    art?: boolean;
+    grow?: number;
+    gap?: number;
+    simple?: boolean;
+    neural?: Neural;
+    keep?: Rect[];
+    soften?: number;
+    grainFrom?: Rect;
+    tint?: boolean;
+  } = {},
 ): Promise<boolean> {
   const fx = data.width / BASE_W;
   const quick = () => {
@@ -354,16 +458,34 @@ async function lamaBox(
     const hole = combineMasks(data, masks, grow ?? Math.round(fx * 3) + 1, gap ?? Math.round(fx * 4));
     for (const r of [...protect, ...keep].map(roundRect))
       for (let y = r.y0; y < r.y1; y++) hole.fill(0, y * data.width + r.x0, y * data.width + r.x1);
-    if (!(await lamaInpaint(data, area, hole, protect.map(roundRect), () => neural?.tick()))) {
+    // com `soften`, o modelo vê a imagem alisada e o remendo volta para a original (o grão volta
+    // depois, em `regrain`)
+    const seen = soften ? softened(data, { x0: 0, y0: 0, x1: data.width, y1: data.height }, soften) : data;
+    if (!(await lamaInpaint(seen, area, hole, protect.map(roundRect), () => neural?.tick()))) {
       if (!simple) return false;
       quick();
       return true;
+    }
+    if (seen !== data) {
+      for (let y = area.y0; y < area.y1; y++)
+        for (let x = area.x0; x < area.x1; x++) {
+          const q = y * data.width + x;
+          if (hole[q]) for (let c = 0; c < 3; c++) data.data[q * 4 + c] = seen.data[q * 4 + c];
+        }
+      // na retícula, a mancha que o modelo inventa só aparece na média (ver `tameLow`)
+      tameLow(data, area, hole, protect.map(roundRect));
     }
     // na arte calma atrás da caixa sem borda o modelo às vezes inventa cor que não há em volta
     if (art) tameInvented(data, area, hole, protect.map(roundRect));
     // o modelo às vezes inventa um pingo de tinta no meio do papel liso
     dropSpecks(data, area, hole, polarity);
-    if (art) regrain(data, area, hole);
+    // no papel sem cor, o remendo fica com a cor do papel (ver `paperTint93`)
+    if (tint) paperTint93(data, area, hole);
+    // (na retícula da moldura de 1993 os pontos fogem mais de 40 tons da média: com o teto de
+    // sempre só o desvio fraco servia de fonte e o remendo saía liso e mais claro, Life Matrix,
+    // LEG 284; e o grão vem da linha inteira, `grainFrom`: só do quadro, quase todo buraco, o
+    // começo do tipo saía liso, Unholy Citadel, LEG 309)
+    if (art) regrain(data, area, hole, soften ? { ceiling: 120, from: grainFrom, skip: protect.map(roundRect) } : undefined);
     const box = new ImageData(area.x1 - area.x0, area.y1 - area.y0);
     for (let y = 0; y < box.height; y++)
       box.data.set(
@@ -417,6 +539,7 @@ async function renderPlaneswalker(p: {
     rows = planeswalkerRows(data, paragraphs.length, loyalty, tall, sides);
   }
   if (!rows) return false;
+  const measuredRows = rows;
   // cada faixa leva os parágrafos dela (as estáticas de um bloco só vão juntas)
   let next = 0;
   const texts = rows.map((r) => paragraphs.slice(next, (next += r.paragraphs)).join("\n"));
@@ -468,17 +591,13 @@ async function renderPlaneswalker(p: {
   p.plan(1);
   await lamaBox(data, masks, area, protect, boxPolarity, `${print.id}:${data.width}:${paragraphs.length}`, { neural: p.neural });
   const inks = [...barInks, ...masks.map((m) => m.polarity)];
-  p.sctx.putImageData(data, 0, 0);
-  ctx.drawImage(p.src, 0, 0, p.W, p.H);
 
   const k = p.W / BASE_W;
-  drawLine(ctx, face.name_pt ?? face.name_en, 66, PW.title.centerY, cost - 12 - 66, 35, k, INK[inks[0]]);
-  if (face.type_pt) drawLine(ctx, face.type_pt, 66, tb.centerY, setLeft - 10 - 66, 30, k, INK[inks[1]]);
-
   const symbols = await preloadSymbols(face.text_pt);
   const m = measurer(ctx, k);
-  const layouts = fitRows(
-    rects.map(({ text }, i) => {
+  const spec = (rs: PwRow[]): TextRow[] =>
+    rs.map((r, i) => {
+      const { text } = rowRects(r);
       // a faixa de baixo desvia da caixa da lealdade inicial
       const under = text.y1 - PW.loyaltyBox.y0;
       return {
@@ -487,15 +606,64 @@ async function renderPlaneswalker(p: {
         height: text.y1 - text.y0,
         notch: under > 0 ? { width: text.x1 - PW.loyaltyBox.x0 + 6, height: under } : undefined,
       };
-    }),
-    m,
-  );
+    });
+  let layouts = fitRows(spec(rows), m);
+  // com as divisas em outro lugar, o texto em PT cabe num corpo maior: elas mudam de lugar na
+  // imagem já sem o texto, antes de ela ir para o canvas
+  const planned = planRows(rows, spec, m, layouts);
+  if (planned) {
+    moveBands(
+      data,
+      rows[0].y0,
+      rows[rows.length - 1].y1,
+      measuredRows.slice(1).map((r) => r.y0),
+      planned.rows.slice(1).map((r) => r.y0),
+      [PW.loyaltyBox],
+    );
+    rows = planned.rows;
+    layouts = planned.layouts;
+  }
+  p.sctx.putImageData(data, 0, 0);
+  ctx.drawImage(p.src, 0, 0, p.W, p.H);
+
+  drawLine(ctx, face.name_pt ?? face.name_en, 66, PW.title.centerY, cost - 12 - 66, 35, k, INK[inks[0]]);
+  if (face.type_pt) drawLine(ctx, face.type_pt, 66, tb.centerY, setLeft - 10 - 66, 30, k, INK[inks[1]]);
+
   layouts.forEach((res, i) => {
-    const text = rects[i].text;
-    const box = alignOnIcon(text, res.height, rows[i].icon, text.y1 > PW.loyaltyBox.y0);
+    const text = rowRects(rows![i]).text;
+    const box = alignOnIcon(text, res.height, rows![i].icon, text.y1 > PW.loyaltyBox.y0);
     drawLayout(ctx, res, box, k, inks[2 + i], symbols, m);
   });
   return true;
+}
+
+/**
+ * As faixas do planeswalker com as divisas em outro lugar, quando o texto em PT cabe assim num
+ * corpo pelo menos 1 px maior que com as divisas do inglês (`fit`): com elas, a habilidade que
+ * mais cresceu na tradução encolhia a letra de todas, com espaço sobrando nas outras (Will Kenrith,
+ * BBD 1; Kaito Shizuki, NEO 226). Procura do maior corpo para baixo: as divisas que
+ * `planeswalkerBounds` acha para cada faixa ter o texto com folga, conferidas diagramando de novo.
+ * Texto que não cabia nem no menor corpo também ganha as divisas novas, se couber com elas.
+ */
+function planRows(
+  rows: PwRow[],
+  spec: (rs: PwRow[]) => TextRow[],
+  m: Measurer,
+  fit: LayoutResult[],
+): { rows: PwRow[]; layouts: LayoutResult[] } | null {
+  const base = spec(rows);
+  const overflow = fit.some((l, i) => l.height > base[i].height);
+  const floor = overflow ? 15 : (fit[0]?.size ?? 32) + 1;
+  for (let size = 32; size >= floor; size -= 0.5) {
+    const need = rowsAt(base, m, size).map((l) => l.height + 6 + 2 * PW_PLAN.pad);
+    const bounds = planeswalkerBounds(rows, need);
+    if (!bounds) continue;
+    const next = rows.map((r, i) => ({ ...r, y0: i ? bounds[i - 1] : r.y0, y1: i < rows.length - 1 ? bounds[i] : r.y1 }));
+    const rowsSpec = spec(next);
+    const res = rowsAt(rowsSpec, m, size);
+    if (res.every((l, i) => l.height <= rowsSpec[i].height)) return { rows: next, layouts: res };
+  }
+  return null;
 }
 
 /**
@@ -665,6 +833,223 @@ async function renderSaga(p: {
         : boxes[i];
     drawLayout(ctx, res, box, k, inks[2 + row.band], symbols, m);
   });
+  return true;
+}
+
+/**
+ * Invocação de Final Fantasy (ver `SUMMON` em saga.ts): a Saga com o lembrete numa faixa larga no
+ * alto, a coluna dos capítulos mais curta e uma caixa abaixo da barra de tipo, com a palavra-chave
+ * da criatura ou o flavor. O lembrete vai na faixa dele, desviando da curva da tira dos marcadores
+ * no pé (`SUMMON.curve`); os capítulos vão como na Saga, com os fios entre eles mudando de lugar
+ * (o fio do lembrete fica: a arte começa nele); a caixa de baixo é apagada como a da carta comum,
+ * sem a caixa de P/R e o selo, e o texto dela fica centralizado, como nas 29 impressões. O lembrete
+ * e os capítulos saem com a mesma letra, e a caixa de baixo com a dela (maior, como na carta
+ * impressa). Sem o lembrete oficial em PT (o "Sacrifique-a após V." dos Knights of Round nunca
+ * foi impresso), a faixa do alto ficaria vazia: a carta sai na original, como quando a moldura ou
+ * o número de faixas não batem, ou o texto não cabe.
+ */
+async function renderSummon(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  sctx: CanvasRenderingContext2D;
+  data: ImageData;
+  toImg: (r: Rect) => Rect;
+  face: PtFace;
+  print: PrintRecord;
+  flavor: string | null;
+  W: number;
+  H: number;
+}): Promise<boolean> {
+  const { ctx, data, toImg, face, print } = p;
+  const parts = sagaText(face.text_pt, true);
+  if (!parts || !parts.top.length) return false;
+  const fx = data.width / BASE_W;
+  const fy = data.height / BASE_H;
+  const artLeft = sagaArtLeft(data);
+  const bar = typeBarEdges(data, SUMMON.type.y0 - 15, SUMMON.type.y1 + 80);
+  if (artLeft === null || !bar || bar.top < SUMMON.type.y0 || bar.top > SUMMON.type.y1) return false;
+  // o fio do lembrete, onde a arte começa, e os fios entre os capítulos, acima da barra de tipo
+  const dividers = sagaDividers(data, artLeft, bar.top - 8);
+  const topLine = dividers[0];
+  if (topLine === undefined || topLine < SUMMON.divider.min || topLine > SUMMON.divider.max) return false;
+  const between = dividers.slice(1);
+  if (between.length !== parts.chapters.length - 1) return false;
+  // (a coluna acaba no filete claro logo acima da barra de tipo)
+  const column = { y0: topLine, y1: bar.top - 1 };
+  const bands = sagaBands(between, artLeft, column, false);
+  const numerals = sagaNumerals(data, topLine, column.y1);
+  const edges = [topLine, ...between, column.y1];
+  const markers = parts.chapters.map((c, i) => {
+    const inBand = numerals.filter((y) => y > edges[i] && y < edges[i + 1]);
+    return inBand.length === c.numerals.split(", ").length ? { first: inBand[0], last: inBand[inBand.length - 1] } : null;
+  });
+  const found = markers.every((x): x is { first: number; last: number } => x !== null) ? markers : null;
+
+  // a barra de tipo é a da carta comum, mais abaixo
+  const typeShift = bar.bottom - 639;
+  // A barra de tipo das Invocações escurece perto do símbolo da coleção (de ~225 em x 580 a ~170 em
+  // x 640; a da carta comum de FIN fica clara até o fim). A busca do símbolo compara cada coluna com
+  // o tom da barra à esquerda dela: a parte escura inteira passava por tinta, o fim do tipo em inglês
+  // e o símbolo viravam um bloco só, e o símbolo "começava" no meio do tipo (o "gle" de "Moogle"
+  // ficava ao lado do português, Summon: Choco/Mog FIN 35) ou depois do começo dele (metade do
+  // símbolo era apagada, Summon: Primal Garuda FIN 37). E o remendo do fim do tipo, só com o lado
+  // claro, saía como um bloco claro na parte escura. O tom de cada coluna da barra sai antes de
+  // achar o símbolo e de apagar, e volta depois, como a sombra das páginas da Aventura (ver
+  // shadePage; o percentil 75, porque as letras do tipo ocupam mais da coluna que as do texto)
+  const typeBand = roundRect(toImg({ x0: 50, y0: bar.top + 9, x1: BASE_W * 0.955, y1: bar.bottom - 1 }));
+  const unshade = shadePage(data, typeBand, pageShade(data, typeBand, 0.75));
+  const symbolInfo: { colored: number; lim: number; tight?: boolean } = { colored: -1, lim: 0 };
+  const setLeft =
+    findSetSymbolLeft(data, Math.round((594 + typeShift) * fy), Math.round((632 + typeShift) * fy), undefined, 100, symbolInfo) / fx;
+  const layout = m15Layout(print.mana_cost, print.has_pt, setLeft, { typeShift, leftIcon: hasLeftIcon(print.effects, false, false) });
+  alignBar(data, layout, 0, { x0: 70, y0: 45, x1: 420, y1: 120 }, BAR_CENTER.title, fx, fy);
+  alignBar(data, layout, 1, { x0: 70, y0: bar.top + 6, x1: 420, y1: bar.bottom - 1 }, BAR_CENTER.type + typeShift, fx, fy);
+  const r = layout.erase[1].rect;
+  if (bar.bottom - 3 > r.y1) layout.erase[1] = { ...layout.erase[1], rect: { ...r, y1: bar.bottom - 3 } };
+
+  // A caixa de baixo: os lados medidos acima da caixa de P/R (com ela, a medida dos lados não
+  // fecha nas 98 linhas da caixa) e o pé no terço da esquerda, como na carta comum
+  const outer = { x0: SUMMON.box.x0, y0: bar.bottom + SUMMON.box.gap, x1: SUMMON.box.x1, y1: SUMMON.box.y1 };
+  const sides = insideBoxSides(data, toImg({ ...outer, y1: 920 }), 30 * fx);
+  const foot = insideBoxSides(data, { ...toImg(outer), x0: sides.x0, x1: sides.x1 }, 30 * fx, true);
+  const bottomRect = roundRect({ x0: sides.x0, y0: sides.y0, x1: sides.x1, y1: foot.y1 });
+  const ptTop = print.has_pt ? ptBoxTop(data, 610 * fx, 670 * fx, 905 * fy, 950 * fy, 890 * fy) : null;
+  const ptLeft = ptTop === null ? null : ptBoxLeft(data, ptTop + 22 * fy, 545 * fx, 610 * fx, 890 * fy);
+  const ptGuard = ptTop === null ? layout.protect : ptProtect(ptTop / fy, ptLeft === null ? null : ptLeft / fx);
+  const stampFound = findCardStamp(data);
+  const stampGuard = stampFound ? stampShape(data, toImg({ ...stampFound, y0: stampFound.y0 + 3 })) : [];
+
+  // O texto: o lembrete na faixa do alto e os capítulos nas faixas da coluna (os fios entre eles
+  // mudam de lugar, ver sagaPlan), com a mesma letra; o resto vai na caixa de baixo, logo abaixo
+  const k = p.W / BASE_W;
+  const m = measurer(ctx, k);
+  const italic = new Set(face.ability_words ?? []);
+  const topBox = { x0: SAGA.text.topX0, y0: SAGA.column.y0 + SAGA.text.gap, x1: SUMMON.top.textX1, y1: topLine - SUMMON.top.pad };
+  const topRow: TextRow = {
+    text: parts.top.map((t) => t.text).join("\n"),
+    width: topBox.x1 - topBox.x0,
+    height: topBox.y1 - topBox.y0,
+    italic: parts.top.flatMap((t, i) => (italic.has(t.line) ? [i] : [])),
+    notch: SUMMON.curve,
+  };
+  const rows: TextRow[] = parts.chapters.map((c) => ({
+    text: c.text,
+    width: artLeft - 10 - SAGA.text.chapterX0,
+    height: Infinity,
+    italic: italic.has(c.line) ? [0] : [],
+  }));
+  let plan: number[] | null = null;
+  let top: LayoutResult | null = null;
+  let layouts: LayoutResult[] = [];
+  let size = SAGA_MAX_SIZE;
+  for (; size >= SAGA_MIN_SIZE; size -= 0.5) {
+    top = rowsAt([topRow], m, size)[0];
+    if (top.height > topRow.height) continue;
+    layouts = rowsAt(rows, m, size);
+    // sem os números dos marcadores, as faixas ficam como estão
+    if (!found) {
+      if (layouts.every((l, i) => l.height <= bands[i].text.y1 - bands[i].text.y0)) break;
+      continue;
+    }
+    plan = sagaPlan(
+      layouts.map((l) => l.height),
+      false,
+      found,
+      Infinity,
+      column,
+    );
+    if (plan) break;
+  }
+  if (!top || size < SAGA_MIN_SIZE) return false;
+  const boxes = plan ? sagaBoxes(plan, false, artLeft, column) : bands.map((b) => b.text);
+
+  const capGuard = [
+    ...layout.erase.slice(0, 2).flatMap((e) => barCapGuard(data, toImg(e.rect), "left")),
+    ...(print.mana_cost ? [] : barCapGuard(data, toImg(layout.erase[0].rect), "right")),
+  ];
+  const orig = plan ? new ImageData(new Uint8ClampedArray(data.data), data.width, data.height) : null;
+  const lineX0 = SAGA.chapterX0 - 2;
+  const lineX1 = artLeft - 4;
+  const moved = plan ? between.filter((d, i) => plan[i] !== d) : [];
+  const drawn = plan ? plan.filter((y, i) => y !== between[i]) : [];
+  // a curva da tira dos marcadores, no pé da faixa do lembrete, é moldura (ver sagaTopFrame)
+  const topFrame = sagaTopFrame(data, SAGA.column.y0 * fy, topLine, artLeft);
+  const inks = eraseRegions(
+    data,
+    [
+      ...layout.erase.slice(0, 2).map((e) => ({ rect: toImg(e.rect), threshold: e.threshold, fill: e.fill })),
+      {
+        rect: roundRect(toImg({ x0: SAGA.column.x0, y0: SAGA.column.y0, x1: SUMMON.top.x1, y1: topLine - 1 })),
+        threshold: 14,
+        colorThreshold: 34,
+      },
+      ...bands.map((b) => ({ rect: roundRect(toImg(b.erase)), threshold: 14, colorThreshold: 34 })),
+      { rect: bottomRect, threshold: 14, colorThreshold: 34 },
+      ...moved.map((d) => ({
+        rect: roundRect(toImg({ x0: lineX0, y0: d - DIVIDER_SPAN.above - 10, x1: lineX1, y1: d + DIVIDER_SPAN.below + 8 })),
+        threshold: 255,
+        force: [roundRect(toImg({ x0: lineX0, y0: d - DIVIDER_SPAN.above - 1, x1: lineX1, y1: d + DIVIDER_SPAN.below + 1 }))],
+      })),
+    ],
+    [],
+    [...topFrame, ...ptGuard.map(toImg), ...stampGuard],
+    capGuard,
+  );
+  unshade();
+  if (plan && orig && between.length) {
+    // a sombra do fio, medida num fio entre capítulos
+    const profile = dividerProfile(orig, data, Math.round(between[0] * fy), lineX0 * fx, lineX1 * fx);
+    for (const y of drawn) drawDivider(data, Math.round(y * fy), profile, lineX0 * fx, lineX1 * fx);
+  }
+  p.sctx.putImageData(data, 0, 0);
+  ctx.drawImage(p.src, 0, 0, p.W, p.H);
+
+  drawLine(
+    ctx,
+    face.name_pt ?? face.name_en,
+    layout.title.x,
+    layout.title.centerY,
+    layout.title.maxWidth,
+    layout.title.size,
+    k,
+    INK[inks[0]],
+  );
+  if (face.type_pt)
+    drawLine(ctx, face.type_pt, layout.type.x, layout.type.centerY, layout.type.maxWidth, layout.type.size, k, INK[inks[1]]);
+  const symbols = await preloadSymbols(face.text_pt, p.flavor);
+  drawLayout(ctx, top, topBox, k, inks[2], symbols, m);
+  layouts.forEach((res, i) => {
+    // cada capítulo na altura dos marcadores dele, se couber
+    const mk = found ? found[i] : null;
+    const box = mk ? alignOnIcon(boxes[i], res.height, (mk.first + mk.last) / 2, false) : boxes[i];
+    drawLayout(ctx, res, box, k, inks[3 + i], symbols, m);
+  });
+  // A caixa de baixo: a palavra-chave (com o flavor, se couber) ou só o flavor, no meio da caixa.
+  // Uma linha que não chega à caixa de P/R fica no meio da caixa inteira, como na carta impressa;
+  // com mais, o texto acaba antes da caixa de P/R
+  const tail = parts.tail.map((t) => t.text).join("\n");
+  const paperTop = bottomRect.y0 / fy;
+  const wide = { x0: 68, y0: paperTop + 4, x1: 677, y1: bottomRect.y1 / fy - 12 };
+  const short = { ...wide, y1: (ptTop === null ? 920 : ptTop / fy) - 4 };
+  // (com a letra dela: na carta impressa a palavra-chave sai maior que os capítulos, no corpo da
+  // caixa da carta comum)
+  const fit = (box: Rect): LayoutResult | null => {
+    if (tail) return fitText(tail, p.flavor, box.x1 - box.x0, box.y1 - box.y0, m, SUMMON.box.size, 15);
+    if (!p.flavor) return null;
+    const paragraphs = buildParagraphs(null, p.flavor);
+    for (let s = SUMMON.box.size; s >= 15; s -= 0.5) {
+      const res = layoutAt(paragraphs, s, box.x1 - box.x0, m);
+      if (res.height <= box.y1 - box.y0) return res;
+    }
+    return null;
+  };
+  const ptX = Math.min(...ptGuard.map((g) => g.x0));
+  const one = fit(wide);
+  const space = one ? m.text(" ", one.size, false) : 0;
+  const oneWidth = one?.lines[0]?.chunks.reduce((w, c, ci) => w + chunkWidth(c, one.size, m) + (ci > 0 ? space : 0), 0) ?? 0;
+  const clear = Boolean(one && one.lines.length === 1 && (wide.x0 + wide.x1) / 2 + oneWidth / 2 < ptX - 6);
+  const res = clear ? one : fit(short);
+  if (res) drawLayout(ctx, res, clear ? wide : short, k, inks[3 + bands.length], symbols, m, true);
   return true;
 }
 
@@ -1055,6 +1440,44 @@ async function renderStation(p: {
   return "ok";
 }
 
+/** Maior corpo do texto dos níveis (o inglês fica em ~30). */
+const LEVELER_MAX_SIZE = 30;
+/** Menor corpo do texto dos níveis: abaixo disso, a carta sai na original. */
+const LEVELER_MIN_SIZE = 16;
+
+/**
+ * A palavra dos selos dos níveis, "NÍVEL" como na impressa em PT, no lugar e na altura do "LEVEL"
+ * (na fonte do nome da moldura, mais estreita se passar da largura dele). Na moldura de 2003 as
+ * letras têm um contorno claro, como os números do selo.
+ */
+function drawLevelWords(ctx: CanvasRenderingContext2D, f: LevelerFrame, k: number, frame2003: boolean) {
+  const t = titleFont(frame2003);
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.lineJoin = "round";
+  for (const spot of levelerWordSpots(f)) {
+    ctx.font = `${t.weight} ${100 * k}px ${t.family}`;
+    const capAt100 = ctx.measureText("NVEL").actualBoundingBoxAscent / k;
+    const size = (100 * spot.cap) / capAt100;
+    ctx.font = `${t.weight} ${size * k}px ${t.family}`;
+    const w = ctx.measureText("NÍVEL").width / k;
+    const sx = Math.min(1, spot.width / w);
+    ctx.save();
+    ctx.translate(spot.x * k, spot.base * k);
+    ctx.scale(sx, 1);
+    if (frame2003) {
+      ctx.strokeStyle = "rgba(250,246,236,0.85)";
+      ctx.lineWidth = 2.4 * k;
+      ctx.strokeText("NÍVEL", 0, 0);
+    }
+    ctx.fillStyle = INK.dark;
+    ctx.fillText("NÍVEL", 0, 0);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
 /** Maior corpo do texto das naves com Posicionar (as artes estendidas, sem a explicação, ficam em ~30). */
 const STATION_MAX_SIZE = 30;
 /** Menor corpo: abaixo disso, a carta sai na original. */
@@ -1134,6 +1557,8 @@ function drawLayout(
   center = false,
   /** faixas da tabela de d20, medidas no original (ver `liftShadedBands`) */
   shade?: { x0: number; x1: number; color: string },
+  /** o fio antes do flavor (a moldura antiga não tem: só o espaço, ADR 0031) */
+  rule = true,
 ) {
   let y = box.y0 + (box.y1 - box.y0 - res.height) / 2;
   if (shade) drawTableBands(ctx, res, y, k, shade);
@@ -1143,7 +1568,7 @@ function drawLayout(
   ctx.textBaseline = "alphabetic";
   res.lines.forEach((line, i) => {
     if (i > 0 && line.first) y += res.paragraphGap;
-    if (i === res.flavorStart && i > 0) {
+    if (i === res.flavorStart && i > 0 && rule) {
       // fio separador do texto de ambientação
       const gy = y + res.paragraphGap * 0.7;
       const grad = ctx.createLinearGradient(box.x0 * k, 0, box.x1 * k, 0);
@@ -1156,7 +1581,7 @@ function drawLayout(
       ctx.fillRect((box.x0 + 6) * k, gy * k, (box.x1 - box.x0 - 12) * k, Math.max(1, 1.6 * k));
       ctx.fillStyle = ink;
       y += res.paragraphGap * 1.4;
-    }
+    } else if (i === res.flavorStart && i > 0) y += res.paragraphGap * 1.4;
     const baseline = y + res.lineHeight * 0.8;
     let x = box.x0 + (center ? 0 : (line.indent ?? 0));
     if (center) {
@@ -1184,15 +1609,129 @@ function drawLayout(
   });
 }
 
-/** Lembrete de poder/resistência do verso, em cinza, no canto da caixa de texto. */
+/**
+ * A faixa de baixo das cartas modais (ver mdfc.ts): a palavra em Beleren à esquerda e, nos
+ * terrenos, a habilidade de mana em MPlantin, encostada no fim da faixa. A palavra fica no corpo
+ * da carta; a habilidade diminui (e depois aperta) até caber depois dela, como na impressão em
+ * PT ("Terreno ⓣ: Adicione ⓦ ou ⓑ.", Glasswing Grace, MH3 254). Sem habilidade, a palavra vai
+ * até perto do custo (`end`), apertada se precisar ("Mágica Instantânea", Hagra Mauling, ZNR).
+ */
+/**
+ * O símbolo de mana como na faixa clara das modais: o desenho na cor `rgb` e o disco quase
+ * transparente (`MDFC_STRIP.disc`), com `px` de lado. Na faixa clara a carta impressa traz
+ * "{T}: Add {G}." com o desenho preto e só um halo do disco (na escura, com os discos
+ * coloridos). Cada pixel vira desenho na proporção em que escurece o disco (a cor mais comum do
+ * símbolo): a borda suavizada entre o disco e o desenho fica suave.
+ */
+function faintDisc(icon: CanvasImageSource, px: number, rgb: [number, number, number]): HTMLCanvasElement {
+  const n = Math.max(1, Math.round(px));
+  const out = document.createElement("canvas");
+  out.width = n;
+  out.height = n;
+  const c = out.getContext("2d")!;
+  c.drawImage(icon, 0, 0, n, n);
+  const img = c.getImageData(0, 0, n, n);
+  const d = img.data;
+  const lum = (i: number) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+  // o disco: a mediana dos pixels opacos e claros
+  const light: number[] = [];
+  for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200 && lum(i) > 90) light.push(i);
+  light.sort((a, b) => lum(a) - lum(b));
+  const ref = light.length ? light[light.length >> 1] : -1;
+  const disc = ref < 0 ? [255, 255, 255] : [d[ref], d[ref + 1], d[ref + 2]];
+  const discLum = ref < 0 ? 255 : lum(ref);
+  const halo = MDFC_STRIP.disc;
+  for (let i = 0; i < d.length; i += 4) {
+    const t = Math.min(1, Math.max(0, 1 - lum(i) / discLum));
+    const a = t + halo * (1 - t);
+    for (let ch = 0; ch < 3; ch++) d[i + ch] = Math.round((rgb[ch] * t + disc[ch] * halo * (1 - t)) / a);
+    d[i + 3] = Math.round(d[i + 3] * a);
+  }
+  c.putImageData(img, 0, 0);
+  return out;
+}
+
+function drawMdfcHint(
+  ctx: CanvasRenderingContext2D,
+  hint: MdfcHint,
+  end: number,
+  k: number,
+  ink: "dark" | "light",
+  symbols: Map<string, CanvasImageSource>,
+) {
+  const color = INK[ink];
+  const S = MDFC_STRIP;
+  const t = titleFont();
+  ctx.font = `${t.weight} ${S.wordSize * t.scale * k}px ${t.family}`;
+  const natural = ctx.measureText(hint.word).width / k;
+  if (!hint.mana) {
+    drawLine(ctx, hint.word, S.wordX, S.wordCenterY, end - 4 - S.wordX, S.wordSize, k, color, t);
+    return;
+  }
+  const f = bodyFont();
+  const runs = hint.mana.split(/(\{[^}]+\})/).filter(Boolean);
+  const widthAt = (size: number) => {
+    ctx.font = `${size * f.scale * k}px ${f.family}`;
+    return runs.reduce((w, r) => w + (r.startsWith("{") ? (S.symbol * size) / S.manaSize + 2 : ctx.measureText(r).width / k), 0);
+  };
+  // a palavra no corpo dela, com pelo menos 10 px até a habilidade
+  const wordWidth = Math.min(natural, S.right - S.wordX - 10 - widthAt(15) * 0.85);
+  drawLine(ctx, hint.word, S.wordX, S.wordCenterY, wordWidth, S.wordSize, k, color, t);
+  const room = S.right - (S.wordX + wordWidth + 10);
+  let size = S.manaSize;
+  while (size > 15 && widthAt(size) > room) size -= 0.5;
+  const width = widthAt(size);
+  const sx = width > room ? room / width : 1;
+  const sym = (S.symbol * size) / S.manaSize;
+  // (linha de base no pé das maiúsculas da carta, ≈ 953,5; o símbolo centrado na faixa)
+  const baseline = S.centerY + size * 0.39;
+  ctx.save();
+  ctx.translate((S.right - width * sx) * k, 0);
+  ctx.scale(sx, 1);
+  ctx.font = `${size * f.scale * k}px ${f.family}`;
+  ctx.fillStyle = color;
+  ctx.textBaseline = "alphabetic";
+  let x = 0;
+  for (const r of runs) {
+    if (r.startsWith("{")) {
+      const icon = symbols.get(r.slice(1, -1));
+      const glyph = icon && ink === "dark" ? faintDisc(icon, sym * k, [11, 11, 11]) : icon;
+      if (glyph) ctx.drawImage(glyph, (x + 1) * k, (S.centerY - sym / 2) * k, sym * k, sym * k);
+      x += sym + 2;
+    } else {
+      ctx.fillText(r, x * k, baseline * k);
+      x += ctx.measureText(r).width / k;
+    }
+  }
+  ctx.restore();
+}
+
+/**
+ * Lembrete de poder/resistência do verso, em cinza, no canto da caixa de texto. O "*" sai como a
+ * estrela da carta impressa ("★/★" na frente da Titânia, Voz de Gaia, BRO 193): o asterisco da
+ * Beleren é pequeno e alto, e lia-se só a barra e um pingo (ver `starPoints`).
+ */
 function drawBackPt(ctx: CanvasRenderingContext2D, pt: string, centerY: number, k: number, ink: "dark" | "light") {
   const t = titleFont();
+  const size = 26 * t.scale * k;
   ctx.save();
-  ctx.font = `${t.weight} ${26 * t.scale * k}px ${t.family}`;
-  ctx.textAlign = "right";
+  ctx.font = `${t.weight} ${size}px ${t.family}`;
+  ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.fillStyle = ink === "light" ? "rgba(251,248,241,0.75)" : "rgba(11,11,11,0.62)";
-  ctx.fillText(pt, 682 * k, centerY * k);
+  const parts = pt.split(/(\*)/).filter(Boolean);
+  const star = size * 0.72;
+  const widths = parts.map((s) => (s === "*" ? star : ctx.measureText(s).width));
+  let x = 682 * k - widths.reduce((a, b) => a + b, 0);
+  parts.forEach((s, i) => {
+    if (s === "*") {
+      ctx.beginPath();
+      starPoints(x + star / 2, centerY * k, star * 0.5).forEach(([px, py], j) => (j ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+      ctx.closePath();
+      ctx.fill();
+    } else ctx.fillText(s, x, centerY * k);
+    x += widths[i];
+  });
   ctx.restore();
 }
 
@@ -1271,6 +1810,1053 @@ function emblemTitle(
  * Ficha: nome em versalete no alto, linha de tipo de altura variável e caixa de
  * texto entre ela e o pé (ver token.ts). Devolve false se a moldura não bater.
  */
+/**
+ * Uma linha da moldura antiga: letras brancas com a sombra preta 2 px abaixo e à direita, com a
+ * primeira letra (o desenho dela, sem o recuo da fonte) em `x`; comprime como `drawLine`. As
+ * camadas (deslocamento e cor, de baixo para cima, e a largura do contorno, quando a camada é o
+ * contorno das letras) mudam o estilo: a moldura de 1993 passa as cores medidas nas letras em
+ * inglês (`old93Layers`).
+ */
+function drawOldLine(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  baseline: number,
+  maxWidth: number,
+  size: number,
+  k: number,
+  t: TitleFont,
+  layers: readonly OldLayer[] = [
+    [OLD.shadow, OLD.shadowInk],
+    [0, OLD.ink],
+  ],
+) {
+  let s = size * t.scale;
+  const measure = () => {
+    ctx.font = `${t.weight} ${s * k}px ${t.family}`;
+    const m = ctx.measureText(text);
+    return { left: m.actualBoundingBoxLeft / k, width: (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) / k };
+  };
+  let m = measure();
+  while (m.width * 0.82 > maxWidth && s > 18) {
+    s -= 0.5;
+    m = measure();
+  }
+  const sx = m.width > maxWidth ? maxWidth / m.width : 1;
+  for (const [d, color, stroke] of layers) {
+    ctx.save();
+    ctx.textBaseline = "alphabetic";
+    ctx.translate((x + d) * k, (baseline + d) * k);
+    ctx.scale(sx, 1);
+    if (stroke) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = stroke * k;
+      ctx.lineJoin = "round";
+      ctx.strokeText(text, m.left * k, 0);
+    } else {
+      ctx.fillStyle = color;
+      ctx.fillText(text, m.left * k, 0);
+    }
+    ctx.restore();
+  }
+}
+
+/**
+ * Moldura antiga (ADR 0031): o nome e o tipo são letras brancas com sombra direto sobre a
+ * moldura texturizada, e saem pela rede neural, num quadro só; a caixa de texto, de papel,
+ * sai pelo apagamento de sempre. Devolve "neural" quando a rede neural não rodou e `false`
+ * quando a imagem não tem as letras onde a moldura as põe (a carta sai na original).
+ */
+async function renderOld(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  sctx: CanvasRenderingContext2D;
+  data: ImageData;
+  toImg: (r: Rect) => Rect;
+  face: PtFace;
+  print: PrintRecord;
+  flavor: string | null;
+  side: number;
+  W: number;
+  H: number;
+  neural: Neural;
+  plan: (frames: number) => void;
+}): Promise<"ok" | "neural" | false> {
+  const { ctx, src, sctx, data, toImg, face, print, W, H, neural } = p;
+  const fx = data.width / BASE_W;
+  const fy = data.height / BASE_H;
+  const cost = oldCostLeft(print.mana_cost);
+  const nameRect = roundRect(toImg({ x0: OLD.name.x0, y0: OLD.name.y0, x1: cost - 4, y1: OLD.name.y1 }));
+  const typeRect = roundRect(toImg({ x0: OLD.type.x0, y0: OLD.type.y0, x1: OLD.type.x1, y1: OLD.type.y1 }));
+  const name = oldLetters(data, nameRect);
+  const type = oldLetters(data, typeRect);
+  // sem letras perto do começo das duas linhas, não é a moldura que o motor conhece
+  const startsNear = (l: typeof name) => l.blocks.length > 0 && Math.abs(l.blocks[0].x0 / fx - OLD.name.x) <= 12;
+  if (!startsNear(name) || !startsNear(type)) return false;
+  const ends = oldTypeEnds(data, type);
+  // as letras do tipo vão até o fim do texto em inglês: o símbolo da coleção fica fora da máscara
+  const typeMask = { ...type, mask: type.mask.slice() };
+  const tw = typeRect.x1 - typeRect.x0;
+  const cut = Math.min(tw, ends.textEnd + Math.round(4 * fx) - typeRect.x0);
+  for (let y = 0; y < typeRect.y1 - typeRect.y0; y++) typeMask.mask.fill(0, y * tw + Math.max(0, cut), (y + 1) * tw);
+  // o custo de mana e o símbolo da coleção ficam escondidos da rede neural (a cor deles não vaza)
+  const hide = [
+    roundRect(toImg({ x0: cost - 2, y0: OLD.name.y0, x1: 700, y1: OLD.name.y1 })),
+    ...(ends.symbol !== null ? [{ x0: ends.symbol - Math.round(2 * fx), y0: typeRect.y0, x1: typeRect.x1, y1: typeRect.y1 }] : []),
+  ];
+  // a caixa: o bisel de dentro, medido na imagem; o texto em inglês sai pelo apagamento de sempre
+  const outer = OLD.box;
+  const boxRect = insideBoxSides(data, toImg(outer), 16 * fx, false);
+  const boxBase = { x0: boxRect.x0 / fx, y0: boxRect.y0 / fy, x1: boxRect.x1 / fx, y1: boxRect.y1 / fy };
+  const hasText = Boolean((face.text_pt ?? "").trim() || p.flavor);
+  // terreno básico sem texto: o símbolo grande na caixa é desenho, fica como está
+  const keepBox = /Básic/.test(face.type_pt ?? "") && !hasText;
+  const centered = hasText ? measureCentered(data, roundRect(boxRect), [], fx) === true : false;
+  const inks = keepBox
+    ? []
+    : eraseRegions(
+        data,
+        [{ rect: roundRect(boxRect), threshold: 14, colorThreshold: 34, stains: true, attachedBelow: roundRect(boxRect).y1 }],
+        [],
+      );
+  p.plan(1);
+  const area = { x0: nameRect.x0, y0: nameRect.y0, x1: typeRect.x1, y1: typeRect.y1 };
+  const clean = await lamaBox(
+    data,
+    [
+      { rect: nameRect, mask: name.mask, polarity: "light" },
+      { rect: typeRect, mask: typeMask.mask, polarity: "light" },
+    ],
+    area,
+    hide,
+    "light",
+    `${print.id}:${data.width}:${p.side}:antiga`,
+    { art: true, grow: Math.round(fx * 1), gap: 0, simple: false, neural },
+  );
+  if (!clean) return "neural";
+  sctx.putImageData(data, 0, 0);
+  ctx.drawImage(src, 0, 0, W, H);
+
+  const k = W / BASE_W;
+  // a linha de base medida no inglês, se estiver perto da da moldura (as retrô ficam 2 px abaixo)
+  const near = (v: number | null, expected: number) => (v !== null && Math.abs(v / fy - expected) <= 5 ? v / fy : expected);
+  const nameBase = near(name.baseline, OLD.name.baseline);
+  const typeBase = near(type.baseline, OLD.type.baseline);
+  const typeEnd = ends.symbol !== null ? ends.symbol / fx - 12 : OLD.typeEnd;
+  drawOldLine(ctx, face.name_pt ?? face.name_en, OLD.name.x, nameBase, cost - 12 - OLD.name.x, OLD.name.size, k, oldNameFont());
+  if (face.type_pt) {
+    const body = bodyFont();
+    const t: TitleFont = { family: body.family, weight: "400", scale: body.scale, dx: 0, baseline: "alphabetic", rise: 0 };
+    drawOldLine(ctx, face.type_pt, OLD.type.x, typeBase, typeEnd - OLD.type.x, OLD.type.size, k, t);
+  }
+  if (!hasText) return "ok";
+  const pad = OLD.boxPad;
+  const box = { x0: boxBase.x0 + pad.x0, y0: boxBase.y0 + pad.y0, x1: boxBase.x1 - pad.x1, y1: boxBase.y1 - pad.y1 };
+  const symbols = await preloadSymbols(face.text_pt, p.flavor);
+  const m = measurer(ctx, k);
+  const res = fitText(face.text_pt, p.flavor, box.x1 - box.x0, box.y1 - box.y0, m, 34, 15, undefined, face.ability_words);
+  drawLayout(ctx, res, box, k, inks[0] ?? "dark", symbols, m, centered, undefined, false);
+  return "ok";
+}
+
+/**
+ * Moldura de 1993 (ADR 0039): como a antiga, o nome e o tipo ficam direto sobre a moldura e saem
+ * pela rede neural, num quadro só; a caixa de texto, de papel, sai pelo apagamento de sempre. As
+ * letras são achadas pelas duas pontas (claras com sombra ou gravadas, ver `inkLetters`) e o
+ * português sai no estilo e na linha de base medidos nelas, a partir da primeira letra do inglês.
+ * Devolve "neural" quando a rede neural não rodou e `false` quando a imagem não tem as letras onde
+ * a moldura as põe (a carta sai na original).
+ */
+async function renderOld93(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  sctx: CanvasRenderingContext2D;
+  data: ImageData;
+  face: PtFace;
+  print: PrintRecord;
+  flavor: string | null;
+  side: number;
+  W: number;
+  H: number;
+  neural: Neural;
+  plan: (frames: number) => void;
+}): Promise<"ok" | "neural" | false> {
+  const { ctx, src, sctx, data, face, print, W, H, neural } = p;
+  const fx = data.width / BASE_W;
+  const fy = data.height / BASE_H;
+  const X = (v: number) => Math.round(v * fx);
+  const Y = (v: number) => Math.round(v * fy);
+  const N = OLD93.name;
+  const T = OLD93.type;
+  const cost = oldCostLeft93(print.mana_cost);
+  const boxRect = oldBox93(data);
+  const nameRect = { x0: X(N.x0), y0: Y(N.y0), x1: X(cost - 4), y1: Y(N.y1) };
+  const typeRect = { x0: X(T.x0), y0: Y(T.y0), x1: X(T.x1), y1: boxRect.y0 - Y(3) };
+  if (typeRect.y1 - typeRect.y0 < Y(30)) return false;
+  const name = inkLetters(data, nameRect, [Y(N.peak[0]), Y(N.peak[1])]);
+  const type = inkLetters(data, typeRect, [Y(T.peak), boxRect.y0 - Y(8)]);
+  // a faixa das letras pela energia da imagem alisada (ver `inkBand`): vale até nas gravadas finas
+  if (ENGRAVED_SETS93.has(print.set_code)) {
+    asEngraved(name);
+    asEngraved(type);
+  }
+  const nameBand = inkBand(data, nameRect, [Y(N.peak[0]), Y(N.peak[1])], fx);
+  const typeBand = inkBand(data, typeRect, [Y(T.peak), boxRect.y0 - Y(8)], fx, 16 * fx);
+  // o que vem depois de um vão largo no nome é a moldura (as bolhas da pedra das pretas)
+  trimAfterGap(name, 30 * fx);
+  const ends = typeEnds93(type, fx);
+  while (ends.symbol !== null && type.blocks.length && type.blocks[type.blocks.length - 1].x0 >= ends.symbol) type.blocks.pop();
+  trimAfterGap(type, 30 * fx);
+  // A linha de base: a das letras achadas, se bate com a da faixa (até 3 px), senão a da faixa. A
+  // do nome tem de estar onde a moldura a põe (senão a carta sai na original); a do tipo, fora do
+  // lugar, fica 16 px acima da caixa
+  const k = W / BASE_W;
+  const baseOf = (l: InkLetters, band: { bottom: number }) => {
+    const b = band.bottom / fy;
+    return l.baseline !== null && Math.abs(l.baseline / fy - b) <= 3 ? l.baseline / fy : b;
+  };
+  const nameBase = baseOf(name, nameBand);
+  if (nameBase < N.baseMin || nameBase > N.baseMax) return false;
+  const typeSeen = baseOf(type, typeBand);
+  const typeBase = typeSeen >= T.baseMin && typeSeen <= T.baseMax ? typeSeen : boxRect.y0 / fy - 16;
+  const span = (l: InkLetters) => (l.blocks.length ? { x0: l.blocks[0].x0 / fx, x1: l.blocks[l.blocks.length - 1].x1 / fx } : null);
+  // De Alpha a Revised, nas Collectors' Editions e nas terras da Arena League (a linha de base do
+  // nome de 79 para baixo), as letras são menores: o nome em inglês tem 93% da largura dele na Goudy
+  // Medieval de 41,5 px
+  const small = nameBase >= 79;
+  const nameFont = oldNameFont();
+  ctx.font = `${nameFont.weight} ${N.size * nameFont.scale * k}px ${nameFont.family}`;
+  const en = ctx.measureText(face.name_en);
+  const enWidth = (en.actualBoundingBoxLeft + en.actualBoundingBoxRight) / k;
+  // O nome: a medida das letras vale (letras claras, do começo ao fim do trecho da faixa e com a
+  // largura do nome em inglês) e dá o começo e o tamanho das letras; senão a rede neural apaga a
+  // faixa inteira, da beira da moldura ao fim do trecho, e o português começa onde a moldura põe a
+  // primeira letra
+  const nameSeen = span(name);
+  const nameStart = nameSeen && nameSeen.x0 >= N.xMin && nameSeen.x0 <= N.xMax ? nameSeen.x0 : null;
+  const capEnd = (nameStart ?? N.x) + enWidth * 1.15 + 10;
+  const nameEnd = nameBand.segs.length ? Math.min(capEnd, nameBand.segs[0].x1 / fx) : null;
+  const measured = nameSeen ? (nameSeen.x1 - nameSeen.x0 - 2) / enWidth : 0;
+  const nameFull =
+    name.style === "light" &&
+    nameStart !== null &&
+    nameSeen !== null &&
+    (nameEnd === null || nameSeen.x1 >= nameEnd - 8) &&
+    measured >= 0.85 &&
+    measured <= 1.1;
+  const ratio = nameFull ? Math.max(0.88, Math.min(1.05, measured)) : small ? 0.93 : 1;
+  const nameDefault = small ? 54 : 58;
+  const nameX = nameFull ? (nameStart ?? N.x) : Math.max(N.xMin, Math.min(nameDefault + 4, nameStart ?? nameDefault));
+  // A moldura da linha vai do fio de cima à beira da arte (ver `frameEdge93`): o que fica fora
+  // dela não entra no buraco nem é a vizinhança que o remendo copia
+  const nameSpan = {
+    top: frameEdge93(data, nameRect, Y(nameBase - 28 * ratio), -1) / fy,
+    bottom: frameEdge93(data, nameRect, Y(nameBase + 7), 1) / fy,
+  };
+  // (o retângulo das gravadas desce até a beira da arte, no máximo 18 px abaixo da linha de base:
+  // até 12, o pé do "g" e a sombra dele ficavam e viravam uma mancha escura, Surge of Strength, ALL 109)
+  if (!nameFull)
+    addHull(name, {
+      x0: X(N.x0 + 1),
+      y0: Y(Math.max(nameSpan.top, Math.min(nameBand.top / fy, nameBase - 34 * ratio) - 5)),
+      x1: X(Math.min(cost - 4, Math.max(nameEnd ?? 0, nameSeen?.x1 ?? 0, nameX + enWidth * ratio) + 6)),
+      y1: Y(Math.min(nameSpan.bottom, nameBase + 18)),
+    });
+  // o nome sem tradução (o da carta em inglês) fica como está
+  const keepName = !face.name_pt || face.name_pt === face.name_en;
+  if (keepName) name.mask.fill(0);
+  // O tipo: o mesmo, com o fim do trecho antes do símbolo da coleção
+  const typeSeenSpan = span(type);
+  const typeStart = typeSeenSpan && typeSeenSpan.x0 >= T.xMin && typeSeenSpan.x0 <= T.xMax ? typeSeenSpan.x0 : null;
+  const symbolAt = ends.symbol !== null ? ends.symbol / fx : null;
+  const typeEndSeen = typeBand.segs.length ? Math.min(typeBand.segs[0].x1 / fx, (symbolAt ?? OLD93.typeEnd) - 4) : null;
+  const typeFull =
+    type.style === "light" && typeStart !== null && typeSeenSpan !== null && (typeEndSeen === null || typeSeenSpan.x1 >= typeEndSeen - 8);
+  const typeX = typeStart ?? T.x;
+  const typeSpan = {
+    top: frameEdge93(data, typeRect, Y(typeBase - 28), -1) / fy,
+    bottom: frameEdge93(data, typeRect, Y(typeBase + 4), 1, fx, true) / fy,
+  };
+  if (!typeFull)
+    addHull(type, {
+      x0: X(T.xMin),
+      y0: Y(Math.max(typeSpan.top, typeBase - 26)),
+      x1: X(Math.min((symbolAt ?? OLD93.typeEnd) - 4, Math.max(typeEndSeen ?? 0, typeSeenSpan?.x1 ?? 0, typeX + 40) + 6)),
+      y1: Y(Math.min(typeSpan.bottom, typeBase + 12)),
+    });
+  // o custo de mana e o símbolo da coleção ficam escondidos da rede neural (a cor deles não vaza)
+  const hide = [
+    { x0: X(cost - 2), y0: nameRect.y0, x1: X(700), y1: nameRect.y1 },
+    ...(ends.symbol !== null ? [{ x0: ends.symbol - X(2), y0: typeRect.y0, x1: typeRect.x1, y1: typeRect.y1 }] : []),
+  ];
+  const hasText = Boolean((face.text_pt ?? "").trim() || p.flavor);
+  const inner = { x0: boxRect.x0 + X(1), y0: boxRect.y0 + Y(1), x1: boxRect.x1 - X(1), y1: boxRect.y1 - Y(1) };
+  const centered = hasText ? boxCentered93(data, inner) : false;
+  // (a beira queimada é só do pergaminho das pretas, de custo só preto; nas outras, abaixo do papel
+  // é o bisel)
+  const costColors = new Set([...(print.mana_cost ?? "").matchAll(/\{([WUBRG])\}/g)].map((c) => c[1]));
+  const boxMask = boxLetters93(data, inner, costColors.size === 1 && costColors.has("B"));
+  // o papel claro e sem cor (a renda das brancas) vai à rede neural com o nome e o tipo (ver `paleBox93`)
+  const pale = paleBox93(data, inner);
+  // fora do papel da caixa, nada é visto pela rede neural nem serve de fonte do apagamento (ver
+  // `paperRect93`), e a beira queimada que fica também não (ver `burntRim`)
+  const paper = paperRect93(data, inner);
+  const outsidePaper = [
+    { x0: 0, y0: 0, x1: data.width, y1: paper.y0 },
+    { x0: 0, y0: paper.y1, x1: data.width, y1: data.height },
+    { x0: 0, y0: paper.y0, x1: paper.x0, y1: paper.y1 },
+    { x0: paper.x1, y0: paper.y0, x1: data.width, y1: paper.y1 },
+  ];
+  if (!pale)
+    eraseRegions(
+      data,
+      [{ rect: inner, threshold: 14, letters: boxMask.mask, attachedBelow: inner.y1 }],
+      [],
+      [...outsidePaper, ...boxMask.rim],
+    );
+  // um quadro da rede neural por linha, em volta das letras (ver `maskBounds`)
+  const frames = [
+    { tag: "nome", m: { rect: nameRect, mask: name.mask, polarity: name.style }, span: nameSpan },
+    { tag: "tipo", m: { rect: typeRect, mask: type.mask, polarity: type.style }, span: typeSpan },
+  ].flatMap((f) => {
+    const found = maskBounds(f.m.rect, f.m.mask, X(24));
+    if (!found) return [];
+    // (o buraco que chega à beira esquerda da linha leva junto 16 px da moldura de fora: sem nada
+    // à esquerda, a rede neural escurecia o começo da linha, Unholy Citadel, LEG 309)
+    const box = found.x0 <= f.m.rect.x0 ? { ...found, x0: Math.max(0, found.x0 - X(16)) } : found;
+    const area = { ...box, y0: Math.max(box.y0, Y(f.span.top)), y1: Math.min(box.y1, Y(f.span.bottom)) };
+    return [{ ...f, area: area.y1 - area.y0 >= Y(16) ? area : box }];
+  });
+  if (pale && boxMask.mask.some(Boolean))
+    frames.push({
+      tag: "caixa",
+      m: { rect: inner, mask: boxMask.mask, polarity: boxMask.polarity },
+      span: { top: inner.y0 / fy, bottom: inner.y1 / fy },
+      area: roundRect(inner),
+    });
+  // o pé das letras sobre o fio de baixo de cada linha sai pelos pixels da mesma linha (ver `lineFeet93`)
+  for (const f of frames) {
+    if (f.tag === "caixa") continue;
+    const feet = lineFeet93(data, f.m, Y(f.span.bottom));
+    if (feet.mask.some(Boolean)) fillAcross(data, feet.rect, feet.mask);
+  }
+  const keep = [nameSpan, typeSpan].flatMap((sp) => [
+    { x0: 0, y0: Math.max(0, Y(sp.top - 40)), x1: data.width, y1: Y(sp.top) },
+    { x0: 0, y0: Y(sp.bottom), x1: data.width, y1: Math.min(data.height, Y(sp.bottom + 40)) },
+  ]);
+  p.plan(frames.length);
+  for (const f of frames) {
+    const key = `${print.id}:${data.width}:${p.side}:1993:${f.tag}`;
+    const clean =
+      f.tag === "caixa"
+        ? await lamaBox(data, [f.m], f.area, outsidePaper, f.m.polarity, key, {
+            art: true,
+            grow: X(2),
+            gap: X(4),
+            simple: false,
+            neural,
+            tint: true,
+          })
+        : await lamaBox(data, [f.m], f.area, hide, f.m.polarity, key, {
+            art: true,
+            grow: X(3),
+            gap: X(4),
+            simple: false,
+            neural,
+            keep,
+            soften: 1.2 * fx,
+            grainFrom: { x0: Math.min(f.area.x0, f.m.rect.x0), y0: f.area.y0, x1: f.m.rect.x1, y1: f.area.y1 },
+          });
+    if (!clean) return "neural";
+  }
+  sctx.putImageData(data, 0, 0);
+  ctx.drawImage(src, 0, 0, W, H);
+
+  const typeEnd = symbolAt !== null ? symbolAt - 12 : OLD93.typeEnd;
+  if (!keepName)
+    drawOldLine(ctx, face.name_pt ?? face.name_en, nameX, nameBase, cost - 10 - nameX, N.size * ratio, k, nameFont, old93Layers(name));
+  if (face.type_pt) {
+    const body = bodyFont();
+    const t: TitleFont = { family: body.family, weight: "400", scale: body.scale, dx: 0, baseline: "alphabetic", rise: 0 };
+    drawOldLine(ctx, face.type_pt, typeX, typeBase, typeEnd - typeX, T.size, k, t, old93Layers(type));
+  }
+  if (!hasText) return "ok";
+  const pad = OLD93.boxPad;
+  const box = { x0: boxRect.x0 / fx + pad.x0, y0: boxRect.y0 / fy + pad.y0, x1: boxRect.x1 / fx - pad.x1, y1: boxRect.y1 / fy - pad.y1 };
+  const symbols = await preloadSymbols(face.text_pt, p.flavor);
+  const m = measurer(ctx, k);
+  const res = fitText(face.text_pt, p.flavor, box.x1 - box.x0, box.y1 - box.y0, m, 34, 15, undefined, face.ability_words);
+  drawLayout(ctx, res, box, k, boxMask.polarity, symbols, m, centered, undefined, false);
+  return "ok";
+}
+
+/**
+ * Salas de Duskmourn (ADR 0033): a carta dividida impressa deitada (ver room.ts). O motor gira a
+ * imagem e, na carta deitada, apaga as duas barras dos nomes e as duas caixas pelo apagamento de
+ * sempre, e as letras brancas da linha de tipo e da faixa do lembrete pela rede neural (as duas
+ * são translúcidas, com a arte por trás), em dois quadros, um de cada metade: num quadro só, a
+ * faixa de 900 px seria reduzida aos 512 do modelo. Escreve o português na carta deitada e a põe
+ * de pé de novo. Devolve "neural" quando a rede neural não rodou e `false` quando a imagem não tem
+ * a moldura das Salas ou falta o lembrete em PT (sem ele, a faixa ficaria em inglês).
+ */
+async function renderRoom(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  halves: [PtFace, PtFace];
+  print: PrintRecord;
+  W: number;
+  H: number;
+  neural: Neural;
+  plan: (frames: number) => void;
+}): Promise<"ok" | "neural" | false> {
+  const { ctx, src, halves, print, W, H, neural } = p;
+  const reminder = halves[0].reminder_pt ?? halves[1].reminder_pt ?? null;
+  const type = halves[0].type_pt;
+  if (!reminder || !type) return false;
+  // a carta deitada: girada 90° no sentido horário, o pé da carta de pé fica à esquerda
+  const rot = document.createElement("canvas");
+  rot.width = src.height;
+  rot.height = src.width;
+  const rctx = rot.getContext("2d", { willReadFrequently: true });
+  if (!rctx) throw new Error("Seu navegador não liberou o canvas 2D.");
+  rctx.translate(rot.width, 0);
+  rctx.rotate(Math.PI / 2);
+  rctx.drawImage(src, 0, 0);
+  rctx.setTransform(1, 0, 0, 1, 0, 0);
+  const data = rctx.getImageData(0, 0, rot.width, rot.height);
+  if (!roomFrame(data)) return false;
+  const fx = rot.width / ROOM.width;
+  const fy = rot.height / ROOM.height;
+  const toImg = (r: Rect) => roundRect({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
+
+  // 1. as barras dos nomes (até o custo de cada metade, que fica) e as caixas
+  const costs = halves.map((h, i) => roomCostLeft(h.mana_cost, i as 0 | 1));
+  const { nameY } = ROOM;
+  const nameRects = ROOM.names.map((n, i) => toImg({ x0: n.x0, y0: nameY.y0, x1: costs[i] - 6, y1: nameY.y1 }));
+  const costGuard = ROOM.names.map((n, i) => toImg({ x0: costs[i] - 4, y0: nameY.y0 - 2, x1: n.x1 + 4, y1: nameY.y1 + 1 }));
+  const inks = eraseRegions(
+    data,
+    [
+      ...nameRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
+      ...ROOM.boxes.map((b) => ({ rect: toImg(b), threshold: 14, colorThreshold: 34, stains: true })),
+    ],
+    costGuard,
+    costGuard,
+    // (a ponta arredondada da esquerda de cada barra fica como está, ver barCapGuard)
+    nameRects.flatMap((r) => barCapGuard(data, r, "left")),
+  );
+
+  // 2. a linha de tipo e a faixa do lembrete: só as letras brancas, refeitas pela rede neural
+  // (o símbolo da coleção fica escondido dela)
+  const typeRect = toImg(ROOM.type);
+  const stripRect = toImg(ROOM.strip);
+  const masks: RegionMask[] = [
+    { rect: typeRect, mask: whiteTextMask(data, typeRect), polarity: "light" },
+    { rect: stripRect, mask: whiteTextMask(data, stripRect), polarity: "light" },
+  ];
+  p.plan(2);
+  const area = toImg(ROOM.lama);
+  const mid = Math.round(ROOM.lama.mid * fx);
+  for (const [x0, x1, tag] of [
+    [area.x0, mid, "a"],
+    [mid, area.x1, "b"],
+  ] as const) {
+    const clean = await lamaBox(
+      data,
+      clipMasks(masks, x0, area.x1),
+      { ...area, x0, x1 },
+      [toImg(ROOM.symbol)],
+      "light",
+      `${print.id}:${data.width}:sala:${tag}`,
+      { art: true, simple: false, neural },
+    );
+    if (!clean) return "neural";
+  }
+  rctx.putImageData(data, 0, 0);
+
+  // 3. o português, escrito na carta deitada e posta de pé de novo
+  const k = H / ROOM.width;
+  ctx.save();
+  ctx.translate(0, H);
+  ctx.rotate(-Math.PI / 2);
+  ctx.drawImage(rot, 0, 0, H, W);
+  halves.forEach((h, i) => {
+    const n = ROOM.names[i];
+    drawLine(ctx, h.name_pt ?? h.name_en, n.x, nameY.center, costs[i] - 10 - n.x, ROOM.nameSize, k);
+  });
+  const t = ROOM.type;
+  drawLine(ctx, type, t.x, t.center, t.end - t.x, t.size, k, INK.light);
+  const m = measurer(ctx, k);
+  const s = ROOM.strip;
+  const strip = { x0: s.textX0, y0: s.textY0, x1: s.textX1, y1: s.textY1 };
+  const stripText = fitText(reminder, null, strip.x1 - strip.x0, strip.y1 - strip.y0, m, ROOM.stripMax, ROOM.stripMin);
+  drawLayout(ctx, stripText, strip, k, "light", new Map(), m, true);
+  const pad = ROOM.boxPad;
+  for (const [i, h] of halves.entries()) {
+    const b = ROOM.boxes[i];
+    const box = { x0: b.x0 + pad.x0, y0: b.y0 + pad.y0, x1: b.x1 - pad.x1, y1: b.y1 - pad.y1 };
+    const symbols = await preloadSymbols(h.text_pt, h.flavor_pt);
+    const res = fitText(
+      h.text_pt,
+      h.flavor_pt,
+      box.x1 - box.x0,
+      box.y1 - box.y0,
+      m,
+      ROOM.maxSize,
+      ROOM.minSize,
+      undefined,
+      h.ability_words,
+    );
+    drawLayout(ctx, res, box, k, inks[2 + i] ?? "dark", symbols, m);
+  }
+  ctx.restore();
+  return "ok";
+}
+
+/**
+ * Carta dividida de 2015 (ver split.ts): girada para a carta deitada, cada metade é uma carta
+ * pequena da M15. Os nomes e os tipos saem linha a linha, como na M15 (o custo e o símbolo da
+ * coleção ficam), as caixas pelo apagamento de sempre (a marca-d'água vai junto, inteira) e o
+ * português é escrito na carta deitada, posta de pé de novo.
+ */
+async function renderSplit(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  halves: [PtFace, PtFace];
+  /** a moldura de 2003 (ADR 0037): as medidas de `SPLIT_2003` e o nome e o tipo na Matrix Bold */
+  frame2003: boolean;
+  W: number;
+  H: number;
+}): Promise<boolean> {
+  const { ctx, src, halves, W, H } = p;
+  const L = p.frame2003 ? SPLIT_2003 : SPLIT;
+  if (halves.some((h) => !h.type_pt)) return false;
+  const rot = document.createElement("canvas");
+  rot.width = src.height;
+  rot.height = src.width;
+  const rctx = rot.getContext("2d", { willReadFrequently: true });
+  if (!rctx) throw new Error("Seu navegador não liberou o canvas 2D.");
+  rctx.translate(rot.width, 0);
+  rctx.rotate(Math.PI / 2);
+  rctx.drawImage(src, 0, 0);
+  rctx.setTransform(1, 0, 0, 1, 0, 0);
+  const data = rctx.getImageData(0, 0, rot.width, rot.height);
+  if (!splitFrame(data, L)) return false;
+  // o Fundir (ADR 0036): a faixa no pé, com o lembrete dele em `reminder_pt`; sem um dos dois, a
+  // carta sai na original
+  const fuse = fuseBar(data, L);
+  const fuseText = halves[0].reminder_pt ?? halves[1].reminder_pt ?? null;
+  if (!fuse !== !fuseText) return false;
+  const fx = rot.width / L.width;
+  const fy = rot.height / L.height;
+  const toImg = (r: Rect) => roundRect({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
+
+  const costs = halves.map((h, i) => splitCostLeft(h.mana_cost, i as 0 | 1, L));
+  const { nameY, typeY } = L;
+  const nameRects = L.names.map((n, i) => toImg({ x0: n.x0, y0: nameY.y0, x1: costs[i] - 6, y1: nameY.y1 }));
+  const costGuard = L.names.map((n, i) => toImg({ x0: costs[i] - 4, y0: nameY.y0 - 2, x1: n.x1 + 4, y1: nameY.y1 + 1 }));
+  const typeRects = L.types.map((t) => toImg({ x0: t.x0, y0: typeY.y0, x1: t.x1, y1: typeY.y1 }));
+  // (o chanfro do pé da barra de tipo, à parte: ver `typeY.tail`)
+  const tail = typeY.tail;
+  const tailRects = tail ? L.types.map((t) => toImg({ x0: t.x0, y0: tail.y0, x1: t.x1, y1: tail.y1 })) : [];
+  const boxes = splitBoxes(data, fuse, L);
+  const boxRects = boxes.map(toImg);
+  const F = L.fuse;
+  const fuseRects = fuse ? [toImg({ x0: F.x0, y0: fuse.y0 + 1, x1: F.x1, y1: fuse.y1 - 1 })] : [];
+  // texto curto centralizado no original (Boom // Bust, TSR) sai centralizado. As duas metades são
+  // compostas do mesmo jeito: a que não dá para dizer (uma linha que enche a caixa, "Destroy target
+  // enchantment." no Wear // Tear) segue a outra
+  const measured = boxRects.map((r, i) => (halves[i].text_pt?.trim() ? measureCentered(data, r, [], fx) : false));
+  const centered = measured.map((c, i) => c === true || (c === null && measured[1 - i] === true));
+  const inks = eraseRegions(
+    data,
+    [
+      ...nameRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
+      ...typeRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
+      ...boxRects.map((rect) => ({ rect, threshold: 14, colorThreshold: 34, stains: true, dividers: true })),
+      ...fuseRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
+      // (por último, para não mudar a ordem das tintas acima)
+      ...tailRects.map((rect) => ({ rect, threshold: 28, polarity: "dark" as const, fill: "rows" as const })),
+    ],
+    costGuard,
+    costGuard,
+    // (a ponta arredondada da esquerda de cada barra fica como está, ver barCapGuard)
+    [...nameRects, ...typeRects, ...fuseRects, ...tailRects].flatMap((r) => barCapGuard(data, r, "left")),
+  );
+  rctx.putImageData(data, 0, 0);
+
+  const k = H / L.width;
+  ctx.save();
+  ctx.translate(0, H);
+  ctx.rotate(-Math.PI / 2);
+  ctx.drawImage(rot, 0, 0, H, W);
+  const m = measurer(ctx, k);
+  const pad = L.boxPad;
+  const tf = titleFont(L.frame2003);
+  for (const [i, h] of halves.entries()) {
+    const n = L.names[i];
+    drawLine(ctx, h.name_pt ?? h.name_en, n.x, nameY.center, costs[i] - 10 - n.x, L.nameSize, k, INK[inks[i] ?? "dark"], tf);
+    const t = L.types[i];
+    drawLine(ctx, h.type_pt ?? "", t.x, typeY.center, t.x1 - t.x, L.typeSize, k, INK[inks[2 + i] ?? "dark"], tf);
+    const b = boxes[i];
+    const box = { x0: b.x0 + pad.x0, y0: b.y0 + pad.y0, x1: b.x1 - pad.x1, y1: b.y1 - pad.y1 };
+    const symbols = await preloadSymbols(h.text_pt, h.flavor_pt);
+    const res = fitText(h.text_pt, h.flavor_pt, box.x1 - box.x0, box.y1 - box.y0, m, L.maxSize, L.minSize, undefined, h.ability_words);
+    drawLayout(ctx, res, box, k, inks[4 + i] ?? "dark", symbols, m, centered[i]);
+  }
+  if (fuse && fuseText) {
+    const bar = { x0: F.textX0, y0: fuse.y0, x1: F.textX1, y1: fuse.y1 };
+    const res = fitText(fuseText, null, bar.x1 - bar.x0, bar.y1 - bar.y0, m, F.maxSize, F.minSize);
+    drawLayout(ctx, res, bar, k, inks[6] ?? "dark", new Map(), m, F.centered);
+  }
+  ctx.restore();
+  return true;
+}
+
+/**
+ * Carta dividida da moldura antiga (ADR 0038): girada para a carta deitada, cada metade é uma carta
+ * pequena da moldura antiga (ver `renderOld`). O nome e o tipo de cada metade, letras brancas com
+ * sombra sobre a moldura texturizada, saem pela rede neural, num quadro por metade (o custo e o
+ * símbolo da coleção ficam, escondidos dela); as caixas, pelo apagamento de sempre, no papel medido
+ * na imagem (`oldSplitBoxes`: bisel, fio ou pergaminho, conforme a cor). Devolve "neural" quando a
+ * rede neural não rodou e `false` quando a imagem não tem a moldura ou as letras onde ela as põe.
+ */
+async function renderSplitOld(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  halves: [PtFace, PtFace];
+  print: PrintRecord;
+  W: number;
+  H: number;
+  neural: Neural;
+  plan: (frames: number) => void;
+}): Promise<"ok" | "neural" | false> {
+  const { ctx, src, halves, print, W, H, neural } = p;
+  const L = SPLIT_1997;
+  if (halves.some((h) => !h.type_pt)) return false;
+  const rot = document.createElement("canvas");
+  rot.width = src.height;
+  rot.height = src.width;
+  const rctx = rot.getContext("2d", { willReadFrequently: true });
+  if (!rctx) throw new Error("Seu navegador não liberou o canvas 2D.");
+  rctx.translate(rot.width, 0);
+  rctx.rotate(Math.PI / 2);
+  rctx.drawImage(src, 0, 0);
+  rctx.setTransform(1, 0, 0, 1, 0, 0);
+  const data = rctx.getImageData(0, 0, rot.width, rot.height);
+  if (!oldSplitFrame(data, L)) return false;
+  const fx = rot.width / L.width;
+  const fy = rot.height / L.height;
+  const toImg = (r: Rect) => roundRect({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
+  const sides = [0, 1] as const;
+
+  // 1. as letras do nome e do tipo de cada metade (as folgas na escala da carta de pé: a largura da
+  // imagem deitada é a altura da carta)
+  const costs = sides.map((h) => oldSplitCostLeft(halves[h].mana_cost, h, L));
+  const N = L.name;
+  const T = L.type;
+  const nameRects = sides.map((h) => toImg({ x0: N.x0 + h * L.dx, y0: N.y0, x1: costs[h] - 4, y1: N.y1 }));
+  const typeRects = sides.map((h) => toImg(oldSplitHalf({ x0: T.x0, y0: T.y0, x1: T.x1, y1: T.y1 }, h, L)));
+  const names = nameRects.map((r) => oldLetters(data, r, fy));
+  const types = typeRects.map((r) => oldLetters(data, r, fy));
+  // sem letras perto do começo das quatro linhas, não é a moldura que o motor conhece
+  const startsNear = (l: (typeof names)[number], x: number) => l.blocks.length > 0 && Math.abs(l.blocks[0].x0 / fx - x) <= 12;
+  if (sides.some((h) => !startsNear(names[h], N.x + h * L.dx) || !startsNear(types[h], T.x + h * L.dx))) return false;
+
+  // 2. as caixas: o papel medido na imagem, pelo apagamento de sempre
+  const boxes = oldSplitBoxes(data, L);
+  const boxRects = boxes.map((b) => toImg(b.erase));
+  // (cada metade como a dela: no Wax // Wane, INV 296, o texto da esquerda é alinhado à esquerda
+  // e o da direita, centralizado. O texto alinhado à esquerda começa sempre em `box.left`; o que
+  // começa depois é centralizado)
+  const centered = boxes.map((b, h) => {
+    if (!halves[h].text_pt?.trim()) return false;
+    const margin = L.box.left + h * L.dx - b.erase.x0;
+    return measureCentered(data, boxRects[h], [], fx, undefined, margin) === true;
+  });
+  const inks = eraseRegions(
+    data,
+    boxRects.map((rect) => ({ rect, threshold: 14, colorThreshold: 34, stains: true, attachedBelow: rect.y1 })),
+    [],
+  );
+
+  // 3. o nome e o tipo pela rede neural, um quadro por metade. O pé das letras do nome desce sobre
+  // os fios do alto da arte, e no lugar dele a rede neural deixava um borrão no fio (o "y" do Day,
+  // APC 131; o "p" do Spite, INV 293): dali para baixo as letras saem linha a linha, pelos pixels
+  // da mesma linha ao lado (`fillAcross`), e a rede neural fica com o resto
+  for (const h of sides) {
+    const r = nameRects[h];
+    const w = r.x1 - r.x0;
+    const from = Math.max(0, Math.min(r.y1 - r.y0, Math.round(N.band * fy) - r.y0)) * w;
+    const feet = new Uint8Array(names[h].mask.length);
+    feet.set(names[h].mask.subarray(from), from);
+    fillAcross(data, r, feet);
+    names[h].mask.fill(0, from);
+  }
+  p.plan(2);
+  for (const h of sides) {
+    const hide = [toImg({ x0: costs[h] - 2, y0: N.y0, x1: L.lama.x1 + h * L.dx + 2, y1: N.y1 }), toImg(oldSplitHalf(L.symbol, h, L))];
+    const clean = await lamaBox(
+      data,
+      [
+        { rect: nameRects[h], mask: names[h].mask, polarity: "light" },
+        { rect: typeRects[h], mask: types[h].mask, polarity: "light" },
+      ],
+      toImg(oldSplitHalf(L.lama, h, L)),
+      hide,
+      "light",
+      `${print.id}:${data.width}:antiga-dividida:${h}`,
+      { art: true, grow: Math.round(fy * 1), gap: 0, simple: false, neural },
+    );
+    if (!clean) return "neural";
+  }
+  rctx.putImageData(data, 0, 0);
+
+  // 4. o português, escrito na carta deitada e posta de pé de novo
+  const k = H / L.width;
+  ctx.save();
+  ctx.translate(0, H);
+  ctx.rotate(-Math.PI / 2);
+  ctx.drawImage(rot, 0, 0, H, W);
+  const m = measurer(ctx, k);
+  // a linha de base medida no inglês, se estiver perto da da moldura
+  const near = (v: number | null, expected: number) => (v !== null && Math.abs(v / fy - expected) <= 5 ? v / fy : expected);
+  const body = bodyFont();
+  const typeFont: TitleFont = { family: body.family, weight: "400", scale: body.scale, dx: 0, baseline: "alphabetic", rise: 0 };
+  const { pad, text } = L.box;
+  for (const h of sides) {
+    const half = halves[h];
+    const nx = N.x + h * L.dx;
+    drawOldLine(ctx, half.name_pt ?? half.name_en, nx, near(names[h].baseline, N.baseline), costs[h] - 12 - nx, N.size, k, oldNameFont());
+    const tx = T.x + h * L.dx;
+    const typeEnd = L.symbol.x0 + h * L.dx - 12;
+    drawOldLine(ctx, half.type_pt ?? "", tx, near(types[h].baseline, T.baseline), typeEnd - tx, T.size, k, typeFont);
+    if (!half.text_pt?.trim() && !half.flavor_pt) continue;
+    const b = boxes[h].paper;
+    const lim = oldSplitHalf(text, h, L);
+    const box = {
+      x0: Math.max(b.x0 + pad.x0, lim.x0),
+      y0: Math.max(b.y0 + pad.y0, lim.y0),
+      x1: Math.min(b.x1 - pad.x1, lim.x1),
+      y1: Math.min(b.y1 - pad.y1, lim.y1),
+    };
+    const symbols = await preloadSymbols(half.text_pt, half.flavor_pt);
+    const res = fitText(
+      half.text_pt,
+      half.flavor_pt,
+      box.x1 - box.x0,
+      box.y1 - box.y0,
+      m,
+      L.maxSize,
+      L.minSize,
+      undefined,
+      half.ability_words,
+    );
+    drawLayout(ctx, res, box, k, inks[h] ?? "dark", symbols, m, centered[h], undefined, false);
+  }
+  ctx.restore();
+  return "ok";
+}
+
+/**
+ * Consequência (ADR 0035): a metade de cima é apagada e escrita na carta de pé, a de baixo na
+ * carta girada 90° no sentido anti-horário, onde ela fica de pé. Sem as barras e as caixas das duas
+ * metades na imagem, a carta sai na original.
+ */
+async function renderAftermath(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  halves: [PtFace, PtFace];
+  W: number;
+  H: number;
+}): Promise<boolean> {
+  const { ctx, src, halves, W, H } = p;
+  if (halves.some((h) => !h.type_pt)) return false;
+  const canvas2d = (w: number, h: number) => {
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const c2 = c.getContext("2d", { willReadFrequently: true });
+    if (!c2) throw new Error("Seu navegador não liberou o canvas 2D.");
+    return [c, c2] as const;
+  };
+  const [up, uctx] = canvas2d(src.width, src.height);
+  uctx.drawImage(src, 0, 0);
+  const [turned, tctx] = canvas2d(src.height, src.width);
+  const turn = (from: HTMLCanvasElement) => {
+    tctx.setTransform(1, 0, 0, 1, 0, 0);
+    tctx.translate(0, turned.height);
+    tctx.rotate(-Math.PI / 2);
+    tctx.drawImage(from, 0, 0);
+    tctx.setTransform(1, 0, 0, 1, 0, 0);
+  };
+  turn(src);
+  const upData = uctx.getImageData(0, 0, up.width, up.height);
+  const frame = aftermathFrame(upData, tctx.getImageData(0, 0, turned.width, turned.height));
+  if (!frame) return false;
+  const pad = AFTERMATH.boxPad;
+
+  // a metade de cima, na carta de pé (como a M15: o custo e o símbolo da coleção no lugar de sempre)
+  const fx = up.width / BASE_W;
+  const fy = up.height / BASE_H;
+  const toUp = (r: Rect) => roundRect({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
+  const T = AFTERMATH.top;
+  const cost = costLeft(halves[0].mana_cost);
+  const tn = frame.top.name;
+  const tt = frame.top.type;
+  const inset = (tt.y1 - tt.y0) * 0.22;
+  const setLeft = Math.min(
+    Math.max(findSetSymbolLeft(upData, Math.round((tt.y0 + inset) * fy), Math.round((tt.y1 - inset) * fy)) / fx, 560),
+    660,
+  );
+  const topName = { x0: T.name.x0, y0: tn.y0 + 1, x1: cost - 6, y1: tn.y1 - 1 };
+  const topGuard = { x0: cost - 4, y0: tn.y0 - 1, x1: BASE_W, y1: tn.y1 + 1 };
+  const topType = { x0: T.type.x0, y0: tt.y0 + 1, x1: setLeft - 6, y1: tt.y1 - 1 };
+  const topBox = aftermathBox(upData, "top");
+  const topCentered = halves[0].text_pt?.trim() ? measureCentered(upData, toUp(topBox), [], fx) === true : false;
+  const topRects = [toUp(topName), toUp(topType)];
+  const topInks = eraseRegions(
+    upData,
+    [
+      ...topRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
+      { rect: toUp(topBox), threshold: 14, colorThreshold: 34, stains: true, dividers: true },
+    ],
+    [toUp(topGuard)],
+    [toUp(topGuard)],
+    topRects.flatMap((r) => barCapGuard(upData, r, "left")),
+  );
+  uctx.putImageData(upData, 0, 0);
+
+  // a metade de baixo, na carta girada (feita da de pé já apagada)
+  turn(up);
+  const tData = tctx.getImageData(0, 0, turned.width, turned.height);
+  const gx = turned.width / BASE_H;
+  const gy = turned.height / BASE_W;
+  const toTurned = (r: Rect) => roundRect({ x0: r.x0 * gx, y0: r.y0 * gy, x1: r.x1 * gx, y1: r.y1 * gy });
+  const B = AFTERMATH.bottom;
+  const bCost = aftermathCostLeft(halves[1].mana_cost);
+  const bn = frame.bottom.name;
+  const bt = frame.bottom.type;
+  const bottomName = { x0: B.name.x0, y0: bn.y0 + 1, x1: bCost - 6, y1: bn.y1 - 1 };
+  const bottomGuard = { x0: bCost - 4, y0: bn.y0 - 1, x1: B.name.costRight + 8, y1: bn.y1 + 1 };
+  const bottomType = { x0: B.type.x0, y0: bt.y0 + 1, x1: B.type.x1, y1: bt.y1 - 1 };
+  const bottomBox = aftermathBox(tData, "bottom");
+  const bottomCentered = halves[1].text_pt?.trim() ? measureCentered(tData, toTurned(bottomBox), [], gx) === true : false;
+  const bottomRects = [toTurned(bottomName), toTurned(bottomType)];
+  const bottomInks = eraseRegions(
+    tData,
+    [
+      ...bottomRects.map((rect) => ({ rect, threshold: 28, fill: "rows" as const })),
+      { rect: toTurned(bottomBox), threshold: 14, colorThreshold: 34, stains: true, dividers: true },
+    ],
+    [toTurned(bottomGuard)],
+    [toTurned(bottomGuard)],
+    bottomRects.flatMap((r) => barCapGuard(tData, r, "left")),
+  );
+  tctx.putImageData(tData, 0, 0);
+
+  // a carta apagada, de pé de novo
+  ctx.save();
+  ctx.translate(W, 0);
+  ctx.rotate(Math.PI / 2);
+  ctx.drawImage(turned, 0, 0, H, W);
+  ctx.restore();
+
+  const writeHalf = async (
+    h: PtFace,
+    k: number,
+    name: { x: number; center: number; maxWidth: number },
+    type: { x: number; center: number; maxWidth: number },
+    b: Rect,
+    inks: ("dark" | "light")[],
+    centered: boolean,
+  ) => {
+    const m = measurer(ctx, k);
+    drawLine(ctx, h.name_pt ?? h.name_en, name.x, name.center, name.maxWidth, AFTERMATH.nameSize, k, INK[inks[0] ?? "dark"]);
+    drawLine(ctx, h.type_pt ?? "", type.x, type.center, type.maxWidth, AFTERMATH.typeSize, k, INK[inks[1] ?? "dark"]);
+    const box = { x0: b.x0 + pad.x0, y0: b.y0 + pad.y0, x1: b.x1 - pad.x1, y1: b.y1 - pad.y1 };
+    const symbols = await preloadSymbols(h.text_pt, h.flavor_pt);
+    const res = fitText(
+      h.text_pt,
+      h.flavor_pt,
+      box.x1 - box.x0,
+      box.y1 - box.y0,
+      m,
+      AFTERMATH.maxSize,
+      AFTERMATH.minSize,
+      undefined,
+      h.ability_words,
+    );
+    drawLayout(ctx, res, box, k, inks[2] ?? "dark", symbols, m, centered);
+  };
+  await writeHalf(
+    halves[0],
+    W / BASE_W,
+    { x: T.name.x, center: tn.center, maxWidth: cost - 12 - T.name.x },
+    { x: T.type.x, center: tt.center, maxWidth: setLeft - 10 - T.type.x },
+    topBox,
+    topInks,
+    topCentered,
+  );
+  ctx.save();
+  ctx.translate(W, 0);
+  ctx.rotate(Math.PI / 2);
+  await writeHalf(
+    halves[1],
+    H / BASE_H,
+    { x: B.name.x, center: bn.center, maxWidth: bCost - 10 - B.name.x },
+    { x: B.type.x, center: bt.center, maxWidth: B.type.x1 - B.type.x },
+    bottomBox,
+    bottomInks,
+    bottomCentered,
+  );
+  ctx.restore();
+  return true;
+}
+
+/**
+ * Carta virada de Kamigawa (flip, ADR 0044): a metade de cima é apagada e escrita na carta de pé, e
+ * a de baixo, impressa de cabeça para baixo, na carta girada 180° (ver flip.ts). Só o tipo e a caixa
+ * de cada metade mudam: o nome fica (a tradução não oficial o deixa em inglês). A caixa de P/R e o
+ * símbolo da coleção ficam fora do apagamento. Devolve `false` quando a imagem não tem as barras de
+ * tipo onde a moldura as põe, ou a caixa de P/R não bate com o tipo (só a criatura a tem).
+ */
+async function renderFlip(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  halves: [PtFace, PtFace];
+  /** a moldura de 2003: as medidas de `FLIP_2003` e o tipo na Matrix Bold */
+  frame2003: boolean;
+  W: number;
+  H: number;
+}): Promise<boolean> {
+  const { ctx, src, halves, W, H } = p;
+  const G = p.frame2003 ? FLIP_2003 : FLIP_2015;
+  if (halves.some((h) => !h.type_pt || (h.name_pt ?? h.name_en) !== h.name_en)) return false;
+  const canvas2d = () => {
+    const c = document.createElement("canvas");
+    c.width = src.width;
+    c.height = src.height;
+    const c2 = c.getContext("2d", { willReadFrequently: true });
+    if (!c2) throw new Error("Seu navegador não liberou o canvas 2D.");
+    return [c, c2] as const;
+  };
+  const [up, uctx] = canvas2d();
+  uctx.drawImage(src, 0, 0);
+  const [turned, tctx] = canvas2d();
+  const turn = (from: HTMLCanvasElement) => {
+    tctx.setTransform(1, 0, 0, 1, 0, 0);
+    tctx.translate(turned.width, turned.height);
+    tctx.rotate(Math.PI);
+    tctx.drawImage(from, 0, 0);
+    tctx.setTransform(1, 0, 0, 1, 0, 0);
+  };
+  turn(src);
+  const datas = [uctx.getImageData(0, 0, up.width, up.height), tctx.getImageData(0, 0, turned.width, turned.height)];
+  const fx = src.width / BASE_W;
+  const fy = src.height / BASE_H;
+  const toImg = (r: Rect) => roundRect({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
+
+  // as medidas das duas metades, antes de apagar
+  const plans = [];
+  for (const i of [0, 1] as const) {
+    const img = datas[i];
+    const h = halves[i];
+    const half = G.halves[i];
+    const bar = flipBar(img, G, i);
+    if (!bar) return false;
+    // a caixa de P/R só na criatura (na de baixo das Ascendentes de Saviors, encantamento, não há)
+    const ptLine = flipPtLine(img, G, bar);
+    if ((ptLine !== null) !== /Criatura/.test(h.type_pt ?? "")) return false;
+    const rows = { y0: bar.top + G.typeErase.dy0, y1: bar.bottom + G.typeErase.dy1 };
+    const end = ptLine !== null ? ptLine - G.pt.gap : G.pt.barEnd;
+    // o símbolo da coleção, na de cima da moldura atual (só o miolo da barra, sem os fios)
+    const inset = (rows.y1 - rows.y0) * 0.22;
+    const setLeft =
+      G.setSymbol && i === 0
+        ? findSetSymbolLeft(img, Math.round((rows.y0 + inset) * fy), Math.round((rows.y1 - inset) * fy), Math.round(end * fx)) / fx
+        : null;
+    if (setLeft !== null && (setLeft < 520 || setLeft > end)) return false;
+    // sem o símbolo, o apagamento para logo depois do inglês (ver flipTypeEnd)
+    const inkEnd = setLeft === null ? flipTypeEnd(img, { x0: half.typeX + 4, y0: rows.y0, x1: end, y1: rows.y1 }) : null;
+    const typeX1 = setLeft !== null ? setLeft - 6 : Math.min(end, (inkEnd ?? end) + 6);
+    const c = textBandCenter(img, toImg({ x0: half.typeX, y0: rows.y0 + 2, x1: Math.max(half.typeX + 60, typeX1 - 2), y1: rows.y1 - 2 }));
+    const expected = bar.top + G.typeCenter;
+    const center = c !== null && Math.abs(c / fy - expected) <= 6 ? c / fy : expected;
+    const box = flipBox(img, G, i);
+    plans.push({
+      bar,
+      ptLine,
+      typeRect: { x0: G.typeErase.x0, y0: rows.y0, x1: typeX1, y1: rows.y1 },
+      // (a Beleren, 2 px acima do centro medido, como nas barras da Aventura)
+      typeCenter: G.frame2003 ? center : center - 2,
+      typeMax: (setLeft !== null ? setLeft - 10 : end - 3) - half.typeX,
+      box,
+      centered: h.text_pt?.trim() ? measureCentered(img, toImg(box), [], fx) === true : false,
+    });
+  }
+
+  // o apagamento: a de cima na carta de pé, a de baixo na girada (feita da de pé já apagada)
+  const inks: ("dark" | "light")[][] = [];
+  for (const i of [0, 1] as const) {
+    if (i === 1) {
+      turn(up);
+      datas[1] = tctx.getImageData(0, 0, turned.width, turned.height);
+    }
+    const img = datas[i];
+    const pl = plans[i];
+    const typeRect = toImg(pl.typeRect);
+    // a caixa de P/R sobe uns pixels acima da barra, até o canto da caixa de texto
+    const guard = pl.ptLine !== null ? [toImg({ x0: pl.ptLine - G.pt.gap, y0: pl.bar.top - 8, x1: BASE_W, y1: pl.bar.bottom + 4 })] : [];
+    inks.push(
+      eraseRegions(
+        img,
+        [
+          { rect: typeRect, threshold: 28, fill: "rows" },
+          { rect: toImg(pl.box), threshold: 14, colorThreshold: 34, stains: true, dividers: true },
+        ],
+        guard,
+        guard,
+        // (a ponta arredondada da barra, na moldura atual, fica como está: ver barCapGuard)
+        G.typeErase.x0 <= 50 ? barCapGuard(img, typeRect, "left") : [],
+      ),
+    );
+    (i === 0 ? uctx : tctx).putImageData(img, 0, 0);
+  }
+
+  // a carta apagada, de pé de novo
+  ctx.save();
+  ctx.translate(W, H);
+  ctx.rotate(Math.PI);
+  ctx.drawImage(turned, 0, 0, W, H);
+  ctx.restore();
+
+  const k = W / BASE_W;
+  const tf = titleFont(G.frame2003);
+  for (const i of [0, 1] as const) {
+    const h = halves[i];
+    const pl = plans[i];
+    const half = G.halves[i];
+    ctx.save();
+    if (i === 1) {
+      ctx.translate(W, H);
+      ctx.rotate(Math.PI);
+    }
+    const m = measurer(ctx, k);
+    // (a primeira letra da Matrix Bold fica 1 px depois da posição da linha)
+    const typeX = G.frame2003 ? half.typeX - 1 : half.typeX;
+    drawLine(ctx, h.type_pt ?? "", typeX, pl.typeCenter, pl.typeMax, G.typeSize, k, INK[inks[i][0] ?? "dark"], tf);
+    const b = pl.box;
+    const pad = G.boxPad;
+    const box = { x0: b.x0 + pad.x0, y0: b.y0 + pad.y0, x1: b.x1 - pad.x1, y1: b.y1 - pad.y1 };
+    const symbols = await preloadSymbols(h.text_pt, h.flavor_pt);
+    const res = fitText(h.text_pt, h.flavor_pt, box.x1 - box.x0, box.y1 - box.y0, m, G.maxSize, G.minSize, undefined, h.ability_words);
+    drawLayout(ctx, res, box, k, inks[i][1] ?? "dark", symbols, m, pl.centered);
+    ctx.restore();
+  }
+  return true;
+}
+
 async function renderToken(p: {
   ctx: CanvasRenderingContext2D;
   src: HTMLCanvasElement;
@@ -1407,16 +2993,22 @@ const BAR_CENTER = { title: 81.5, type: 616 };
 const BAR_CENTER_2003 = { title: 88, type: 617.5 };
 
 /**
- * Centro das letras das duas barras da aventura (escala-base): o medido no inglês, se perto do
- * padrão (digitalizações com a moldura uns pixels acima ou abaixo); senão, o padrão.
+ * Centro das letras das duas barras da mágica (Aventura e Preparar, escala-base): o medido no
+ * inglês, se perto do padrão (digitalizações com a moldura uns pixels acima ou abaixo); senão, o
+ * padrão.
  */
-function advBarCenters(data: ImageData, adv: ReturnType<typeof adventureLayout>, fy: number): [number, number] {
+function advBarCenters(data: ImageData, adv: SplitLayout, fy: number): [number, number] {
   const fx = data.width / BASE_W;
-  return ([adv.name, adv.type] as const).map((bar, i) => {
-    const expected = i === 0 ? ADVENTURE.name.center : ADVENTURE.type.center;
+  return ([adv.name, adv.type] as const).map((bar) => {
+    const expected = bar.center;
     const r = bar.rect;
     // (sem as beiradas da barra: com elas a faixa das letras passava da altura de uma linha)
-    const c = textBandCenter(data, { x0: 66 * fx, y0: (r.y0 + 3) * fy, x1: Math.min(r.x1, 300) * fx, y1: (r.y1 - 3) * fy });
+    const c = textBandCenter(data, {
+      x0: adv.lettersX[0] * fx,
+      y0: (r.y0 + 3) * fy,
+      x1: Math.min(r.x1, adv.lettersX[1]) * fx,
+      y1: (r.y1 - 3) * fy,
+    });
     // (o português é escrito 2 px acima do centro medido: com o corpo e o recuo da Beleren, assim
     // as letras caem na mesma altura das em inglês, conferido em ELD, WOE e TDM)
     return (c !== null && Math.abs(c / fy - expected) <= 6 ? c / fy : expected) - 2;
@@ -1471,15 +3063,28 @@ const isPlaneswalker = (print: PrintRecord, face: PtFace | null, typeLine?: stri
   !print.sides && /planeswalker/i.test(face?.type_pt ?? typeLine ?? "");
 
 /**
- * A montagem passa pela rede neural (lama.ts): português a escrever num planeswalker ou numa arte
- * sem borda. A prévia usa para mostrar o andamento enquanto espera por ela.
+ * A montagem passa pela rede neural (lama.ts): português a escrever num planeswalker, numa arte
+ * sem borda, na moldura antiga ou na faixa da Mutação. A prévia usa para mostrar o andamento enquanto espera por ela.
  */
 export function usesNeuralFill(print: PrintRecord, face: PtFace | null, side: 0 | 1 = 0, typeLine?: string | null): boolean {
   const supported = print.sides ? Boolean(print.sides[side]?.supported) : print.supported;
   return (
-    Boolean(supported && face?.name_pt && face.text_pt !== null) && (print.border === "borderless" || isPlaneswalker(print, face, typeLine))
+    Boolean(supported && face?.name_pt && face.text_pt !== null) &&
+    (print.border === "borderless" ||
+      isPlaneswalker(print, face, typeLine) ||
+      ((print.frame === "1997" || print.frame === "1993") && print.layout === "normal") ||
+      isOldSplit(print) ||
+      isRoom(print, typeLine) ||
+      print.layout === "mutate")
   );
 }
+
+/** Carta dividida da moldura antiga (ADR 0038): o nome e o tipo de cada metade vão para a rede neural. */
+const isOldSplit = (print: PrintRecord) => print.layout === "split" && print.frame === "1997" && print.border !== "borderless";
+
+/** Sala de Duskmourn (ver room.ts): carta dividida com o tipo "Room" nas duas metades. */
+const isRoom = (print: PrintRecord, typeLine?: string | null) =>
+  print.layout === "split" && print.border !== "borderless" && /\bRoom\b/.test(typeLine ?? "");
 
 /** Lançamento de Kamigawa: Neon Dynasty: dali em diante o verso das cartas de duas faces não tem o símbolo da coleção. */
 const SYMBOLLESS_BACKS_SINCE = "2022-02-18";
@@ -1496,11 +3101,24 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const borderless = print.border === "borderless";
   // Saga também: os fios entre os capítulos são degraus de uma linha, que o JPEG reduzido espalha
   const saga = print.layout === "saga" && !borderless;
+  // (as Invocações de Final Fantasy são criaturas Saga, com outra moldura: ver renderSummon)
+  const summon = saga && /\bCreature\b/.test(opts.typeLine ?? "");
   // e Classe: as barras de nível são recortadas e coladas em outra altura
   const klass = print.layout === "class" && !borderless;
   // e as naves com Posicionar: a caixa translúcida vai para a rede neural
   const stationParts = !borderless && print.layout === "normal" ? stationText(face?.text_pt) : null;
-  const version = pw || borderless || saga || klass || stationParts ? "png" : (opts.imageVersion ?? "png");
+  // e a moldura antiga: o nome e o tipo, sobre a moldura texturizada, vão para a rede neural
+  const old = print.frame === "1997" && !borderless && print.layout === "normal";
+  // e a de 1993, do mesmo jeito
+  const old93 = print.frame === "1993" && !borderless && print.layout === "normal";
+  // e as Salas de Duskmourn: a linha de tipo e a faixa do lembrete vão para a rede neural
+  const room = isRoom(print, opts.typeLine);
+  // e as divididas da moldura antiga: o nome e o tipo de cada metade, também
+  const oldSplit = isOldSplit(print);
+  // e as criaturas com Mutação: a faixa translúcida do alto da caixa vai para a rede neural
+  const mutate = print.layout === "mutate" && !borderless;
+  const version =
+    pw || borderless || saga || klass || stationParts || old || old93 || room || oldSplit || mutate ? "png" : (opts.imageVersion ?? "png");
   const [img] = await Promise.all([opts.source ?? loadImage(printImage(print, version, side)), loadCardFonts()]);
 
   const W = Math.round(BASE_W * scale);
@@ -1557,6 +3175,39 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     },
   };
 
+  // cartas divididas: as Salas (renderRoom), as da moldura antiga (renderSplitOld), as da
+  // moldura atual e as de 2003 (renderSplit) e as com Consequência (renderAftermath); as outras
+  // saem na original
+  if (print.layout === "split") {
+    const other = opts.split ?? null;
+    const halves: [PtFace, PtFace] | null = other?.name_pt && other.text_pt !== null ? [face, other] : null;
+    const done = !halves
+      ? false
+      : room
+        ? await renderRoom({ ctx, src, halves, print, W, H, neural, plan })
+        : oldSplit
+          ? await renderSplitOld({ ctx, src, halves, print, W, H, neural, plan })
+          : (await renderSplit({ ctx, src, halves, frame2003: print.frame === "2003", W, H })) ||
+              (await renderAftermath({ ctx, src, halves, W, H }))
+            ? "ok"
+            : false;
+    if (done === "ok") return { canvas: out, translated: true };
+    ctx.drawImage(img, 0, 0, W, H);
+    return done === "neural" ? { canvas: out, translated: false, reason: "neural" } : { canvas: out, translated: false };
+  }
+
+  // cartas viradas de Kamigawa: as duas metades na mesma imagem, a de baixo de cabeça para baixo
+  // (renderFlip, ADR 0044)
+  if (print.layout === "flip") {
+    const other = opts.flip ?? null;
+    const done =
+      other?.name_pt && other.text_pt !== null
+        ? await renderFlip({ ctx, src, halves: [face, other], frame2003: print.frame === "2003", W, H })
+        : false;
+    if (!done) ctx.drawImage(img, 0, 0, W, H);
+    return { canvas: out, translated: done };
+  }
+
   if (pw) {
     const done = await renderPlaneswalker({ ctx, src, sctx, data, toImg, face, print, W, H, neural, plan });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
@@ -1564,7 +3215,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   }
 
   if (saga) {
-    const done = await renderSaga({ ctx, src, sctx, data, toImg, face, print, W, H });
+    const done = summon
+      ? await renderSummon({ ctx, src, sctx, data, toImg, face, print, flavor: opts.flavor ?? null, W, H })
+      : await renderSaga({ ctx, src, sctx, data, toImg, face, print, W, H });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: done };
   }
@@ -1573,6 +3226,14 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     const done = await renderClass({ ctx, src, sctx, data, toImg, face, print, W, H });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: done };
+  }
+
+  if (old || old93) {
+    const args = { ctx, src, sctx, data, face, print, flavor: opts.flavor ?? null, side, W, H, neural, plan };
+    const done = old ? await renderOld({ ...args, toImg }) : await renderOld93(args);
+    if (done === "ok") return { canvas: out, translated: true };
+    ctx.drawImage(img, 0, 0, W, H);
+    return done === "neural" ? { canvas: out, translated: false, reason: "neural" } : { canvas: out, translated: false };
   }
 
   // Algumas artes estendidas têm a caixa de texto mais curta e a linha de tipo mais
@@ -1592,7 +3253,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // (na sem borda a barra de tipo acaba no aro da caixa, uns 20 px antes da M15: com a busca
   // até o fim da M15, o aro entrava como bloco, o fim do traço do símbolo da Secret Lair
   // grudava nele e a estrela, solta, ficava de fora e era apagada, Lord of the Pit SLD 1857)
-  const symbolEnd = frameBox ? Math.round((frameBox.x1 + 4) * fx) : undefined;
+  // (na de 2003 a barra acaba antes, ver TYPE_BAR_END_2003)
+  const symbolEnd = frameBox ? Math.round((frameBox.x1 + 4) * fx) : print.frame === "2003" ? Math.round(TYPE_BAR_END_2003 * fx) : undefined;
   const setLeft =
     findSetSymbolLeft(
       data,
@@ -1606,12 +3268,16 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     ) / fx;
   const manaCost = sideInfo ? sideInfo.mana_cost : print.mana_cost;
   const hasPt = sideInfo ? sideInfo.has_pt : print.has_pt;
-  // lembrete do verso ("4/4") na frente das cartas de transformar
-  const backPt = print.layout === "transform" && side === 0 ? (print.sides?.[1]?.pt ?? null) : null;
+  // lembrete do verso ("4/4") na frente das cartas de transformar, e o da carta fundida na frente
+  // das de fundir ("9/10" na Bruna, ADR 0043)
+  const meld = print.layout === "meld";
+  const backPt = print.layout === "transform" && side === 0 ? (print.sides?.[1]?.pt ?? null) : meld ? (face.meld_pt ?? null) : null;
   const rightIcon = Boolean(sideInfo && side === 1 && !manaCost && hasRightIcon(data));
   const layout = m15Layout(manaCost, hasPt, setLeft, {
     // (Lição sem o efeito marcado no Scryfall, como as de SOS: o ícone conferido na imagem)
-    leftIcon: hasLeftIcon(print.effects, Boolean(sideInfo), rightIcon) || (/\bLição\b/.test(face.type_pt ?? "") && hasLessonIcon(data)),
+    // (as de fundir têm o ícone das de duas faces, sem o verso)
+    leftIcon:
+      hasLeftIcon(print.effects, Boolean(sideInfo) || meld, rightIcon) || (/\bLição\b/.test(face.type_pt ?? "") && hasLessonIcon(data)),
     rightIcon,
     // (de uma face só, o da impressão: o círculo de Crashing Footfalls era apagado e o
     // "Feitiço" ia por cima do lugar dele)
@@ -1622,6 +3288,19 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     frame2003: print.frame === "2003",
     released: print.released,
   });
+  // Carta modal: a faixa de baixo resume o outro lado ("Land  {T}: Add {R}.", "Cleric  1{W}"). A
+  // palavra e a habilidade de mana saem em português; o custo é desenho e fica (ver mdfc.ts)
+  const otherSide: 0 | 1 = side === 1 ? 0 : 1;
+  const hint =
+    print.layout === "modal_dfc" && opts.otherFace
+      ? mdfcHint(opts.otherFace, opts.typeLine?.split(" // ")[otherSide] ?? "", print.sides?.[otherSide]?.pt ?? null, print.released)
+      : null;
+  const stripRect = hint
+    ? { ...MDFC_STRIP.erase, x1: hint.mana ? MDFC_STRIP.erase.x1 : mdfcCostLeft(print.sides?.[otherSide]?.mana_cost) - 4 }
+    : null;
+  // (o ponto final de "Add {W}." encosta no fim da faixa, que é inclinado: no meio dela o
+  // apagamento vai até onde a ponta começa, e nos cantos fica antes do fio dela)
+  const stripCorners = hint?.mana ? MDFC_STRIP.corners : [];
   // caixa escura ou sem os fios da barra de tipo: não é a moldura da M15 (ver notM15Frame).
   // Na sem borda a caixa é escura de propósito: valem o aro da caixa e a barra do nome (com
   // arte clara atrás, a letra branca só se lê pelo contorno, ver lightBorderlessBox; com
@@ -1644,17 +3323,58 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     return reason ? { canvas: out, translated: false, reason } : { canvas: out, translated: false };
   };
   if (blocked || (print.flavor_name && !subtitle)) return original();
-  // Aventura: a caixa é um livro aberto, conferido na imagem (a lombada entre as páginas e as
-  // barras da aventura, ver adventureBook). A página da direita leva as regras e o flavor da
-  // criatura, no lugar da caixa; a da esquerda, as barras e as regras da aventura.
-  const adv = print.layout === "adventure" ? (opts.adventure ?? null) : null;
-  const book = adv?.name_pt && adv.text_pt !== null && !frameBox ? adventureBook(data) : null;
-  if (print.layout === "adventure" && !book) return original();
-  const advLayout = book && adv ? adventureLayout(book, adv.mana_cost) : null;
+  // Mutação: a linha da palavra-chave vai na faixa translúcida do alto da caixa, e o resto no papel
+  // abaixo do fio (ver mutate.ts). Sem o fio, ou sem a Mutação na frente do texto, sai a original.
+  const mutateParts = mutate ? mutateText(face.text_pt, face.ability_words) : null;
+  const rule = mutateParts ? mutateRule(data) : null;
+  if (mutate && !rule) return original();
+  // Protótipo: o lembrete vai na faixa do alto da caixa, à esquerda das abas do custo e do P/R do
+  // protótipo, que ficam, e o resto no papel abaixo do fio (ver prototype.ts). Sem a faixa no
+  // lugar, ou sem o Protótipo na frente do texto, sai a original.
+  const prototype = print.layout === "prototype" && !borderless;
+  const protoParts = prototype ? prototypeText(face.text_pt, face.ability_words) : null;
+  const proto = protoParts ? prototypeFrame(data, face.prototype_cost) : null;
+  if (prototype && !proto) return original();
+  // Níveis (Level up): a caixa tem três faixas fixas, cada uma com o seu texto e a sua caixa de P/R,
+  // e os selos dos níveis ("LEVEL 2-6") à esquerda das duas de baixo (ver leveler.ts). O texto de
+  // cada faixa vai no lugar do dela, com a mesma letra nas três, e o selo ganha o "NÍVEL" da
+  // impressa em PT. Sem as faixas no lugar, ou com o texto de uma que não cabe, sai a original.
+  // (com marca-d'água, as promos de ROE, a marca sairia em cacos com o apagamento de cada faixa)
+  const levelParts = print.layout === "leveler" && !borderless && !print.watermark ? levelerText(face.text_pt, face.ability_words) : null;
+  const levels = levelParts ? levelerFrame(data, print.frame === "2003") : null;
+  const levelBoxes = levels ? levelerBoxes(levels, layout.box.x0, findCardStamp(data)?.y0 ?? null) : [];
+  const levelLayouts =
+    levelParts && levels
+      ? fitRows(
+          [levelParts.main, ...levelParts.levels.map((l) => l.text)].map((text, i) => ({
+            text,
+            width: levelBoxes[i].x1 - levelBoxes[i].x0,
+            height: levelBoxes[i].y1 - levelBoxes[i].y0,
+            italic: levelParts.italic[i],
+          })),
+          measurer(ctx, W / BASE_W),
+          LEVELER_MAX_SIZE,
+          LEVELER_MIN_SIZE,
+        )
+      : null;
+  if (print.layout === "leveler" && (!levelLayouts || levelLayouts.some((l, i) => l.height > levelBoxes[i].y1 - levelBoxes[i].y0)))
+    return original();
+  // Aventura e Preparar: a caixa é dividida entre a criatura e a mágica. Na Aventura é um livro
+  // aberto, conferido na imagem (a lombada entre as páginas e as barras da aventura, ver
+  // adventureBook): a página da direita leva as regras e o flavor da criatura, a da esquerda, as
+  // barras e as regras da aventura. No Preparar é o contrário, com um fio entre as caixas (ver
+  // prepareFrame).
+  const split = print.layout === "adventure" || print.layout === "prepare";
+  const adv = split ? (opts.adventure ?? null) : null;
+  const ready = Boolean(adv?.name_pt && adv.text_pt !== null && !frameBox);
+  const book = ready && print.layout === "adventure" ? adventureBook(data) : null;
+  const prepFrame = ready && print.layout === "prepare" ? prepareFrame(data) : null;
+  if (split && !book && !prepFrame) return original();
+  const advLayout = !adv ? null : book ? adventureLayout(book, adv.mana_cost) : prepFrame ? prepareLayout(prepFrame, adv.mana_cost) : null;
   if (advLayout) {
-    const r = ADVENTURE.right;
-    layout.erase[2] = { ...layout.erase[2], rect: advLayout.right.erase };
-    layout.box = { x0: r.textX0, y0: r.textY0, x1: r.textX1, y1: layout.box.y1 };
+    const t = advLayout.creature.text;
+    layout.erase[2] = { ...layout.erase[2], rect: advLayout.creature.erase };
+    layout.box = { x0: t.x0, y0: t.y0, x1: t.x1, y1: t.y1 ?? layout.box.y1 };
   }
   // Algumas digitalizações e molduras (arte estendida) trazem o nome ou o tipo uns
   // pixels acima ou abaixo da medida padrão: mede onde as letras estão e acompanha,
@@ -1749,7 +3469,19 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
           ? roundRect(toImg(r))
           : insideBoxSides(data, toImg(r), 30 * fx, true);
   const boxErase = layout.erase.find((e) => e.stains);
-  const measuredBox = boxErase ? boxRect(boxErase.rect) : null;
+  // (nos níveis as faixas são apagadas cada uma à parte, sem os selos e as caixas de P/R)
+  const wholeBox = boxErase && !levels ? boxRect(boxErase.rect) : null;
+  // (na Mutação a caixa medida é o papel, abaixo do fio; a faixa vai à rede neural, logo abaixo)
+  // (no Protótipo também: a faixa sai à parte, com a beira medida como a da caixa)
+  const measuredBox =
+    wholeBox && rule
+      ? { ...wholeBox, y0: Math.round((rule.bottom + 1) * fy) }
+      : wholeBox && proto
+        ? { ...wholeBox, y0: Math.round(proto.paper * fy) }
+        : wholeBox;
+  const protoBand =
+    wholeBox && proto ? roundRect(insideBoxSides(data, toImg(prototypeErase(proto, boxErase?.rect.x0 ?? 58)), 30 * fx)) : null;
+  const mutateBand = wholeBox && rule ? { ...wholeBox, y1: Math.round(rule.top * fy) } : null;
   const found = findCardStamp(data, frameBox?.y1);
   // nas cartas a última linha de texto desce até perto do selo: a folga de cima fica
   // só no aro dele, para o pé das letras não ficar protegido (sobrava um tracejado)
@@ -1796,7 +3528,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // custo de mana, a do fim da barra de nome também (ver barCapGuard). Com o ícone das
   // duas faces ou o indicador de cor, o retângulo começa depois deles: ali não há ponta
   const advBars = advLayout ? [advLayout.name.rect, advLayout.type.rect] : [];
-  const advLeft = advLayout ? roundRect(toImg(advLayout.left.erase)) : null;
+  const advLeft = advLayout ? roundRect(toImg(advLayout.spell.erase)) : null;
   const advCentered = advLeft && adv?.text_pt?.trim() ? measureCentered(data, advLeft, boxGuard, fx) === true : false;
   // (as letras das barras da aventura, medidas antes de apagar)
   const advCenters = advLayout ? advBarCenters(data, advLayout, fy) : null;
@@ -1806,44 +3538,103 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       .flatMap((r) => barCapGuard(data, toImg(r), "left", Boolean(frameBox))),
     ...(!manaCost && !rightIcon ? barCapGuard(data, toImg(layout.erase[0].rect), "right", Boolean(frameBox)) : []),
   ];
-  const opaque = [...stampGuard, ...layout.protect.map(toImg), ...symbolGuard];
+  // (a faixa das modais só na moldura comum: as sem borda e as Aventuras não são modais)
+  const strip = stripRect && !frameBox && !advLayout ? stripRect : null;
+  // Na faixa das modais, o selo fica à direita dela: a proteção dele (que segue a borda preta
+  // ligada à cúpula) entrava na faixa e o ponto final de "Add {U}." ficava (Barkchannel
+  // Pathway, KHM 251). Nas linhas da faixa, ela começa onde a faixa acaba.
+  const stampKept = strip ? beside(stampGuard, roundRect(toImg(strip))) : stampGuard;
+  const opaque = [...stampKept, ...layout.protect.map(toImg), ...symbolGuard, ...(strip ? stripCorners.map(toImg) : [])];
+  // Os símbolos da habilidade de mana em inglês têm as duas cores: o disco claro e o desenho
+  // preto. Com a máscara de uma cor só, o miolo do desenho, longe da beira do disco, ficava
+  // (um pingo preto no meio do "Adicione", Drowner of Truth, MH3 253): a faixa passa de novo
+  // com a outra cor.
+  const stripPolarity = strip ? textPolarity(data, roundRect(toImg(strip))) : undefined;
   // as páginas da Aventura escurecem em direção à lombada: a sombra sai antes de apagar e volta
   // depois (ver pageShade)
-  const shaded = advLeft && measuredBox ? [measuredBox, advLeft].map((rect) => ({ rect, shade: pageShade(data, rect) })) : [];
+  const shaded =
+    advLeft && measuredBox && advLayout?.shaded ? [measuredBox, advLeft].map((rect) => ({ rect, shade: pageShade(data, rect) })) : [];
   const unshade = shaded.map((p) => shadePage(data, p.rect, p.shade));
   // barra de tipo translúcida, com a arte por trás e letra branca (artes estendidas): só as
   // letras saem, e a arte em volta delas fica (ver glassBarLetters)
   const typeRect = roundRect(toImg(layout.erase[1].rect));
   const glass = frameBox ? null : glassBarLetters(data, typeRect, [...opaque, ...capGuard], capGuard);
+  // Marca-d'água da moldura de 2003 (as das guildas, a mirrana e a phyrexiana, os logotipos das
+  // promos): cinza-clara e sem cor, o apagamento de sempre a levava só onde as letras passavam, e
+  // o resto ficava em cacos (ADR 0024). Só as letras saem, e a rede neural refaz a marca por baixo
+  // delas, como na carta impressa
+  const keepMark = print.frame === "2003" && Boolean(print.watermark) && !frameBox && !advLayout && Boolean(measuredBox) && !keepBox;
   // (a moldura sem borda vai inteira para a rede neural, logo abaixo)
   const inks = eraseRegions(
     data,
     // (abaixo da medida fixa, só o pé das letras: a medida do terço da esquerda pode
     // passar do fio de baixo nas outras partes da caixa)
     [
-      ...layout.erase.slice(subtitle ? 1 : 0, frameBox ? 0 : 3).map((e) => ({
+      ...layout.erase.slice(subtitle ? 1 : 0, frameBox ? 0 : keepMark || levels ? 2 : 3).map((e) => ({
         rect: e.stains && measuredBox ? measuredBox : glass && e === layout.erase[1] ? typeRect : toImg(e.rect),
         threshold: e.threshold,
         colorThreshold: e.colorThreshold,
         fill: glass && e === layout.erase[1] ? ("pyramid" as const) : e.fill,
         letters: glass && e === layout.erase[1] ? glass : undefined,
         stains: e.stains,
-        attachedBelow: e.stains ? (advLayout ? ADVENTURE.attachedBelow * fy : toImg(e.rect).y1) : undefined,
+        attachedBelow: e.stains ? (advLayout?.attachedBelow ? advLayout.attachedBelow * fy : toImg(e.rect).y1) : undefined,
         force:
           e.stains && bands
             ? bands.bands.map((b) => ({ x0: bands.x0 - 3 * fx, y0: b.y0 - 3 * fy, x1: bands.x1 + 3 * fx, y1: b.y1 + 3 * fy }))
             : undefined,
       })),
+      // (as faixas dos níveis como a caixa, e a palavra dos selos com a folga do contorno claro dela)
+      ...(levels
+        ? [
+            ...levelerErase(levels, layout.box.x0 - 8).map((r) => ({
+              rect: roundRect(toImg(r)),
+              threshold: 14,
+              colorThreshold: 34,
+              stains: true,
+            })),
+            ...levelerWords(levels).map((w) => ({ rect: roundRect(toImg(w.rect)), threshold: 20, force: [roundRect(toImg(w.word))] })),
+          ]
+        : []),
+      // (a faixa do Protótipo como a caixa: papel com grão, da cor do protótipo, e letra preta)
+      ...(protoBand ? [{ rect: protoBand, threshold: 14, colorThreshold: 34, stains: true }] : []),
       // (as barras da aventura como as do nome e do tipo; a página da esquerda como a caixa)
-      // (com o limiar mais baixo que o das barras do nome e do tipo, ver ADVENTURE.barThreshold)
-      ...advBars.map((r) => ({ rect: toImg(r), threshold: ADVENTURE.barThreshold, fill: "rows" as const })),
-      ...(advLeft ? [{ rect: advLeft, threshold: 14, colorThreshold: 34, stains: true, attachedBelow: ADVENTURE.attachedBelow * fy }] : []),
+      // (com o limiar mais baixo que o das barras do nome e do tipo, ver ADVENTURE.barThreshold e PREPARE.barThreshold)
+      ...advBars.map((r) => ({ rect: toImg(r), threshold: advLayout?.barThreshold ?? 20, fill: "rows" as const })),
+      ...(advLeft
+        ? [
+            {
+              rect: advLeft,
+              threshold: 14,
+              colorThreshold: 34,
+              stains: true,
+              attachedBelow: (advLayout?.attachedBelow ?? advLayout?.spell.erase.y1 ?? 0) * fy,
+            },
+          ]
+        : []),
+      // (a faixa das modais é uma barra: fundo e preenchimento linha a linha)
+      ...(strip ? [{ rect: roundRect(toImg(strip)), threshold: 28, fill: "rows" as const, polarity: stripPolarity }] : []),
+      ...(strip && hint?.mana
+        ? [
+            {
+              rect: roundRect(toImg(strip)),
+              threshold: 28,
+              fill: "rows" as const,
+              polarity: stripPolarity === "dark" ? ("light" as const) : ("dark" as const),
+            },
+          ]
+        : []),
+      // na faixa clara, os símbolos têm um halo do disco, até ~24 tons mais escuro que a faixa: o
+      // que o português não cobria ficava (um arco claro no "Ad" do Cragcrown Pathway, ZNR 261)
+      ...(strip && hint?.mana && stripPolarity === "dark"
+        ? [{ rect: roundRect(toImg(strip)), threshold: 14, fill: "rows" as const, polarity: "dark" as const }]
+        : []),
     ],
     [],
     // o selo de promoção (oval holográfico), a aba das cartas de duas faces e a caixa de
     // P/R sobem para dentro da caixa de texto: ficam, e a cor deles não entra no
     // preenchimento ao lado (a caixa de P/R dourada deixava um brilho dourado acima dela)
-    opaque,
+    // (e o número dos selos dos níveis, logo abaixo da palavra apagada)
+    levels ? [...opaque, ...levelerWords(levels).map((w) => roundRect(toImg(w.number)))] : opaque,
     capGuard,
   );
   for (const back of unshade) back();
@@ -1922,12 +3713,57 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     });
     if (!clean) return original("neural");
   }
+  // (a cor da letra da caixa, medida antes de apagar: sem a caixa em `eraseRegions`, ela não
+  // vem de lá)
+  const markInk = keepMark && measuredBox ? textPolarity(data, measuredBox) : undefined;
+  if (keepMark && measuredBox && markInk) {
+    plan(1);
+    // (só as letras: a marca é uns 20 a 40 tons mais escura que o papel, e as letras, pretas)
+    const mask = textMask(data, measuredBox, WATERMARK_2003.ink, opaque, WATERMARK_2003.color, markInk);
+    const clean = await lamaBox(
+      data,
+      [{ rect: measuredBox, mask, polarity: markInk }],
+      measuredBox,
+      opaque,
+      markInk,
+      `${print.id}:${data.width}:${side}:marca`,
+      {
+        art: true,
+        grow: Math.round(fx * 2),
+        gap: 0,
+        simple: false,
+        neural,
+      },
+    );
+    if (!clean) return original("neural");
+  }
+  // A faixa da Mutação é translúcida, com a arte por trás e a letra escura: só as letras saem, e a
+  // rede neural refaz a arte por baixo delas (a máscara como a das naves com Posicionar, sem as
+  // manchas grandes da arte, ver inkOnly)
+  if (mutateBand) {
+    plan(1);
+    const [found] = maskRegions(data, [{ rect: mutateBand, threshold: 14, colorThreshold: 34, polarity: "dark", tiles: false }], opaque);
+    const mask = inkOnly(data, found, Math.round(STATION.ink.area * fx * fy), Math.round(STATION.ink.pad * fx));
+    const clean = await lamaBox(data, [mask], mutateBand, opaque, "dark", `${print.id}:${data.width}:${side}:mutacao`, {
+      art: true,
+      grow: Math.round(fx * 2),
+      gap: 0,
+      simple: false,
+      neural,
+    });
+    if (!clean) return original("neural");
+  }
   // (sem a região do nome, apagada à parte, as cores medidas começam pela do tipo)
-  const measured: ("dark" | "light" | undefined)[] = subtitle ? [undefined, ...inks] : inks;
+  const measured: ("dark" | "light" | undefined)[] = subtitle
+    ? [undefined, ...inks]
+    : markInk
+      ? [...inks.slice(0, 2), markInk, ...inks.slice(2)]
+      : inks;
   const titleInk = frameBox ? "light" : (measured[0] ?? "light");
   const typeInk = frameBox ? "light" : (measured[1] ?? "light");
   const boxInk = measured[2] ?? boxPolarity ?? "light";
   const advInks = advLayout ? inks.slice(-3) : [];
+  const stripInk = strip ? stripPolarity : undefined;
   // o lembrete do verso pode passar do lado da caixa, no canto que avança para a moldura (SOI)
   if (backPt && measuredBox && !keepBox) {
     const y1 = layout.box.y1;
@@ -1961,8 +3797,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   if (backPt) drawBackPt(ctx, backPt, layout.box.y1 - BACK_PT_NOTCH.height / 2, k, boxInk);
 
   const box = layout.box;
-  const symbols = await preloadSymbols(face.text_pt, opts.flavor, adv?.text_pt);
+  const symbols = await preloadSymbols(face.text_pt, opts.flavor, adv?.text_pt, strip ? hint?.mana : null);
   const m = measurer(ctx, k);
+  if (strip && hint) drawMdfcHint(ctx, hint, strip.x1, k, stripInk ?? "light", symbols);
   if (advLayout && adv && advCenters) {
     const centers = advCenters;
     drawLine(
@@ -1971,15 +3808,60 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       advLayout.name.x,
       centers[0],
       advLayout.name.maxWidth,
-      ADVENTURE.name.size,
+      advLayout.name.size,
       k,
       INK[advInks[0] ?? "light"],
     );
     if (adv.type_pt)
-      drawLine(ctx, adv.type_pt, advLayout.type.x, centers[1], advLayout.type.maxWidth, ADVENTURE.type.size, k, INK[advInks[1] ?? "light"]);
-    const page = advLayout.left.text;
-    const left = fitText(adv.text_pt, null, page.x1 - page.x0, page.y1 - page.y0, m, ADVENTURE.maxSize, 15, undefined, adv.ability_words);
+      drawLine(ctx, adv.type_pt, advLayout.type.x, centers[1], advLayout.type.maxWidth, advLayout.type.size, k, INK[advInks[1] ?? "light"]);
+    const page = advLayout.spell.text;
+    const left = fitText(adv.text_pt, null, page.x1 - page.x0, page.y1 - page.y0, m, advLayout.maxSize, 15, undefined, adv.ability_words);
     drawLayout(ctx, left, page, k, advInks[2] ?? "dark", symbols, m, advCentered);
+  }
+  // Níveis: o texto de cada faixa no lugar dela, e o "NÍVEL" nos selos
+  if (levelLayouts && levels) {
+    levelLayouts.forEach((res, i) => drawLayout(ctx, res, levelBoxes[i], k, "dark", symbols, m));
+    drawLevelWords(ctx, levels, k, print.frame === "2003");
+    return { canvas: out, translated: true };
+  }
+  // Mutação: a linha da palavra-chave na faixa, o resto no papel, com a mesma letra (na impressa em
+  // PT a letra da carta inteira é a que faz o lembrete caber na faixa), sem flavor
+  if (mutateParts && rule) {
+    const parts = mutateBoxes(box, rule);
+    const [band, paper] = fitRows(
+      [
+        { text: mutateParts.band, width: box.x1 - box.x0, height: parts.band.y1 - parts.band.y0 },
+        { text: mutateParts.rest, width: box.x1 - box.x0, height: parts.paper.y1 - parts.paper.y0, italic: mutateParts.italic },
+      ],
+      m,
+      34,
+      15,
+    );
+    drawLayout(ctx, band, parts.band, k, "dark", symbols, m);
+    drawLayout(ctx, paper, parts.paper, k, boxInk, symbols, m, centered);
+    return { canvas: out, translated: true };
+  }
+  // Protótipo: o lembrete na faixa, o resto (com o flavor) no papel, com a mesma letra, como na impressa em PT
+  if (protoParts && proto) {
+    const parts = prototypeBoxes(box, proto);
+    const [band, paper] = fitRows(
+      [
+        { text: protoParts.band, width: parts.band.x1 - parts.band.x0, height: parts.band.y1 - parts.band.y0 },
+        {
+          text: protoParts.rest,
+          width: parts.paper.x1 - parts.paper.x0,
+          height: parts.paper.y1 - parts.paper.y0,
+          italic: protoParts.italic,
+          flavor: opts.flavor ?? null,
+        },
+      ],
+      m,
+      34,
+      15,
+    );
+    drawLayout(ctx, band, parts.band, k, "dark", symbols, m);
+    drawLayout(ctx, paper, parts.paper, k, boxInk, symbols, m, centered);
+    return { canvas: out, translated: true };
   }
   const res = fitText(
     face.text_pt,
@@ -1987,7 +3869,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     box.x1 - box.x0,
     box.y1 - box.y0,
     m,
-    advLayout ? ADVENTURE.maxSize : 34,
+    advLayout ? advLayout.maxSize : 34,
     15,
     backPt ? BACK_PT_NOTCH : undefined,
     face.ability_words,

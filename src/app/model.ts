@@ -94,7 +94,7 @@ export function outcomeOf(entry: Entry, misses?: ReadonlySet<string>): Outcome {
  * Escolhe a arte inicial:
  * 1. a impressão pedida na lista (coleção + número), se existir;
  * 2. a impressão suportada mais recente, sem promo, em alta resolução, na moldura atual antes da
- *    de 2003;
+ *    de 2003, e esta antes da antiga;
  * 3. sem moldura suportada: a imagem oficial em PT, se houver; com a tradução não oficial
  *    (ADR 0025), a imagem oficial em PT vem antes dela (as de Dragon's Maze só têm a imagem);
  * 4. senão, a original em inglês, pela mesma ordem, com a moldura suportada na frente: sem ela,
@@ -125,14 +125,20 @@ function byQuality(a: PrintRecord, b: PrintRecord): number {
     Number(b.highres) - Number(a.highres) ||
     // a arte sem borda só é escolhida pela pessoa: o apagamento da moldura comum é mais seguro
     Number(a.border === "borderless") - Number(b.border === "borderless") ||
-    // a moldura de 2003 (ADR 0024) também: com uma arte na moldura atual, a padrão continua
-    // a mesma (e a carta já montada no servidor, ADR 0022, continua valendo)
-    Number(a.frame === "2003") - Number(b.frame === "2003") ||
+    // a moldura de 2003 (ADR 0024), a antiga (ADR 0031) e a de 1993 (ADR 0039) também, nessa
+    // ordem: com uma arte na moldura atual, a padrão continua a mesma (e a carta já montada no
+    // servidor, ADR 0022, continua valendo); as antigas, que dependem da rede neural, só quando
+    // são as únicas
+    frameRank(a) - frameRank(b) ||
     Number(a.promo) - Number(b.promo) ||
     Number(isReprintList(a)) - Number(isReprintList(b)) ||
     (b.released ?? "").localeCompare(a.released ?? "")
   );
 }
+
+/** A moldura na escolha inicial: a atual, a de 2003, a antiga e a de 1993 (ADR 0039). */
+const FRAME_RANK: Record<string, number> = { "2003": 1, "1997": 2, "1993": 3 };
+const frameRank = (p: PrintRecord) => FRAME_RANK[p.frame ?? ""] ?? 0;
 
 /** "The List" e afins trazem um símbolo de coleção extra que atrapalha o apagamento. */
 function isReprintList(p: PrintRecord): boolean {

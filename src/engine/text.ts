@@ -30,22 +30,35 @@ export function lineText(chunks: Chunk[]): string {
   return chunks.map((c) => c.map((r) => (r.kind === "symbol" ? `{${r.value}}` : r.value)).join("")).join(" ");
 }
 
-/** Quebra uma linha de texto em runs, marcando itálico nos parênteses. */
+/**
+ * Quebra uma linha de texto em runs, marcando itálico nos parênteses. No flavor (`italicAll`), o
+ * trecho entre asteriscos sai em pé, como na carta impressa: o título do livro citado e a palavra
+ * enfatizada ("— *Pergaminho dos Primórdios*", "Reforço *e* refresco!"). Sem isso os asteriscos
+ * do texto saíam na carta. Só com os asteriscos aos pares.
+ */
 export function tokenize(line: string, italicAll = false): Run[] {
   const runs: Run[] = [];
   let depth = 0;
   let buf = "";
+  const stars = italicAll && (line.match(/\*/g)?.length ?? 0) % 2 === 0;
+  let upright = false;
+  const italicNow = () => (italicAll && !upright) || depth > 0;
   const flush = () => {
-    if (buf) runs.push({ kind: "text", value: buf, italic: italicAll || depth > 0 });
+    if (buf) runs.push({ kind: "text", value: buf, italic: italicNow() });
     buf = "";
   };
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
+    if (ch === "*" && stars) {
+      flush();
+      upright = !upright;
+      continue;
+    }
     if (ch === "{") {
       const end = line.indexOf("}", i);
       if (end > i) {
         flush();
-        runs.push({ kind: "symbol", value: line.slice(i + 1, end), italic: italicAll || depth > 0 });
+        runs.push({ kind: "symbol", value: line.slice(i + 1, end), italic: italicNow() });
         i = end;
         continue;
       }
@@ -185,6 +198,7 @@ export function layoutAt(
   m: Measurer,
   narrow: ReadonlySet<number> = new Set(),
   narrowBy = 0,
+  narrowLeft = false,
 ): LayoutResult {
   const lineHeight = size * 1.12;
   const paragraphGap = size * 0.3;
@@ -200,7 +214,11 @@ export function layoutAt(
     // impressa a continuação começa embaixo do texto, não embaixo do marcador (Hull Breach)
     const lead = p.chunks[0];
     const hang = lead?.length === 1 && lead[0].kind === "text" && lead[0].value === "•" ? chunkWidth(lead, size, m) + space : 0;
-    const push = () => lines.push({ chunks: cur, flavor: p.flavor, first, ...(first || !hang ? {} : { indent: hang }) });
+    // (no canto da esquerda, a linha estreitada começa mais para dentro)
+    const push = () => {
+      const indent = (first ? 0 : hang) + (narrowLeft && narrow.has(lines.length) ? narrowBy : 0);
+      lines.push({ chunks: cur, flavor: p.flavor, first, ...(indent ? { indent } : {}) });
+    };
     for (const chunk of p.chunks) {
       const cw = chunkWidth(chunk, size, m);
       const add = cur.length ? space + cw : cw;
@@ -230,6 +248,11 @@ export function layoutAt(
 export interface Notch {
   width: number;
   height: number;
+  /**
+   * o canto da esquerda: as linhas que encostam nele começam `width` para dentro (a curva da
+   * tira dos marcadores no pé da faixa do lembrete das Invocações, ver saga.ts)
+   */
+  left?: boolean;
 }
 
 /** Linhas que, com o texto centralizado na caixa, encostam no canto reservado. */
@@ -254,7 +277,7 @@ function layoutAround(paragraphs: Paragraph[], size: number, width: number, heig
     const next = linesInNotch(res, height, notch);
     if ([...next].every((n) => narrow.has(n))) break;
     narrow = new Set([...narrow, ...next]);
-    res = layoutAt(paragraphs, size, width, m, narrow, notch.width);
+    res = layoutAt(paragraphs, size, width, m, narrow, notch.width, notch.left);
   }
   return res;
 }
@@ -298,6 +321,8 @@ export interface TextRow {
   notch?: Notch;
   /** linhas da faixa que começam com palavra de habilidade (ver `buildParagraphs`) */
   italic?: readonly number[];
+  /** o flavor, depois das regras da faixa (o papel do Protótipo, ADR 0045) */
+  flavor?: string | null;
 }
 
 /**
@@ -305,7 +330,7 @@ export interface TextRow {
  * Todas usam o mesmo corpo, como nas cartas impressas.
  */
 export function fitRows(rows: TextRow[], m: Measurer, max = 32, min = 15): LayoutResult[] {
-  const paragraphs = rows.map((r) => buildParagraphs(r.text, null, r.italic));
+  const paragraphs = rows.map((r) => buildParagraphs(r.text, r.flavor ?? null, r.italic));
   const at = (size: number) => rows.map((r, i) => layoutAround(paragraphs[i], size, r.width, r.height, m, r.notch));
   for (let size = max; size >= min; size -= 0.5) {
     const res = at(size);
@@ -316,5 +341,5 @@ export function fitRows(rows: TextRow[], m: Measurer, max = 32, min = 15): Layou
 
 /** Diagrama cada faixa no corpo `size`, sem procurar o corpo (a Saga mede as faixas com ele, ver saga.ts). */
 export function rowsAt(rows: TextRow[], m: Measurer, size: number): LayoutResult[] {
-  return rows.map((r) => layoutAround(buildParagraphs(r.text, null, r.italic), size, r.width, r.height, m, r.notch));
+  return rows.map((r) => layoutAround(buildParagraphs(r.text, r.flavor ?? null, r.italic), size, r.width, r.height, m, r.notch));
 }

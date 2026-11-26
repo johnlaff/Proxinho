@@ -307,6 +307,30 @@ describe("emblemas", () => {
         1,
       ),
     ).toBeNull();
+    // com a margem do texto alinhado à esquerda conhecida (as divididas antigas, ADR 0038), dá: o
+    // que começa depois dela é centralizado (Wane, INV 296), numa linha só também (Suffering,
+    // INV 294), e o que começa nela é alinhado à esquerda
+    expect(
+      textCentered(
+        lines([
+          [100, 500],
+          [102, 498],
+        ]),
+        1,
+        12,
+      ),
+    ).toBe(true);
+    expect(textCentered(lines([[24, 368]]), 1, 12)).toBe(true);
+    expect(
+      textCentered(
+        lines([
+          [8, 560],
+          [8, 300],
+        ]),
+        1,
+        12,
+      ),
+    ).toBe(false);
   });
 
   it("um pingo da textura longe das letras não faz a linha do meio começar na margem (Pássaro, P03)", () => {

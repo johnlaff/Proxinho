@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildParagraphs, fitText, layoutAt, lineText, TABLE_ROW, tokenize, toChunks, type Measurer } from "../../src/engine/text";
-import { costLeft, countSymbols, frame2003Start, hasLeftIcon, m15Layout } from "../../src/engine/geometry";
+import { costLeft, countSymbols, frame2003Start, hasLeftIcon, m15Layout, starPoints } from "../../src/engine/geometry";
 import { normalizeName } from "../../src/lib/normalize";
 
 // Medidor falso: cada caractere mede metade do corpo.
@@ -32,6 +32,18 @@ describe("tokenize", () => {
     const runs = tokenize("Atropelar (Esta criatura pode causar dano excedente.)");
     expect(runs.find((r) => r.value.startsWith("("))?.italic).toBe(true);
     expect(runs[0].italic).toBe(false);
+  });
+
+  it("no flavor, o trecho entre asteriscos sai em pé, sem os asteriscos (Glory, DMR 264)", () => {
+    const runs = tokenize("— *Pergaminho dos Primórdios*", true);
+    expect(runs.map((r) => [r.value, r.italic])).toEqual([
+      ["— ", true],
+      ["Pergaminho dos Primórdios", false],
+    ]);
+    expect(tokenize("Reforço *e* refresco!", true).map((r) => r.italic)).toEqual([true, false, true]);
+    // asterisco sozinho fica como está, e nas regras o asterisco não muda nada
+    expect(tokenize("Poder *", true)[0].value).toBe("Poder *");
+    expect(tokenize("ganha +*/+0 e *x*")[0].value).toBe("ganha +*/+0 e *x*");
   });
 
   it("mantém o símbolo grudado na pontuação ao quebrar em pedaços", () => {
@@ -157,6 +169,23 @@ describe("fitText", () => {
     expect(width).toBeLessThanOrEqual(600 - notch.width);
   });
 
+  it("desvia do canto da esquerda começando a linha mais para dentro (a curva das Invocações)", () => {
+    const rules = "palavra ".repeat(40).trim();
+    const notch = { width: 24, height: 40, left: true };
+    const res = fitText(rules, null, 600, 200, fake, 34, 15, notch);
+    expect(res.height).toBeLessThanOrEqual(200);
+    // a última linha, no pé da caixa, começa depois do canto e cabe no que sobra
+    const last = res.lines[res.lines.length - 1];
+    expect(last.indent).toBe(24);
+    const width = last.chunks.reduce(
+      (w, c, i) => w + (i ? fake.text(" ", res.size, false) : 0) + fake.text(c.map((r) => r.value).join(""), res.size, false),
+      0,
+    );
+    expect(width).toBeLessThanOrEqual(600 - 24);
+    // e a primeira, longe do pé, não
+    expect(res.lines[0].indent).toBeUndefined();
+  });
+
   it("monta um parágrafo por habilidade", () => {
     expect(buildParagraphs("Voar\nVigilância", null)).toHaveLength(2);
   });
@@ -275,5 +304,18 @@ describe("linhas da tabela de d20", () => {
     const res = fitText("1—9 | Coloque um marcador de componente em Bolsa de Componentes.", null, 300, 400, fake, 20, 20);
     expect(TABLE_ROW.test(lineText(res.lines[0].chunks))).toBe(true);
     expect(TABLE_ROW.test(lineText(res.lines[1].chunks))).toBe(false);
+  });
+});
+
+describe("starPoints", () => {
+  it("a estrela do P/R do verso: cinco pontas, a primeira para cima, e o miolo com 42% do raio", () => {
+    // ("★/★" na frente da Titânia, Voz de Gaia, BRO 193: o "*" da Beleren lia-se como um pingo)
+    const pts = starPoints(100, 50, 10);
+    expect(pts).toHaveLength(10);
+    expect(pts[0][0]).toBeCloseTo(100);
+    expect(pts[0][1]).toBeCloseTo(50 - 10 + 0.8);
+    const dist = pts.map(([x, y]) => Math.hypot(x - 100, y - 50.8));
+    expect(dist.filter((_, i) => i % 2 === 0).every((d) => Math.abs(d - 10) < 1e-9)).toBe(true);
+    expect(dist.filter((_, i) => i % 2 === 1).every((d) => Math.abs(d - 4.2) < 1e-9)).toBe(true);
   });
 });

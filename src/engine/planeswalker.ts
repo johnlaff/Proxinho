@@ -16,6 +16,7 @@
  * WAR, C18, BRO, J22 e outras coleções.
  */
 import type { Rect } from "./geometry";
+import { shadeProfile, shadeRatio } from "./station";
 
 /** Com 4 habilidades ou mais, a linha de tipo sobe e a caixa fica mais alta. */
 export function isTallPlaneswalker(paragraphs: number): boolean {
@@ -288,6 +289,139 @@ export function planeswalkerRows(
   }
   if (below) rows.push({ y0: end, y1: bottom, loyalty: false, paragraphs: below });
   return rows;
+}
+
+/**
+ * Divisas que mudam de lugar (ver `planeswalkerBounds`): a divisa fica a pelo menos `iconClear`
+ * do centro do escudo (o escudo tem até 52 px de altura, e a divisa tem 5 px de rampa), ou onde
+ * estava, se já estava mais perto; e a faixa que muda de altura tem `pad` a mais em volta do
+ * texto, além dos 3 px de `rowRects`.
+ */
+export const PW_PLAN = { iconClear: 30, pad: 4 };
+
+/**
+ * As divisas entre as faixas (escala-base, de cima para baixo, uma a menos que as faixas) para a
+ * faixa `i` ter pelo menos `need[i]` de altura, cada uma o mais perto possível de onde está na
+ * imagem. O texto em PT é mais comprido que o inglês e cada habilidade cresce de um jeito: com as
+ * divisas do inglês, a faixa mais apertada encolhia a letra de todas, com espaço sobrando nas
+ * outras (Will Kenrith, Kaito Shizuki). Os escudos ficam onde estão: a divisa não passa da folga
+ * em volta deles. `null` quando não há como.
+ */
+export function planeswalkerBounds(rows: PwRow[], need: number[]): number[] | null {
+  const n = rows.length;
+  const top = rows[0].y0;
+  const bottom = rows[n - 1].y1;
+  const clear = (icon: number, at: number) => Math.min(PW_PLAN.iconClear, Math.abs(at - icon));
+  // a divisa `i` fica entre a faixa i − 1 e a faixa i
+  const lo = (i: number) => {
+    const icon = rows[i - 1].icon;
+    return icon === undefined ? -Infinity : icon + clear(icon, rows[i].y0);
+  };
+  const hi = (i: number) => {
+    const icon = rows[i].icon;
+    return icon === undefined ? Infinity : icon - clear(icon, rows[i].y0);
+  };
+  const min = [top];
+  for (let i = 1; i < n; i++) min[i] = Math.max(lo(i), min[i - 1] + need[i - 1]);
+  const max: number[] = [];
+  max[n] = bottom;
+  for (let i = n - 1; i >= 1; i--) max[i] = Math.min(hi(i), max[i + 1] - need[i]);
+  if (n === 1) return need[0] <= bottom - top ? [] : null;
+  for (let i = 1; i < n; i++) if (min[i] > max[i]) return null;
+  const out: number[] = [];
+  let prev = top;
+  for (let i = 1; i < n; i++) {
+    prev = Math.round(Math.min(Math.max(rows[i].y0, min[i], prev + need[i - 1]), max[i]));
+    out.push(prev);
+  }
+  return out;
+}
+
+/**
+ * Onde a faixa de baixo começa a escurecer (ou clarear) a de cima, na imagem já sem o texto
+ * (escala da imagem): a linha em que o tom (a mediana de cada linha, x 110 a 680) passa do meio
+ * entre o da faixa de cima e o da de baixo, perto da maior mudança a até 8 px da divisa medida
+ * (`at`, escala-base). É o meio da rampa de `shadeProfile`: com a rampa fora do lugar, a divisa
+ * antiga deixava um risco. `null` sem mudança de tom visível (as duas faixas do mesmo tom).
+ */
+export function bandEdge(img: ImageData, at: number): number | null {
+  const fx = img.width / 745;
+  const fy = img.height / 1040;
+  const x0 = Math.round(110 * fx);
+  const x1 = Math.round(680 * fx);
+  const med = new Map<number, number>();
+  const row = (y: number) => {
+    if (!med.has(y)) {
+      const v: number[] = [];
+      for (let x = x0; x < x1; x += 2) v.push(lum(img.data, (Math.min(img.height - 1, Math.max(0, y)) * img.width + x) * 4));
+      v.sort((a, b) => a - b);
+      med.set(y, v[v.length >> 1]);
+    }
+    return med.get(y)!;
+  };
+  const mean = (from: number, to: number) => {
+    let sum = 0;
+    for (let y = from; y <= to; y++) sum += row(y);
+    return sum / (to - from + 1);
+  };
+  const c = Math.round(at * fy);
+  let best = -1;
+  let score = 3; // abaixo disso não há divisa visível
+  for (let y = c - Math.round(8 * fy); y <= c + Math.round(8 * fy); y++) {
+    const d = Math.abs(mean(y + 2, y + 4) - mean(y - 4, y - 2));
+    if (d > score) {
+      score = d;
+      best = y;
+    }
+  }
+  if (best < 0) return null;
+  const mid = (mean(best - 9, best - 5) + mean(best + 5, best + 9)) / 2;
+  for (let y = best - 4; y < best + 4; y++) {
+    const a = row(y) - mid;
+    const b = row(y + 1) - mid;
+    if (a === 0) return y;
+    if (a * b < 0) return Math.round(y + a / (a - b));
+  }
+  return best;
+}
+
+/**
+ * Muda as divisas de lugar na imagem já sem o texto: cada faixa escurece (ou clareia) a de cima
+ * por um tanto por canal (`shadeRatio`, medido na divisa original); nas linhas entre a divisa
+ * original e a nova, o tom da faixa de antes vira o da faixa de agora. `from` e `to` são as
+ * divisas (escala-base); `skip` são os retângulos que ficam como estão (a caixa da lealdade
+ * inicial). As colunas são as da caixa, por dentro dos fios (x 90 a 688).
+ */
+export function moveBands(img: ImageData, top: number, bottom: number, from: number[], to: number[], skip: Rect[] = []): void {
+  const fx = img.width / 745;
+  const fy = img.height / 1040;
+  const x0 = Math.round(90 * fx);
+  const x1 = Math.round(688 * fx);
+  const y0 = Math.round(top * fy);
+  const y1 = Math.round(bottom * fy);
+  const edges: number[] = [];
+  const moved: number[] = [];
+  const ratios: [number, number, number][] = [];
+  from.forEach((b, i) => {
+    const edge = bandEdge(img, b);
+    if (edge === null || to[i] === b) return;
+    edges.push(edge - y0);
+    moved.push(Math.round(edge + (to[i] - b) * fy) - y0);
+    ratios.push(shadeRatio(img, edge, x0, x1));
+  });
+  if (!edges.length) return;
+  const old = shadeProfile(y1 - y0, edges, ratios);
+  const now = shadeProfile(y1 - y0, moved, ratios);
+  const sk = skip.map((r) => ({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy }));
+  for (let y = y0; y < y1; y++) {
+    const k = [0, 1, 2].map((c) => now[c][y - y0] / old[c][y - y0]);
+    if (k.every((v) => Math.abs(v - 1) < 1e-4)) continue;
+    for (let x = x0; x < x1; x++) {
+      if (sk.some((r) => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1)) continue;
+      const i = (y * img.width + x) * 4;
+      for (let c = 0; c < 3; c++) img.data[i + c] = img.data[i + c] * k[c];
+    }
+  }
 }
 
 /** Retângulo de texto (onde escrever) e de apagamento de uma faixa. */

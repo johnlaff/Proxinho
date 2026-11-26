@@ -646,6 +646,23 @@ describe("regrain", () => {
     expect(at(img, 12, 10)).toBe(125);
   });
 
+  it("na retícula forte, com o teto de 120 e o grão da linha inteira, o remendo não sai liso (Life Matrix, LEG 284)", () => {
+    // pontos de ±60 tons; o quadro é quase todo buraco (Unholy Citadel, LEG 309)
+    const spread = (opts?: Parameters<typeof regrain>[3]) => {
+      const { img, fill } = canvas((x, y) => 128 + (((x >> 1) + (y >> 1)) % 2 ? 60 : -60));
+      fill(80, 40, 140, 80, [128, 128, 128]);
+      const hole = new Uint8Array(W * H);
+      for (let y = 40; y < 80; y++) hole.fill(1, y * W + 80, y * W + 140);
+      regrain(img, { x0: 78, y0: 38, x1: 142, y1: 82 }, hole, opts);
+      const vals: number[] = [];
+      for (let y = 45; y < 75; y++) for (let x = 85; x < 135; x++) vals.push(at(img, x, y));
+      const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+      return Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length);
+    };
+    expect(spread()).toBeLessThan(25);
+    expect(spread({ ceiling: 120, from: { x0: 0, y0: 30, x1: 240, y1: 90 } })).toBeGreaterThan(40);
+  });
+
   it("não traz a forma da arte de longe: o remendo numa parte lisa fica liso (Molten Duplication, SLC 54)", () => {
     // arte em faixas verticais (60 e 100, de 5 px) com um trecho liso e escuro (30) no meio, e
     // o buraco de uma letra apagada nele, já preenchido de liso. O desvio copiado das faixas

@@ -509,20 +509,14 @@ export function titleIsEmblemWord(measured: number, word: number, name: number, 
 }
 
 /**
- * O texto em inglês da caixa (máscara das letras) está centralizado? Com duas linhas ou
- * mais: centralizado, o começo muda de uma linha para outra e o meio fica no lugar
- * (emblemas do Domri Rade, MM3, e do Basri Ket, M21); alinhado à esquerda, o começo fica
- * (Sephiroth, FIN). Uma linha só conta como centralizada quando começa bem depois da
- * margem e o meio dela cai no meio da caixa (Wrenn and Seven, INR: o português quebra em
- * duas linhas, e elas saem centralizadas como a do original). Uma linha só que começa na
- * margem e acaba bem antes do fim é alinhada à esquerda (Druida Elfo, CMM; Boo, AFR): o
- * português, em uma linha, saía centralizado. `null` quando não dá para dizer (sem
- * linha, ou uma linha comprida que vai de um lado ao outro).
+ * As linhas de texto da máscara de uma caixa, cada uma com o começo e o fim (em pixels, a partir
+ * do lado esquerdo da máscara): as faixas de linhas cheias de letra com 8 px de altura ou mais.
+ * Em cada linha, um pingo solto a mais de 40 px das letras fica de fora (ver `textCentered`).
  */
-export function textCentered(m: { rect: Rect; mask: Uint8Array }, fx: number): boolean | null {
+export function textLines(m: { rect: Rect; mask: Uint8Array }, fx: number): { left: number; right: number }[] {
   const w = m.rect.x1 - m.rect.x0;
   const h = m.rect.y1 - m.rect.y0;
-  if (!m.mask.length || w <= 0 || h <= 0) return null;
+  if (!m.mask.length || w <= 0 || h <= 0) return [];
   const perRow = new Uint16Array(h);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) perRow[y] += m.mask[y * w + x];
   // linhas de texto: faixas de linhas cheias de letra (um quarto da mais cheia), emendando
@@ -566,10 +560,31 @@ export function textCentered(m: { rect: Rect; mask: Uint8Array }, fx: number): b
     const kept = runs.filter((r) => r === main || r.ink >= main.ink * 0.25);
     ext.push({ left: Math.min(...kept.map((r) => r.left)), right: Math.max(...kept.map((r) => r.right)) });
   }
+  return ext;
+}
+
+/**
+ * O texto em inglês da caixa (máscara das letras) está centralizado? Com duas linhas ou
+ * mais: centralizado, o começo muda de uma linha para outra e o meio fica no lugar
+ * (emblemas do Domri Rade, MM3, e do Basri Ket, M21); alinhado à esquerda, o começo fica
+ * (Sephiroth, FIN). Uma linha só conta como centralizada quando começa bem depois da
+ * margem e o meio dela cai no meio da caixa (Wrenn and Seven, INR: o português quebra em
+ * duas linhas, e elas saem centralizadas como a do original). Uma linha só que começa na
+ * margem e acaba bem antes do fim é alinhada à esquerda (Druida Elfo, CMM; Boo, AFR): o
+ * português, em uma linha, saía centralizado. `null` quando não dá para dizer (sem
+ * linha, ou uma linha comprida que vai de um lado ao outro). Com `margin` (escala-base), o
+ * texto alinhado à esquerda começa no máximo a `margin` px do lado da caixa, e o que começa
+ * depois disso é centralizado, mesmo com as linhas da mesma largura (o "Destroy target /
+ * enchantment." do Wane, INV 296) ou numa linha só (o "Destroy target land." do Suffering).
+ */
+export function textCentered(m: { rect: Rect; mask: Uint8Array }, fx: number, margin?: number): boolean | null {
+  const w = m.rect.x1 - m.rect.x0;
+  const ext = textLines(m, fx);
   if (!ext.length) return null;
   if (ext.length === 1) {
     const { left, right } = ext[0];
     const off = Math.abs((left + right) / 2 - w / 2);
+    if (margin !== undefined && left > margin * fx) return true;
     if (left > 30 * fx && off < 12 * fx) return true;
     return left <= 30 * fx && off > 40 * fx ? false : null;
   }
@@ -579,7 +594,9 @@ export function textCentered(m: { rect: Rect; mask: Uint8Array }, fx: number): b
   if (lefts > 12 * fx && mids < lefts / 2) return true;
   // (alinhado à esquerda, as linhas começam na margem; linhas de mesma largura longe
   // dela são centralizadas que por acaso começam juntas: não dá para dizer)
-  return Math.min(...ext.map((e) => e.left)) <= 30 * fx ? false : null;
+  const first = Math.min(...ext.map((e) => e.left));
+  if (margin !== undefined) return first > margin * fx;
+  return first <= 30 * fx ? false : null;
 }
 
 /**
@@ -587,8 +604,15 @@ export function textCentered(m: { rect: Rect; mask: Uint8Array }, fx: number): b
  * as letras fortes). Vale para fichas, emblemas e cartas: alguns feitiços curtos têm o
  * texto centrado (Triumphant Reckoning e Counterspell de CMR, Wrath of God de DMR).
  */
-export function measureCentered(img: ImageData, rect: Rect, protect: Rect[], fx: number, polarity?: "dark" | "light"): boolean | null {
-  return textCentered(maskRegions(img, [{ rect, threshold: 60, polarity }], protect)[0], fx);
+export function measureCentered(
+  img: ImageData,
+  rect: Rect,
+  protect: Rect[],
+  fx: number,
+  polarity?: "dark" | "light",
+  margin?: number,
+): boolean | null {
+  return textCentered(maskRegions(img, [{ rect, threshold: 60, polarity }], protect)[0], fx, margin);
 }
 
 /** Partes do nome em versalete: maiúsculas grandes, o resto em maiúsculas menores. */

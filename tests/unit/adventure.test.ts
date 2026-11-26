@@ -110,13 +110,13 @@ describe("adventureLayout", () => {
     const l = adventureLayout({ leftTop: 760, spine: 372, bottom: 956 }, "{1}{R}");
     expect(l.name.rect.x1).toBe(adventureCostLeft("{1}{R}") - 5);
     expect(l.name.x + l.name.maxWidth).toBeLessThan(adventureCostLeft("{1}{R}"));
-    expect(l.left.erase.y0).toBe(762);
-    expect(l.left.text.y0).toBeGreaterThan(l.left.erase.y0);
+    expect(l.spell.erase.y0).toBe(762);
+    expect(l.spell.text.y0).toBeGreaterThan(l.spell.erase.y0);
     // as páginas vão até a lombada, sem o fio dela, e até o pé medido
-    expect(l.left.erase.x1).toBe(369);
-    expect(l.right.erase.x0).toBe(376);
-    expect(l.left.erase.y1).toBe(956);
-    expect(l.left.text.x1).toBeLessThan(l.left.erase.x1);
+    expect(l.spell.erase.x1).toBe(369);
+    expect(l.creature.erase.x0).toBe(376);
+    expect(l.spell.erase.y1).toBe(956);
+    expect(l.spell.text.x1).toBeLessThan(l.spell.erase.x1);
   });
 });
 

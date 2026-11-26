@@ -13,6 +13,21 @@ export interface PtFace {
   colors?: string;
   /** Linhas de `text_pt` (índices de `split("\n")`) que começam com palavra de habilidade, em itálico na carta. */
   ability_words?: number[];
+  /**
+   * Lembrete que a carta imprime fora da caixa: o das Salas de Duskmourn, na faixa entre a linha
+   * de tipo e as caixas ("(Você pode conjurar qualquer metade. …)", da dica do Arena, ADR 0033).
+   */
+  reminder_pt?: string;
+  /**
+   * Na frente das cartas de fundir: o P/R da carta fundida, que ela imprime no pé da caixa ("9/10"
+   * na Bruna), como o do verso nas de transformar (ADR 0043).
+   */
+  meld_pt?: string;
+  /**
+   * Nas criaturas com Protótipo: o custo do protótipo ("{1}{W}{W}"), impresso na aba à direita da
+   * faixa do alto da caixa; o motor acha a aba pelo número de símbolos (ADR 0045).
+   */
+  prototype_cost?: string;
 }
 
 /**
@@ -75,6 +90,11 @@ export interface PrintRecord {
    * numa linha pequena logo abaixo da barra do nome, que recebe o nome em PT.
    */
   flavor_name?: string | null;
+  /**
+   * Marca-d'água da impressão ("golgari", "mirran", "fnm"…): na moldura de 2003 ela fica, e só as
+   * letras saem de cima dela (ADR 0024).
+   */
+  watermark?: string | null;
   /**
    * Carta de uma face só com indicador de cor (o círculo à esquerda da linha de tipo:
    * Crashing Footfalls, Living End). Nas de duas faces ele vem em `sides`.

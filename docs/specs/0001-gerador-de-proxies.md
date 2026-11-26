@@ -61,9 +61,9 @@ Como jogador, quero colar a lista exportada de qualquer site para não digitar c
 
 ## Fora do escopo da v1
 
-Molduras além da 2015 normal (a de 2003 entrou em 21/11/2026, H14), edição manual do texto, tradução não oficial (entrou em 21/11/2026, H15), fichas. Ver [roadmap](../roadmap.md).
+Molduras além da 2015 normal (a de 2003 entrou em 21/11/2026, H14; a antiga, em 25/11/2026, H18), edição manual do texto, tradução não oficial (entrou em 21/11/2026, H15), fichas. Ver [roadmap](../roadmap.md).
 
-Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008). Em 19/11/2026: artes sem borda na moldura padrão, com o nome de crossover mantido no alto e o nome em PT na linha de baixo, e a sangria do PDF com a própria arte (ADR 0012). Em 20/11/2026: Sagas na moldura padrão (ADR 0016) e Aventuras na moldura de livro (ADR 0017).
+Entregue depois da v1 (17/11/2026): cartas de duas faces (frente e verso lado a lado na folha e no PDF) e planeswalkers reescritos, com a caixa translúcida preenchida por rede neural (ADRs 0007 e 0008). Em 19/11/2026: artes sem borda na moldura padrão, com o nome de crossover mantido no alto e o nome em PT na linha de baixo, e a sangria do PDF com a própria arte (ADR 0012). Em 20/11/2026: Sagas na moldura padrão (ADR 0016) e Aventuras na moldura de livro (ADR 0017). Em 25/11/2026: a faixa de baixo das cartas modais em PT (ADR 0029) e as faixas dos planeswalkers do tamanho do texto em PT (ADR 0030), e a moldura antiga (ADR 0031).
 
 ### H8. Fichas (entregue em 17/11/2026, ADR 0009)
 Como jogador, quero imprimir as fichas que o meu deck cria, em português, junto com as cartas.
@@ -95,6 +95,46 @@ Como jogador, quero imprimir as Aventuras em português na arte que eu escolher.
 - [x] A sombra do papel perto da lombada continua igual depois de apagar o inglês.
 - [x] Quando o motor não acha o livro na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
 
+### H11h. Divididas da moldura antiga (entregue em 26/11/2026, ADR 0038)
+Como jogador, quero imprimir as cartas divididas da moldura antiga (Fire // Ice, Life // Death, Wax // Wane e as outras de Invasion e Apocalypse) em português na arte que eu escolher.
+- [x] As de borda preta saem em português: o nome e o tipo das duas metades em letras brancas com sombra, como na carta de pé da moldura antiga, e o texto de cada uma, alinhado como o inglês daquela metade.
+- [x] O custo, o símbolo da coleção, os fios do alto da arte (onde o pé das letras passava) e a caixa de cada cor (com bisel, só com o fio ou de pergaminho) ficam como na carta impressa.
+- [x] Sem a rede neural no navegador, ou quando o motor não reconhece a moldura na imagem, a carta sai na original, e a etiqueta diz por quê.
+
+### H11g. Divididas da moldura de 2003 (entregue em 26/11/2026, ADR 0037)
+Como jogador, quero imprimir as cartas divididas da moldura de 2003 (Crime // Punishment, Boom // Bust e as com Fundir de Dragon's Maze, como Turn // Burn) em português na arte que eu escolher.
+- [x] As de borda preta saem em português: o nome e o tipo das duas metades na letra da moldura de 2003, o texto de cada uma e, nas com Fundir, a faixa do pé com o lembrete oficial.
+- [x] O custo, o símbolo da coleção e a ponta arredondada das barras ficam como na carta impressa.
+- [x] As promos da Friday Night Magic de 2006, com o logotipo como marca-d'água, e as que o motor não reconhece na imagem saem na original, e a etiqueta diz que saem em inglês.
+
+### H11f. Fundir na moldura atual (entregue em 25/11/2026, ADR 0036)
+Como jogador, quero imprimir as cartas com Fundir da moldura atual (Wear // Tear, Turn // Burn) em português na arte que eu escolher.
+- [x] As de borda preta saem em português: o nome, o tipo e o texto das duas metades, e a faixa do pé com o lembrete oficial do Fundir.
+- [x] O nome de cada metade é a parte dela do nome da carta inteira (Transformar // Queimar), também onde o Arena dá outro.
+- [x] Quando o motor não acha a faixa na imagem, ou não há o lembrete oficial, a carta sai na original e a etiqueta diz que sai em inglês.
+
+### H11e. Consequência (entregue em 25/11/2026, ADR 0035)
+Como jogador, quero imprimir as cartas com Consequência (Dusk // Dawn, Commit // Memory) em português na arte que eu escolher.
+- [x] As de borda preta saem em português: o nome, o tipo e o texto das duas metades, a de baixo de lado como na carta impressa, com o custo, o símbolo da coleção e o selo holográfico no lugar.
+- [x] Quando o motor não acha as barras e as caixas das duas metades na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
+
+### H11d. Cartas divididas da moldura atual (entregue em 25/11/2026, ADR 0034)
+Como jogador, quero imprimir as cartas divididas (Find // Finality, Fire // Ice, Expansion // Explosion) em português na arte que eu escolher.
+- [x] As divididas de borda preta da moldura atual saem em português: o nome, o tipo e o texto de cada metade, com o custo e o símbolo da coleção no lugar.
+- [x] Quando o motor não acha as barras e as caixas das duas metades na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
+- [x] As divididas impressas em PT mostram o nome em PT de cada metade, também onde o Scryfall o tem em inglês (Confusão // Bagunça).
+
+### H11c. Salas de Duskmourn (entregue em 25/11/2026, ADR 0033)
+Como jogador, quero imprimir as Salas de Duskmourn em português na arte que eu escolher.
+- [x] As Salas de borda preta saem em português: o nome e o texto de cada metade, com o custo no lugar, "Encantamento — Cômodo" e o lembrete das Salas na faixa do meio, com o texto oficial da explicação do Arena.
+- [x] Quando o motor não acha a moldura das Salas na imagem, ou a rede neural não roda, a carta sai na original e a etiqueta diz que sai em inglês.
+- [x] O nome em PT das cartas divididas aparece uma vez só ("Armário // Porão Esquecido").
+
+### H11b. Cartas com Preparar (entregue em 25/11/2026, ADR 0032)
+Como jogador, quero imprimir as cartas com Preparar de Secrets of Strixhaven em português na arte que eu escolher.
+- [x] As cartas com Preparar na moldura padrão e na de arte estendida saem em português: a criatura à esquerda do fio e o nome, o tipo e as regras da mágica preparada à direita, com o custo dela no lugar.
+- [x] Quando o motor não acha o fio ou as barras da mágica na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
+
 ### H12. Classes (entregue em 20/11/2026, ADR 0019)
 Como jogador, quero imprimir as Classes em português na arte que eu escolher, inclusive as que nunca saíram impressas em PT.
 - [x] As Classes na moldura padrão saem em português, com todas as habilidades no mesmo corpo de letra e cada uma no meio da faixa do seu nível.
@@ -115,7 +155,8 @@ Como jogador, quero imprimir em português as artes da moldura de 2003 a 2014, i
 - [x] O nome e o tipo saem em Matrix Bold, a fonte da época, no tamanho e na altura das letras da carta impressa, começando onde começavam nas cartas da mesma época.
 - [x] A ponta arredondada das barras do nome e do tipo fica como está, e o tipo começa onde começa na carta impressa.
 - [x] Quando a carta tem uma arte na moldura atual, ela continua sendo a padrão; a de 2003 aparece na gaveta para escolher, e vira a padrão só quando é a única em PT.
-- [x] As impressões com marca-d'água, com efeito de moldura (céu estrelado, lápide, milagre, cores trocadas), os planeswalkers de 2003 e as promos com outro desenho (Champs and States, a Secret Lair espelhada) saem na original, e a etiqueta diz que saem em inglês.
+- [x] Na moldura de 2003, a marca-d'água lisa (as das guildas, das facções, o símbolo da coleção) fica: só as letras saem, e a rede neural refaz a marca por baixo delas; sem a rede neural, a carta sai na original.
+- [x] As impressões com o logotipo de uma promo como marca-d'água (FNM, Pro Tour, Junior), com efeito de moldura (lápide, milagre, cores trocadas; o céu estrelado de Theros entra, com as barras e a caixa da comum), os planeswalkers de 2003 e as promos com outro desenho (Champs and States, a Secret Lair espelhada) saem na original, e a etiqueta diz que saem em inglês.
 
 ### H15. Tradução não oficial (entregue em 21/11/2026, ADR 0025)
 Como jogador, quero imprimir em português as cartas que nunca saíram em PT, sabendo que a tradução não é oficial.
@@ -139,3 +180,62 @@ Como jogador, quero que o pedido revisado continue lá quando eu voltar, mandar 
 - [x] A linha com coleção e número acha a impressão pedida mesmo entre fichas de mesmo nome e em cartas com mais de 80 impressões.
 - [x] Cada nome não encontrado mostra até três cartas parecidas ("Você quis dizer…?": erro de digitação, nome pela metade, palavras do nome); tocar numa põe a carta no pedido com a quantidade da linha e corrige o nome na lista colada.
 - [x] Cada linha da legenda do resumo filtra a prova pelas cartas daquele resultado (por exemplo, só as que saem em inglês); as folhas filtradas dizem "Filtro" e o PDF continua com todas.
+
+### H18. Moldura antiga (entregue em 25/11/2026, ADR 0031)
+Como jogador, quero imprimir em português as artes da moldura antiga (Mirage a Scourge, as edições básicas de 5ª a 7ª e as reimpressões retrô), inclusive das cartas que só têm arte nela.
+- [x] As cartas normais na moldura antiga, com borda preta ou branca, saem em português: o nome e o tipo em letras brancas com a sombra preta, como na carta, sobre a moldura refeita pela rede neural (sem barra pintada por cima).
+- [x] O nome sai na Goudy Medieval da época, com os acentos e a cedilha do português; o tipo e as regras, na MPlantin. O texto fica centrado na altura da caixa, sem o fio do flavor, como na carta antiga.
+- [x] O custo de mana e o símbolo da coleção ficam como estão, e o tipo em PT vai até o símbolo.
+- [x] Quando a carta tem arte na moldura atual ou na de 2003, ela continua sendo a padrão; a antiga aparece na gaveta e vira a padrão só quando é a única em PT.
+- [x] Sem a rede neural, a carta sai na original, e a etiqueta diz que o apagador de texto não rodou. O nome em PT começa depois da lápide de Odyssey a Scourge, que fica como está. As impressões com marca-d'água, os planeswalkers e a Secret Lair na moldura antiga saem na original, e a etiqueta diz que saem em inglês.
+
+### H19. Moldura de 1993 (entregue em 26/11/2026, ADR 0039)
+Como jogador, quero imprimir em português as artes da moldura de 1993 (Alpha a Alliances: as edições básicas até a 4ª, as Collectors' Editions, Arabian Nights, Antiquities, Legends, The Dark, Fallen Empires, Homelands, Ice Age, Chronicles e as promos da época), inclusive das cartas que só têm arte nela.
+- [x] As cartas normais na moldura de 1993, com borda preta ou branca, saem em português, com o nome e o tipo no estilo de letra da própria carta: brancas com sombra nas molduras escuras de Revised em diante, "gravadas" (miolo cinza, contorno escuro e brilho claro) de Alpha a Unlimited, nas Collectors' Editions e nas molduras claras.
+- [x] O nome sai na Goudy Medieval do tamanho do nome em inglês da carta (menor de Alpha a Revised), a partir da primeira letra dele; o tipo, na serifada do texto, até o símbolo da coleção.
+- [x] O inglês sai inteiro também nas digitalizações com a retícula da impressão, sem fantasma embaixo do português, no nome, no tipo e na caixa.
+- [x] A caixa apagada fica com a textura dela, sem mancha: a beira queimada do pergaminho das pretas fica como é, e o papel claro (a renda das brancas, a névoa das douradas) é refeito pela rede neural, na cor do papel.
+- [x] O nome sem tradução (o da carta em inglês) fica como está. O terreno básico fica com a caixa vazia, como o texto oficial dele em PT.
+- [x] Quando a carta tem arte na moldura atual, na de 2003 ou na antiga, ela continua sendo a padrão; a de 1993 vira a padrão só quando é a única em PT.
+- [x] Sem a rede neural, a carta sai na original, e a etiqueta diz que o apagador de texto não rodou. As douradas do Campeonato Mundial, as promos da DragonCon e do Celebration e as impressões com marca-d'água saem na original, e a etiqueta diz que saem em inglês.
+
+### H20. Criaturas com Mutação (entregue em 26/11/2026, ADR 0040)
+Como jogador, quero imprimir em português as criaturas com Mutação de Ikoria e das reimpressões.
+- [x] As criaturas com Mutação na moldura comum, de borda preta, saem em português: a linha da Mutação, com o lembrete oficial, na faixa translúcida do alto da caixa, com a arte por trás refeita pela rede neural onde estava o inglês, e o resto no papel abaixo do fio.
+- [x] As duas partes saem com a mesma letra, a maior em que as duas cabem, como na carta impressa em PT; o fio e a sombra dele ficam como estão.
+- [x] O Glowstone Recluse e o Sawtusk Demolisher saem com o "Mutação" que faltava nos dados, e o Dirge Bat com o lembrete da Mutação, como na carta física.
+- [x] Sem a rede neural, a carta sai na original, e a etiqueta diz que o apagador de texto não rodou. As de vitrine, as de Godzilla e as de Fallout saem na original, e a etiqueta diz que saem em inglês.
+
+### H21. Criaturas com Subir de Nível (entregue em 26/11/2026, ADR 0041)
+Como jogador, quero imprimir em português as criaturas com Subir de Nível de Rise of the Eldrazi e das reimpressões.
+- [x] As criaturas com Subir de Nível na moldura de 2003 e na atual, de borda preta, saem em português: o "Subir de nível" com o lembrete oficial na faixa do alto e as habilidades de cada nível na faixa dele, entre o selo e a caixa de P/R.
+- [x] As três faixas saem com a mesma letra, a maior em que todas cabem, como na carta impressa em PT; as mudanças de tom entre elas, as caixas de P/R e o filete do pé da caixa ficam como estão.
+- [x] Os selos dizem "NÍVEL", com o intervalo como impresso.
+- [x] O Hexdrinker, que vem do Arena, sai com os níveis como o Oracle e a carta impressa.
+- [x] As promos de ROE com marca-d'água, as sem borda da Secret Lair e as de Mystery Booster 2 saem na original, e a etiqueta diz que saem em inglês.
+
+### H22. Invocações de Final Fantasy (entregue em 26/11/2026, ADR 0042)
+Como jogador, quero imprimir em português as Invocações de Final Fantasy, as criaturas Saga.
+- [x] As Invocações de borda preta de FIN, FIC e das promos de pré-estreia saem em português: o lembrete oficial das Sagas impressas na faixa larga do alto, os capítulos ao lado dos marcadores, com os fios entre eles no lugar que o português pede, e a palavra-chave da criatura ou o flavor centralizados na caixa abaixo da barra de tipo.
+- [x] O lembrete desvia da curva da tira dos marcadores, como na carta impressa; o fio do lembrete, onde a arte começa, fica como está.
+- [x] O fim do tipo em inglês sai inteiro e o símbolo da coleção fica inteiro, com a barra escurecendo perto dele.
+- [x] Os Knights of Round, cujo lembrete nunca saiu impresso em PT, e as sem borda saem na original, e a etiqueta diz que saem em inglês.
+
+### H23. A frente das cartas de fundir (entregue em 26/11/2026, ADR 0043)
+Como jogador, quero imprimir em português as cartas de fundir (meld), como Bruna e Gisela, Urza e as Pedras, Mishra e o Dragão Mecânico.
+- [x] A frente das cartas de fundir de borda preta sai em português, com o ícone à esquerda do nome e o P/R da carta fundida no pé da caixa, como na carta impressa ("★/★" com a estrela).
+- [x] O lembrete "(Funde-se com …)" sai com o texto oficial das cartas impressas em PT; sem impressa, a carta fica sem ele.
+- [x] O nome de cada carta de fundir é o dela, sem o da carta fundida ("Fang, l’Cie Destemida", não "Fang, l’Cie Destemida // Ragnarok, Salvação Divina").
+- [x] As cartas fundidas e as sem borda saem na original, e a etiqueta diz que saem em inglês.
+
+### H24. As cartas viradas de Kamigawa (entregue em 26/11/2026, ADR 0044)
+Como jogador, quero imprimir em português as cartas viradas de Kamigawa, como Budoka Gardener e Nezumi Graverobber.
+- [x] As duas metades saem em português, a de baixo de cabeça para baixo como na carta impressa: o tipo e o texto de cada uma, com a tradução não oficial e o nome em inglês.
+- [x] A caixa de P/R de cada metade e a sombra dela ficam inteiras, e o símbolo da coleção da moldura atual também.
+- [x] As da moldura de 2003 e da atual, de borda preta e branca, saem em PT; as fichas de Papel de Wilds of Eldraine e a de Unhinged saem na original.
+
+### H25. As criaturas com Protótipo (entregue em 26/11/2026, ADR 0045)
+Como jogador, quero imprimir em português as criaturas com Protótipo, como Steel Seraph e Phyrexian Fleshgorger.
+- [x] O lembrete do Protótipo sai na faixa colorida do alto da caixa, com o texto oficial das impressas em PT, e o resto do texto no papel, com a mesma letra, como na carta impressa.
+- [x] A aba do custo e a caixa de P/R do protótipo ficam inteiras, nas faixas de todas as cores.
+- [x] As de The Brothers' War, as promos, as de The List, as de arte estendida e a de Modern Horizons 3 saem em PT.

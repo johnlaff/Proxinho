@@ -13,7 +13,9 @@
  * toda da coluna. Letra nenhuma faz esse degrau na largura toda.
  *
  * Medidas na escala-base de 745 × 1040 (PNG do Scryfall), conferidas em DOM, THB, KHM, MH2,
- * DMU, LTR, WOE, MH3, DSK, TDM, SPM, MSH, HOB e TRK.
+ * DMU, LTR, WOE, MH3, DSK, TDM, SPM, MSH, HOB e TRK. As Invocações de Final Fantasy (criaturas
+ * Saga) têm a moldura com o lembrete numa faixa larga no alto e uma caixa abaixo da barra de
+ * tipo: ver `SUMMON`.
  */
 import { BASE_H, BASE_W, type Rect } from "./geometry";
 
@@ -28,6 +30,36 @@ export const SAGA = {
   art: { x0: 360, x1: 384 },
   /** fio de cima da barra de tipo (y ≈ 870 a 875 com a sombra) e o desvio em relação à carta comum */
   type: { y0: 862, y1: 900, shift: 291 },
+};
+
+/**
+ * Invocações de Final Fantasy (as criaturas Saga de FIN, FIC e das promos de pré-estreia): a
+ * moldura da Saga com três diferenças. O lembrete vai numa faixa larga no alto, na largura da
+ * caixa (o papel acaba em x ≈ 684), que acaba num fio em y ≈ 221, onde a arte começa: esse fio
+ * fica onde está. A coluna dos capítulos vai dele até a barra de tipo, com o fio de cima em
+ * y ≈ 786 (na Saga comum, uns 84 px mais abaixo). E abaixo da barra há uma caixa como a da carta
+ * comum, com a palavra-chave da criatura ou o flavor centralizados e a caixa de P/R. Medidas nas
+ * 29 impressões (FIN, FIC e PFIN), iguais nas três.
+ */
+export const SUMMON = {
+  /** a faixa do lembrete: onde acaba o papel, à direita, e onde acaba o texto; e a folga do texto acima do fio */
+  top: { x1: 684, textX1: 677, pad: 5 },
+  /** o fio de baixo da faixa do lembrete (y = 221 nas 29) */
+  divider: { min: 214, max: 228 },
+  /** o fio de cima da barra de tipo (786 a 789 nas 29) */
+  type: { y0: 775, y1: 800 },
+  /**
+   * a caixa de baixo, dos lados da caixa da carta comum até o pé dela (o papel vai de x 55 a 684 e
+   * até y ≈ 953), e o maior corpo do texto dela, o da caixa da carta comum ("Flying" no Bahamut)
+   */
+  box: { x0: 58, x1: 688, y1: 954, gap: 12, size: 34 },
+  /**
+   * a curva da tira dos marcadores no pé da faixa do lembrete (ver `TOP_CURVE`): a linha que
+   * passa dos 26 px de baixo do texto começa 24 px para dentro, depois dela, como o "add a lore
+   * counter" na carta impressa. O lembrete em PT tem três linhas, e com o texto acabando 26 px
+   * acima do fio, como na Saga comum, a letra descia a uns 20 px
+   */
+  curve: { width: 24, height: 26, left: true },
 };
 
 const lum = (d: Uint8ClampedArray, i: number) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
@@ -63,7 +95,7 @@ export function sagaArtLeft(img: ImageData): number | null {
  * 6 px acima fica 5 tons ou mais acima da linha logo antes do degrau (ou da anterior). O pé das
  * letras clareia só onde havia tinta, longe dos 85%; o grão do papel de MH2 chega a 73%.
  */
-export function sagaDividers(img: ImageData, artLeft: number): number[] {
+export function sagaDividers(img: ImageData, artLeft: number, to = 860): number[] {
   const fx = img.width / BASE_W;
   const fy = img.height / BASE_H;
   const x0 = Math.round(100 * fx);
@@ -80,7 +112,7 @@ export function sagaDividers(img: ImageData, artLeft: number): number[] {
     for (let x = x0; x < x1; x++) shade[x - x0] = at(x, y - 1 - above) - at(x, y - 1);
     return shade.slice().sort()[w >> 1];
   };
-  for (let y = Math.round(126 * fy); y <= Math.round(860 * fy); y++) {
+  for (let y = Math.round(126 * fy); y <= Math.round(to * fy); y++) {
     // (o degrau é medido em duas linhas: nas digitalizações, como as cartas de Theros e as
     // promos de pré-estreia, ele se espalha por duas e não passava de 6 tons em nenhuma)
     let up = 0;
@@ -103,39 +135,53 @@ export interface SagaText {
   top: { text: string; line: number }[];
   /** um item por faixa de capítulo, sem o número (que está no marcador) */
   chapters: { numerals: string; text: string; line: number }[];
+  /** linhas depois dos capítulos (a palavra-chave das Invocações, na caixa de baixo); só com `tail` */
+  tail: { text: string; line: number }[];
 }
 
 /**
- * Separa o texto em PT da Saga em linhas do alto e capítulos. `null` quando não há capítulo
- * ou há texto depois deles (as criaturas Saga de Final Fantasy, com a palavra-chave embaixo,
- * têm outra moldura).
+ * Separa o texto em PT da Saga em linhas do alto e capítulos. As opções "•" de um capítulo
+ * ("Escolha um aleatoriamente —") vão com ele. `null` quando não há capítulo, ou quando há texto
+ * depois deles e `tail` é falso: as criaturas Saga de Final Fantasy (as Invocações), com a
+ * palavra-chave embaixo, têm outra moldura (ver `SUMMON`).
  */
-export function sagaText(text: string | null): SagaText | null {
+export function sagaText(text: string | null, tail = false): SagaText | null {
   const top: SagaText["top"] = [];
   const chapters: SagaText["chapters"] = [];
+  const after: SagaText["tail"] = [];
   const lines = (text ?? "").split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
     const m = CHAPTER.exec(line);
-    if (m) chapters.push({ numerals: m[1], text: m[2], line: i });
-    else if (chapters.length) return null;
-    else top.push({ text: line, line: i });
+    const last = chapters[chapters.length - 1];
+    if (m && !after.length) chapters.push({ numerals: m[1], text: m[2], line: i });
+    else if (last && !after.length && line.startsWith("•")) last.text += `\n${line}`;
+    else if (chapters.length) {
+      if (!tail) return null;
+      after.push({ text: line, line: i });
+    } else top.push({ text: line, line: i });
   }
-  return chapters.length ? { top, chapters } : null;
+  return chapters.length ? { top, chapters, tail: after } : null;
 }
 
 /**
  * As faixas da coluna (escala-base): a do alto e uma por capítulo, entre os fios medidos. O
  * retângulo `erase` vai do fio de cima ao de baixo, sem a tira dos marcadores; `text` é onde
- * o português cabe, com folga da sombra do fio de baixo.
+ * o português cabe, com folga da sombra do fio de baixo. Nas Invocações a coluna (`column`) vai
+ * do fio do lembrete à barra de tipo e só tem capítulos (`hasTop` falso).
  */
-export function sagaBands(dividers: number[], artLeft: number): { erase: Rect; text: Rect }[] {
-  const edges = [SAGA.column.y0, ...dividers, SAGA.column.y1];
+export function sagaBands(
+  dividers: number[],
+  artLeft: number,
+  column: { y0: number; y1: number } = SAGA.column,
+  hasTop = true,
+): { erase: Rect; text: Rect }[] {
+  const edges = [column.y0, ...dividers, column.y1];
   const x1 = artLeft - 2;
   const out: { erase: Rect; text: Rect }[] = [];
   for (let i = 0; i + 1 < edges.length; i++) {
-    const top = i === 0;
+    const top = hasTop && i === 0;
     const y0 = edges[i] + (top ? 0 : 1);
     const y1 = edges[i + 1] - (i + 2 < edges.length ? 1 : 0);
     out.push({
@@ -217,8 +263,9 @@ export function sagaPlan(
   hasTop: boolean,
   markers: { first: number; last: number }[],
   topLimit = Infinity,
+  column: { y0: number; y1: number } = SAGA.column,
 ): number[] | null {
-  const { y0: top, y1: bottom } = SAGA.column;
+  const { y0: top, y1: bottom } = column;
   const n = heights.length;
   if (n !== markers.length + (hasTop ? 1 : 0) || n < 1) return null;
   if (hasTop && top + SAGA_PAD.edge + heights[0] > topLimit) return null;
@@ -261,8 +308,8 @@ export function topAligned(box: Rect, height: number): Rect {
 }
 
 /** Retângulos de texto das faixas (escala-base) entre os fios `dividers`, com as folgas de `SAGA_PAD`. */
-export function sagaBoxes(dividers: number[], hasTop: boolean, artLeft: number): Rect[] {
-  const edges = [SAGA.column.y0, ...dividers, SAGA.column.y1];
+export function sagaBoxes(dividers: number[], hasTop: boolean, artLeft: number, column: { y0: number; y1: number } = SAGA.column): Rect[] {
+  const edges = [column.y0, ...dividers, column.y1];
   return edges.slice(0, -1).map((y, i) => ({
     x0: hasTop && i === 0 ? SAGA.text.topX0 : SAGA.text.chapterX0,
     y0: y + (i === 0 ? SAGA_PAD.edge : SAGA_PAD.below),

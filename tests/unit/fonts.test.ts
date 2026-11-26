@@ -46,13 +46,30 @@ describe("fontes das cartas", () => {
     const fonts = await freshFonts(["matrix-bold"]);
     expect(fonts.titleFont(true).family).toBe("ProxinhoTituloOficial");
     // "o|o" é o que o montador grava e o site procura no servidor: com a de 2003 diferente, não
-    expect(fonts.fontsId()).toBe("b|o");
+    expect(fonts.fontsId()).toBe("b3|o");
     expect(fonts.activeFonts()).toBe("oficiais");
   });
 
-  it("a fonte escolhida pela pessoa vale também na moldura de 2003", async () => {
+  it("moldura antiga: o nome na Goudy Medieval, pela linha de base (ADR 0031)", async () => {
+    const fonts = await freshFonts([]);
+    const old = fonts.oldNameFont();
+    expect(old.family).toBe("ProxinhoTitulo1997");
+    expect(old.baseline).toBe("alphabetic");
+    expect(old.rise).toBe(0);
+  });
+
+  it("sem o arquivo da Goudy Medieval, o nome da antiga sai na Beleren e as cartas guardadas não valem", async () => {
+    const fonts = await freshFonts(["medieval"]);
+    expect(fonts.oldNameFont().family).toBe("ProxinhoTituloOficial");
+    // (a de 2003 continua na Matrix Bold)
+    expect(fonts.titleFont(true).family).toBe("ProxinhoTitulo2003");
+    expect(fonts.fontsId()).toBe("b7|o");
+  });
+
+  it("a fonte escolhida pela pessoa vale também nas molduras de 2003 e antiga", async () => {
     const fonts = await freshFonts([]);
     await fonts.applyCustomFonts({ title: new ArrayBuffer(8) });
     expect(fonts.titleFont(true).family).toBe("ProxinhoTituloPessoal");
+    expect(fonts.oldNameFont().family).toBe("ProxinhoTituloPessoal");
   });
 });

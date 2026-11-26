@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
+from build import add_meld_data, flip_supported, prototype_cost, prototype_reminders, prototype_supported, prototype_text, is_meld_result, meld_supported, own_faces, join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -72,12 +72,38 @@ class Transcribe(unittest.TestCase):
         self.assertEqual(printed_faces(c)[0]["name_pt"], "Esgotos de Estark")
         self.assertFalse(printed_has_text(c))
 
+    def test_nomes_das_metades_que_o_scryfall_tem_em_ingles(self) -> None:
+        # Confusão // Bagunça (TSR 186): o Scryfall tem o texto em PT e os nomes em inglês
+        table = {"tsr/186": {"name": "Rough // Tumble", "face_names": ["Confusão", "Bagunça"]}}
+        faces = [
+            {"name": "Rough", "printed_name": "Rough", "printed_text": "Confusão causa 2 pontos de dano a cada criatura sem voar."},
+            {"name": "Tumble", "printed_name": "Tumble", "printed_text": "Bagunça causa 6 pontos de dano a cada criatura com voar."},
+        ]
+        card = {"set": "tsr", "collector_number": "186", "name": "Rough // Tumble", "card_faces": faces}
+        c = transcribe(card, table)
+        self.assertEqual([f["name_pt"] for f in printed_faces(c)], ["Confusão", "Bagunça"])
+        self.assertEqual(c["_transcribed"], "tsr/186")
+        # com o nome em PT no Scryfall, fica o dele
+        named = {**card, "card_faces": [{**f, "printed_name": n} for f, n in zip(faces, ["Confusão", "Bagunça"])]}
+        self.assertIs(transcribe(named, table), named)
+        # o nome inteiro da carta em inglês em cada metade (Saciar // Exagerar, NCC 46)
+        whole = {**card, "card_faces": [{**f, "printed_name": "Rough // Tumble"} for f in faces]}
+        self.assertEqual([f["name_pt"] for f in printed_faces(transcribe(whole, table))], ["Confusão", "Bagunça"])
+        # outra carta no número, nada muda
+        other = {**card, "name": "Boom // Bust"}
+        self.assertIs(transcribe(other, table), other)
+
     def test_transcritas_com_os_mesmos_numeros_e_simbolos_do_oracle(self) -> None:
         mark = re.compile(r"\{[^}]+\}|[+-]?\d+/[+-]?\d+|[+-]?\d+|\bX\b")
         table = build.load_transcribed()
         self.assertGreater(len(table), 80)
         for key, t in table.items():
             self.assertRegex(key, r"^[a-z0-9]+/[0-9a-z]+$")
+            if "face_names" in t:
+                # só os nomes das metades de uma carta dividida (ver transcribe_face_names)
+                self.assertEqual(set(t), {"name", "face_names"}, key)
+                self.assertEqual(len(t["face_names"]), len(t["name"].split(" // ")), key)
+                continue
             self.assertTrue(t["name"] and t["printed_name"], key)
             self.assertLessEqual(set(t), {"name", "oracle_text", "printed_name", "printed_type_line", "printed_text", "flavor_text"}, key)
             if "printed_text" not in t:
@@ -369,6 +395,11 @@ class FrameSupported(unittest.TestCase):
     def test_moldura_comum(self) -> None:
         self.assertTrue(frame_supported({**self.base, "promo_types": ["setpromo"]}))
 
+    def test_serie_spree_tem_a_moldura_comum(self) -> None:
+        # a aba do "+" fica fora da barra do nome (Requisition Raid OTJ 26), também na arte estendida
+        self.assertTrue(frame_supported({**self.base, "frame_effects": ["spree"]}))
+        self.assertTrue(frame_supported({**self.base, "frame_effects": ["extendedart", "spree"]}))
+
     def test_game_day_com_a_arte_atras_da_caixa(self) -> None:
         # Thunderbreak Regent (pdtk 162): o Scryfall não marca full_art
         self.assertFalse(frame_supported({**self.base, "full_art": False, "promo_types": ["setpromo", "gameday"]}))
@@ -404,14 +435,22 @@ class FrameSupported(unittest.TestCase):
         # ADR 0024: a moldura comum de 2003 a 2014 entra (Uncontrollable Anger 10E 244)
         m03 = {**self.base, "frame": "2003"}
         self.assertTrue(frame_supported(m03))
-        # com efeito o desenho muda: céu de Theros, lápide de Odyssey, milagre, cores trocadas
-        for effect in ("enchantment", "tombstone", "miracle", "colorshifted"):
+        # o céu estrelado de Theros fica só na moldura em volta: barras e caixa iguais
+        # (Archetype of Endurance BNG 116)
+        self.assertTrue(frame_supported({**m03, "frame_effects": ["enchantment"]}))
+        # com outro efeito o desenho muda: lápide de Odyssey, milagre, cores trocadas
+        for effect in ("tombstone", "miracle", "colorshifted"):
             self.assertFalse(frame_supported({**m03, "frame_effects": [effect]}), effect)
+            self.assertFalse(frame_supported({**m03, "frame_effects": ["enchantment", effect]}), effect)
         # planeswalker de 2003 tem caixa própria
         self.assertFalse(frame_supported({**m03, "type_line": "Legendary Planeswalker — Jace"}))
-        # marca-d'água: a de guilda ficava em cacos (Darksteel Relic NPH 134) e a de promo em
-        # manchas (Elvish Visionary F10 6)
-        for mark in ("mirran", "golgari", "fnm", "dci", "junior"):
+        # marca-d'água lisa entra: o motor apaga só as letras e a rede neural refaz a marca por
+        # baixo delas (Darksteel Relic NPH 134, Wojek Halberdiers GTC 208)
+        for mark in ("mirran", "phyrexian", "golgari", "boros", "dci", "wotc", "set", "colorpie"):
+            self.assertTrue(frame_supported({**m03, "watermark": mark}), mark)
+        # os logotipos grandes das promos, não: a rede neural os refazia em borrões, e o "FNM"
+        # deixava pedaços do inglês (Terror F03 8)
+        for mark in ("fnm", "arena", "protour", "grandprix", "mtg", "junior", "scholarship", "herospath"):
             self.assertFalse(frame_supported({**m03, "watermark": mark}), mark)
         # na M15 a marca-d'água não muda nada aqui
         self.assertTrue(frame_supported({**self.base, "watermark": "golgari"}))
@@ -427,6 +466,44 @@ class FrameSupported(unittest.TestCase):
         for code in ("pcmp", "sld"):
             self.assertFalse(frame_supported({**m03, "set": code}), code)
             self.assertTrue(frame_supported({**self.base, "set": code}), code)
+
+
+    def test_moldura_antiga(self) -> None:
+        # ADR 0031: a moldura de 1997 a 2003 e das retrô entra (Catastrophe USG 6)
+        old = {**self.base, "frame": "1997"}
+        self.assertTrue(frame_supported(old))
+        self.assertTrue(frame_supported({**old, "border_color": "white"}))
+        # a lápide de Odyssey fica antes do nome, e o nome em PT começa depois dela (Seize the Day,
+        # ODY 220); os outros efeitos mudam o desenho
+        self.assertTrue(frame_supported({**old, "frame_effects": ["tombstone"]}))
+        self.assertFalse(frame_supported({**old, "frame_effects": ["tombstone", "legendary"]}))
+        # marca-d'água no meio da caixa: os logotipos das promos e o "wotc" das de 30 anos
+        for mark in ("wotc", "arena", "dci", "junior"):
+            self.assertFalse(frame_supported({**old, "watermark": mark}), mark)
+        # planeswalker retrô (MH3) tem caixa própria; as de World Championship têm borda dourada
+        self.assertFalse(frame_supported({**old, "type_line": "Legendary Planeswalker — Urza"}))
+        self.assertFalse(frame_supported({**old, "border_color": "gold"}))
+        for layout in ("split", "transform", "token"):
+            self.assertFalse(frame_supported({**old, "layout": layout}), layout)
+        # Secret Lair na antiga: o tipo em outras letras (SLD 2517)
+        self.assertFalse(frame_supported({**old, "set": "sld"}))
+
+    def test_moldura_de_1993(self) -> None:
+        # ADR 0039: a moldura de Alpha a Alliances entra (Serra Angel 3ED 40, Holy Armor LEB 24),
+        # com borda preta ou branca
+        m93 = {**self.base, "frame": "1993"}
+        self.assertTrue(frame_supported(m93))
+        self.assertTrue(frame_supported({**m93, "border_color": "white", "set": "4ed"}))
+        # as douradas (Pro Tour Collector Set, World Championship) ficam de fora pela borda, e os
+        # outros layouts também
+        self.assertFalse(frame_supported({**m93, "border_color": "gold", "set": "ptc"}))
+        self.assertFalse(frame_supported({**m93, "layout": "token"}))
+        # a DragonCon (uma linha a mais na caixa) e as de comemoração têm outro desenho
+        for code in ("pdrc", "pcel"):
+            self.assertFalse(frame_supported({**m93, "set": code}), code)
+        # efeito ou marca-d'água: nenhuma impressão de 1993 tem, e um desenho novo não entra sozinho
+        self.assertFalse(frame_supported({**m93, "frame_effects": ["legendary"]}))
+        self.assertFalse(frame_supported({**m93, "watermark": "wotc"}))
 
 
 class BorderlessSupported(unittest.TestCase):
@@ -724,6 +801,236 @@ class StationSupported(unittest.TestCase):
         self.assertFalse(station_supported({**self.base, "textless": True}))
 
 
+class MutateSupported(unittest.TestCase):
+    base = {"frame": "2015", "layout": "mutate", "border_color": "black", "type_line": "Creature — Beast"}
+
+    def test_moldura_padrao(self):
+        self.assertTrue(mutate_supported(self.base))
+        self.assertTrue(mutate_supported({**self.base, "frame_effects": ["legendary"]}))
+        # promos de pré-estreia e do pacote de promoções: a mesma caixa, com o selo na arte
+        self.assertTrue(mutate_supported({**self.base, "promo_types": ["prerelease", "datestamped"]}))
+
+    def test_outras_molduras(self):
+        # as de vitrine (a caixa de outro desenho) e as sem borda de Godzilla
+        self.assertFalse(mutate_supported({**self.base, "frame_effects": ["showcase", "inverted"]}))
+        self.assertFalse(mutate_supported({**self.base, "border_color": "borderless", "frame_effects": ["inverted"]}))
+        self.assertFalse(mutate_supported({**self.base, "layout": "normal"}))
+        self.assertFalse(mutate_supported({**self.base, "full_art": True}))
+        self.assertFalse(mutate_supported({**self.base, "textless": True}))
+
+
+class MutateText(unittest.TestCase):
+    MUTATE = "Mutate {3}{G} (If you cast this spell for its mutate cost, put it over or under target non-Human creature you own. They mutate into the creature on top plus all abilities from under it.)"
+
+    def test_nome_que_falta(self):
+        # Glowstone Recluse: "{3}{G}" no Arena, com o lembrete no Scryfall, e "Mutação" na carta impressa
+        en = f"{self.MUTATE}\nReach\nWhenever this creature mutates, put two +1/+1 counters on it."
+        self.assertEqual(restore_cost_keyword(en, "{3}{G}\nAlcance\nToda vez…"), "Mutação {3}{G}\nAlcance\nToda vez…")
+        self.assertEqual(restore_cost_keyword(en, "{3}{G} (Se você conjurar…)\nAlcance"), "Mutação {3}{G} (Se você conjurar…)\nAlcance")
+
+    def test_fica_como_esta(self):
+        en = f"{self.MUTATE}\n{{2}}, {{T}}: Draw a card."
+        # com o nome, com outro custo e uma habilidade ativada que começa pelo custo
+        self.assertEqual(restore_cost_keyword(en, "Mutação {3}{G}\n{2}, {T}: Compre um card."), "Mutação {3}{G}\n{2}, {T}: Compre um card.")
+        self.assertEqual(restore_cost_keyword(en, "{2}{G}\nAlcance"), "{2}{G}\nAlcance")
+        self.assertEqual(restore_cost_keyword("Echo {1}{G} (At the beginning…)", "{1}{G}"), "{1}{G}")
+        self.assertIsNone(restore_cost_keyword(en, None))
+
+    def test_palavras_chave_juntas(self):
+        # Dirge Bat: o Oracle tem "Flash" e "Flying" em linhas separadas, e o Arena, "Lampejo, voar"
+        en = ["Mutate {4}{B}{B} (If…)", "Flash", "Flying", "Whenever this creature mutates, destroy target creature."]
+        self.assertEqual(join_keyword_lines(en), ["Mutate {4}{B}{B} (If…)", "Flash, flying", "Whenever this creature mutates, destroy target creature."])
+        self.assertEqual(join_keyword_lines(["First strike", "Double strike", "Vigilance"]), ["First strike, double strike, vigilance"])
+        # palavra-chave com custo ou lembrete não junta
+        self.assertEqual(join_keyword_lines(["Flying", "Ward {2}"]), ["Flying", "Ward {2}"])
+        reminders = {"If…": "Se…"}
+        pt = "Mutação {4}{B}{B}\nLampejo, voar\nToda vez que esta criatura sofrer mutação, destrua a criatura alvo."
+        out = add_reminders("\n".join(en), pt, reminders)
+        self.assertEqual(out.split("\n")[0], "Mutação {4}{B}{B} (Se…)")
+        self.assertEqual(out.split("\n")[1:], pt.split("\n")[1:])
+
+
+class LevelerText(unittest.TestCase):
+    """Subir de Nível (Level up): o Arena marca cada nível com "LEVEL [3-7] [4/4] [Protection from instants]"
+    em inglês e "NÍVEL [3-7] [4/4] […]" em PT, antes das habilidades do nível."""
+
+    def test_selo_e_pt_do_marcador(self):
+        self.assertEqual(leveler_level("LEVEL [3-7] [4/4] [Protection from instants]"), ["NÍVEL 3-7", "4/4"])
+        self.assertEqual(leveler_level("LEVEL [8+] [6/6] [Protection from everything]"), ["NÍVEL 8+", "6/6"])
+        self.assertIsNone(leveler_level("Level up {1}"))
+        self.assertIsNone(leveler_level(None))
+
+    def test_niveis_como_o_oracle(self):
+        # Hexdrinker: saía "Proteção contra mágicas instantâneas, nÍVEL [8+] [6/6] […]" numa linha só
+        groups = [
+            (None, ["Subir de nível {1}"], []),
+            (None, ["Proteção contra mágicas instantâneas"], ["NÍVEL 3-7", "4/4"]),
+            (None, ["Proteção contra tudo"], ["NÍVEL 8+", "6/6"]),
+        ]
+        self.assertEqual(
+            join_station(groups),
+            ["Subir de nível {1}", "NÍVEL 3-7", "4/4", "Proteção contra mágicas instantâneas", "NÍVEL 8+", "6/6", "Proteção contra tudo"],
+        )
+
+
+class LevelerSupported(unittest.TestCase):
+    base = {"frame": "2003", "layout": "leveler", "border_color": "black", "type_line": "Creature — Human Warrior"}
+
+    def test_molduras_dos_niveis(self):
+        # Rise of the Eldrazi (2003) e Commander, Modern Horizons (atual)
+        self.assertTrue(leveler_supported(self.base))
+        self.assertTrue(leveler_supported({**self.base, "frame": "2015", "frame_effects": ["legendary"]}))
+
+    def test_outras_molduras(self):
+        # as promos de ROE com a marca-d'água, que saía em cacos com o apagamento de cada faixa
+        self.assertFalse(leveler_supported({**self.base, "watermark": "planeswalker"}))
+        # Secret Lair sem borda, a de borda branca e a carta de teste de MB2
+        self.assertFalse(leveler_supported({**self.base, "frame": "2015", "border_color": "borderless"}))
+        self.assertFalse(leveler_supported({**self.base, "frame": "2015", "border_color": "white"}))
+        self.assertFalse(leveler_supported({**self.base, "frame": "2015", "promo_types": ["playtest"]}))
+        self.assertFalse(leveler_supported({**self.base, "layout": "normal"}))
+        self.assertFalse(leveler_supported({**self.base, "frame": "1997"}))
+        self.assertFalse(leveler_supported({**self.base, "frame_effects": ["showcase"]}))
+
+
+class CartasViradas(unittest.TestCase):
+    base = {
+        "name": "Budoka Gardener // Dokai, Weaver of Life",
+        "frame": "2003",
+        "layout": "flip",
+        "border_color": "black",
+        "type_line": "Creature — Human Monk // Legendary Creature — Human Monk",
+        "card_faces": [{"name": "Budoka Gardener"}, {"name": "Dokai, Weaver of Life"}],
+    }
+
+    def test_kamigawa_e_reimpressoes(self):
+        # Champions of Kamigawa (2003), Commander 2018 (moldura atual) e a Hachette, de borda branca
+        self.assertTrue(flip_supported(self.base))
+        self.assertTrue(flip_supported({**self.base, "frame": "2015"}))
+        self.assertTrue(flip_supported({**self.base, "border_color": "white"}))
+
+    def test_fichas_e_unhinged(self):
+        # as fichas de Papel de Wilds of Eldraine também têm o layout "flip"
+        role = {**self.base, "frame": "2015", "type_line": "Token Enchantment — Aura Role // Token Enchantment — Aura Role"}
+        self.assertFalse(flip_supported(role))
+        # a de Unhinged, de borda prateada
+        self.assertFalse(flip_supported({**self.base, "border_color": "silver"}))
+        self.assertFalse(flip_supported({**self.base, "layout": "normal"}))
+
+
+class Prototipo(unittest.TestCase):
+    base = {
+        "name": "Steel Seraph",
+        "frame": "2015",
+        "layout": "prototype",
+        "border_color": "black",
+        "type_line": "Artifact Creature — Angel",
+        "oracle_text": "Prototype {1}{W}{W} — 3/3 (You may cast this spell with different mana cost, color, and size. It keeps its abilities and types.)\nFlying",
+    }
+    REMINDER = "Protótipo (Você pode conjurar esta mágica com custo de mana, cor e tamanho diferentes. Ela permanece com suas habilidades e tipos.)"
+
+    def test_moldura(self):
+        # BRO, as promos e a arte estendida
+        self.assertTrue(prototype_supported(self.base))
+        self.assertTrue(prototype_supported({**self.base, "frame_effects": ["extendedart"]}))
+        # vitrine, sem borda e as de outro layout
+        self.assertFalse(prototype_supported({**self.base, "frame_effects": ["showcase"]}))
+        self.assertFalse(prototype_supported({**self.base, "border_color": "borderless"}))
+        self.assertFalse(prototype_supported({**self.base, "layout": "normal"}))
+
+    def test_custo_do_oracle(self):
+        self.assertEqual(prototype_cost(self.base["oracle_text"]), "{1}{W}{W}")
+        self.assertIsNone(prototype_cost("Flying"))
+
+    def test_texto_do_arena(self):
+        # o Arena junta a palavra-chave às da primeira linha, sem o custo nem o lembrete
+        self.assertEqual(prototype_text("Protótipo, voar\nNo início do combate…", self.REMINDER), f"{self.REMINDER}\nVoar\nNo início do combate…")
+        self.assertEqual(prototype_text("Protótipo, ameaçar, vínculo com a vida", self.REMINDER), f"{self.REMINDER}\nAmeaçar, vínculo com a vida")
+        # sozinha na linha
+        self.assertEqual(prototype_text("Protótipo\nQuando esta criatura entrar…", self.REMINDER), f"{self.REMINDER}\nQuando esta criatura entrar…")
+        # sem lembrete impresso, só a palavra
+        self.assertEqual(prototype_text("Protótipo, voar", None), "Protótipo\nVoar")
+        # sem o Protótipo na frente
+        self.assertIsNone(prototype_text("Voar", self.REMINDER))
+        self.assertIsNone(prototype_text(None, self.REMINDER))
+
+    def test_lembrete_das_impressas(self):
+        def pt(oid, released, layout="prototype"):
+            text = f"Voar\n//PRT-Prototype_Mech//\n{{1}}{{W}}{{W}}\n{self.REMINDER}\n3/3"
+            return {"layout": layout, "released_at": released, "printed_text": text, "printed_type_line": "Criatura Artefato — Anjo", "printed_name": "Serafim de Aço", "name": "Steel Seraph"}
+        by_card, newest = prototype_reminders({"a": pt("a", "2022-11-18"), "b": pt("b", "2024-06-14"), "c": pt("c", "2024-06-14", "normal")})
+        self.assertEqual(by_card, {"a": self.REMINDER, "b": self.REMINDER})
+        self.assertEqual(newest, self.REMINDER)
+        self.assertEqual(prototype_reminders({}), ({}, None))
+
+
+class CartasDeFundir(unittest.TestCase):
+    parts = [
+        {"component": "meld_part", "name": "Bruna, the Fading Light"},
+        {"component": "meld_part", "name": "Gisela, the Broken Blade"},
+        {"component": "meld_result", "name": "Brisela, Voice of Nightmares"},
+    ]
+    bruna = {
+        "name": "Bruna, the Fading Light",
+        "oracle_id": "b",
+        "frame": "2015",
+        "layout": "meld",
+        "border_color": "black",
+        "frame_effects": ["mooneldrazidfc"],
+        "all_parts": parts,
+        "oracle_text": "When you cast this spell, you may return target Angel or Human creature card from your graveyard to the battlefield.\nFlying, vigilance\n(Melds with Gisela, the Broken Blade.)",
+    }
+    brisela = {"name": "Brisela, Voice of Nightmares", "oracle_id": "r", "layout": "meld", "power": "9", "toughness": "10", "all_parts": parts}
+
+    def test_so_a_frente(self):
+        # Eldritch Moon (o ícone da lua e do Eldrazi), The Brothers' War e a arte estendida de FIN
+        self.assertTrue(meld_supported(self.bruna))
+        self.assertTrue(meld_supported({**self.bruna, "frame_effects": ["legendary", "extendedart"]}))
+        # a carta fundida é a junção dos dois versos
+        self.assertTrue(is_meld_result({**self.brisela, "frame": "2015", "border_color": "black"}))
+        self.assertFalse(meld_supported({**self.bruna, **self.brisela, "frame_effects": []}))
+        # sem borda (Secret Lair, FIN) e as que não são de fundir
+        self.assertFalse(meld_supported({**self.bruna, "border_color": "borderless", "frame_effects": ["inverted"]}))
+        self.assertFalse(meld_supported({**self.bruna, "layout": "normal"}))
+
+    def test_so_a_face_da_carta(self):
+        # o Arena liga à Bruna a face da Brisela: o nome saía "Bruna // Brisela"
+        faces = [{"name_pt": "Bruna, a Luz Desvanecente"}, {"name_pt": "Brisela, Voz dos Pesadelos"}]
+        self.assertEqual(own_faces(self.bruna, faces), faces[:1])
+        self.assertEqual(own_faces({"layout": "transform"}, faces), faces)
+
+    def test_pr_e_lembrete(self):
+        rows = [
+            {"oracle_id": "b", "faces": [{"text_pt": "Quando conjura esta mágica, você pode devolver…\nVoar, vigilância"}]},
+            {"oracle_id": "r", "faces": [{"text_pt": "Voar, iniciativa, vigilância, vínculo com a vida"}]},
+        ]
+        printed = {
+            "b": {
+                "printed_name": "Bruna, a Luz Desvanecente",
+                "printed_text": "Quando conjura Bruna, a Luz Desvanecente, você pode…\nVoar, vigilância\n(Funde-se com Gisela, a Lâmina Partida.)",
+            }
+        }
+        self.assertEqual(add_meld_data(rows, [self.bruna, self.brisela], printed), (1, 1))
+        face = rows[0]["faces"][0]
+        self.assertEqual(face["meld_pt"], "9/10")
+        self.assertTrue(face["text_pt"].endswith("\nVoar, vigilância\n(Funde-se com Gisela, a Lâmina Partida.)"))
+        # a carta fundida não ganha nada
+        self.assertNotIn("meld_pt", rows[1]["faces"][0])
+        # de novo, nada muda (o lembrete não se repete)
+        self.assertEqual(add_meld_data(rows, [self.bruna, self.brisela], printed), (1, 0))
+        self.assertEqual(face["text_pt"].count("Funde-se"), 1)
+
+    def test_sem_impressa_sem_lembrete(self):
+        # o lembrete nunca é montado: sem impressa em PT (o Fang, de FIN), a carta fica sem ele
+        rows = [{"oracle_id": "b", "faces": [{"text_pt": "Voar, vigilância"}]}]
+        self.assertEqual(add_meld_data(rows, [self.bruna, self.brisela], {}), (1, 0))
+        self.assertEqual(rows[0]["faces"][0]["text_pt"], "Voar, vigilância")
+        # carta fundida planeswalker (Urza): a frente não imprime P/R nenhum
+        urza = {**self.brisela, "power": None, "toughness": None}
+        rows = [{"oracle_id": "b", "faces": [{"text_pt": "Voar"}]}]
+        self.assertEqual(add_meld_data(rows, [self.bruna, urza], {}), (0, 0))
+
+
 class KeywordReminders(unittest.TestCase):
     """O lembrete de palavra-chave vem das cartas impressas em PT; o Arena não o traz."""
 
@@ -910,6 +1217,24 @@ class ArenaHints(unittest.TestCase):
         # dica em PT ainda em inglês (DiscoverN) não serve
         self.assertIsNone(hint_reminder("Look at the top two cards of your library.", dread["en"], dread["en"]))
 
+    def test_numero_por_extenso(self):
+        # "two" na carta e {numeral} na dica: em PT sai por extenso, concordando com a palavra seguinte
+        mobilize = {
+            "en": "Whenever this creature attacks, create {numeral} tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step.",
+            "pt": "Toda vez que esta criatura atacar, crie {numeral} fichas de criatura Guerreiro vermelha 1/1 viradas e atacando. Sacrifique-as no início da próxima etapa final.",
+        }
+        rem = "Whenever this creature attacks, create two tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step."
+        self.assertEqual(
+            hint_reminder(rem, mobilize["en"], mobilize["pt"]),
+            "Toda vez que esta criatura atacar, crie duas fichas de criatura Guerreiro vermelha 1/1 viradas e atacando. Sacrifique-as no início da próxima etapa final.",
+        )
+        self.assertIn("crie três fichas", hint_reminder(rem.replace("two", "three"), mobilize["en"], mobilize["pt"]))
+        empower = {"en": "Put {numeral} loyalty counters on a Jace token you control.", "pt": "Coloque {numeral} marcadores de lealdade em uma ficha de Jace que você controla."}
+        self.assertEqual(hint_reminder("Put two loyalty counters on a Jace token you control.", empower["en"], empower["pt"]), "Coloque dois marcadores de lealdade em uma ficha de Jace que você controla.")
+        self.assertEqual(hint_reminder("Put six loyalty counters on a Jace token you control.", empower["en"], empower["pt"]), "Coloque seis marcadores de lealdade em uma ficha de Jace que você controla.")
+        # o artigo não é número: o singular tem a dica dele (Mobilize_1)
+        self.assertIsNone(hint_reminder("Whenever this creature attacks, create a tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step.", mobilize["en"], mobilize["pt"]))
+
     def test_it_so_quando_e_a_propria_carta(self):
         # "It deals damage…" vira "Este card causa dano…" no Wither da própria carta, nunca no da criatura equipada (Fists of the Demigod)
         wither = {"key": "AbilityHanger/Keyword/Wither_Body", "en": "This deals damage to creatures in the form of -1/-1 counters.", "pt": "Este card causa dano a criaturas na forma de marcadores -1/-1."}
@@ -994,15 +1319,230 @@ class SagaSupported(unittest.TestCase):
         self.assertTrue(saga_supported(self.base))
         self.assertTrue(saga_supported({**self.base, "frame_effects": ["legendary"], "type_line": "Legendary Enchantment — Saga"}))
         self.assertTrue(saga_supported({**self.base, "frame_effects": ["enchantment"]}))
+        # criatura Saga (Invocações de Final Fantasy): a moldura delas, conferida pelo motor (ADR 0042)
+        self.assertTrue(saga_supported({**self.base, "type_line": "Enchantment Creature — Saga Knight"}))
 
     def test_fora(self):
         self.assertFalse(saga_supported({**self.base, "border_color": "borderless"}))
         self.assertFalse(saga_supported({**self.base, "frame_effects": ["showcase"]}))
         self.assertFalse(saga_supported({**self.base, "full_art": True}))
         self.assertFalse(saga_supported({**self.base, "frame": "2003"}))
-        # criatura Saga (Invocações de Final Fantasy): outra moldura
-        self.assertFalse(saga_supported({**self.base, "type_line": "Enchantment Creature — Saga Knight"}))
         self.assertFalse(saga_supported({**self.base, "layout": "transform"}))
+
+
+class PrepareSupported(unittest.TestCase):
+    faces = [{"name": "Scathing Shadelock", "power": "4"}, {"name": "Venomous Words"}]
+    base = {"frame": "2015", "layout": "prepare", "border_color": "black", "frame_effects": [], "card_faces": faces}
+
+    def test_caixa_dividida(self):
+        self.assertTrue(prepare_supported(self.base))
+        self.assertTrue(prepare_supported({**self.base, "frame_effects": ["legendary"]}))
+        # a arte estendida (Joined Researchers, SOS 312) tem a mesma caixa
+        self.assertTrue(prepare_supported({**self.base, "frame_effects": ["extendedart"]}))
+        self.assertTrue(prepare_supported({**self.base, "frame_effects": ["legendary", "extendedart"]}))
+
+    def test_fora(self):
+        # Ancestral Recall de SOS na moldura de 2003 e Bloodline Recollector de arte inteira (FRA 402)
+        self.assertFalse(prepare_supported({**self.base, "frame": "2003"}))
+        self.assertFalse(prepare_supported({**self.base, "full_art": True}))
+        self.assertFalse(prepare_supported({**self.base, "frame_effects": ["showcase"]}))
+        self.assertFalse(prepare_supported({**self.base, "layout": "adventure"}))
+        self.assertFalse(prepare_supported({**self.base, "card_faces": self.faces[:1]}))
+        self.assertFalse(adventure_supported(self.base))
+
+
+class Divididas(unittest.TestCase):
+    """Cartas divididas da moldura atual (ADR 0034) e as com Consequência (ADR 0035)."""
+
+    faces = [{"name": "Thrash", "type_line": "Instant"}, {"name": "Threat", "type_line": "Sorcery"}]
+    base = {"name": "Thrash // Threat", "frame": "2015", "layout": "split", "border_color": "black", "set": "rna", "card_faces": faces}
+    aftermath = {**base, "name": "Dusk // Dawn", "set": "akh", "keywords": ["Aftermath"]}
+
+    def test_dividida(self):
+        self.assertTrue(split_supported(self.base))
+        # as de Commander 2016 e as cartas de teste, a Consequência, o Fundir e as Salas têm outro desenho
+        for code in ("c16", "cmb1", "unk"):
+            self.assertFalse(split_supported({**self.base, "set": code}), code)
+        self.assertFalse(split_supported(self.aftermath))
+        self.assertFalse(split_supported({**self.base, "keywords": ["Fuse"]}))
+        self.assertFalse(split_supported({**self.base, "card_faces": [{**f, "type_line": "Enchantment — Room"} for f in self.faces]}))
+        # a de 2003 entra (ADR 0037), com a marca-d'água das guildas e sem o logotipo da FNM
+        self.assertTrue(split_supported({**self.base, "frame": "2003", "set": "dis"}))
+        guild = [{**f, "watermark": w} for f, w in zip(self.faces, ("azorius", "dimir"))]
+        self.assertTrue(split_supported({**self.base, "frame": "2003", "set": "dis", "card_faces": guild}))
+        fnm = [{**self.faces[0], "watermark": "fnm"}, self.faces[1]]
+        self.assertFalse(split_supported({**self.base, "frame": "2003", "set": "f06", "card_faces": fnm}))
+        # a antiga (ADR 0038): sem marca-d'água e fora da Secret Lair, como as cartas de pé dela
+        self.assertTrue(split_supported({**self.base, "frame": "1997", "set": "apc"}))
+        marked = [{**f, "watermark": "wotc"} for f in self.faces]
+        self.assertFalse(split_supported({**self.base, "frame": "1997", "set": "apc", "card_faces": marked}))
+        self.assertFalse(split_supported({**self.base, "frame": "1997", "set": "sld"}))
+        self.assertFalse(split_supported({**self.base, "frame": "1997", "set": "wc01", "border_color": "gold"}))
+        self.assertFalse(split_supported({**self.base, "frame": "1993"}))
+
+    def test_fundir(self):
+        fuse = {**self.base, "name": "Wear // Tear", "set": "cmr", "keywords": ["Fuse"]}
+        self.assertTrue(fuse_supported(fuse))
+        self.assertFalse(split_supported(fuse))
+        self.assertFalse(fuse_supported(self.base))
+        # as de Dragon's Maze, na moldura de 2003, entram (ADR 0037); a carta de teste do Unknown
+        # Event fica de fora
+        self.assertTrue(fuse_supported({**fuse, "frame": "2003", "set": "dgm"}))
+        self.assertFalse(split_supported({**fuse, "frame": "2003", "set": "dgm"}))
+        self.assertFalse(fuse_supported({**fuse, "set": "unk"}))
+
+    def test_lembrete_do_fundir(self):
+        pt = "Você pode conjurar uma ou ambas as metades deste card da sua mão."
+        self.assertEqual(without_fuse("Destrua o artefato alvo.\nFundir"), "Destrua o artefato alvo.")
+        self.assertEqual(without_fuse(f"Destrua o artefato alvo.\nFundir ({pt})"), "Destrua o artefato alvo.")
+        self.assertEqual(without_fuse("Fundir os dois."), "Fundir os dois.")
+        oracle = [{"oracle_id": "w", "layout": "split", "keywords": ["Fuse"]}, {"oracle_id": "f", "layout": "split", "keywords": []}]
+        rows = [
+            {"oracle_id": "w", "faces": [{"text_pt": "Destrua o artefato alvo.\nFundir"}, {"text_pt": f"Destrua o encantamento alvo.\nFundir ({pt})"}]},
+            {"oracle_id": "f", "faces": [{"text_pt": "Destrua.\nFundir"}]},
+        ]
+        self.assertEqual(add_fuse_reminders(rows, oracle, {"*": {FUSE_EN: pt}}), 1)
+        self.assertEqual([f["text_pt"] for f in rows[0]["faces"]], ["Destrua o artefato alvo.", "Destrua o encantamento alvo."])
+        self.assertEqual(rows[0]["faces"][1]["reminder_pt"], f"Fundir ({pt})")
+        self.assertNotIn("reminder_pt", rows[1]["faces"][0])
+        # sem o lembrete oficial, nada muda
+        self.assertEqual(add_fuse_reminders([{"oracle_id": "w", "faces": [{"text_pt": "A\nFundir"}]}], oracle, {}), 0)
+
+    def test_consequencia(self):
+        self.assertTrue(aftermath_supported(self.aftermath))
+        self.assertTrue(aftermath_supported({**self.aftermath, "set": "c19"}))
+        self.assertFalse(aftermath_supported(self.base))
+        for extra in ({"border_color": "borderless"}, {"frame_effects": ["showcase"]}, {"frame": "2003"}, {"full_art": True}):
+            self.assertFalse(aftermath_supported({**self.aftermath, **extra}), extra)
+        self.assertFalse(frame_supported(self.aftermath))
+
+
+ROOM_EN = "You may cast either half. That door unlocks on the battlefield. As a sorcery, you may pay the mana cost of a locked door to unlock it."
+ROOM_PT = "Você pode conjurar qualquer metade. Aquela porta é destrancada no campo de batalha. Como um feitiço, você pode pagar o custo de mana de uma porta trancada para destrancá-la."
+ROOM_HINTS = [{"key": "AbilityHanger/Keyword/Room_Body", "en": ROOM_EN, "pt": ROOM_PT}]
+
+
+class Salas(unittest.TestCase):
+    """Salas de Duskmourn (ADR 0033): a moldura deitada, o lembrete da faixa do meio e as metades."""
+
+    faces = [
+        {"name": "Walk-In Closet", "type_line": "Enchantment — Room", "oracle_text": f"You may play lands from your graveyard.\n({ROOM_EN})"},
+        {"name": "Forgotten Cellar", "type_line": "Enchantment — Room", "oracle_text": f"When you unlock this door, mill three cards.\n({ROOM_EN})"},
+    ]
+    base = {"name": "Walk-In Closet // Forgotten Cellar", "frame": "2015", "layout": "split", "border_color": "black", "card_faces": faces}
+
+    def test_suportada(self):
+        self.assertTrue(room_supported(self.base))
+
+    def test_fora(self):
+        # as sem borda de Booster Fun (DSK 297 a 306) e as cartas divididas que não são Salas
+        self.assertFalse(room_supported({**self.base, "border_color": "borderless", "frame_effects": ["inverted"]}))
+        self.assertFalse(room_supported({**self.base, "card_faces": [{**f, "type_line": "Instant"} for f in self.faces]}))
+        self.assertFalse(room_supported({**self.base, "frame": "2003"}))
+        self.assertFalse(frame_supported(self.base))
+
+    def test_lembrete_da_dica(self):
+        self.assertEqual(room_reminder(self.faces[0]["oracle_text"], ROOM_HINTS), f"({ROOM_PT})")
+        # sem a dica, ou com outro lembrete no Oracle, nada
+        self.assertIsNone(room_reminder(self.faces[0]["oracle_text"], []))
+        self.assertIsNone(room_reminder("You may play lands from your graveyard.\n(You may cast either half.)", ROOM_HINTS))
+
+    def test_texto_sem_o_lembrete(self):
+        self.assertEqual(without_room_reminder(self.faces[0]["oracle_text"]), "You may play lands from your graveyard.")
+        self.assertIsNone(without_room_reminder(None))
+
+    def test_lembrete_em_cada_face(self):
+        rows = [{"oracle_id": "x", "layout": "split", "faces": [{"name_pt": "Armário"}, {"name_pt": "Porão Esquecido"}]}]
+        self.assertEqual(add_room_reminders(rows, [{**self.base, "oracle_id": "x"}], ROOM_HINTS), 1)
+        self.assertEqual([f["reminder_pt"] for f in rows[0]["faces"]], [f"({ROOM_PT})"] * 2)
+
+    def test_metades_do_arena(self):
+        # o Arena traz a carta inteira antes das metades: cada metade casa com a dela, sem o lembrete
+        arena = [{"name_en": "Walk-In Closet // Forgotten Cellar"}, {"name_en": "Walk-In Closet"}, {"name_en": "Forgotten Cellar"}]
+        self.assertIsNone(en_face_of(self.base, arena, 0).get("oracle_text"))
+        self.assertEqual(en_face_of(self.base, arena, 1)["oracle_text"], "You may play lands from your graveyard.")
+        self.assertEqual(en_face_of(self.base, arena, 2)["oracle_text"], "When you unlock this door, mill three cards.")
+        self.assertEqual(en_face_of(self.base, arena[1:], 1)["name"], "Forgotten Cellar")
+
+    def test_nome_da_carta_inteira(self):
+        arena = [{"name_en": "Walk-In Closet // Forgotten Cellar", "name_pt": "Armário // Porão Esquecido"}, {"name_en": "Walk-In Closet", "name_pt": "Armário"}, {"name_en": "Forgotten Cellar", "name_pt": "Porão Esquecido"}]
+        self.assertEqual(arena_name_pt(arena), "Armário // Porão Esquecido")
+        self.assertEqual(arena_name_pt(arena[1:]), "Armário // Porão Esquecido")
+
+    def test_separador_das_consequencias_no_arena(self):
+        # Dusk // Dawn (AKR) e Crime // Punishment (OTP) vêm do Arena com " /// ": sem trocar, a
+        # carta casava pela primeira metade e o nome saía "Anoitecer // Anoitecer /// Alvorecer"
+        self.assertEqual(arena_name("Dusk /// Dawn"), "Dusk // Dawn")
+        self.assertEqual(arena_name("Anoitecer /// Alvorecer"), "Anoitecer // Alvorecer")
+        self.assertEqual(arena_name("Find // Finality"), "Find // Finality")
+        self.assertEqual(arena_name("Llanowar Elves"), "Llanowar Elves")
+        self.assertIsNone(arena_name(None))
+        arena = [{"name_en": arena_name("Dusk /// Dawn"), "name_pt": arena_name("Anoitecer /// Alvorecer")}, {"name_en": "Dusk", "name_pt": "Anoitecer"}, {"name_en": "Dawn", "name_pt": "Alvorecer"}]
+        self.assertEqual(arena_name_pt(arena), "Anoitecer // Alvorecer")
+
+    def test_metade_com_o_nome_inteiro_no_arena(self):
+        # Hustle // Bustle (MKM 249): o Arena dá à Hustle o nome da carta inteira
+        faces = [
+            {"name_en": "Hustle // Bustle", "name_pt": "Burburinho // Agitação"},
+            {"name_en": "Hustle", "name_pt": "Burburinho // Agitação"},
+            {"name_en": "Bustle", "name_pt": "Agitação"},
+        ]
+        self.assertEqual([f["name_pt"] for f in half_names(faces)], ["Burburinho // Agitação", "Burburinho", "Agitação"])
+        # Turn // Burn: o Arena dá às metades "turno" e "A Queima"; a carta impressa é Transformar // Queimar
+        turn = [
+            {"name_en": "Turn // Burn", "name_pt": "Transformar // Queimar"},
+            {"name_en": "Turn", "name_pt": "turno"},
+            {"name_en": "Burn", "name_pt": "A Queima"},
+        ]
+        self.assertEqual([f["name_pt"] for f in half_names(turn)[1:]], ["Transformar", "Queimar"])
+        # sem a carta inteira na frente (as de duas faces), nada muda
+        dfc = [{"name_en": "Delver of Secrets", "name_pt": "A // B"}, {"name_en": "Insectile Aberration", "name_pt": "C"}]
+        self.assertEqual(half_names(dfc)[0]["name_pt"], "A // B")
+
+    def test_dividida_do_arena_so_pelo_nome_inteiro(self):
+        start = {"faces": [{"name_en": "Start"}, {"name_en": "Start // Finish"}]}
+        delver = {"faces": [{"name_en": "Delver of Secrets"}, {"name_en": "Insectile Aberration"}]}
+        arena = {"Start": start, "Start // Finish": {"faces": []}, "Delver of Secrets": delver}
+        # a carta de teste Start // Fire não é a Start // Finish do Arena
+        self.assertIsNone(arena_entry(arena, "Start // Fire"))
+        self.assertIs(arena_entry(arena, "Start // Finish"), arena["Start // Finish"])
+        # as de duas faces casam pela primeira
+        self.assertIs(arena_entry(arena, "Delver of Secrets // Insectile Aberration"), delver)
+        self.assertIsNone(arena_entry(arena, "Llanowar Elves"))
+
+    def test_nome_inteiro_em_cada_metade_impressa(self):
+        # Assure // Assemble de RVR: o Scryfall põe "Fortalecer // Formar" nas duas metades
+        card = {"card_faces": [{"name": "Assure", "printed_name": "Fortalecer // Formar"}, {"name": "Assemble", "printed_name": "Fortalecer // Formar"}]}
+        self.assertEqual([f["name_pt"] for f in printed_faces(card)], ["Fortalecer", "Formar"])
+
+    def test_metades_trocadas_de_invasion(self):
+        card = {"set": "inv", "collector_number": "294", "card_faces": [{"name": "Pain", "printed_name": "Sofrimento"}, {"name": "Suffering", "printed_name": "Dor"}]}
+        fixed = swap_half_names(card)
+        self.assertEqual([f["printed_name"] for f in fixed["card_faces"]], ["Dor", "Sofrimento"])
+        self.assertEqual(fixed["printed_name"], "Dor // Sofrimento")
+        # as de Apocalypse estão certas
+        apc = {"set": "apc", "collector_number": "128", "card_faces": [{"name": "Fire", "printed_name": "Fogo"}, {"name": "Ice", "printed_name": "Gelo"}]}
+        self.assertIs(swap_half_names(apc), apc)
+
+    def test_a_com_anel_no_nome_impresso(self):
+        # Aladdin's Lamp da Quarta Edição: o Scryfall tem "Låmpada de Aladin"
+        card = {"name": "Aladdin's Lamp", "printed_name": "Låmpada de Aladin"}
+        self.assertEqual(fix_ring_a(card)["printed_name"], "Lâmpada de Aladin")
+        # com o "å" no nome em inglês, fica
+        nordic = {"name": "Ålborg", "printed_name": "Ålborg"}
+        self.assertIs(fix_ring_a(nordic), nordic)
+        ok = {"name": "Pestilence", "printed_name": "Pestilência"}
+        self.assertIs(fix_ring_a(ok), ok)
+
+    def test_segunda_metade_no_texto_da_primeira(self):
+        # Assault // Battery de TSB: o Scryfall tem a segunda metade inteira no texto da primeira
+        card = {
+            "card_faces": [
+                {"name": "Assault", "printed_text": "Assalto causa 2 pontos de dano à criatura alvo ou jogador alvo.\n//\nBateria\no3oG\nFeitiço\nColoque em jogo uma ficha."},
+                {"name": "Battery", "printed_text": "Coloque em jogo uma ficha."},
+            ]
+        }
+        self.assertEqual([f["text_pt"] for f in printed_faces(card)], ["Assalto causa 2 pontos de dano à criatura alvo ou jogador alvo.", "Coloque em jogo uma ficha."])
 
 
 class AdventureSupported(unittest.TestCase):
@@ -1186,6 +1726,28 @@ class TraducaoNaoOficial(unittest.TestCase):
         self.assertEqual(best["When ~ enters, you gain 3 life."], "Quando ~ entrar, você ganha 3 pontos de vida.")
         self.assertNotIn("Vigilance", best)
         self.assertEqual(molds[mold("When ~ enters, you gain 5 life.")], mold("Quando ~ entrar, você ganha 3 pontos de vida."))
+
+    def test_impressas_velhas_nao_dao_linha(self) -> None:
+        # antes do Magic 2010 o texto impresso é de terminologia velha ("Toda vez que você jogar uma
+        # mágica", Budoka Pupil, BOK 122), e depois o "custo de mana convertido" virou "valor de mana"
+        oracle = {
+            "k": {"name": "Ki Card", "oracle_text": "Whenever you cast a Spirit or Arcane spell, you may put a ki counter on Ki Card.", "type_line": "Creature — Human"},
+            "r": {"name": "Rebel Card", "oracle_text": "{2}, {T}: Search your library for a Rebel permanent card with mana value 2 or less, put it onto the battlefield, then shuffle.", "type_line": "Creature — Human Rebel"},
+            "n": {"name": "New Card", "oracle_text": "Flying", "type_line": "Creature — Bird"},
+        }
+
+        def row(oid: str, text: str, old: bool) -> dict:
+            return {"oracle_id": oid, "source": "impresso", "name_pt": "Carta", "_old_text": old, "faces": [{"name_pt": "Carta", "type_pt": "Criatura", "text_pt": text}]}
+
+        best, _ = official_lines(
+            [
+                row("k", "Toda vez que você jogar uma mágica Arcana ou de Espírito, você pode colocar um marcador de ki em Carta.", True),
+                row("r", "{2}, {T}: Procure em seu grimório um card de permanente do tipo Rebelde com custo de mana convertido igual ou inferior a 2, coloque-o no campo de batalha e embaralhe seu grimório.", False),
+                row("n", "Voar", False),
+            ],
+            oracle,
+        )
+        self.assertEqual(best, {"Flying": "Voar"})
 
     def test_tipo_pelo_que_ja_saiu_oficial(self) -> None:
         heads, subs = official_types(self.rows(), self.oracle())

@@ -7,12 +7,19 @@ A amostra tem dois pedaços:
    em que o motor já errou: "Faramir, Field Commander, LTR 14", "Sol Ring, SLD 2467"...). Uma
    correção nova nunca pode trazer de volta um erro velho.
 2. Um sorteio fixo (semente 20261125) por grupo de moldura, entre as impressões suportadas de
-   cartas com texto em PT: a moldura comum de 2015, a de 2003, a sem borda, a arte estendida, as
-   de duas faces, os planeswalkers, as fichas, os emblemas, as Sagas, Aventuras, Classes, naves e
-   a tradução não oficial.
+   cartas com texto em PT: a moldura comum de 2015, a de 2003 (sem e com marca-d'água), a antiga
+   (1997), a sem borda, a arte estendida, as de duas faces, os planeswalkers, as fichas, os
+   emblemas, as Sagas, Aventuras, Classes, cartas com Preparar, as Salas de Duskmourn, as
+   outras divididas, a Consequência e o Fundir (as da moldura atual e as de 2003), as divididas
+   da moldura antiga, a moldura de 1993, as criaturas com Mutação e com Subir de Nível, as
+   Invocações de Final Fantasy, a frente das cartas de fundir (meld), as cartas viradas de
+   Kamigawa (flip), as criaturas com Protótipo, naves e a tradução não oficial.
 
 Lê o banco montado pelo pipeline (data/out/cards.sql, depois de `pnpm data:build`). A amostra é
-versionada: rode de novo só para trocar a amostra de propósito (e diga no commit por quê).
+versionada e só cresce: rodar de novo mantém as impressões que já estão nela e acrescenta as
+citadas nos documentos depois e o que falta em cada grupo (um grupo novo, como a moldura antiga,
+sai inteiro). Sortear tudo de novo mudava as cartas de todos os grupos a cada citação nova. Para
+trocar a amostra de propósito, apague o arquivo (e diga no commit por quê).
 
     python3 scripts/regressao/amostra.py            # grava scripts/regressao/amostra.json
 """
@@ -49,6 +56,24 @@ GROUPS: dict[str, int] = {
     "classe": 8,
     "nave": 10,
     "não oficial": 40,
+    # por último: um grupo novo no fim não muda o sorteio dos de antes
+    "1997": 40,
+    "2003 com marca-d'água": 30,
+    "preparar": 15,
+    "sala": 10,
+    "dividida": 15,
+    "consequência": 15,
+    "fundir": 9,
+    "dividida de 2003": 10,
+    "fundir de 2003": 8,
+    "dividida de 1997": 13,
+    "1993": 40,
+    "mutação": 15,
+    "níveis": 15,
+    "invocações": 10,
+    "fundir (meld)": 10,
+    "viradas (flip)": 10,
+    "protótipo": 10,
 }
 
 
@@ -57,6 +82,48 @@ def group_of(row: sqlite3.Row) -> str | None:
     layout, frame, border = row["layout"], row["frame"], row["border"]
     effects = set((row["effects"] or "").split(","))
     type_line = row["type_line"] or ""
+    # a moldura antiga entrou depois (ADR 0031): antes de tudo, para não mudar os outros grupos; e
+    # as divididas dela (ADR 0038) mais tarde ainda, num grupo à parte
+    if frame == "1997" and layout == "split":
+        return "dividida de 1997"
+    # (e a de 1993, ADR 0039, depois de todas)
+    if frame == "1993":
+        return "1993"
+    # (e a Mutação, ADR 0040)
+    if layout == "mutate":
+        return "mutação"
+    # (e Subir de Nível, ADR 0041)
+    if layout == "leveler":
+        return "níveis"
+    # (e as Invocações de Final Fantasy, Sagas que são criaturas, ADR 0042)
+    if layout == "saga" and "Creature" in type_line:
+        return "invocações"
+    # (e a frente das cartas de fundir, ADR 0043)
+    if layout == "meld":
+        return "fundir (meld)"
+    # (e as cartas viradas de Kamigawa, ADR 0044)
+    if layout == "flip":
+        return "viradas (flip)"
+    # (e as criaturas com Protótipo, ADR 0045)
+    if layout == "prototype":
+        return "protótipo"
+    if frame == "1997":
+        return "1997"
+    # (e depois a marca-d'água de 2003, ADR 0024, o Preparar, ADR 0032, as Salas, ADR 0033, as
+    # outras divididas, ADR 0034, a Consequência, ADR 0035, o Fundir, ADR 0036, e as divididas de
+    # 2003, ADR 0037, que muitas vezes têm a marca-d'água da guilda)
+    if frame == "2003" and layout == "split":
+        return "fundir de 2003" if "Fundir (" in (row["text_pt"] or "") else "dividida de 2003"
+    if frame == "2003" and row["watermark"]:
+        return "2003 com marca-d'água"
+    if layout == "prepare":
+        return "preparar"
+    if layout == "split":
+        if "Room" in type_line:
+            return "sala"
+        if "Consequência" in (row["text_pt"] or ""):
+            return "consequência"
+        return "fundir" if "Fundir (" in (row["text_pt"] or "") else "dividida"
     if row["source"] == "nao-oficial":
         return "não oficial"
     if layout == "emblem":
@@ -97,7 +164,8 @@ def cited(db: sqlite3.Connection) -> list[tuple[str, str]]:
         text += "\n" + adr.read_text()
     out: list[tuple[str, str]] = []
     seen: set[tuple[str, str]] = set()
-    for m in re.finditer(r"\b([A-Z][A-Z0-9]{1,4}) (IFIYW-\d+|\d{1,4}[a-z★]?)(?![\d,.])", text):
+    # (o código pode começar por algarismo: "2ED 242", "3ED 40", "2X2 577", "30A")
+    for m in re.finditer(r"\b((?=[A-Z0-9]*[A-Z])[A-Z0-9]{2,5}) (IFIYW-\d+|\d{1,4}[a-z★]?)(?![\d,.])", text):
         key = (m.group(1).lower(), m.group(2))
         if key in seen:
             continue
@@ -116,13 +184,18 @@ def main() -> None:
     db.row_factory = sqlite3.Row
     rows = db.execute(
         """SELECT p.id, p.oracle_id, p.set_code, p.number, p.layout, p.frame, p.border, p.effects, p.has_pt,
-                  p.supported, c.name_en, c.source, c.type_line, c.faces AS text_pt
+                  p.supported, p.watermark, c.name_en, c.source, c.type_line, c.faces AS text_pt
            FROM prints p JOIN cards c ON c.oracle_id = p.oracle_id
            ORDER BY p.set_code, p.number, p.id"""
     ).fetchall()
     by_key = {(r["set_code"], r["number"]): r for r in rows}
 
     picked: dict[str, dict] = {}
+    if OUT.exists():
+        ids = {r["id"] for r in rows}
+        for it in json.loads(OUT.read_text()):
+            if it["id"] in ids:
+                picked[it["id"]] = it
 
     def take(r: sqlite3.Row, group: str) -> None:
         picked.setdefault(
@@ -144,11 +217,12 @@ def main() -> None:
             pools[g].append(r)
     for g, n in GROUPS.items():
         pool = pools[g]
-        for r in rng.sample(pool, min(n, len(pool))):
+        have = sum(1 for it in picked.values() if it["grupo"] == g)
+        for r in rng.sample(pool, min(max(0, n - have), len(pool))):
             take(r, g)
 
     items = sorted(picked.values(), key=lambda x: (x["grupo"] != "citada nos documentos", x["grupo"], x["set"], x["number"]))
-    OUT.write_text(json.dumps(items, ensure_ascii=False, indent=1) + "\n")
+    OUT.write_text(json.dumps(items, ensure_ascii=False, indent=2) + "\n")
     counts: dict[str, int] = {}
     for it in items:
         counts[it["grupo"]] = counts.get(it["grupo"], 0) + 1

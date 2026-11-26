@@ -51,6 +51,19 @@ export interface FrameLayout {
 /** Canto da caixa reservado ao lembrete "4/4" do verso nas cartas de transformar. */
 export const BACK_PT_NOTCH = { width: 62, height: 34 };
 
+/**
+ * Os dez vértices de uma estrela de cinco pontas de raio `r` em volta de (cx, cy), a primeira
+ * ponta para cima: o "★" do P/R do verso e da carta fundida, no lugar do "*" (ver drawBackPt). O
+ * miolo tem 42% do raio, e a estrela desce 8% do raio para o meio dela ficar na altura das letras.
+ */
+export function starPoints(cx: number, cy: number, r: number): [number, number][] {
+  return Array.from({ length: 10 }, (_, i) => {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rr = i % 2 ? r * 0.42 : r;
+    return [cx + rr * Math.cos(a), cy + rr * Math.sin(a) + r * 0.08];
+  });
+}
+
 /** Detalhes da moldura que mudam o lugar do texto (cartas de duas faces). */
 export interface FrameExtras {
   /** ícone de transformar/modal à esquerda do nome (empurra o nome para a direita) */
@@ -92,6 +105,26 @@ export function frame2003Start(released: string | null | undefined): { title: nu
   return { title: 67, type: 75 }; // de Planar Chaos em diante
 }
 
+/**
+ * Até onde vai a busca do símbolo da coleção na barra de tipo de 2003: a ponta da barra é mais
+ * funda que na M15, e o contorno de dentro começa em x ≈ 686. Com a busca até o fim da M15
+ * (711), o contorno e a moldura colorida depois dele viravam um bloco de 25 px, largo demais
+ * para passar por fio, e eram tomados pelo símbolo: o símbolo de verdade ficava antes dele,
+ * do lado do tipo, e o apagamento levava a metade da esquerda (27% das cartas de 2003 num
+ * sorteio de 240; Magma Spray, JOU 103; Gods Willing, THS 16; o "M10" de M10 166).
+ */
+export const TYPE_BAR_END_2003 = 684;
+
+/**
+ * Caixa com marca-d'água na moldura de 2003: o limiar das letras (contra o papel) e o da cor
+ * (os símbolos de mana do texto). A marca fica de 15 a 40 tons abaixo do papel; com o limiar
+ * de 14 da caixa comum, ela entrava na máscara e a rede neural a apagava junto. A cor das
+ * marcas das guildas (o sol laranja dos Boros) passa de 60 perto das letras: com o limiar de
+ * cor 60, a marca inteira debaixo do texto saía na máscara e voltava como um borrão (Wojek
+ * Halberdiers, GTC 208); o miolo dos símbolos passa de 120.
+ */
+export const WATERMARK_2003 = { ink: 50, color: 120 };
+
 /** Medidas das cartas de duas faces (Scryfall PNG, conferidas em MID, VOW, MOM, ZNR, KHM, TLA). */
 const DFC = {
   /** o nome começa depois do ícone (x ≈ 35–108) */
@@ -106,6 +139,60 @@ const DFC = {
   mdfcBoxBottom: 916,
   mdfcEraseBottom: 921,
 };
+
+/**
+ * A faixa de baixo das cartas modais (ADR 0029), medida em ZNR, KHM, STX, MH3, SPM e MSH: o
+ * miolo vai de y ≈ 927 a 965 (925 a 964 nas digitalizações novas, de 744 px), o triângulo
+ * acaba em x ≈ 44 e a ponta da direita começa em ≈ 322. A palavra começa em x ≈ 52,5, com as
+ * maiúsculas de 937 a 954; o custo e a habilidade de mana acabam em x ≈ 320, e os símbolos têm
+ * ~24 px. O apagamento fica dentro do miolo nas duas digitalizações.
+ */
+export const MDFC_STRIP = {
+  /**
+   * o que se apaga; com a habilidade de mana, até 327 (o ponto final de "Add {W}." vai até
+   * ≈ 324, Hengegate Pathway, KHM 260), menos os cantos, onde o fio inclinado da ponta da
+   * faixa começa antes disso (de x ≈ 320 em y 929 a 326 em 938, e de 326 em 957 a 322 em
+   * 961, medido nas 382 faces modais)
+   */
+  erase: { x0: 48, y0: 929, x1: 327, y1: 962 },
+  corners: [
+    { x0: 320, y0: 929, x1: 327, y1: 939 },
+    { x0: 321, y0: 956, x1: 327, y1: 962 },
+  ],
+  /** onde a palavra é escrita (a Beleren recua 3 px, ver `titleFont`: a primeira letra cai em ≈ 52,5) */
+  wordX: 55,
+  right: 320,
+  /** o centro dos símbolos, e o das maiúsculas da palavra (de ≈ 937 a 954) */
+  centerY: 945,
+  wordCenterY: 946,
+  /** opacidade do disco dos símbolos na faixa clara (ver `faintDisc` em render.ts) */
+  disc: 0.45,
+  /** corpo da palavra (Beleren) e da habilidade de mana (MPlantin), e o diâmetro dos símbolos */
+  wordSize: 22.5,
+  manaSize: 22,
+  symbol: 24,
+};
+
+/**
+ * Onde começa o custo de mana na faixa das modais: cada símbolo ocupa ~24 px e os híbridos
+ * ~27 (o {W/B} de Glasswing Grace, MH3 254), e o último acaba em x ≈ 320.
+ */
+export function mdfcCostLeft(manaCost: string | null | undefined): number {
+  const symbols = manaCost?.match(/\{[^}]+\}/g) ?? [];
+  return MDFC_STRIP.right - symbols.reduce((w, s) => w + (s.includes("/") ? 27 : 24), 0);
+}
+
+/** `rects` sem o que fica à esquerda do fim de `hole`, nas linhas dele (o resto fica igual). */
+export function beside(rects: Rect[], hole: Rect): Rect[] {
+  return rects.flatMap((r) => {
+    if (r.y1 <= hole.y0 || r.y0 >= hole.y1 || r.x0 >= hole.x1) return [r];
+    const parts: Rect[] = [];
+    if (r.y0 < hole.y0) parts.push({ ...r, y1: hole.y0 });
+    if (r.x1 > hole.x1) parts.push({ x0: hole.x1, y0: Math.max(r.y0, hole.y0), x1: r.x1, y1: Math.min(r.y1, hole.y1) });
+    if (r.y1 > hole.y1) parts.push({ ...r, y0: hole.y1 });
+    return parts;
+  });
+}
 
 /**
  * Proteção da caixa de P/R (escala-base), a partir do topo e do lado esquerdo medidos

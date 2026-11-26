@@ -2,9 +2,10 @@
  * Fontes usadas para escrever nas cartas, em três níveis:
  *
  * 1. As fontes que a pessoa escolheu no próprio navegador (`applyCustomFonts`).
- * 2. As fontes das cartas reais, Beleren Bold e MPlantin (normal e itálica), e a Matrix Bold
- *    do nome e do tipo da moldura de 2003 (ADR 0024), servidas pelo próprio site em
- *    /api/fontes/. Os arquivos ficam no Cloudflare KV, fora do repositório público (ver ADR 0001).
+ * 2. As fontes das cartas reais, Beleren Bold e MPlantin (normal e itálica), a Matrix Bold
+ *    do nome e do tipo da moldura de 2003 (ADR 0024) e a Goudy Medieval do nome da moldura
+ *    antiga (ADR 0031), servidas pelo próprio site em /api/fontes/. Os arquivos ficam no
+ *    Cloudflare KV, fora do repositório público (ver ADR 0001).
  * 3. Fontes livres (SIL OFL 1.1) que vêm com o site, usadas se as oficiais
  *    não carregarem: Eczar SemiBold no nome e Splentinex no texto.
  *
@@ -15,6 +16,7 @@ export const BODY_FONT = "ProxinhoTexto";
 const OFFICIAL_TITLE = "ProxinhoTituloOficial";
 const OFFICIAL_BODY = "ProxinhoTextoOficial";
 const OFFICIAL_2003 = "ProxinhoTitulo2003";
+const OFFICIAL_1997 = "ProxinhoTitulo1997";
 const CUSTOM_TITLE = "ProxinhoTituloPessoal";
 const CUSTOM_BODY = "ProxinhoTextoPessoal";
 
@@ -57,7 +59,7 @@ export interface CustomFontFiles {
 }
 
 let loading: Promise<void> | null = null;
-let official = { title: false, body: false, title2003: false };
+let official = { title: false, body: false, title2003: false, title1997: false };
 let custom: { title: boolean; body: boolean; italic: boolean } = { title: false, body: false, italic: false };
 let customFaces: FontFace[] = [];
 let version = 0;
@@ -75,6 +77,8 @@ export function loadCardFonts(base = "/fonts/cartas/", officialBase = "/api/font
     // do navegador guarda a versão anterior por 7 dias; mude o número quando trocar os arquivos
     const title = new FontFace(OFFICIAL_TITLE, `url(${officialBase}beleren-bold.ttf?v=2)`, { weight: "700" });
     const title2003 = new FontFace(OFFICIAL_2003, `url(${officialBase}matrix-bold.ttf?v=1)`, { weight: "700" });
+    // (a MagicMedieval com as letras acentuadas montadas por scripts/acentuar-medieval.py)
+    const title1997 = new FontFace(OFFICIAL_1997, `url(${officialBase}medieval.ttf?v=1)`, { weight: "400" });
     const body = [
       new FontFace(OFFICIAL_BODY, `url(${officialBase}mplantin.ttf?v=2)`, { style: "normal", weight: "400" }),
       new FontFace(OFFICIAL_BODY, `url(${officialBase}mplantin-italic.ttf?v=2)`, { style: "italic", weight: "400" }),
@@ -89,8 +93,9 @@ export function loadCardFonts(base = "/fonts/cartas/", officialBase = "/api/font
         () => false,
       ),
       title2003.load().then(add, () => false),
-    ]).then(([, t, b, t2003]) => {
-      official = { title: t, body: b, title2003: t2003 };
+      title1997.load().then(add, () => false),
+    ]).then(([, t, b, t2003, t1997]) => {
+      official = { title: t, body: b, title2003: t2003, title1997: t1997 };
     });
   }
   return loading;
@@ -113,6 +118,17 @@ export function titleFont(frame2003 = false): TitleFont {
   return { family: TITLE_FONT, weight: "600", scale: 1, dx: 0, ...mid };
 }
 
+/**
+ * O nome na moldura antiga (ADR 0031): a Goudy Medieval, escrita pela linha de base (o
+ * `centerY` de `drawLine` é a própria linha de base). Sem o arquivo dela, ou com a fonte
+ * escolhida pela pessoa, a do nome de sempre.
+ */
+export function oldNameFont(): TitleFont {
+  if (!custom.title && official.title1997)
+    return { family: OFFICIAL_1997, weight: "400", scale: 1, dx: 0, baseline: "alphabetic", rise: 0 };
+  return titleFont();
+}
+
 /** Família CSS e fator de escala para o texto das regras. */
 export function bodyFont(): { family: string; scale: number } {
   // sem o arquivo itálico, o navegador inclina a fonte normal (itálico sintético)
@@ -133,8 +149,15 @@ export function activeFonts(): "pessoais" | "oficiais" | "livres" {
  * navegador. Só vale depois de `loadCardFonts`.
  */
 export function fontsId(): string {
-  // "o": a Beleren e a Matrix Bold; só a Beleren ("b") muda as cartas de 2003
-  const title = custom.title ? `p${customIds.title}` : official.title ? (official.title2003 ? "o" : "b") : "l";
+  // "o": a Beleren, a Matrix Bold e a Goudy Medieval; sem a Matrix ("b") mudam as cartas de 2003, e
+  // sem a Goudy ("b7"), as da moldura antiga
+  const title = custom.title
+    ? `p${customIds.title}`
+    : official.title
+      ? official.title2003 && official.title1997
+        ? "o"
+        : `b${official.title2003 ? "" : "3"}${official.title1997 ? "" : "7"}`
+      : "l";
   const body = custom.body ? `p${customIds.body}${custom.italic ? `+${customIds.italic}` : ""}` : official.body ? "o" : "l";
   return `${title}|${body}`;
 }

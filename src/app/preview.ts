@@ -22,7 +22,7 @@ import { fontsVersion } from "../engine/fonts";
 import { cardKey, savedCard, storeCard, type StoredCard } from "./cardStore";
 import { prepareLama } from "../engine/lama";
 import { renderCard, usesNeuralFill } from "../engine/render";
-import type { PrintRecord } from "../engine/types";
+import type { PrintRecord, PtFace } from "../engine/types";
 import { flavorApplies, hasPtText, missKey, neuralMissKey, renderKey, selectedPrint, sideCount, type Entry, type Side } from "./model";
 
 const MAX_PARALLEL = 4;
@@ -186,12 +186,38 @@ export function renderInput(entry: Entry, side: Side = 0) {
   const print = entry.choice.kind === "pt" ? ptPrintRecord(entry) : selectedPrint(entry);
   if (!print) return null;
   const translate = entry.choice.kind === "print" && hasPtText(entry.card);
-  const face = translate ? (entry.card.faces[side] ?? null) : null;
+  // (cartas divididas: as duas metades, cada uma com o nome, o custo e o texto dela)
+  const halves = translate && print.layout === "split" ? splitHalves(entry.card.faces) : null;
+  const face = halves ? halves[0] : translate ? (entry.card.faces[side] ?? null) : null;
   // o flavor da impressão do texto, ou o da versão do Arena desta arte (ver `flavor_pt`)
   const flavor = !face ? null : flavorApplies(entry.card, print) ? (face.flavor_pt ?? null) : (print.flavor_pt?.[side] ?? null);
-  // (Aventura: a segunda face é o feitiço da página da esquerda, na mesma imagem)
-  const adventure = face && print.layout === "adventure" ? (entry.card.faces[1] ?? null) : null;
-  return { print, face, side, typeLine: entry.card.type_line, flavor, ...(adventure ? { adventure } : {}) };
+  // (Aventura e Preparar: a segunda face é a mágica da outra caixa, na mesma imagem)
+  const adventure = face && (print.layout === "adventure" || print.layout === "prepare") ? (entry.card.faces[1] ?? null) : null;
+  // (carta virada de Kamigawa: a metade de baixo, de cabeça para baixo na mesma imagem, ver flip.ts)
+  const flip = face && print.layout === "flip" ? (entry.card.faces[1] ?? null) : null;
+  // (carta modal: a outra face, resumida na faixa de baixo, ver mdfc.ts)
+  const otherFace = face && print.layout === "modal_dfc" ? (entry.card.faces[side === 1 ? 0 : 1] ?? null) : null;
+  return {
+    print,
+    face,
+    side,
+    typeLine: entry.card.type_line,
+    flavor,
+    ...(adventure ? { adventure } : {}),
+    ...(flip ? { flip } : {}),
+    ...(otherFace ? { otherFace } : {}),
+    ...(halves ? { split: halves[1] } : {}),
+  };
+}
+
+/**
+ * As duas metades de uma carta dividida. O texto do Arena traz antes delas a carta inteira
+ * ("Armário // Porão Esquecido", com os dois textos juntos); o das impressas e o não oficial,
+ * só as metades.
+ */
+export function splitHalves(faces: readonly PtFace[]): [PtFace, PtFace] | null {
+  const halves = faces.length === 3 && faces[0].name_en.includes(" // ") ? faces.slice(1) : faces;
+  return halves.length === 2 ? [halves[0], halves[1]] : null;
 }
 
 function toBlob(canvas: HTMLCanvasElement): Promise<Blob> {

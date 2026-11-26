@@ -144,25 +144,69 @@ export function adventureCostLeft(manaCost: string | null | undefined): number {
   return ADVENTURE.costRight - symbols.reduce((w, s) => w + (s.includes("/") ? ADVENTURE.costHybrid : ADVENTURE.costSymbol), 0);
 }
 
-/** As duas barras e as duas páginas, a apagar e a escrever (escala-base). */
-export function adventureLayout(book: AdventureBook, manaCost: string | null | undefined) {
+/**
+ * As duas barras e as duas páginas, a apagar e a escrever (escala-base), na forma das caixas
+ * divididas (`SplitLayout`, a mesma do Preparar): a página da esquerda é a da mágica, a da direita,
+ * a da criatura.
+ */
+export function adventureLayout(book: AdventureBook, manaCost: string | null | undefined): SplitLayout {
   const cost = adventureCostLeft(manaCost);
   const { name, type, left, right } = ADVENTURE;
   const top = book.leftTop + 2;
   return {
-    name: { rect: { x0: name.x0, y0: name.y0, x1: Math.min(name.x1, cost - 5), y1: name.y1 }, x: name.x, maxWidth: cost - 6 - name.x },
-    type: { rect: { x0: type.x0, y0: type.y0, x1: type.x1, y1: type.y1 }, x: type.x, maxWidth: type.x1 - 8 - type.x },
+    name: {
+      rect: { x0: name.x0, y0: name.y0, x1: Math.min(name.x1, cost - 5), y1: name.y1 },
+      x: name.x,
+      maxWidth: cost - 6 - name.x,
+      size: name.size,
+      center: name.center,
+    },
+    type: {
+      rect: { x0: type.x0, y0: type.y0, x1: type.x1, y1: type.y1 },
+      x: type.x,
+      maxWidth: type.x1 - 8 - type.x,
+      size: type.size,
+      center: type.center,
+    },
+    // (a faixa das letras em inglês é medida só no começo das barras, longe do custo)
+    lettersX: [66, 300],
     // (as páginas vão até a lombada, sem o fio dela: a sombra que escurece o papel até ali sai
     // antes de apagar, ver pageShade; parando antes dela, as letras que chegam perto da lombada
     // deixavam pingos)
-    left: {
-      erase: { x0: left.x0, y0: top, x1: book.spine - 3, y1: book.bottom } satisfies Rect,
-      text: { x0: left.textX0, y0: top + 6, x1: Math.min(left.textX1, book.spine - 16), y1: left.textBottom } satisfies Rect,
+    spell: {
+      erase: { x0: left.x0, y0: top, x1: book.spine - 3, y1: book.bottom },
+      text: { x0: left.textX0, y0: top + 6, x1: Math.min(left.textX1, book.spine - 16), y1: left.textBottom },
     },
-    right: {
-      erase: { x0: book.spine + 4, y0: right.y0, x1: right.x1, y1: book.bottom } satisfies Rect,
+    creature: {
+      erase: { x0: book.spine + 4, y0: right.y0, x1: right.x1, y1: book.bottom },
+      // (o pé é o da caixa comum, acima da caixa de P/R)
+      text: { x0: right.textX0, y0: right.textY0, x1: right.textX1 },
     },
+    attachedBelow: ADVENTURE.attachedBelow,
+    barThreshold: ADVENTURE.barThreshold,
+    maxSize: ADVENTURE.maxSize,
+    shaded: true,
   };
+}
+
+/**
+ * Caixa de texto dividida entre a criatura e a mágica (Aventura e Preparar), na escala-base: as
+ * barras do nome e do tipo da mágica, a caixa dela e a da criatura.
+ */
+export interface SplitLayout {
+  name: { rect: Rect; x: number; maxWidth: number; size: number; center: number };
+  type: { rect: Rect; x: number; maxWidth: number; size: number; center: number };
+  /** de onde até onde a faixa das letras em inglês das barras é medida */
+  lettersX: [number, number];
+  spell: { erase: Rect; text: Rect };
+  /** sem `y1` no texto, o pé é o da caixa comum */
+  creature: { erase: Rect; text: { x0: number; y0: number; x1: number; y1?: number } };
+  /** do pé das páginas para cima até aqui, só o que se liga às letras de cima sai (sem, o pé de cada caixa) */
+  attachedBelow: number | null;
+  barThreshold: number;
+  maxSize: number;
+  /** as páginas escurecem em direção à lombada (ver `pageShade`) */
+  shaded: boolean;
 }
 
 /**
@@ -170,9 +214,10 @@ export function adventureLayout(book: AdventureBook, manaCost: string | null | u
  * letras ocupam bem menos da metade dela), alisado entre colunas vizinhas. O papel escurece em
  * direção à lombada, numa faixa de até 100 px na página da direita; com a máscara medida contra
  * a média em volta, a beira mais escura do retângulo virava "letra" e o remendo, mais claro,
- * deixava um degrau na sombra (ver `shadePage`).
+ * deixava um degrau na sombra (ver `shadePage`). `share` muda o percentil: na barra de tipo das
+ * Invocações, que escurece perto do símbolo da coleção, as letras ocupam mais da coluna (75).
  */
-export function pageShade(img: ImageData, rect: Rect): Float32Array {
+export function pageShade(img: ImageData, rect: Rect, share = 0.6): Float32Array {
   const x0 = Math.round(rect.x0);
   const x1 = Math.round(rect.x1);
   const y0 = Math.round(rect.y0);
@@ -183,7 +228,7 @@ export function pageShade(img: ImageData, rect: Rect): Float32Array {
     col.length = 0;
     for (let y = y0; y < y1; y++) col.push(lum(img.data, (y * img.width + x) * 4));
     col.sort((a, b) => a - b);
-    raw[x - x0] = Math.max(1, col[Math.floor(col.length * 0.6)] ?? 1);
+    raw[x - x0] = Math.max(1, col[Math.floor(col.length * share)] ?? 1);
   }
   const r = Math.max(2, Math.round((4 * img.width) / BASE_W));
   const out = new Float32Array(raw.length);

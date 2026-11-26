@@ -119,6 +119,33 @@ def drop_invisible(text: str | None) -> str | None:
     return "\n".join(lines)
 
 
+def arena_name(name: str | None) -> str | None:
+    """
+    O nome de uma carta do Arena com o separador do Scryfall. As divididas com Consequência
+    (Amonkhet Remastered, Hour of Devastation) e a Crime // Punishment de OTP vêm com " /// "
+    ("Dusk /// Dawn"): a carta não casava pelo nome, casava pela primeira metade, e a segunda
+    ficava com o nome e os dois textos da carta inteira ("Anoitecer // Anoitecer /// Alvorecer").
+    """
+    return re.sub(r" /{3} ", " // ", name) if name else name
+
+
+def half_names(faces: list[dict]) -> list[dict]:
+    """
+    Nas divididas do Arena a carta inteira vem antes das metades (ver `en_face_of`), e o nome de
+    uma metade pode vir errado: o da carta inteira ("Burburinho // Agitação" na Hustle, MKM 249,
+    que saía inteiro na barra da metade da esquerda) ou outra palavra ("turno" e "A Queima" no
+    Turn // Burn, que é Transformar // Queimar; "Armados" no Armed // Dangerous). O nome da carta
+    inteira é o da carta impressa: cada metade fica com a parte dela.
+    """
+    if len(faces) < 3 or " // " not in (faces[0].get("name_en") or ""):
+        return faces
+    parts = (faces[0].get("name_pt") or "").split(" // ")
+    if len(parts) == len(faces) - 1:
+        for f, part in zip(faces[1:], parts):
+            f["name_pt"] = part
+    return faces
+
+
 def fix_arena_typos(text: str) -> str:
     """Erros de digitação do arquivo do Arena que não mudam nada do texto oficial: o "+"
     repetido no bônus ("recebe +1/++1", Colorstorm Stallion; "+2/++2" no Delírio de
@@ -176,16 +203,33 @@ def station_level(en_text: str | None) -> str | None:
     return m.group(1) if m else None
 
 
-def join_station(groups: list[tuple[str | None, list[str]]]) -> list[str]:
+_LEVELER_MARK = re.compile(r"LEVEL \[(\d+(?:-\d+|\+))\] \[(\d+/\d+)\]")
+
+
+def leveler_level(en_text: str | None) -> list[str] | None:
+    """As linhas de um nível de Subir de Nível (Level up) num marcador do Arena ("LEVEL [3-7] [4/4]
+    [Protection from instants]" → ["NÍVEL 3-7", "4/4"]), como no Oracle e na carta impressa em PT.
+
+    O marcador em PT ("NÍVEL [3-7] [4/4] [Proteção contra…]") passava por palavra-chave e se juntava
+    às habilidades de antes e de depois ("Proteção contra mágicas instantâneas, nÍVEL [8+]…",
+    Hexdrinker). As habilidades que vêm depois dele, até o próximo marcador, são as do nível.
+    """
+    m = _LEVELER_MARK.match(en_text or "")
+    return [f"NÍVEL {m.group(1)}", m.group(2)] if m else None
+
+
+def join_station(groups: list[tuple[str | None, list[str]]] | list[tuple[str | None, list[str], list[str]]]) -> list[str]:
     """Junta as palavras-chave de cada nível de Posicionar à parte e marca o começo de cada nível
     como o Oracle ("9+ | Voar, iniciativa"). Sem isso, o "Posicionar" e as palavras-chave do
-    nível viravam uma linha só ("Posicionar, voar, iniciativa", Nave-aríete Cuneilux)."""
+    nível viravam uma linha só ("Posicionar, voar, iniciativa", Nave-aríete Cuneilux). Os níveis
+    de Subir de Nível vêm com as linhas do selo e do P/R na frente, fora da junção (ver
+    `leveler_level`)."""
     out: list[str] = []
-    for level, lines in groups:
+    for level, lines, *header in groups:
         joined = join_keywords(lines)
         if level is not None and joined:
             joined[0] = f"{level} | {joined[0]}"
-        out += joined
+        out += (header[0] if header else []) + joined
     return out
 
 
@@ -261,7 +305,7 @@ def load_arena(offline: bool) -> dict[str, dict]:
     by_grp = {c["grpid"]: c for c in cards}
 
     def face(card: dict) -> dict | None:
-        name_pt = text(br, card.get("titleId"))
+        name_pt = arena_name(text(br, card.get("titleId")))
         if not name_pt:
             return None
         type_pt = text(br, card.get("cardTypeTextId")) or ""
@@ -270,10 +314,12 @@ def load_arena(offline: bool) -> dict[str, dict]:
             type_pt = f"{type_pt} — {sub}"
         type_en, sub_en = en.get(card.get("cardTypeTextId")), en.get(card.get("subtypeTextId"))
         # cada nível de Posicionar começa num marcador (ver station_level)
-        groups: list[tuple[str | None, list[str]]] = [(None, [])]
+        groups: list[tuple[str | None, list[str], list[str]]] = [(None, [], [])]
         for a in card.get("abilities", []):
             if level := station_level(en.get(a.get("TextId"))):
-                groups.append((level, []))
+                groups.append((level, [], []))
+            elif header := leveler_level(en.get(a.get("TextId"))):
+                groups.append((None, [], header))
             elif (t := text(br, a.get("TextId"))) and not is_intrinsic_mana(type_en, sub_en, en.get(a.get("TextId"))):
                 groups[-1][1].append(arena_symbols(t))
         return {
@@ -289,7 +335,7 @@ def load_arena(offline: bool) -> dict[str, dict]:
     # grpid maior = texto mais novo; as versões com nome alternativo vêm antes, para a
     # impressão normal sempre ganhar quando existe
     for card in sorted(cards, key=lambda c: (not c.get("altTitleId"), c["grpid"])):
-        name_en = text(en, card.get("titleId"))
+        name_en = arena_name(text(en, card.get("titleId")))
         if not name_en or name_en.startswith("A-") or card.get("set") in DIGITAL_SETS:
             continue
         # fichas têm nomes que coincidem com cartas ("Adorned Pouncer" eternizado): ficam em load_arena_tokens
@@ -309,9 +355,10 @@ def load_arena(offline: bool) -> dict[str, dict]:
         for linked in card.get("linkedFaces") or []:
             other = by_grp.get(linked)
             if other and other.get("titleId") != card.get("titleId") and (f := face(other)):
-                f["name_en"] = text(en, other.get("titleId"))
+                f["name_en"] = arena_name(text(en, other.get("titleId")))
                 faces.append(f)
         front["name_en"] = name_en
+        half_names(faces)
         # O texto de ambientação (flavor) é de cada impressão: guardamos de qual veio e o
         # flavor em inglês do próprio Arena, para achar as artes de papel com o mesmo flavor
         # (nas coleções digitais, como Kaladesh Remastered, o Scryfall não tem o flavor)
@@ -418,16 +465,77 @@ def transcribe(card: dict, table: dict[str, dict]) -> dict:
     naquela coleção e número e deixa de valer quando o Scryfall trouxer o tipo ou o texto.
     """
     t = table.get(f"{card.get('set')}/{card.get('collector_number')}")
+    if t and t["name"] == card.get("name") and "face_names" in t:
+        return transcribe_face_names(card, t["face_names"])
     if not t or t["name"] != card.get("name") or card.get("card_faces") or card.get("printed_type_line") or card.get("printed_text") is not None:
         return card
     return {**card, **{k: t[k] if k in t else card.get(k) for k in TRANSCRIBED}, "_transcribed": f"{card['set']}/{card['collector_number']}"}
+
+
+def transcribe_face_names(card: dict, names: list[str]) -> dict:
+    """
+    O nome em PT de cada metade de uma carta dividida, transcrito da imagem, quando o Scryfall põe
+    o nome em inglês no lugar ("Rough" e "Tumble" na Confusão // Bagunça de TSR, com o texto em
+    PT dizendo "Confusão causa 2 pontos de dano"). Só troca a metade que está com o nome em
+    inglês (ou sem nome) e deixa de valer quando o Scryfall trouxer o nome em PT.
+    """
+    faces = card.get("card_faces") or []
+    if len(faces) != len(names):
+        return card
+    # o nome em inglês da metade, ou o da carta inteira em cada metade (Saciar // Exagerar, NCC 46)
+    fixed = [
+        {**f, "printed_name": n} if f.get("printed_name") in (None, f.get("name"), card.get("name")) else f
+        for f, n in zip(faces, names)
+    ]
+    if fixed == faces:
+        return card
+    return {
+        **card,
+        "card_faces": fixed,
+        "printed_name": " // ".join(f["printed_name"] for f in fixed),
+        "_transcribed": f"{card['set']}/{card['collector_number']}",
+    }
+
+
+# As divididas de Invasion em PT no Scryfall têm o nome de cada metade na outra ("Bateria" no
+# Assault, "Sofrimento" no Pain, "Decrescer" no Wax, que dá +2/+2): a reimpressão de Time Spiral
+# (TSB 106, com a imagem em PT) tem "Assalto" no Assault. A carta saía com o nome de uma metade
+# sobre o texto da outra.
+SWAPPED_HALF_NAMES = {"inv/292", "inv/293", "inv/294", "inv/295", "inv/296"}
+
+
+def swap_half_names(card: dict) -> dict:
+    """Destroca o nome das metades das divididas de `SWAPPED_HALF_NAMES`."""
+    faces = card.get("card_faces") or []
+    if f"{card.get('set')}/{card.get('collector_number')}" not in SWAPPED_HALF_NAMES or len(faces) != 2:
+        return card
+    names = [f.get("printed_name") for f in faces][::-1]
+    fixed = [{**f, "printed_name": n} for f, n in zip(faces, names)]
+    return {**card, "card_faces": fixed, "printed_name": " // ".join(n or "" for n in names) if all(names) else card.get("printed_name")}
+
+
+def fix_ring_a(card: dict) -> dict:
+    """
+    O "å" no nome impresso em PT é o "â" trocado: o Scryfall tem "Låmpada de Aladin" nas duas
+    impressões de Aladdin's Lamp da Quarta Edição, e o nome saía assim na carta. O português não
+    tem "å"; ele só fica quando o nome em inglês também o tem.
+    """
+    def fixed(f: dict, en: str | None) -> str | None:
+        n = f.get("printed_name")
+        return n.replace("å", "â").replace("Å", "Â") if n and "å" not in (en or "").lower() else n
+
+    faces = card.get("card_faces") or []
+    out = {**card, "printed_name": fixed(card, card.get("name"))}
+    if faces:
+        out["card_faces"] = [{**f, "printed_name": fixed(f, f.get("name"))} for f in faces]
+    return out if out != card else card
 
 
 def read_printed_pt(table: dict[str, dict]):
     """As impressões em PT do cache do Scryfall, com as transcritas completadas (`transcribe`)."""
     with open(CACHE / "scryfall_pt.jsonl") as fh:
         for line in fh:
-            yield transcribe(json.loads(line), table)
+            yield fix_ring_a(swap_half_names(transcribe(json.loads(line), table)))
 
 
 def load_printed_pt(offline: bool) -> dict[str, dict]:
@@ -892,6 +1000,21 @@ _HINT_SELF = {
     *(f"this {t}" for t in ("creature", "card", "permanent", "artifact", "enchantment", "land", "spell", "vehicle", "spacecraft", "planet")),
 }
 _SYMBOL = re.compile(r"^\{[^}]+\}$")
+# Número por extenso no lembrete do Oracle ("Mobilize 2 (… create two tapped and attacking …)",
+# "Empower Jace 6. (Put six loyalty counters …)") onde a dica tem a variável: em PT ele sai por
+# extenso também, como nas cartas impressas ("crie duas fichas"). "Um" e "dois" concordam com a
+# palavra seguinte na dica em PT.
+_NUMBER_WORDS = {w: n for n, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve".split()) if n}
+_PT_NUMBERS = {3: "três", 4: "quatro", 5: "cinco", 6: "seis", 7: "sete", 8: "oito", 9: "nove", 10: "dez", 11: "onze", 12: "doze"}
+_PT_FEMININE = re.compile(r"^(?:fichas?|criaturas?|vez|vezes|mágicas?|cores?|cópias?|habilidades?|cartas?|vidas?)$", re.IGNORECASE)
+
+
+def pt_number(n: int, after: str) -> str:
+    """O número `n` por extenso em PT, concordando com a palavra seguinte (`after`) no 1 e no 2."""
+    if n in (1, 2):
+        fem = bool(_PT_FEMININE.match(after))
+        return ("uma" if fem else "um") if n == 1 else ("duas" if fem else "dois")
+    return _PT_NUMBERS[n]
 
 
 def extract_hints(mtga: Path) -> list[dict[str, str]]:
@@ -959,7 +1082,11 @@ def _hint_fill_ordered(rem: list[str], hint: list[str], own: bool) -> dict[str, 
             continue
         if len(b) == 1 and _HINT_VAR.match(b[0]):
             cost = b[0].lower() in _HINT_COST_VARS
-            if not a or not all(_SYMBOL.match(t) if cost else t.isdigit() for t in a) or (not cost and len(a) > 1):
+            # (o número por extenso vale "#2", e vira "duas" ou "dois" na dica em PT; nunca no
+            # bônus, "+2/+2", que a carta sempre escreve em algarismos)
+            if not cost and len(a) == 1 and a[0] in _NUMBER_WORDS and (i1 == 0 or rem[i1 - 1] != "+"):
+                a = [f"#{_NUMBER_WORDS[a[0]]}"]
+            elif not a or not all(_SYMBOL.match(t) if cost else t.isdigit() for t in a) or (not cost and len(a) > 1):
                 return None
             if values.setdefault(b[0], "".join(a)) != "".join(a):
                 return None
@@ -1017,6 +1144,10 @@ def hint_reminder(reminder: str, en: str, pt: str, own: bool = False) -> str | N
         if values is None:
             continue
         for name, value in values.items():
+            if value.startswith("#"):
+                n = int(value[1:])
+                p = re.sub(re.escape(name) + r"(\s+)([\w-]+)", lambda m, n=n: pt_number(n, m.group(2)) + m.group(1) + m.group(2), p, flags=re.IGNORECASE)
+                value = pt_number(n, "")
             p = re.sub(re.escape(name), value, p, flags=re.IGNORECASE)
         if any(_HINT_VAR.match(t) for t in _HINT_TOKEN.findall(p)):
             continue
@@ -1062,6 +1193,46 @@ def face_reminders(oid: str, type_line: str | None, by_group: dict[str, dict[str
     return {**by_group.get("*", {}), **by_group.get(type_group(type_line), {}), **by_card.get(oid, {})}
 
 
+# linha do Oracle só com uma palavra-chave, sem custo nem lembrete ("Flash", "First strike")
+_BARE_KEYWORD = re.compile(r"^[A-Z][a-z]+(?: [a-z]+){0,2}$")
+
+
+def join_keyword_lines(en: list[str]) -> list[str]:
+    """
+    Junta numa linha só as linhas seguidas do Oracle que são só uma palavra-chave: o Arena as junta
+    ("Flash\nFlying" é "Lampejo, voar" no Dirge Bat, IKO 84), e as linhas deixavam de bater uma a
+    uma com o texto em PT, e a carta ficava sem o lembrete da Mutação que a física traz.
+    """
+    out: list[str] = []
+    bare = False
+    for line in en:
+        if bare and _BARE_KEYWORD.match(line):
+            out[-1] = f"{out[-1]}, {line.lower()}"
+        else:
+            out.append(line)
+            bare = bool(_BARE_KEYWORD.match(line))
+    return out
+
+
+# Palavra-chave com custo ("Mutate {3}{G} (If you cast…)") cujo nome falta no texto em PT, que começa
+# direto pelo custo: "{3}{G}" no Arena e "{3}{G} (Se você conjurar…)" no Scryfall, no Glowstone
+# Recluse (IKO 156) e no Sawtusk Demolisher (C20 64), com "Mutação" na carta impressa.
+COST_KEYWORDS_PT = {"Mutate": "Mutação"}
+_COST_KEYWORD = re.compile(r"^([A-Z][a-z]+) ((?:\{[^}]+\})+) \(")
+
+
+def restore_cost_keyword(oracle_text: str | None, text_pt: str | None) -> str | None:
+    """Põe o nome da palavra-chave (ver `COST_KEYWORDS_PT`) na frente da linha em PT que é só o custo dela, com o lembrete ou sem."""
+    if not text_pt:
+        return text_pt
+    costs = {m.group(2): COST_KEYWORDS_PT[m.group(1)] for line in (oracle_text or "").split("\n") if (m := _COST_KEYWORD.match(line.strip())) and m.group(1) in COST_KEYWORDS_PT}
+    out = []
+    for line in text_pt.split("\n"):
+        cost = re.match(r"^((?:\{[^}]+\})+)(?: \(|$)", line)
+        out.append(f"{costs[cost.group(1)]} {line}" if cost and cost.group(1) in costs else line)
+    return "\n".join(out)
+
+
 def add_reminders(oracle_text: str | None, text_pt: str | None, reminders: dict[str, str]) -> str | None:
     """
     Põe no fim de cada linha do texto em PT o lembrete oficial da mesma linha do Oracle (ver
@@ -1074,6 +1245,8 @@ def add_reminders(oracle_text: str | None, text_pt: str | None, reminders: dict[
         return None
     en = [x.strip() for x in (oracle_text or "").split("\n") if x.strip()]
     pt = text_pt.split("\n")
+    if len(en) != len(pt):
+        en = join_keyword_lines(en)
     if len(en) != len(pt):
         return text_pt
     out = []
@@ -1149,8 +1322,18 @@ def printed_faces(card: dict) -> list[dict]:
     card = card.get("_text", card)
     faces = card.get("card_faces") or [card]
     out = []
-    for f in faces:
+    for i, f in enumerate(faces):
         text = f.get("printed_text")
+        # nas reimpressões de RVR o Scryfall põe o nome inteiro em cada metade ("Fortalecer //
+        # Formar" no Assure e no Assemble), e o nome da carta saía repetido: cada metade fica
+        # com a parte dela
+        name_pt = f.get("printed_name")
+        if name_pt and " // " in name_pt and " // " not in (f.get("name") or "") and len(name_pt.split(" // ")) == len(faces):
+            name_pt = name_pt.split(" // ")[i]
+        # o texto da primeira metade do Assault // Battery de TSB traz, depois de uma linha "//",
+        # a segunda metade inteira (nome, custo, tipo e texto): fica só o da metade
+        if text and len(faces) > 1:
+            text = re.split(r"\n//\n", text)[0]
         # criatura sem habilidades (Great-Horn Krushok): o Scryfall não manda o texto,
         # que é vazio mesmo. Com o tipo em PT, é tradução; antes ficava `None` e a carta
         # saía em inglês, como se não houvesse texto oficial
@@ -1159,7 +1342,7 @@ def printed_faces(card: dict) -> list[dict]:
         out.append(
             {
                 "name_en": f.get("name"),
-                "name_pt": f.get("printed_name"),
+                "name_pt": name_pt,
                 # impressões antigas separam o subtipo com hífen: é o travessão da carta
                 "type_pt": re.sub(r" - ", " — ", f["printed_type_line"]) if f.get("printed_type_line") else None,
                 "text_pt": clean_rules(fix_breaks(drop_level_marks(text))),
@@ -1182,7 +1365,9 @@ def load_oracle(offline: bool) -> list[dict]:
         return [json.loads(line) for line in fh if line.strip()]
 
 
-UNSUPPORTED_EFFECTS = {"showcase", "etched", "inverted", "fullart", "borderless", "textless", "colorshifted", "spree", "upsidedowndfc"}
+# (a aba do "+" das cartas com Série, Spree, de OTJ fica fora da barra do nome, que é a da M15:
+# entram, conferidas nas 33 impressões)
+UNSUPPORTED_EFFECTS = {"showcase", "etched", "inverted", "fullart", "borderless", "textless", "colorshifted", "upsidedowndfc"}
 UNSUPPORTED_TYPES = ("Planeswalker", "Saga", "Class", "Battle", "Case", "Room")
 # planeswalkers de layout normal já são reescritos (src/engine/planeswalker.ts)
 UNSUPPORTED_TYPES_NORMAL = tuple(t for t in UNSUPPORTED_TYPES if t != "Planeswalker")
@@ -1222,8 +1407,9 @@ def drawn_frame(card: dict) -> bool:
 
 
 def frame_supported(card: dict) -> bool:
-    """O motor do Proxinho reescreve a moldura moderna (2015+) e a de 2003 a 2014 (ADR 0024),
-    de layout normal.
+    """O motor do Proxinho reescreve a moldura moderna (2015+), a de 2003 a 2014 (ADR 0024), a
+    antiga, de 1997 a 2003 e das reimpressões retrô (ADR 0031), e a de 1993 a 1996 (ADR 0039), de
+    layout normal.
 
     Outras molduras entram por etapas (docs/roadmap.md). Quando a impressão não é
     suportada, o site mostra a imagem oficial em PT (se houver) ou avisa.
@@ -1231,7 +1417,7 @@ def frame_supported(card: dict) -> bool:
     effects = set(card.get("frame_effects") or [])
     type_line = card.get("type_line", "")
     return (
-        (card.get("frame") == "2015" or frame2003_supported(card))
+        (card.get("frame") == "2015" or frame2003_supported(card) or frame1997_supported(card) or frame1993_supported(card))
         and card.get("layout") == "normal"
         and card.get("border_color") in {"black", "white"}
         and not card.get("full_art")
@@ -1247,17 +1433,63 @@ def frame_supported(card: dict) -> bool:
 
 def frame2003_supported(card: dict) -> bool:
     """Moldura de 2003 a 2014 (ADR 0024): as barras e a caixa ficam quase onde estão na M15, e o
-    motor muda só a caixa e a ponta das barras (`frame2003` em `m15Layout`). Só a moldura comum:
-    com qualquer efeito (o céu estrelado de Theros, a lápide de Odyssey no canto da caixa, a faixa
-    do milagre, as cores trocadas de Planar Chaos) o desenho muda, e os planeswalkers de 2003
-    têm caixa própria. E duas coleções de promos (`SETS_2003_OFF`)."""
+    motor muda só a caixa e a ponta das barras (`frame2003` em `m15Layout`). A comum e a do céu
+    estrelado de Theros (`enchantment`, nas criaturas encantamento de THS, BNG e JOU: as estrelas
+    ficam só na moldura em volta, e as barras e a caixa são as mesmas, conferido em 34 cartas).
+    Com outro efeito (a lápide de Odyssey no começo do nome, a faixa do milagre, as cores trocadas
+    de Planar Chaos) o desenho muda, e os planeswalkers de 2003 têm caixa própria. A marca-d'água
+    entra quando é lisa (`WATERMARKS_2003_OK`: as das guildas, das facções, o símbolo da coleção);
+    os logotipos das promos, não. E duas coleções de promos ficam de fora (`SETS_2003_OFF`)."""
     return (
         card.get("frame") == "2003"
-        and not card.get("frame_effects")
+        and set(card.get("frame_effects") or []) <= {"enchantment"}
         and "Planeswalker" not in card.get("type_line", "")
         and card.get("watermark") in WATERMARKS_2003_OK
         and card.get("set") not in SETS_2003_OFF
     )
+
+
+def frame1997_supported(card: dict) -> bool:
+    """Moldura antiga (ADR 0031): de Mirage a Scourge, das edições básicas de 5ª a 7ª, de Portal e
+    das reimpressões retrô (TSR, MH2, DMR, BRO, RVR...). O nome e o tipo são letras brancas com
+    sombra sobre a moldura texturizada, que a rede neural apaga; a caixa é de papel. Só a comum:
+    sem efeito, salvo a lápide de Odyssey a Scourge, antes do nome (fica como está, e o nome em PT
+    começa onde começava o inglês, depois dela), sem marca-d'água (os logotipos das promos e o
+    "wotc" das reimpressões de 30 anos, no meio da caixa), sem planeswalker (as retrô de MH3 têm
+    caixa própria) e fora das coleções com o desenho refeito (`SETS_1997_OFF`)."""
+    return (
+        card.get("frame") == "1997"
+        and set(card.get("frame_effects") or []) <= {"tombstone"}
+        and "Planeswalker" not in card.get("type_line", "")
+        and not card.get("watermark")
+        and card.get("set") not in SETS_1997_OFF
+    )
+
+
+def frame1993_supported(card: dict) -> bool:
+    """Moldura de 1993 (ADR 0039): de Alpha a Alliances, das edições básicas de Beta a 4ª, das
+    Collectors' Editions, de Chronicles, Summer Magic e das promos da época. Como na antiga, o nome
+    e o tipo ficam sobre a moldura texturizada (claros com sombra ou gravados) e saem pela rede
+    neural; a caixa é de papel. Só a comum: sem efeito nem marca-d'água (nenhuma de 1993 tem) e
+    fora das promos com outro desenho (`SETS_1993_OFF`)."""
+    return (
+        card.get("frame") == "1993"
+        and not card.get("frame_effects")
+        and not card.get("watermark")
+        and card.get("set") not in SETS_1993_OFF
+    )
+
+
+# Promos de 1993 com outro desenho, sem nada que o Scryfall marque: o Nalathni Dragon da DragonCon
+# de 1994 (PDRC 1) tem uma linha "DragonCon 1994" a mais no pé da caixa, com o texto em letra menor,
+# e as duas cartas de comemoração (PCEL: o 1996 World Champion e o Shichifukujin Dragon) têm a caixa
+# e o nome desenhados de outro jeito.
+SETS_1993_OFF = {"pdrc", "pcel"}
+
+
+# Coleções da moldura antiga com o desenho refeito, sem nada que o Scryfall marque: a Secret Lair
+# escreve o nome e o tipo à mão ou em outras letras ("CREATURE - Goblin" em versalete, SLD 2517).
+SETS_1997_OFF = {"sld"}
 
 
 # Promos de 2003 com outro desenho, sem nada que o Scryfall marque: as de Champs and States (PCMP)
@@ -1267,12 +1499,35 @@ def frame2003_supported(card: dict) -> bool:
 SETS_2003_OFF = {"pcmp", "sld"}
 
 
-# Marcas-d'água na moldura de 2003 (ADR 0024): por enquanto só sem nenhuma. As das guildas de Ravnica
-# e das facções de Scars of Mirrodin são cinza-claras e sem cor, e o apagamento levava só os pedaços
-# que as letras cruzavam: o resto ficava em cacos no papel (Darksteel Relic NPH 134, Peace Strider
-# MBS 119). As das promos (FNM, DCI, Junior...) são logotipos grandes e brilhantes no meio da caixa,
-# e ficavam manchas claras onde as letras os cruzavam (Elvish Visionary F10 6, Counterspell F05 11).
-WATERMARKS_2003_OK = {None}
+# Marcas-d'água na moldura de 2003 (ADR 0024): o motor apaga só as letras e a rede neural refaz a
+# marca por baixo delas (`keepMark` em `render.ts`). Entram as marcas lisas, de um tom só: as das
+# guildas de Ravnica, das facções de Scars of Mirrodin, da Conspiracy, das cores (colorpie), o
+# símbolo da coleção (set), o planeswalker das promos da Wizards (wotc), o DCI e o WPN, conferidas
+# em 60 cartas. Ficam de fora os logotipos grandes das promos, com letras e contorno: FNM, Arena,
+# Pro Tour, Grand Prix, "Magic" e os de aniversário, Hero's Path e os foils holográficos das
+# Junior e Super Series; a rede neural os refazia em borrões, e o "FNM" branco de contorno escuro
+# deixava pedaços do inglês (Terror, F03 8). Sem marca, a carta entra como antes.
+WATERMARKS_2003_OK = {
+    None,
+    "azorius",
+    "boros",
+    "dimir",
+    "golgari",
+    "gruul",
+    "izzet",
+    "orzhov",
+    "rakdos",
+    "selesnya",
+    "simic",
+    "mirran",
+    "phyrexian",
+    "conspiracy",
+    "colorpie",
+    "set",
+    "wotc",
+    "dci",
+    "wpn",
+}
 
 
 # efeitos que não mudam o desenho da moldura sem borda padrão: "inverted" (letra clara sobre a
@@ -1320,9 +1575,11 @@ def saga_supported(card: dict) -> bool:
     capítulo (src/engine/saga.ts). O motor mede os fios entre as faixas na imagem e confere que
     batem com os capítulos do texto em PT; se não baterem, a arte sai como está.
 
-    As criaturas Saga (as Invocações de Final Fantasy) têm outra moldura, com o lembrete na
-    largura toda e a caixa de P/R embaixo, e ficam de fora, como as Sagas de duas faces, as sem
-    borda e as de vitrine (showcase).
+    As criaturas Saga (as Invocações de Final Fantasy) têm outra moldura, com o lembrete numa
+    faixa larga no alto, a coluna dos capítulos mais curta e uma caixa embaixo, com a palavra-chave
+    ou o flavor e a caixa de P/R (`SUMMON` em saga.ts, ADR 0042): entram também, e o motor confere
+    a moldura delas na imagem. Ficam de fora as Sagas de duas faces, as sem borda e as de vitrine
+    (showcase).
     """
     effects = set(card.get("frame_effects") or [])
     return (
@@ -1334,7 +1591,6 @@ def saga_supported(card: dict) -> bool:
         and not card.get("textless")
         and not drawn_frame(card)
         and "Saga" in card.get("type_line", "")
-        and "Creature" not in card.get("type_line", "")
     )
 
 
@@ -1361,6 +1617,286 @@ def adventure_supported(card: dict) -> bool:
     )
 
 
+def prepare_supported(card: dict) -> bool:
+    """Preparar (Secrets of Strixhaven, Reality Fracture): a caixa dividida por um fio, a criatura
+    à esquerda e a mágica (nome, tipo e regras) à direita (src/engine/prepare.ts, ADR 0032). O
+    motor confere o fio e as barras da mágica na imagem; sem eles, a arte sai como está.
+
+    Ficam de fora as de moldura de 2003 e as de arte inteira (a Ancestral Recall de SOS, a
+    Bloodline Recollector de FRA), que têm outro desenho; a arte estendida tem a mesma caixa.
+    """
+    effects = set(card.get("frame_effects") or [])
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "prepare"
+        and card.get("border_color") == "black"
+        and effects <= SAGA_EFFECTS_OK | {"extendedart"}
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+        and not art_behind_box(card)
+        and len(card.get("card_faces") or []) == 2
+    )
+
+
+def room_supported(card: dict) -> bool:
+    """Salas (Cômodos) de Duskmourn: a carta dividida impressa deitada, com a barra do nome e o
+    custo de cada metade no alto, a linha de tipo das duas e a faixa do lembrete no meio (as duas
+    translúcidas, de letra branca) e uma caixa de papel por metade embaixo (src/engine/room.ts,
+    ADR 0033). O motor confere as barras, as faixas e as caixas na imagem; sem elas, a arte sai
+    como está. Só as de borda preta: as sem borda (Booster Fun) têm outro desenho."""
+    faces = card.get("card_faces") or []
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "split"
+        and card.get("border_color") == "black"
+        and not card.get("frame_effects")
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+        and len(faces) == 2
+        and all(is_room(f.get("type_line")) for f in faces)
+    )
+
+
+# divididas de 2015 com outro desenho: as de Commander 2016 (Trial // Error, Order // Chaos) têm
+# as metades mais altas e a linha do copyright no pé da carta deitada, e as cartas de teste dos
+# Mystery Boosters e do Unknown Event (Start // Fire, Bind // Liberate) têm a moldura de rascunho
+SPLIT_SETS_OFF = {"c16", "cmb1", "cmb2", "mb2", "unk"}
+
+
+def split_frame_ok(card: dict) -> bool:
+    """A moldura das divididas que o motor reescreve: a de 2015 (ADR 0034), a de 2003 (ADR 0037,
+    as de Dissension, Planar Chaos e Dragon's Maze e as reimpressões) e a antiga (ADR 0038, as de
+    Invasion e Apocalypse e as reimpressões de The List e de Time Spiral), de borda preta, sem
+    efeito de moldura e fora das coleções de `SPLIT_SETS_OFF`. Na de 2003 a marca-d'água de cada
+    metade (das guildas) sai com o texto, como nas de 2015; o logotipo da Friday Night Magic (as
+    promos de 2006), não: fica de fora, como nas cartas de 2003 (`WATERMARKS_2003_OK`). Na antiga,
+    como nas cartas de pé dela, nenhuma marca-d'água e nada de `SETS_1997_OFF`; as douradas do
+    Campeonato Mundial (WC01, WC02) ficam de fora pela borda."""
+    faces = card.get("card_faces") or []
+    frame = card.get("frame")
+    return (
+        (
+            frame == "2015"
+            or (frame == "2003" and all(f.get("watermark") in WATERMARKS_2003_OK for f in faces))
+            or (frame == "1997" and not any(f.get("watermark") for f in faces) and card.get("set") not in SETS_1997_OFF)
+        )
+        and card.get("layout") == "split"
+        and card.get("border_color") == "black"
+        and not card.get("frame_effects")
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+        and card.get("set") not in SPLIT_SETS_OFF
+        and len(faces) == 2
+    )
+
+
+def split_supported(card: dict) -> bool:
+    """Cartas divididas de 2015 (Guilds of Ravnica, Ravnica Allegiance, Murders at Karlov Manor e
+    as reimpressões na moldura atual): duas cartas pequenas da M15 lado a lado na carta deitada,
+    cada uma com a barra do nome, a barra de tipo e a caixa (src/engine/split.ts, ADR 0034); as
+    da moldura de 2003, pelo mesmo caminho com as medidas delas (ADR 0037); e as da antiga, com o
+    nome e o tipo em letras brancas pela rede neural (ADR 0038). O motor confere as
+    barras e as caixas na imagem; sem elas, a arte sai como está. Ficam de fora as Salas
+    (room_supported), a Consequência e o Fundir, que têm outro desenho, e as de borda branca,
+    prateada e sem borda."""
+    faces = card.get("card_faces") or []
+    keywords = set(card.get("keywords") or [])
+    return (
+        split_frame_ok(card)
+        and not any(is_room(f.get("type_line")) for f in faces)
+        and not keywords & {"Aftermath", "Fuse"}
+    )
+
+
+def aftermath_supported(card: dict) -> bool:
+    """Consequência na moldura atual (Amonkhet, Hour of Devastation e as reimpressões): a metade de
+    cima de pé, como uma M15 mais baixa, e a da Consequência deitada embaixo (src/engine/aftermath.ts,
+    ADR 0035). O motor confere as barras e as caixas das duas metades na imagem; sem elas, a arte
+    sai como está. Ficam de fora as de vitrine e as sem borda."""
+    faces = card.get("card_faces") or []
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "split"
+        and card.get("border_color") == "black"
+        and not card.get("frame_effects")
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+        and len(faces) == 2
+        and "Aftermath" in (card.get("keywords") or [])
+    )
+
+
+def fuse_supported(card: dict) -> bool:
+    """Cartas com Fundir na moldura atual (as reimpressões de Dragon's Maze nos decks de Commander,
+    em Commander Legends e nos Guild Kits, e as de Doctor Who, Fallout e das Tartarugas Ninja): a
+    dividida de 2015 (split_supported) com a caixa mais curta e a faixa do Fundir no pé, de uma
+    metade à outra (src/engine/split.ts, ADR 0036). E as de Dragon's Maze, na moldura de 2003,
+    com a faixa mais alta e o lembrete alinhado à esquerda (ADR 0037)."""
+    return split_frame_ok(card) and "Fuse" in (card.get("keywords") or [])
+
+
+FUSE_EN = "You may cast one or both halves of this card from your hand."
+
+
+def without_fuse(text: str | None) -> str | None:
+    """O texto de uma metade sem a linha do Fundir ("Fundir", sozinho no Arena, ou com o lembrete),
+    que vai na faixa do pé da carta e não na caixa."""
+    if text is None:
+        return None
+    return "\n".join(x for x in text.split("\n") if not re.fullmatch(r"Fundir(\s*\(.*\))?", x.strip()))
+
+
+def add_fuse_reminders(rows: list[dict], oracle, by_group: dict[str, dict[str, str]]) -> int:
+    """
+    O Fundir de cada carta, na faixa do pé (`reminder_pt`), com o lembrete oficial das impressas
+    em PT (Wear // Tear de DMC e CMR), e sem a linha dele no texto das metades. Sem o lembrete
+    oficial, nada muda (e a carta sai na original).
+    """
+    pt = by_group.get("*", {}).get(FUSE_EN)
+    if not pt:
+        return 0
+    fused = {c.get("oracle_id") for c in oracle if c.get("layout") == "split" and "Fuse" in (c.get("keywords") or [])}
+    done = 0
+    for r in rows:
+        if r["oracle_id"] not in fused or not r["faces"]:
+            continue
+        for f in r["faces"]:
+            f["text_pt"] = without_fuse(f.get("text_pt"))
+            f["reminder_pt"] = f"Fundir ({pt})"
+        done += 1
+    return done
+
+
+def is_room(type_line: str | None) -> bool:
+    return "Room" in (type_line or "").split("—")[-1].split()
+
+
+# O lembrete das Salas, impresso na faixa entre a linha de tipo e as caixas (e no fim do texto de
+# cada metade no Oracle). Nunca saiu impresso em PT: vem da dica do Arena (ADR 0021).
+ROOM_HINT = "AbilityHanger/Keyword/Room_Body"
+
+
+def room_reminder(oracle_text: str | None, hints: list[dict[str, str]]) -> str | None:
+    """O lembrete das Salas em PT, entre parênteses, quando o do Oracle é o da dica palavra por palavra."""
+    hint = next((h for h in hints if h["key"] == ROOM_HINT), None)
+    if not hint:
+        return None
+    for line in (oracle_text or "").split("\n"):
+        m = re.fullmatch(r"\((.+)\)", line.strip())
+        if m and m.group(1).strip() == hint["en"].strip():
+            return f"({hint['pt'].strip()})"
+    return None
+
+
+def without_room_reminder(oracle_text: str | None) -> str | None:
+    """O texto de uma metade de Sala sem a linha do lembrete delas (que vai na faixa do meio, não na caixa)."""
+    if oracle_text is None:
+        return None
+    return "\n".join(x for x in oracle_text.split("\n") if not re.fullmatch(r"\(You may cast either half\..*\)", x.strip()))
+
+
+def en_face_of(card: dict, faces: list[dict], i: int) -> dict:
+    """
+    A face em inglês (do Oracle) da face `i` em PT. Nas cartas divididas o Arena traz antes das
+    metades a carta inteira ("Armário // Porão Esquecido", com os dois textos): ela casa com a
+    carta, e cada metade com a dela (casadas pela posição, a primeira metade ia com o texto da
+    segunda). Nas Salas, sem a linha do lembrete delas, que vai na faixa do meio da carta e não
+    está no texto em PT de cada metade (com ela, as linhas nunca batiam).
+    """
+    faces_en = card.get("card_faces") or [card]
+    whole = len(faces) == len(faces_en) + 1 and " // " in (faces[0].get("name_en") or "")
+    f = (card if i == 0 else faces_en[i - 1]) if whole else faces_en[min(i, len(faces_en) - 1)]
+    if card.get("layout") == "split" and is_room(f.get("type_line")):
+        return {**f, "oracle_text": without_room_reminder(f.get("oracle_text"))}
+    return f
+
+
+def arena_entry(arena: dict[str, dict], name: str) -> dict | None:
+    """
+    A carta do Arena de um nome do Oracle: pelo nome inteiro ou, nas de duas faces e nas
+    Aventuras, pelo da primeira face. Uma dividida do Arena só vale com o mesmo nome inteiro: a
+    Start // Fire (carta de teste dos Mystery Boosters) casava pela primeira metade com a Start //
+    Finish e saía com o texto da Finish na segunda.
+    """
+    if name in arena:
+        return arena[name]
+    a = arena.get(name.split(" // ")[0])
+    if a and any(" // " in (f.get("name_en") or "") and f.get("name_en") != name for f in a["faces"]):
+        return None
+    return a
+
+
+def arena_name_pt(faces: list[dict]) -> str:
+    """O nome em PT das faces do Arena: o da carta inteira, quando ela vem antes das metades (cartas divididas)."""
+    if len(faces) > 1 and " // " in (faces[0].get("name_en") or ""):
+        return faces[0]["name_pt"]
+    return " // ".join(f["name_pt"] for f in faces)
+
+
+def own_faces(card: dict, faces: list[dict]) -> list[dict]:
+    """As faces do Arena que são da carta. Nas de fundir o Arena liga à carta as outras partes e a
+    carta fundida: a Bruna ficava com a face da Brisela, e o nome do Fang saía "Fang, l’Cie
+    Destemida // Ragnarok, Salvação Divina"."""
+    return faces[:1] if card.get("layout") == "meld" else faces
+
+
+MELD_REMINDER_EN = re.compile(r"^\(Melds with .+\.\)$")
+MELD_REMINDER_PT = re.compile(r"^\(Funde-se com .+\.\)$")
+
+
+def add_meld_data(rows: list[dict], oracle, printed: dict[str, dict]) -> tuple[int, int]:
+    """
+    A frente das cartas de fundir (ADR 0043): o P/R da carta fundida, que ela imprime no pé da caixa
+    ("9/10" na Bruna, `meld_pt`), e o lembrete "(Funde-se com Gisela, a Lâmina Partida.)", que o
+    Arena não tem, das impressas em PT (nunca montado: sem impressa, a carta fica sem ele).
+    Devolve quantas ganharam o P/R e quantas o lembrete.
+    """
+    by_name = {c["name"]: c for c in oracle}
+    by_oid = {c.get("oracle_id"): c for c in oracle}
+    pts = reminders = 0
+    for r in rows:
+        card = by_oid.get(r["oracle_id"])
+        if not card or card.get("layout") != "meld" or not r["faces"] or is_meld_result(card):
+            continue
+        face = r["faces"][0]
+        result = next((by_name.get(x.get("name")) for x in card.get("all_parts") or [] if x.get("component") == "meld_result"), None)
+        if result and result.get("power") is not None:
+            face["meld_pt"] = f"{result['power']}/{result['toughness']}"
+            pts += 1
+        lines = (face.get("text_pt") or "").split("\n")
+        if not any(MELD_REMINDER_EN.match(x.strip()) for x in (card.get("oracle_text") or "").split("\n")):
+            continue
+        if face.get("text_pt") is None or any(MELD_REMINDER_PT.match(x.strip()) for x in lines):
+            continue
+        p = printed.get(r["oracle_id"])
+        pt = [x.strip() for x in ((printed_faces(p)[0].get("text_pt") or "") if p else "").split("\n") if MELD_REMINDER_PT.match(x.strip())]
+        if pt:
+            face["text_pt"] = face["text_pt"] + "\n" + pt[0]
+            reminders += 1
+    return pts, reminders
+
+
+def add_room_reminders(rows: list[dict], oracle, hints: list[dict[str, str]]) -> int:
+    """Põe o lembrete das Salas em PT (`reminder_pt`) em cada face delas, também nas de tradução não oficial."""
+    by_oid = {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle}
+    done = 0
+    for r in rows:
+        card = by_oid.get(r["oracle_id"])
+        faces_en = (card or {}).get("card_faces") or []
+        if not r["faces"] or r["layout"] != "split" or not faces_en or not all(is_room(f.get("type_line")) for f in faces_en):
+            continue
+        pt = room_reminder(faces_en[0].get("oracle_text"), hints)
+        if pt:
+            for f in r["faces"]:
+                f["reminder_pt"] = pt
+            done += 1
+    return done
+
+
 # efeitos que não mudam a caixa das naves: a coroa de lendária e a arte estendida (que já vem
 # sem a explicação do "Station", com as faixas mais altas)
 STATION_EFFECTS_OK = {"legendary", "extendedart"}
@@ -1383,6 +1919,161 @@ def station_supported(card: dict) -> bool:
         and not card.get("textless")
         and not drawn_frame(card)
     )
+
+
+def mutate_supported(card: dict) -> bool:
+    """Criaturas com Mutação (Ikoria e as reimpressões de Commander) na moldura comum: a caixa partida
+    pelo fio da faixa translúcida da Mutação, no alto, com a arte atrás (src/engine/mutate.ts). O
+    motor confere o fio na imagem; sem ele, a arte sai como está. Ficam de fora as de vitrine e as
+    sem borda (as de Godzilla), com a caixa de outro desenho.
+    """
+    effects = set(card.get("frame_effects") or [])
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "mutate"
+        and card.get("border_color") == "black"
+        and effects <= {"legendary"}
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not art_behind_box(card)
+        and not drawn_frame(card)
+    )
+
+
+def leveler_supported(card: dict) -> bool:
+    """Criaturas com Subir de Nível (Level up) na moldura de 2003 (Rise of the Eldrazi, as Duel Decks
+    e Commander 2013) e na atual (Duel Decks, Commander, Modern Horizons): a caixa em três faixas
+    fixas, cada uma com a sua caixa de P/R, e os selos dos níveis (src/engine/leveler.ts). O motor
+    confere as faixas e as caixas de P/R na imagem; sem elas, a arte sai como está. Ficam de fora
+    as sem borda e as de vitrine, as cartas de teste (MB2), de outro desenho, e as com marca-d'água
+    (as promos de ROE): o apagamento de cada faixa levava a marca junto, em cacos.
+    """
+    effects = set(card.get("frame_effects") or [])
+    return (
+        card.get("frame") in {"2003", "2015"}
+        and card.get("layout") == "leveler"
+        and card.get("border_color") == "black"
+        and effects <= {"legendary"}
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not art_behind_box(card)
+        and not drawn_frame(card)
+        and not card.get("watermark")
+        and "playtest" not in (card.get("promo_types") or [])
+    )
+
+
+# efeitos que não mudam a frente das cartas de fundir: a coroa de lendária, o ícone da lua e
+# do Eldrazi de Eldritch Moon (no lugar do círculo das outras) e a arte estendida
+MELD_EFFECTS_OK = {"legendary", "mooneldrazidfc", "extendedart"}
+
+
+def is_meld_result(card: dict) -> bool:
+    """A carta fundida (Brisela, Chittering Host): a impressão dela é a junção dos versos das duas partes."""
+    return any(p.get("component") == "meld_result" and p.get("name") == card.get("name") for p in card.get("all_parts") or [])
+
+
+def meld_supported(card: dict) -> bool:
+    """A frente das cartas de fundir (Eldritch Moon, The Brothers' War, Final Fantasy e as
+    reimpressões; ADR 0043): a moldura da carta comum, com o ícone à esquerda do nome, como nas de
+    duas faces, e o P/R da carta fundida no pé da caixa, como o do verso nas de transformar. A carta
+    fundida (as duas metades juntas) fica de fora, como as sem borda e as de vitrine.
+    """
+    effects = set(card.get("frame_effects") or [])
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "meld"
+        and card.get("border_color") == "black"
+        and effects <= MELD_EFFECTS_OK
+        and not is_meld_result(card)
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not art_behind_box(card)
+        and not drawn_frame(card)
+    )
+
+
+def flip_supported(card: dict) -> bool:
+    """As cartas viradas de Kamigawa (Champions, Betrayers e Saviors of Kamigawa e as reimpressões,
+    na moldura de 2003 e na atual; ADR 0044): a metade de cima de pé, acima da arte, e a virada de
+    cabeça para baixo, abaixo dela, cada uma com a barra do nome, a caixa e a barra de tipo
+    (src/engine/flip.ts). O motor confere as barras de tipo e as caixas de P/R na imagem. Ficam de
+    fora as fichas de Papel de Wilds of Eldraine (o layout delas também é "flip") e a de Unhinged,
+    de borda prateada."""
+    return (
+        card.get("layout") == "flip"
+        and card.get("frame") in {"2003", "2015"}
+        and card.get("border_color") in {"black", "white"}
+        and not card.get("frame_effects")
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+        and not card.get("type_line", "").startswith("Token")
+        and len(card.get("card_faces") or []) == 2
+    )
+
+
+def prototype_supported(card: dict) -> bool:
+    """As criaturas com Protótipo (The Brothers' War e Modern Horizons 3, ADR 0045): a caixa da carta
+    comum partida em duas, com a faixa do protótipo no alto (o lembrete à esquerda, a aba do custo e
+    a caixa de P/R dele à direita) e o papel de sempre embaixo (src/engine/prototype.ts). O motor
+    confere a faixa, o fio dela e as abas na imagem. A arte estendida tem a mesma caixa."""
+    return (
+        card.get("layout") == "prototype"
+        and card.get("frame") == "2015"
+        and card.get("border_color") == "black"
+        and set(card.get("frame_effects") or []) <= {"extendedart"}
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+    )
+
+
+# a linha do Protótipo no Oracle ("Prototype {1}{W}{W} — 3/3 (You may cast…)") e o lembrete das impressas em PT
+PROTOTYPE_EN = re.compile(r"^Prototype ((?:\{[^}]+\})+) — \d+/\d+ \(")
+PROTOTYPE_PT = re.compile(r"^Protótipo \(.+\)$")
+
+
+def prototype_reminders(printed: dict[str, dict]) -> tuple[dict[str, str], str | None]:
+    """
+    O lembrete do Protótipo em PT de cada carta impressa ("Protótipo (Você pode conjurar esta mágica
+    com custo de mana, cor e tamanho diferentes. …)"), na linha do texto impresso entre o custo e o
+    P/R do protótipo, e o da impressa mais nova, para as que não têm impressa em PT. Nunca montado.
+    """
+    by_card: dict[str, str] = {}
+    newest = ("", None)
+    for oid, p in printed.items():
+        text = p.get("_text", p)
+        if text.get("layout") != "prototype":
+            continue
+        line = next((x.strip() for x in (printed_faces(p)[0].get("text_pt") or "").split("\n") if PROTOTYPE_PT.match(x.strip())), None)
+        if line:
+            by_card[oid] = line
+            newest = max(newest, (text.get("released_at") or "", line), key=lambda t: t[0])
+    return by_card, newest[1]
+
+
+def prototype_cost(oracle_text: str | None) -> str | None:
+    """O custo do protótipo, da linha dele no Oracle ("{1}{W}{W}"): o motor acha a aba dele pelo número de símbolos."""
+    return next((m.group(1) for line in (oracle_text or "").split("\n") if (m := PROTOTYPE_EN.match(line.strip()))), None)
+
+
+def prototype_text(text_pt: str | None, reminder: str | None) -> str | None:
+    """
+    O texto do Arena com o Protótipo no alto, como na carta impressa: o Arena junta a palavra-chave
+    às da primeira linha, sem o custo nem o lembrete ("Protótipo, voar"), e a carta imprime o
+    lembrete sozinho na faixa do alto, com o custo e o P/R nas abas, e o resto no papel ("Voar").
+    O lembrete vem das impressas em PT (`prototype_reminders`); sem ele, fica só a palavra. Sem o
+    Protótipo na frente, `None`: o texto não bate com a moldura.
+    """
+    if not text_pt:
+        return None
+    lines = text_pt.split("\n")
+    m = re.match(r"^Protótipo(?:, (.+))?$", lines[0].strip())
+    if not m:
+        return None
+    rest = [m.group(1)[:1].upper() + m.group(1)[1:]] if m.group(1) else []
+    return "\n".join([reminder or "Protótipo", *rest, *lines[1:]])
 
 
 def class_supported(card: dict) -> bool:
@@ -1593,14 +2284,26 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or token_supported(c)
         or saga_supported(c)
         or adventure_supported(c)
+        or prepare_supported(c)
+        or room_supported(c)
+        or split_supported(c)
+        or aftermath_supported(c)
+        or fuse_supported(c)
         or class_supported(c)
         or station_supported(c)
+        or mutate_supported(c)
+        or leveler_supported(c)
+        or meld_supported(c)
+        or flip_supported(c)
+        or prototype_supported(c)
         or bool(sides and sides[0]["supported"]),
         "sides": sides,
         # nome de crossover no alto (o nome de jogo vai numa linha pequena abaixo da barra)
         "flavor_name": c.get("flavor_name") or face.get("flavor_name"),
         # indicador de cor das cartas de uma face só (nas de duas faces, em `sides`)
         "indicator": bool(c.get("color_indicator")),
+        # marca-d'água: na moldura de 2003 ela fica, e só as letras saem de cima dela (ADR 0024)
+        "watermark": c.get("watermark"),
     }
 
 
@@ -1716,17 +2419,25 @@ def fill_mold(line: str, pt_mold: str) -> str:
     return re.sub("#", lambda _: next(marks), pt_mold.split("|")[0])
 
 
+# termos que o PT deixou depois do Magic 2010: o "custo de mana convertido" virou "valor de mana"
+# (2021) e o "a sua reserva de mana" saiu do "Adicione {G}" (2019)
+_OUTDATED_PT = re.compile(r"custo de mana convertido|reserva de mana")
+
+
 def official_lines(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str, str], dict[str, str]]:
     """
     As linhas oficiais, do inglês do Oracle para o PT (sem lembrete, nome como "~"), e os moldes
     delas. Só casa as faces com o mesmo número de linhas nos dois idiomas; de cada linha fica o
-    texto mais comum do Arena, senão o das impressas.
+    texto mais comum do Arena, senão o das impressas. As impressas antes do Magic 2010 ficam de
+    fora (`_old_text`): com elas, a tradução não oficial saía com "Quando ~ entrar em jogo" e
+    "Toda vez que você jogar uma mágica" (Budoka Pupil, BOK 122). E as linhas com um termo que
+    saiu depois (`_OUTDATED_PT`) também: "custo de mana convertido" no Ramosian Captain.
     """
     votes: dict[str, Counter] = {}
     arena: dict[str, Counter] = {}
     for r in rows:
         card = oracle.get(r["oracle_id"])
-        if not r["source"] or r["source"] == "nao-oficial" or not card:
+        if not r["source"] or r["source"] == "nao-oficial" or r.get("_old_text") or not card:
             continue
         faces_en = card.get("card_faces") or [card]
         if len(faces_en) != len(r["faces"]):
@@ -1737,6 +2448,8 @@ def official_lines(rows: list[dict], oracle: dict[str, dict]) -> tuple[dict[str,
             if len(en) != len(pt) or not en:
                 continue
             for a, b in zip(en, pt):
+                if _OUTDATED_PT.search(b):
+                    continue
                 votes.setdefault(a, Counter())[b] += 1
                 if r["source"] == "arena":
                     arena.setdefault(a, Counter())[b] += 1
@@ -1947,14 +2660,14 @@ def add_unofficial(rows: list[dict], oracle: list[dict], reminders: dict[str, st
         faces = unofficial_faces(card, r["name_pt"].split(" // ") if r["name_pt"] else [], best, molds, lines, heads, subs, types, used)
         if not faces:
             continue
-        faces_en = card.get("card_faces") or [card]
         if "Planeswalker" in card.get("type_line", "") and card.get("layout") == "normal":
             text_pt = pw_costs(card.get("oracle_text"), faces[0]["text_pt"])
             if text_pt is None:
                 PW_MISMATCH.add(oid)
             else:
                 faces[0]["text_pt"] = text_pt
-        for e, f in zip(faces_en, faces):
+        for i, f in enumerate(faces):
+            e = en_face_of(card, faces, i)
             if "Saga" in (e.get("type_line") or "") or "Class" in (e.get("type_line") or ""):
                 f["text_pt"] = top_reminder(e.get("oracle_text"), f["text_pt"], reminders)
             f["text_pt"] = add_reminders(e.get("oracle_text"), f["text_pt"], face_reminders(oid, e.get("type_line"), by_group, by_card))
@@ -1982,12 +2695,15 @@ def build(offline: bool) -> list[dict]:
     by_group, by_card = reminder_texts(read_printed_pt(load_transcribed()), {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle})
     log(f"lembretes de palavra-chave em PT (das impressas): {len(by_group.get('*', {}))}")
     # e os das dicas do Arena, onde nenhuma impressa traz o lembrete (o Posicionar, ADR 0021)
-    hints = arena_reminders(oracle, load_hints(), set(by_group.get("*", {})))
+    raw_hints = load_hints()
+    hints = arena_reminders(oracle, raw_hints, set(by_group.get("*", {})))
     for oid, table in hints.items():
         for en, pt in table.items():
             # o texto impresso da própria carta ganha da dica
             by_card.setdefault(oid, {}).setdefault(en, pt)
     log(f"lembretes de palavra-chave em PT (das dicas do Arena): {len({en for t in hints.values() for en in t})}, em {len(hints)} cartas")
+    proto_by_card, proto_newest = prototype_reminders(printed)
+    log(f"lembretes do Protótipo em PT (das impressas): {len(proto_by_card)} cartas")
     added = 0
 
     rows = []
@@ -1998,12 +2714,11 @@ def build(offline: bool) -> list[dict]:
         name = card["name"]
         front_name = name.split(" // ")[0]
         oid = card["oracle_id"] if "oracle_id" in card else card["card_faces"][0]["oracle_id"]
-        a = arena.get(name) or arena.get(front_name)
+        a = arena_entry(arena, name)
         p = printed.get(oid)
-        faces_en = card.get("card_faces") or [card]
 
         if a:
-            source, faces, text_print = "arena", a["faces"], a["print"]
+            source, faces, text_print = "arena", own_faces(card, a["faces"]), a["print"]
         # (algumas impressões em PT do Scryfall vêm só com a imagem, sem nome, tipo nem
         # texto: aí não há tradução, e a carta não pode passar por "impresso")
         elif p and printed_has_text(p):
@@ -2020,11 +2735,25 @@ def build(offline: bool) -> list[dict]:
             else:
                 faces[0]["text_pt"] = text_pt
 
+        # o nome da palavra-chave que falta na frente do custo dela (ver `restore_cost_keyword`)
+        for i, f in enumerate(faces):
+            if f.get("text_pt"):
+                f["text_pt"] = restore_cost_keyword(en_face_of(card, faces, i).get("oracle_text"), f["text_pt"])
+
+        # Protótipo: o lembrete na faixa do alto da caixa e o resto no papel, como na carta impressa
+        # (antes dos lembretes de palavra-chave: "Afinidade por artefatos" sozinha na linha ganha o dela)
+        if source == "arena" and card.get("layout") == "prototype" and faces:
+            text_pt = prototype_text(faces[0].get("text_pt"), proto_by_card.get(oid, proto_newest))
+            cost = prototype_cost(card.get("oracle_text"))
+            if text_pt is not None and cost:
+                faces[0]["text_pt"] = text_pt
+                faces[0]["prototype_cost"] = cost
+
         # Saga: o número de cada capítulo na frente, para o motor casar capítulo e faixa (e o
         # lembrete do alto das Sagas e das Classes)
         if source == "arena":
             for i, f in enumerate(faces):
-                en_face = faces_en[min(i, len(faces_en) - 1)]
+                en_face = en_face_of(card, faces, i)
                 if "Saga" in en_face.get("type_line", ""):
                     text_pt = saga_chapters(en_face.get("oracle_text"), f.get("text_pt"))
                     if text_pt is None:
@@ -2036,13 +2765,13 @@ def build(offline: bool) -> list[dict]:
                     f["text_pt"] = top_reminder(en_face.get("oracle_text"), f["text_pt"], reminders)
             # o lembrete de palavra-chave de cada linha, como na carta física ("Arregimentar Orcs 1. (Coloque…)")
             for i, f in enumerate(faces):
-                en_face = faces_en[min(i, len(faces_en) - 1)]
+                en_face = en_face_of(card, faces, i)
                 before = f.get("text_pt")
                 f["text_pt"] = add_reminders(en_face.get("oracle_text"), before, face_reminders(oid, en_face.get("type_line"), by_group, by_card))
                 added += f["text_pt"] != before
 
         for i, f in enumerate(faces):
-            aw = ability_word_lines(faces_en[min(i, len(faces_en) - 1)].get("oracle_text"), f.get("text_pt"))
+            aw = ability_word_lines(en_face_of(card, faces, i).get("oracle_text"), f.get("text_pt"))
             if aw:
                 f["ability_words"] = aw
 
@@ -2053,8 +2782,8 @@ def build(offline: bool) -> list[dict]:
             if all(f["name_pt"] and f["name_pt"] != f["name_en"] for f in pf):
                 name_pt = " // ".join(f["name_pt"] for f in pf)
         if not name_pt and a:
-            name_pt = " // ".join(f["name_pt"] for f in a["faces"])
-        aliases = {norm(x) for x in [name_pt or "", a and " // ".join(f["name_pt"] for f in a["faces"]) or ""] if x}
+            name_pt = arena_name_pt(own_faces(card, a["faces"]))
+        aliases = {norm(x) for x in [name_pt or "", a and arena_name_pt(own_faces(card, a["faces"])) or ""] if x}
 
         rows.append(
             {
@@ -2066,8 +2795,12 @@ def build(offline: bool) -> list[dict]:
                 "source": source,
                 "text_print": text_print,
                 "_flavor_ref": a["flavor_en"] if source == "arena" else None,
+                # o texto impresso antes do Magic 2010 segue a terminologia velha ("entra em jogo",
+                # "jogar uma mágica"): vale para a carta, nunca de molde para a tradução não oficial
+                # (fica no cards.jsonl, que o `faltam.py` lê; o banco só leva as `COLUMNS`)
+                "_old_text": source == "impresso" and p["_text"].get("released_at", "") < _REMINDER_SINCE,
                 "faces": [
-                    {**f, "name_en": f.get("name_en") or faces_en[min(i, len(faces_en) - 1)].get("name")}
+                    {**f, "name_en": f.get("name_en") or en_face_of(card, faces, i).get("name")}
                     for i, f in enumerate(faces)
                 ],
                 # a carta em inglês com o selo "Localized Image Not Available" não é imagem em PT
@@ -2083,6 +2816,13 @@ def build(offline: bool) -> list[dict]:
             }
         )
     unofficial = add_unofficial(rows, oracle, reminders, by_group, by_card)
+    # o lembrete das Salas, na faixa do meio (da dica do Arena, também nas de tradução não oficial)
+    log(f"Salas com o lembrete em PT: {add_room_reminders(rows, oracle, raw_hints)}")
+    # o Fundir, na faixa do pé (o lembrete oficial das impressas em PT)
+    log(f"cartas com Fundir, com o lembrete em PT: {add_fuse_reminders(rows, oracle, by_group)}")
+    # a frente das cartas de fundir: o P/R da carta fundida e o lembrete das impressas em PT
+    melded, meld_reminders = add_meld_data(rows, oracle, printed)
+    log(f"cartas de fundir: {melded} com o P/R da carta fundida, {meld_reminders} com o lembrete em PT")
     log(
         f"cartas: {len(rows)} | texto do Arena: {stats['arena']} | impresso: {stats['impresso']} | "
         f"tradução não oficial: {unofficial} | sem PT: {stats['sem'] - unofficial}"
@@ -2201,7 +2941,7 @@ def sql_str(value: object) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides", "text_flavor", "flavor_name", "indicator", "flavor_pt"]
+PRINT_COLUMNS = ["id", "oracle_id", "set_code", "set_name", "number", "released", "artist", "frame", "effects", "border", "layout", "highres", "promo", "mana_cost", "has_pt", "two_sided", "supported", "sides", "text_flavor", "flavor_name", "indicator", "flavor_pt", "watermark"]
 
 COLUMNS = ["oracle_id", "name_en", "name_pt", "search_en", "search_pt", "source", "text_print", "faces", "pt_print", "layout", "type_line", "edhrec_rank", "commander", "tokens"]
 

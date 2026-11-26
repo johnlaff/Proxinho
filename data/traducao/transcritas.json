@@ -690,5 +690,131 @@
  "phpr/2": {
   "name": "Sewers of Estark",
   "printed_name": "Esgotos de Estark"
+ },
+ "tsr/156": {
+  "name": "Boom // Bust",
+  "face_names": [
+   "Retumbar",
+   "Arrebentar"
+  ]
+ },
+ "tsr/161": {
+  "name": "Dead // Gone",
+  "face_names": [
+   "Morto",
+   "Enterrado"
+  ]
+ },
+ "tsr/186": {
+  "name": "Rough // Tumble",
+  "face_names": [
+   "Confusão",
+   "Bagunça"
+  ]
+ },
+ "c16/240": {
+  "name": "Order // Chaos",
+  "face_names": [
+   "Ordem",
+   "Caos"
+  ]
+ },
+ "dis/149": {
+  "name": "Bound // Determined",
+  "face_names": [
+   "Forte",
+   "Firme"
+  ]
+ },
+ "dis/151": {
+  "name": "Hide // Seek",
+  "face_names": [
+   "Esconde-Esconde",
+   "Pique-Pega"
+  ]
+ },
+ "dis/152": {
+  "name": "Hit // Run",
+  "face_names": [
+   "Ataque",
+   "Retirada"
+  ]
+ },
+ "dis/153": {
+  "name": "Odds // Ends",
+  "face_names": [
+   "Probabilidade",
+   "Resultado"
+  ]
+ },
+ "dis/154": {
+  "name": "Pure // Simple",
+  "face_names": [
+   "Puro",
+   "Simples"
+  ]
+ },
+ "dis/155": {
+  "name": "Research // Development",
+  "face_names": [
+   "Pesquisa",
+   "Desenvolvimento"
+  ]
+ },
+ "dis/156": {
+  "name": "Rise // Fall",
+  "face_names": [
+   "Ascensão",
+   "Queda"
+  ]
+ },
+ "dis/157": {
+  "name": "Supply // Demand",
+  "face_names": [
+   "Oferta",
+   "Procura"
+  ]
+ },
+ "dis/158": {
+  "name": "Trial // Error",
+  "face_names": [
+   "Tentativa",
+   "Erro"
+  ]
+ },
+ "mh2/60": {
+  "name": "Said // Done",
+  "face_names": [
+   "Dito",
+   "Feito"
+  ]
+ },
+ "mh2/376": {
+  "name": "Road // Ruin",
+  "face_names": [
+   "Caminho",
+   "Ruína"
+  ]
+ },
+ "ncc/46": {
+  "name": "Indulge // Excess",
+  "face_names": [
+   "Saciar",
+   "Exagerar"
+  ]
+ },
+ "tsb/106": {
+  "name": "Assault // Battery",
+  "face_names": [
+   "Assalto",
+   "Bateria"
+  ]
+ },
+ "otp/39": {
+  "name": "Crime // Punishment",
+  "face_names": [
+   "Crime",
+   "Castigo"
+  ]
  }
 }
