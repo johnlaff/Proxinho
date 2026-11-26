@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import add_meld_data, flip_supported, prototype_cost, prototype_reminders, prototype_supported, prototype_text, is_meld_result, meld_supported, own_faces, join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
+from build import add_meld_data, case_supported, flip_supported, prototype_cost, prototype_reminders, prototype_supported, prototype_text, is_meld_result, meld_supported, own_faces, join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -962,6 +962,19 @@ class Prototipo(unittest.TestCase):
         self.assertEqual(by_card, {"a": self.REMINDER, "b": self.REMINDER})
         self.assertEqual(newest, self.REMINDER)
         self.assertEqual(prototype_reminders({}), ({}, None))
+
+
+class Caso(unittest.TestCase):
+    base = {"layout": "case", "frame": "2015", "border_color": "black", "type_line": "Enchantment — Case", "frame_effects": []}
+
+    def test_moldura(self):
+        self.assertTrue(case_supported(self.base))
+        self.assertTrue(case_supported({**self.base, "promo_types": ["prerelease", "datestamped"]}))
+        # o céu estrelado na moldura (Case of the Lost Witness, MBC 62), sem borda e sem texto, não
+        self.assertFalse(case_supported({**self.base, "frame_effects": ["enchantment"]}))
+        self.assertFalse(case_supported({**self.base, "border_color": "borderless"}))
+        self.assertFalse(case_supported({**self.base, "textless": True}))
+        self.assertFalse(case_supported({**self.base, "layout": "normal"}))
 
 
 class CartasDeFundir(unittest.TestCase):

@@ -2029,6 +2029,24 @@ def prototype_supported(card: dict) -> bool:
     )
 
 
+def case_supported(card: dict) -> bool:
+    """Os Casos de Murders at Karlov Manor (ADR 0046): a coluna da Classe sem as barras, com a
+    habilidade, "To solve" e "Solved" separados por dois fios finos (src/engine/caseCard.ts). O
+    motor confere a coluna, os dois fios e a barra de tipo no pé na imagem; sem eles, a arte sai
+    como está. Só a moldura de papel de borda preta sem efeito (as de MKM, MKC e as promos de PMKM;
+    a Case of the Lost Witness, MBC 62, com o céu estrelado na moldura, fica de fora)."""
+    return (
+        card.get("layout") == "case"
+        and card.get("frame") == "2015"
+        and card.get("border_color") == "black"
+        and not card.get("frame_effects")
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+        and "Case" in card.get("type_line", "")
+    )
+
+
 # a linha do Protótipo no Oracle ("Prototype {1}{W}{W} — 3/3 (You may cast…)") e o lembrete das impressas em PT
 PROTOTYPE_EN = re.compile(r"^Prototype ((?:\{[^}]+\})+) — \d+/\d+ \(")
 PROTOTYPE_PT = re.compile(r"^Protótipo \(.+\)$")
@@ -2296,6 +2314,7 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or meld_supported(c)
         or flip_supported(c)
         or prototype_supported(c)
+        or case_supported(c)
         or bool(sides and sides[0]["supported"]),
         "sides": sides,
         # nome de crossover no alto (o nome de jogo vai numa linha pequena abaixo da barra)

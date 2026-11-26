@@ -936,6 +936,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "4c2abf39-90f5-46c2-b52c-49f2f43fce22",
+    "oracle_id": "2215d2f4-0b85-43f3-a0b1-19f89adea3ca",
+    "set": "mbc",
+    "number": "62",
+    "nome": "Case of the Lost Witness",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "55710eb0-ae16-420a-9f99-6a245e0f4c14",
     "oracle_id": "b0e96742-77c0-4de5-84b0-0d59a8bee3e0",
     "set": "mbs",
@@ -989,6 +997,14 @@
     "set": "mkm",
     "number": "249",
     "nome": "Hustle // Bustle",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "45e4c07a-3205-4193-8163-b0e63e6242a4",
+    "oracle_id": "a89f9072-cf06-429f-a9b8-c11b5731ddd3",
+    "set": "mkm",
+    "number": "79",
+    "nome": "Case of the Gorgon's Kiss",
     "grupo": "citada nos documentos"
   },
   {
@@ -4998,6 +5014,86 @@
     "number": "76",
     "nome": "Virtue of Knowledge // Vantress Visions",
     "grupo": "aventura"
+  },
+  {
+    "id": "65463a1b-39c1-4fc8-8de2-85224de810ac",
+    "oracle_id": "409697d5-ce3c-46aa-a97d-969d143a2a65",
+    "set": "mkc",
+    "number": "19",
+    "nome": "Case of the Shifting Visage",
+    "grupo": "caso"
+  },
+  {
+    "id": "2a70f0ae-d49b-4cc8-9f76-895039c3dc39",
+    "oracle_id": "d00a089b-7d0d-4b89-902b-7b914e892178",
+    "set": "mkm",
+    "number": "1",
+    "nome": "Case of the Shattered Pact",
+    "grupo": "caso"
+  },
+  {
+    "id": "ac63941b-3f78-4bd3-8b05-ca12aaaa006c",
+    "oracle_id": "0d8730b5-f7ba-48b0-928d-d8b7685347d3",
+    "set": "mkm",
+    "number": "10",
+    "nome": "Case of the Uneaten Feast",
+    "grupo": "caso"
+  },
+  {
+    "id": "266be5bd-71ba-4511-8b71-d0b03885a28d",
+    "oracle_id": "33b31fb0-71ce-408a-a256-2a5a3b085cb6",
+    "set": "mkm",
+    "number": "44",
+    "nome": "Case of the Filched Falcon",
+    "grupo": "caso"
+  },
+  {
+    "id": "0862bf07-8a76-4e80-bba2-20d22f8eee30",
+    "oracle_id": "42a9aeac-5b9c-4675-8c96-7c8ce7e9098c",
+    "set": "mkm",
+    "number": "8",
+    "nome": "Case of the Gateway Express",
+    "grupo": "caso"
+  },
+  {
+    "id": "32927bf2-63c1-4402-99dc-3a0f2f8e0f9c",
+    "oracle_id": "68d3084b-0f4b-44a6-8954-6ebaf1db9269",
+    "set": "mkm",
+    "number": "9",
+    "nome": "Case of the Pilfered Proof",
+    "grupo": "caso"
+  },
+  {
+    "id": "199b1671-b001-4cbe-9811-8b116e36132f",
+    "oracle_id": "0d8730b5-f7ba-48b0-928d-d8b7685347d3",
+    "set": "pmkm",
+    "number": "10s",
+    "nome": "Case of the Uneaten Feast",
+    "grupo": "caso"
+  },
+  {
+    "id": "b7e403a8-605e-459c-8efa-855c7669f949",
+    "oracle_id": "955504bc-050a-42a2-b2e4-ab213183b2be",
+    "set": "pmkm",
+    "number": "114s",
+    "nome": "Case of the Crimson Pulse",
+    "grupo": "caso"
+  },
+  {
+    "id": "2332cd42-0918-4987-bd6a-580466b36a93",
+    "oracle_id": "2380fd04-6d19-4f5a-8a9e-c17d9ae09fb6",
+    "set": "pmkm",
+    "number": "155p",
+    "nome": "Case of the Locked Hothouse",
+    "grupo": "caso"
+  },
+  {
+    "id": "2d8ada4f-2f2d-4072-8447-7da0d9664e76",
+    "oracle_id": "64219e17-1302-4a43-85d2-8a6214448890",
+    "set": "pmkm",
+    "number": "80p",
+    "nome": "Case of the Stashed Skeleton",
+    "grupo": "caso"
   },
   {
     "id": "647c2269-bdc7-4455-9158-73abbff6e50e",

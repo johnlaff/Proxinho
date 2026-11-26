@@ -385,6 +385,20 @@ Nenhuma saiu em PT com texto no Scryfall, e o bloco de Kamigawa não está no Ar
 
 A escolha (ADR 0044): como a Consequência, cada metade apagada e escrita na orientação dela (a de baixo na carta girada 180°), com as barras de tipo achadas pelos fios, a caixa de P/R pelo fio de dentro, a caixa pelo papel; o nome fica.
 
+### Caso (26/11/2026)
+
+As regras (719, "Case") definem o Caso como um tipo de encantamento com três partes: uma habilidade, a condição "To solve" e a habilidade "Solved", que só vale depois de solucionado. A MTG Wiki ("Murders at Karlov Manor") lista os 12 de MKM (5 raros e 7 incomuns) e a variante do Case of the Gorgon's Kiss com o cobertor de outra cor (um dos quebra-cabeças da coleção, sem número próprio: o Scryfall a separa como MKM 79†). A moldura é a coluna da Classe sem as barras: o Scryfall dá às 25 impressões de papel o layout `case`, todas de borda preta na moldura atual (só a Case of the Lost Witness, MBC 62, com o céu estrelado). Não há Caso de vitrine nem sem borda.
+
+Medidas nas imagens do Scryfall (745 × 1040), nas 24 impressões de papel com texto (MKM, MKC e as promos de PMKM):
+
+| Medida | Valor |
+| --- | --- |
+| Fio escuro da esquerda e da direita da coluna | x 371 a 372 e 686 a 688 (os da Classe) |
+| Papel da coluna | y 122 a 865 (sombra do fio de cima até 121; filete claro do pé em 866) |
+| Fio entre as partes | 2 linhas, ~110 a 120 no meio (x 456 a 600), esmaecendo até o papel em x ≈ 400 e 660; nas promos reamostradas, 3 ou 4 linhas, com o meio de 100 a 150 |
+| Folga do inglês em volta de cada parte | 16 a 22 px |
+| Texto do inglês | de ~24 a ~32 de corpo (36 px entre linhas no Case of the Gateway Express) |
+
 ### Protótipo (26/11/2026)
 
 As regras (718.1) descrevem a moldura: uma moldura menor embutida abaixo da linha de tipo, com a palavra-chave e o segundo custo, poder e resistência; a MTG Wiki ("Prototype") completa: a caixa de texto partida em duas na horizontal, a parte de cima com um fio da cor do custo do protótipo. São 21 cartas: 17 de The Brothers' War, a Frogmyr Enforcer de Modern Horizons 3 e duas do Alchemy (só digitais). O Proxyshop (`PrototypeTemplate`, `PrototypeLayout`) parte o Oracle na primeira linha: dela tira o custo e o P/R do protótipo, que vão em camadas próprias (a aba e a caixa), e o resto vai na caixa de baixo; a palavra com o lembrete fica numa camada de texto da faixa.

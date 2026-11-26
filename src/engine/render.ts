@@ -21,6 +21,7 @@ import {
   whiteTextMask,
 } from "./borderless";
 import { adventureBook, adventureLayout, pageShade, shadePage, type SplitLayout } from "./adventure";
+import { CASE, CASE_PARTS, caseRules, casePlan, caseText } from "./caseCard";
 import {
   CLASS,
   classBars,
@@ -1054,6 +1055,30 @@ async function renderSummon(p: {
 }
 
 /**
+ * O nome e o tipo das molduras de coluna (Classe e Caso): a barra de tipo é a da carta comum,
+ * mais abaixo (como na Saga), achada pelos fios dela. `null` sem a barra no lugar.
+ */
+function columnBars(
+  data: ImageData,
+  print: PrintRecord,
+): { bar: { top: number; bottom: number }; layout: ReturnType<typeof m15Layout> } | null {
+  const fx = data.width / BASE_W;
+  const fy = data.height / BASE_H;
+  const bar = typeBarEdges(data, 850, 960);
+  if (!bar || bar.top < CLASS.type.y0 || bar.top > CLASS.type.y1) return null;
+  const typeShift = bar.bottom - 639;
+  const symbolInfo: { colored: number; lim: number; tight?: boolean } = { colored: -1, lim: 0 };
+  const setLeft =
+    findSetSymbolLeft(data, Math.round((594 + typeShift) * fy), Math.round((632 + typeShift) * fy), undefined, 100, symbolInfo) / fx;
+  const layout = m15Layout(print.mana_cost, false, setLeft, { typeShift, leftIcon: hasLeftIcon(print.effects, false, false) });
+  alignBar(data, layout, 0, { x0: 70, y0: 45, x1: 420, y1: 120 }, BAR_CENTER.title, fx, fy);
+  alignBar(data, layout, 1, { x0: 70, y0: bar.top + 6, x1: 420, y1: bar.bottom - 1 }, BAR_CENTER.type + typeShift, fx, fy);
+  const r = layout.erase[1].rect;
+  if (bar.bottom - 3 > r.y1) layout.erase[1] = { ...layout.erase[1], rect: { ...r, y1: bar.bottom - 3 } };
+  return { bar, layout };
+}
+
+/**
  * Classe (ver classCard.ts): nome no alto e barra de tipo no pé como na Saga, e a coluna de
  * texto à direita da arte. O lembrete oficial (que o pipeline tira das Classes impressas em PT)
  * vai na caixa do alto, acima do fio fino, que fica. As barras de nível são recortadas da
@@ -1079,22 +1104,12 @@ async function renderClass(p: {
   const fx = data.width / BASE_W;
   const fy = data.height / BASE_H;
   const col = classColumn(data);
-  const bar = typeBarEdges(data, 850, 960);
-  if (!col || !bar || bar.top < CLASS.type.y0 || bar.top > CLASS.type.y1) return false;
+  const bars = col ? columnBars(data, print) : null;
+  if (!col || !bars) return false;
+  const { bar, layout } = bars;
   const rule = classRule(data, col);
   const lines = classBars(data, col);
   if (rule === null || lines.length !== parts.levels.length) return false;
-
-  // a barra de tipo é a da carta comum, mais abaixo (como na Saga)
-  const typeShift = bar.bottom - 639;
-  const symbolInfo: { colored: number; lim: number; tight?: boolean } = { colored: -1, lim: 0 };
-  const setLeft =
-    findSetSymbolLeft(data, Math.round((594 + typeShift) * fy), Math.round((632 + typeShift) * fy), undefined, 100, symbolInfo) / fx;
-  const layout = m15Layout(print.mana_cost, false, setLeft, { typeShift, leftIcon: hasLeftIcon(print.effects, false, false) });
-  alignBar(data, layout, 0, { x0: 70, y0: 45, x1: 420, y1: 120 }, BAR_CENTER.title, fx, fy);
-  alignBar(data, layout, 1, { x0: 70, y0: bar.top + 6, x1: 420, y1: bar.bottom - 1 }, BAR_CENTER.type + typeShift, fx, fy);
-  const r = layout.erase[1].rect;
-  if (bar.bottom - 3 > r.y1) layout.erase[1] = { ...layout.erase[1], rect: { ...r, y1: bar.bottom - 3 } };
 
   // o texto: as habilidades no mesmo corpo, o maior em que a folga entre elas e as barras cabe
   const k = p.W / BASE_W;
@@ -1196,6 +1211,121 @@ async function renderClass(p: {
   drawLayout(ctx, reminder, reminderBox, k, "dark", symbols, m);
   layouts.forEach((res, i) => drawLayout(ctx, res, { x0, y0: plan.tops[i], x1, y1: plan.tops[i] + res.height }, k, "dark", symbols, m));
   plan.bars.forEach((y, i) => drawLevel(ctx, parts.levels[i], labels[i].right, y + labels[i].center - lines[i], k));
+  return true;
+}
+
+/**
+ * Caso (ver caseCard.ts): a coluna da Classe, com três partes separadas por um fio fino. O fio é
+ * recortado da imagem, a coluna é apagada inteira (as letras e os fios) e o fio volta onde o
+ * texto em PT pede: as três partes no mesmo corpo, o maior que cabe, e a folga dividida por
+ * igual, como no inglês. Devolve `false` (a carta sai na original) quando a moldura, o número de
+ * fios ou o texto não batem, ou quando o texto não cabe nem no menor corpo.
+ */
+async function renderCase(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  sctx: CanvasRenderingContext2D;
+  data: ImageData;
+  toImg: (r: Rect) => Rect;
+  face: PtFace;
+  print: PrintRecord;
+  W: number;
+  H: number;
+}): Promise<boolean> {
+  const { ctx, data, toImg, face, print } = p;
+  const parts = caseText(face.text_pt);
+  if (!parts) return false;
+  const fx = data.width / BASE_W;
+  const fy = data.height / BASE_H;
+  const col = classColumn(data);
+  const bars = col ? columnBars(data, print) : null;
+  if (!col || !bars) return false;
+  const { bar, layout } = bars;
+  const rules = caseRules(data, col.paper);
+  if (rules.length !== CASE_PARTS - 1) return false;
+
+  // as partes no mesmo corpo, o maior em que a folga entre elas e os fios cabe
+  const k = p.W / BASE_W;
+  const m = measurer(ctx, k);
+  const italic = new Set(face.ability_words ?? []);
+  const x0 = col.left + CASE.text.left;
+  const x1 = col.bevel - CASE.text.right;
+  const bottom = Math.min(CASE.bottom, bar.top - 3);
+  const rows = parts.parts.map((s) => ({
+    text: s.text,
+    width: x1 - x0,
+    height: Infinity,
+    italic: s.lines.flatMap((l, j) => (italic.has(l) ? [j] : [])),
+  }));
+  let plan: ReturnType<typeof casePlan> = null;
+  let layouts: LayoutResult[] = [];
+  for (let size = CASE_MAX_SIZE; size >= CASE_MIN_SIZE && !plan; size -= 0.5) {
+    layouts = rowsAt(rows, m, size);
+    plan = casePlan(
+      layouts.map((l) => l.height),
+      CASE.top,
+      bottom,
+    );
+  }
+  if (!plan) return false;
+
+  const capGuard = [
+    ...layout.erase.slice(0, 2).flatMap((e) => barCapGuard(data, toImg(e.rect), "left")),
+    ...(print.mana_cost ? [] : barCapGuard(data, toImg(layout.erase[0].rect), "right")),
+  ];
+  // 1. o primeiro fio é recortado, do fio escuro da esquerda até o bisel
+  const stripX0 = Math.round((col.left + 2) * fx);
+  const stripX1 = Math.round((col.bevel - 1) * fx);
+  const strip = cutStrip(
+    data,
+    Math.round((rules[0] - CASE.strip.above) * fy),
+    Math.round((rules[0] + CASE.strip.below) * fy),
+    stripX0,
+    stripX1,
+  );
+
+  // 2. a coluna: as letras saem do papel; os fios, inteiros
+  const old = rules.map((y) => ({ y0: y - CASE.force.above, y1: y + CASE.force.below }));
+  const edges = [CASE.top, ...old.flatMap((o) => [o.y0, o.y1]), bottom];
+  const paper = (y0: number, y1: number) => ({
+    rect: roundRect(toImg({ x0: col.left + 2, y0, x1: col.bevel - 1, y1 })),
+    threshold: 14,
+    colorThreshold: 34,
+  });
+  const inks = eraseRegions(
+    data,
+    [
+      ...layout.erase.slice(0, 2).map((e) => ({ rect: toImg(e.rect), threshold: e.threshold, fill: e.fill })),
+      ...edges.flatMap((y, i) => (i % 2 === 0 && i + 1 < edges.length ? [paper(y, edges[i + 1])] : [])),
+      ...old.map((o) => ({
+        rect: roundRect(toImg({ x0: col.left + 1, y0: o.y0 - 10, x1: col.bevel - 1, y1: o.y1 + 10 })),
+        threshold: 255,
+        force: [roundRect(toImg({ x0: col.left + 1, y0: o.y0, x1: col.bevel - 1, y1: o.y1 }))],
+      })),
+    ],
+    [],
+    [],
+    capGuard,
+  );
+  // 3. os fios voltam onde o texto em PT pede
+  plan.rules.forEach((y) => pasteStrip(data, strip, Math.round((y - CASE.strip.above) * fy), 2));
+  p.sctx.putImageData(data, 0, 0);
+  ctx.drawImage(p.src, 0, 0, p.W, p.H);
+
+  drawLine(
+    ctx,
+    face.name_pt ?? face.name_en,
+    layout.title.x,
+    layout.title.centerY,
+    layout.title.maxWidth,
+    layout.title.size,
+    k,
+    INK[inks[0]],
+  );
+  if (face.type_pt)
+    drawLine(ctx, face.type_pt, layout.type.x, layout.type.centerY, layout.type.maxWidth, layout.type.size, k, INK[inks[1]]);
+  const symbols = await preloadSymbols(face.text_pt);
+  layouts.forEach((res, i) => drawLayout(ctx, res, { x0, y0: plan.tops[i], x1, y1: plan.tops[i] + res.height }, k, "dark", symbols, m));
   return true;
 }
 
@@ -1482,6 +1612,11 @@ function drawLevelWords(ctx: CanvasRenderingContext2D, f: LevelerFrame, k: numbe
 const STATION_MAX_SIZE = 30;
 /** Menor corpo: abaixo disso, a carta sai na original. */
 const STATION_MIN_SIZE = 18;
+
+/** Maior corpo do texto do Caso (o inglês vai de ~24 a ~32, conforme o tamanho do texto). */
+const CASE_MAX_SIZE = 32;
+/** Menor corpo do texto do Caso: abaixo disso, a carta sai na original. */
+const CASE_MIN_SIZE = 18;
 
 /** Maior corpo do texto da Classe (o inglês fica em ~30). */
 const CLASS_MAX_SIZE = 30;
@@ -3105,6 +3240,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const summon = saga && /\bCreature\b/.test(opts.typeLine ?? "");
   // e Classe: as barras de nível são recortadas e coladas em outra altura
   const klass = print.layout === "class" && !borderless;
+  // e Caso: o fio entre as partes é recortado e colado em outra altura (como as barras da Classe)
+  const kase = print.layout === "case" && !borderless;
   // e as naves com Posicionar: a caixa translúcida vai para a rede neural
   const stationParts = !borderless && print.layout === "normal" ? stationText(face?.text_pt) : null;
   // e a moldura antiga: o nome e o tipo, sobre a moldura texturizada, vão para a rede neural
@@ -3118,7 +3255,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // e as criaturas com Mutação: a faixa translúcida do alto da caixa vai para a rede neural
   const mutate = print.layout === "mutate" && !borderless;
   const version =
-    pw || borderless || saga || klass || stationParts || old || old93 || room || oldSplit || mutate ? "png" : (opts.imageVersion ?? "png");
+    pw || borderless || saga || klass || kase || stationParts || old || old93 || room || oldSplit || mutate
+      ? "png"
+      : (opts.imageVersion ?? "png");
   const [img] = await Promise.all([opts.source ?? loadImage(printImage(print, version, side)), loadCardFonts()]);
 
   const W = Math.round(BASE_W * scale);
@@ -3224,6 +3363,12 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
 
   if (klass) {
     const done = await renderClass({ ctx, src, sctx, data, toImg, face, print, W, H });
+    if (!done) ctx.drawImage(img, 0, 0, W, H);
+    return { canvas: out, translated: done };
+  }
+
+  if (kase) {
+    const done = await renderCase({ ctx, src, sctx, data, toImg, face, print, W, H });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: done };
   }
