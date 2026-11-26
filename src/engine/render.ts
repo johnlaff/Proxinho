@@ -99,6 +99,7 @@ import {
 import {
   DIVIDER_SPAN,
   SAGA,
+  SUMMON,
   dividerProfile,
   drawDivider,
   sagaArtLeft,
@@ -186,9 +187,11 @@ import { preloadSymbols } from "./symbols";
 import {
   SYMBOL_EM,
   TABLE_ROW,
+  buildParagraphs,
   chunkWidth,
   fitRows,
   fitText,
+  layoutAt,
   lineText,
   rowsAt,
   type LayoutResult,
@@ -825,6 +828,223 @@ async function renderSaga(p: {
         : boxes[i];
     drawLayout(ctx, res, box, k, inks[2 + row.band], symbols, m);
   });
+  return true;
+}
+
+/**
+ * Invocação de Final Fantasy (ver `SUMMON` em saga.ts): a Saga com o lembrete numa faixa larga no
+ * alto, a coluna dos capítulos mais curta e uma caixa abaixo da barra de tipo, com a palavra-chave
+ * da criatura ou o flavor. O lembrete vai na faixa dele, desviando da curva da tira dos marcadores
+ * no pé (`SUMMON.curve`); os capítulos vão como na Saga, com os fios entre eles mudando de lugar
+ * (o fio do lembrete fica: a arte começa nele); a caixa de baixo é apagada como a da carta comum,
+ * sem a caixa de P/R e o selo, e o texto dela fica centralizado, como nas 29 impressões. O lembrete
+ * e os capítulos saem com a mesma letra, e a caixa de baixo com a dela (maior, como na carta
+ * impressa). Sem o lembrete oficial em PT (o "Sacrifique-a após V." dos Knights of Round nunca
+ * foi impresso), a faixa do alto ficaria vazia: a carta sai na original, como quando a moldura ou
+ * o número de faixas não batem, ou o texto não cabe.
+ */
+async function renderSummon(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  sctx: CanvasRenderingContext2D;
+  data: ImageData;
+  toImg: (r: Rect) => Rect;
+  face: PtFace;
+  print: PrintRecord;
+  flavor: string | null;
+  W: number;
+  H: number;
+}): Promise<boolean> {
+  const { ctx, data, toImg, face, print } = p;
+  const parts = sagaText(face.text_pt, true);
+  if (!parts || !parts.top.length) return false;
+  const fx = data.width / BASE_W;
+  const fy = data.height / BASE_H;
+  const artLeft = sagaArtLeft(data);
+  const bar = typeBarEdges(data, SUMMON.type.y0 - 15, SUMMON.type.y1 + 80);
+  if (artLeft === null || !bar || bar.top < SUMMON.type.y0 || bar.top > SUMMON.type.y1) return false;
+  // o fio do lembrete, onde a arte começa, e os fios entre os capítulos, acima da barra de tipo
+  const dividers = sagaDividers(data, artLeft, bar.top - 8);
+  const topLine = dividers[0];
+  if (topLine === undefined || topLine < SUMMON.divider.min || topLine > SUMMON.divider.max) return false;
+  const between = dividers.slice(1);
+  if (between.length !== parts.chapters.length - 1) return false;
+  // (a coluna acaba no filete claro logo acima da barra de tipo)
+  const column = { y0: topLine, y1: bar.top - 1 };
+  const bands = sagaBands(between, artLeft, column, false);
+  const numerals = sagaNumerals(data, topLine, column.y1);
+  const edges = [topLine, ...between, column.y1];
+  const markers = parts.chapters.map((c, i) => {
+    const inBand = numerals.filter((y) => y > edges[i] && y < edges[i + 1]);
+    return inBand.length === c.numerals.split(", ").length ? { first: inBand[0], last: inBand[inBand.length - 1] } : null;
+  });
+  const found = markers.every((x): x is { first: number; last: number } => x !== null) ? markers : null;
+
+  // a barra de tipo é a da carta comum, mais abaixo
+  const typeShift = bar.bottom - 639;
+  // A barra de tipo das Invocações escurece perto do símbolo da coleção (de ~225 em x 580 a ~170 em
+  // x 640; a da carta comum de FIN fica clara até o fim). A busca do símbolo compara cada coluna com
+  // o tom da barra à esquerda dela: a parte escura inteira passava por tinta, o fim do tipo em inglês
+  // e o símbolo viravam um bloco só, e o símbolo "começava" no meio do tipo (o "gle" de "Moogle"
+  // ficava ao lado do português, Summon: Choco/Mog FIN 35) ou depois do começo dele (metade do
+  // símbolo era apagada, Summon: Primal Garuda FIN 37). E o remendo do fim do tipo, só com o lado
+  // claro, saía como um bloco claro na parte escura. O tom de cada coluna da barra sai antes de
+  // achar o símbolo e de apagar, e volta depois, como a sombra das páginas da Aventura (ver
+  // shadePage; o percentil 75, porque as letras do tipo ocupam mais da coluna que as do texto)
+  const typeBand = roundRect(toImg({ x0: 50, y0: bar.top + 9, x1: BASE_W * 0.955, y1: bar.bottom - 1 }));
+  const unshade = shadePage(data, typeBand, pageShade(data, typeBand, 0.75));
+  const symbolInfo: { colored: number; lim: number; tight?: boolean } = { colored: -1, lim: 0 };
+  const setLeft =
+    findSetSymbolLeft(data, Math.round((594 + typeShift) * fy), Math.round((632 + typeShift) * fy), undefined, 100, symbolInfo) / fx;
+  const layout = m15Layout(print.mana_cost, print.has_pt, setLeft, { typeShift, leftIcon: hasLeftIcon(print.effects, false, false) });
+  alignBar(data, layout, 0, { x0: 70, y0: 45, x1: 420, y1: 120 }, BAR_CENTER.title, fx, fy);
+  alignBar(data, layout, 1, { x0: 70, y0: bar.top + 6, x1: 420, y1: bar.bottom - 1 }, BAR_CENTER.type + typeShift, fx, fy);
+  const r = layout.erase[1].rect;
+  if (bar.bottom - 3 > r.y1) layout.erase[1] = { ...layout.erase[1], rect: { ...r, y1: bar.bottom - 3 } };
+
+  // A caixa de baixo: os lados medidos acima da caixa de P/R (com ela, a medida dos lados não
+  // fecha nas 98 linhas da caixa) e o pé no terço da esquerda, como na carta comum
+  const outer = { x0: SUMMON.box.x0, y0: bar.bottom + SUMMON.box.gap, x1: SUMMON.box.x1, y1: SUMMON.box.y1 };
+  const sides = insideBoxSides(data, toImg({ ...outer, y1: 920 }), 30 * fx);
+  const foot = insideBoxSides(data, { ...toImg(outer), x0: sides.x0, x1: sides.x1 }, 30 * fx, true);
+  const bottomRect = roundRect({ x0: sides.x0, y0: sides.y0, x1: sides.x1, y1: foot.y1 });
+  const ptTop = print.has_pt ? ptBoxTop(data, 610 * fx, 670 * fx, 905 * fy, 950 * fy, 890 * fy) : null;
+  const ptLeft = ptTop === null ? null : ptBoxLeft(data, ptTop + 22 * fy, 545 * fx, 610 * fx, 890 * fy);
+  const ptGuard = ptTop === null ? layout.protect : ptProtect(ptTop / fy, ptLeft === null ? null : ptLeft / fx);
+  const stampFound = findCardStamp(data);
+  const stampGuard = stampFound ? stampShape(data, toImg({ ...stampFound, y0: stampFound.y0 + 3 })) : [];
+
+  // O texto: o lembrete na faixa do alto e os capítulos nas faixas da coluna (os fios entre eles
+  // mudam de lugar, ver sagaPlan), com a mesma letra; o resto vai na caixa de baixo, logo abaixo
+  const k = p.W / BASE_W;
+  const m = measurer(ctx, k);
+  const italic = new Set(face.ability_words ?? []);
+  const topBox = { x0: SAGA.text.topX0, y0: SAGA.column.y0 + SAGA.text.gap, x1: SUMMON.top.textX1, y1: topLine - SUMMON.top.pad };
+  const topRow: TextRow = {
+    text: parts.top.map((t) => t.text).join("\n"),
+    width: topBox.x1 - topBox.x0,
+    height: topBox.y1 - topBox.y0,
+    italic: parts.top.flatMap((t, i) => (italic.has(t.line) ? [i] : [])),
+    notch: SUMMON.curve,
+  };
+  const rows: TextRow[] = parts.chapters.map((c) => ({
+    text: c.text,
+    width: artLeft - 10 - SAGA.text.chapterX0,
+    height: Infinity,
+    italic: italic.has(c.line) ? [0] : [],
+  }));
+  let plan: number[] | null = null;
+  let top: LayoutResult | null = null;
+  let layouts: LayoutResult[] = [];
+  let size = SAGA_MAX_SIZE;
+  for (; size >= SAGA_MIN_SIZE; size -= 0.5) {
+    top = rowsAt([topRow], m, size)[0];
+    if (top.height > topRow.height) continue;
+    layouts = rowsAt(rows, m, size);
+    // sem os números dos marcadores, as faixas ficam como estão
+    if (!found) {
+      if (layouts.every((l, i) => l.height <= bands[i].text.y1 - bands[i].text.y0)) break;
+      continue;
+    }
+    plan = sagaPlan(
+      layouts.map((l) => l.height),
+      false,
+      found,
+      Infinity,
+      column,
+    );
+    if (plan) break;
+  }
+  if (!top || size < SAGA_MIN_SIZE) return false;
+  const boxes = plan ? sagaBoxes(plan, false, artLeft, column) : bands.map((b) => b.text);
+
+  const capGuard = [
+    ...layout.erase.slice(0, 2).flatMap((e) => barCapGuard(data, toImg(e.rect), "left")),
+    ...(print.mana_cost ? [] : barCapGuard(data, toImg(layout.erase[0].rect), "right")),
+  ];
+  const orig = plan ? new ImageData(new Uint8ClampedArray(data.data), data.width, data.height) : null;
+  const lineX0 = SAGA.chapterX0 - 2;
+  const lineX1 = artLeft - 4;
+  const moved = plan ? between.filter((d, i) => plan[i] !== d) : [];
+  const drawn = plan ? plan.filter((y, i) => y !== between[i]) : [];
+  // a curva da tira dos marcadores, no pé da faixa do lembrete, é moldura (ver sagaTopFrame)
+  const topFrame = sagaTopFrame(data, SAGA.column.y0 * fy, topLine, artLeft);
+  const inks = eraseRegions(
+    data,
+    [
+      ...layout.erase.slice(0, 2).map((e) => ({ rect: toImg(e.rect), threshold: e.threshold, fill: e.fill })),
+      {
+        rect: roundRect(toImg({ x0: SAGA.column.x0, y0: SAGA.column.y0, x1: SUMMON.top.x1, y1: topLine - 1 })),
+        threshold: 14,
+        colorThreshold: 34,
+      },
+      ...bands.map((b) => ({ rect: roundRect(toImg(b.erase)), threshold: 14, colorThreshold: 34 })),
+      { rect: bottomRect, threshold: 14, colorThreshold: 34 },
+      ...moved.map((d) => ({
+        rect: roundRect(toImg({ x0: lineX0, y0: d - DIVIDER_SPAN.above - 10, x1: lineX1, y1: d + DIVIDER_SPAN.below + 8 })),
+        threshold: 255,
+        force: [roundRect(toImg({ x0: lineX0, y0: d - DIVIDER_SPAN.above - 1, x1: lineX1, y1: d + DIVIDER_SPAN.below + 1 }))],
+      })),
+    ],
+    [],
+    [...topFrame, ...ptGuard.map(toImg), ...stampGuard],
+    capGuard,
+  );
+  unshade();
+  if (plan && orig && between.length) {
+    // a sombra do fio, medida num fio entre capítulos
+    const profile = dividerProfile(orig, data, Math.round(between[0] * fy), lineX0 * fx, lineX1 * fx);
+    for (const y of drawn) drawDivider(data, Math.round(y * fy), profile, lineX0 * fx, lineX1 * fx);
+  }
+  p.sctx.putImageData(data, 0, 0);
+  ctx.drawImage(p.src, 0, 0, p.W, p.H);
+
+  drawLine(
+    ctx,
+    face.name_pt ?? face.name_en,
+    layout.title.x,
+    layout.title.centerY,
+    layout.title.maxWidth,
+    layout.title.size,
+    k,
+    INK[inks[0]],
+  );
+  if (face.type_pt)
+    drawLine(ctx, face.type_pt, layout.type.x, layout.type.centerY, layout.type.maxWidth, layout.type.size, k, INK[inks[1]]);
+  const symbols = await preloadSymbols(face.text_pt, p.flavor);
+  drawLayout(ctx, top, topBox, k, inks[2], symbols, m);
+  layouts.forEach((res, i) => {
+    // cada capítulo na altura dos marcadores dele, se couber
+    const mk = found ? found[i] : null;
+    const box = mk ? alignOnIcon(boxes[i], res.height, (mk.first + mk.last) / 2, false) : boxes[i];
+    drawLayout(ctx, res, box, k, inks[3 + i], symbols, m);
+  });
+  // A caixa de baixo: a palavra-chave (com o flavor, se couber) ou só o flavor, no meio da caixa.
+  // Uma linha que não chega à caixa de P/R fica no meio da caixa inteira, como na carta impressa;
+  // com mais, o texto acaba antes da caixa de P/R
+  const tail = parts.tail.map((t) => t.text).join("\n");
+  const paperTop = bottomRect.y0 / fy;
+  const wide = { x0: 68, y0: paperTop + 4, x1: 677, y1: bottomRect.y1 / fy - 12 };
+  const short = { ...wide, y1: (ptTop === null ? 920 : ptTop / fy) - 4 };
+  // (com a letra dela: na carta impressa a palavra-chave sai maior que os capítulos, no corpo da
+  // caixa da carta comum)
+  const fit = (box: Rect): LayoutResult | null => {
+    if (tail) return fitText(tail, p.flavor, box.x1 - box.x0, box.y1 - box.y0, m, SUMMON.box.size, 15);
+    if (!p.flavor) return null;
+    const paragraphs = buildParagraphs(null, p.flavor);
+    for (let s = SUMMON.box.size; s >= 15; s -= 0.5) {
+      const res = layoutAt(paragraphs, s, box.x1 - box.x0, m);
+      if (res.height <= box.y1 - box.y0) return res;
+    }
+    return null;
+  };
+  const ptX = Math.min(...ptGuard.map((g) => g.x0));
+  const one = fit(wide);
+  const space = one ? m.text(" ", one.size, false) : 0;
+  const oneWidth = one?.lines[0]?.chunks.reduce((w, c, ci) => w + chunkWidth(c, one.size, m) + (ci > 0 ? space : 0), 0) ?? 0;
+  const clear = Boolean(one && one.lines.length === 1 && (wide.x0 + wide.x1) / 2 + oneWidth / 2 < ptX - 6);
+  const res = clear ? one : fit(short);
+  if (res) drawLayout(ctx, res, clear ? wide : short, k, inks[3 + bands.length], symbols, m, true);
   return true;
 }
 
@@ -2716,6 +2936,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const borderless = print.border === "borderless";
   // Saga também: os fios entre os capítulos são degraus de uma linha, que o JPEG reduzido espalha
   const saga = print.layout === "saga" && !borderless;
+  // (as Invocações de Final Fantasy são criaturas Saga, com outra moldura: ver renderSummon)
+  const summon = saga && /\bCreature\b/.test(opts.typeLine ?? "");
   // e Classe: as barras de nível são recortadas e coladas em outra altura
   const klass = print.layout === "class" && !borderless;
   // e as naves com Posicionar: a caixa translúcida vai para a rede neural
@@ -2816,7 +3038,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   }
 
   if (saga) {
-    const done = await renderSaga({ ctx, src, sctx, data, toImg, face, print, W, H });
+    const done = summon
+      ? await renderSummon({ ctx, src, sctx, data, toImg, face, print, flavor: opts.flavor ?? null, W, H })
+      : await renderSaga({ ctx, src, sctx, data, toImg, face, print, W, H });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: done };
   }

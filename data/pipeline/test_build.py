@@ -1181,14 +1181,14 @@ class SagaSupported(unittest.TestCase):
         self.assertTrue(saga_supported(self.base))
         self.assertTrue(saga_supported({**self.base, "frame_effects": ["legendary"], "type_line": "Legendary Enchantment — Saga"}))
         self.assertTrue(saga_supported({**self.base, "frame_effects": ["enchantment"]}))
+        # criatura Saga (Invocações de Final Fantasy): a moldura delas, conferida pelo motor (ADR 0042)
+        self.assertTrue(saga_supported({**self.base, "type_line": "Enchantment Creature — Saga Knight"}))
 
     def test_fora(self):
         self.assertFalse(saga_supported({**self.base, "border_color": "borderless"}))
         self.assertFalse(saga_supported({**self.base, "frame_effects": ["showcase"]}))
         self.assertFalse(saga_supported({**self.base, "full_art": True}))
         self.assertFalse(saga_supported({**self.base, "frame": "2003"}))
-        # criatura Saga (Invocações de Final Fantasy): outra moldura
-        self.assertFalse(saga_supported({**self.base, "type_line": "Enchantment Creature — Saga Knight"}))
         self.assertFalse(saga_supported({**self.base, "layout": "transform"}))
 
 

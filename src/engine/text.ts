@@ -198,6 +198,7 @@ export function layoutAt(
   m: Measurer,
   narrow: ReadonlySet<number> = new Set(),
   narrowBy = 0,
+  narrowLeft = false,
 ): LayoutResult {
   const lineHeight = size * 1.12;
   const paragraphGap = size * 0.3;
@@ -213,7 +214,11 @@ export function layoutAt(
     // impressa a continuação começa embaixo do texto, não embaixo do marcador (Hull Breach)
     const lead = p.chunks[0];
     const hang = lead?.length === 1 && lead[0].kind === "text" && lead[0].value === "•" ? chunkWidth(lead, size, m) + space : 0;
-    const push = () => lines.push({ chunks: cur, flavor: p.flavor, first, ...(first || !hang ? {} : { indent: hang }) });
+    // (no canto da esquerda, a linha estreitada começa mais para dentro)
+    const push = () => {
+      const indent = (first ? 0 : hang) + (narrowLeft && narrow.has(lines.length) ? narrowBy : 0);
+      lines.push({ chunks: cur, flavor: p.flavor, first, ...(indent ? { indent } : {}) });
+    };
     for (const chunk of p.chunks) {
       const cw = chunkWidth(chunk, size, m);
       const add = cur.length ? space + cw : cw;
@@ -243,6 +248,11 @@ export function layoutAt(
 export interface Notch {
   width: number;
   height: number;
+  /**
+   * o canto da esquerda: as linhas que encostam nele começam `width` para dentro (a curva da
+   * tira dos marcadores no pé da faixa do lembrete das Invocações, ver saga.ts)
+   */
+  left?: boolean;
 }
 
 /** Linhas que, com o texto centralizado na caixa, encostam no canto reservado. */
@@ -267,7 +277,7 @@ function layoutAround(paragraphs: Paragraph[], size: number, width: number, heig
     const next = linesInNotch(res, height, notch);
     if ([...next].every((n) => narrow.has(n))) break;
     narrow = new Set([...narrow, ...next]);
-    res = layoutAt(paragraphs, size, width, m, narrow, notch.width);
+    res = layoutAt(paragraphs, size, width, m, narrow, notch.width, notch.left);
   }
   return res;
 }

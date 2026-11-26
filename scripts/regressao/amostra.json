@@ -448,6 +448,30 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "76a8cae7-e6ea-45eb-be8d-0e6a29b98aa6",
+    "oracle_id": "06f11ff8-cc99-411d-b00b-464ba4b7b87d",
+    "set": "fic",
+    "number": "71",
+    "nome": "Summon: Magus Sisters",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "95318d85-4a08-47ac-a43d-ea83c0bea81c",
+    "oracle_id": "fe9f6825-597b-4d80-ab7c-f4ee4e824b6f",
+    "set": "fin",
+    "number": "1",
+    "nome": "Summon: Bahamut",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "d0e5cbd4-401b-4456-80bf-d90beadfd1f8",
+    "oracle_id": "b6b22bac-853a-45a8-a74d-9904ec2b34fd",
+    "set": "fin",
+    "number": "162",
+    "nome": "Summon: G.F. Cerberus",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "8fcf3fbb-1ddd-437e-81c1-f5a3133f5ee8",
     "oracle_id": "6d3ca5cb-781d-4608-b7f1-38c020536376",
     "set": "fin",
@@ -472,6 +496,30 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "00546117-018a-4286-bc20-b5446c5be56f",
+    "oracle_id": "8b4bfdc5-8c0a-40c3-abbf-ada4a536dc34",
+    "set": "fin",
+    "number": "35",
+    "nome": "Summon: Choco/Mog",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "44d23652-077e-4c1f-b640-b284685db911",
+    "oracle_id": "73122880-d7f4-422f-a336-18773bcb7bfe",
+    "set": "fin",
+    "number": "36",
+    "nome": "Summon: Knights of Round",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "e44497a8-067e-454e-a9c0-684f03df55ff",
+    "oracle_id": "aaf9e711-94e1-4869-81b0-baa6380ee873",
+    "set": "fin",
+    "number": "37",
+    "nome": "Summon: Primal Garuda",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "7cb5acb6-14af-4e17-8e6c-b44122bd81e4",
     "oracle_id": "70113003-be5e-406a-9aec-cb480468c36d",
     "set": "fin",
@@ -485,6 +533,22 @@
     "set": "fin",
     "number": "513",
     "nome": "Ultimecia, Time Sorceress // Ultimecia, Omnipotent",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "ea7f26a9-b203-4ee7-88f1-3d9c77a25bcb",
+    "oracle_id": "b38d1811-64d7-4a35-a86c-3291eecd8391",
+    "set": "fin",
+    "number": "77",
+    "nome": "Summon: Leviathan",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "a80511f8-7cb1-4974-afde-8a5cebe13ad7",
+    "oracle_id": "5846718c-7d31-4d2c-80a2-b1534e2aebc1",
+    "set": "fin",
+    "number": "78",
+    "nome": "Summon: Shiva",
     "grupo": "citada nos documentos"
   },
   {
@@ -901,6 +965,22 @@
     "set": "pcmp",
     "number": "3",
     "nome": "Rakdos Guildmage",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "5bb06121-b390-4e3d-8822-4389570b0e15",
+    "oracle_id": "b6b22bac-853a-45a8-a74d-9904ec2b34fd",
+    "set": "pfin",
+    "number": "162s",
+    "nome": "Summon: G.F. Cerberus",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "d9120fd0-f958-4ce3-82cd-0500d4549654",
+    "oracle_id": "73122880-d7f4-422f-a336-18773bcb7bfe",
+    "set": "pfin",
+    "number": "36s",
+    "nome": "Summon: Knights of Round",
     "grupo": "citada nos documentos"
   },
   {
@@ -6030,6 +6110,86 @@
     "number": "DGM-128",
     "nome": "Flesh // Blood",
     "grupo": "fundir de 2003"
+  },
+  {
+    "id": "c14098d6-28ae-492f-8ffc-7d115d83ce6a",
+    "oracle_id": "2148820c-85b6-4598-adf2-10873001a779",
+    "set": "fic",
+    "number": "26",
+    "nome": "Summon: Good King Mog XII",
+    "grupo": "invocações"
+  },
+  {
+    "id": "cdbc2d28-ea35-47c6-af7e-07924e9d5794",
+    "oracle_id": "ff70d743-280e-476f-a3b8-92026419419d",
+    "set": "fic",
+    "number": "28",
+    "nome": "Summon: Yojimbo",
+    "grupo": "invocações"
+  },
+  {
+    "id": "aa4f6703-21f8-4c29-ad5a-5afb54188ade",
+    "oracle_id": "0990e57f-279e-4348-a049-e06187cc38d4",
+    "set": "fin",
+    "number": "120",
+    "nome": "Summon: Anima",
+    "grupo": "invocações"
+  },
+  {
+    "id": "8b1b5f06-e34d-44a3-976e-5157c4b7a0f4",
+    "oracle_id": "032f59c3-9f47-4db3-a43c-065a99ed7efe",
+    "set": "fin",
+    "number": "121",
+    "nome": "Summon: Primal Odin",
+    "grupo": "invocações"
+  },
+  {
+    "id": "8ab5429a-1075-49aa-9608-0610080fbf7a",
+    "oracle_id": "bab5e9ce-6d55-4d1e-a9ac-c2b954191be9",
+    "set": "fin",
+    "number": "160",
+    "nome": "Summon: Brynhildr",
+    "grupo": "invocações"
+  },
+  {
+    "id": "c6c73092-5195-4bdc-b039-a699f6e297b2",
+    "oracle_id": "96d1bfc1-b80f-466f-b07d-df1ab361e8e0",
+    "set": "fin",
+    "number": "163",
+    "nome": "Summon: G.F. Ifrit",
+    "grupo": "invocações"
+  },
+  {
+    "id": "13e0ad67-35a6-48f3-83cb-5ffd07daf717",
+    "oracle_id": "032f59c3-9f47-4db3-a43c-065a99ed7efe",
+    "set": "pfin",
+    "number": "121s",
+    "nome": "Summon: Primal Odin",
+    "grupo": "invocações"
+  },
+  {
+    "id": "59d7c696-0ffa-4327-9045-eaefefcf4fe0",
+    "oracle_id": "bab5e9ce-6d55-4d1e-a9ac-c2b954191be9",
+    "set": "pfin",
+    "number": "160s",
+    "nome": "Summon: Brynhildr",
+    "grupo": "invocações"
+  },
+  {
+    "id": "1eb2a447-e18e-4318-898d-bc12fdd16172",
+    "oracle_id": "66ce0c60-f406-4ece-915f-675da4e8b16d",
+    "set": "pfin",
+    "number": "204s",
+    "nome": "Summon: Titan",
+    "grupo": "invocações"
+  },
+  {
+    "id": "22281ba1-d509-4039-83c7-d912a1ce5ac4",
+    "oracle_id": "b38d1811-64d7-4a35-a86c-3291eecd8391",
+    "set": "pfin",
+    "number": "77s",
+    "nome": "Summon: Leviathan",
+    "grupo": "invocações"
   },
   {
     "id": "639df7bc-b87d-4bf5-8005-8eabc54e955b",

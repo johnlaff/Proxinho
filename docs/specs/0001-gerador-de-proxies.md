@@ -213,3 +213,10 @@ Como jogador, quero imprimir em português as criaturas com Subir de Nível de R
 - [x] Os selos dizem "NÍVEL", com o intervalo como impresso.
 - [x] O Hexdrinker, que vem do Arena, sai com os níveis como o Oracle e a carta impressa.
 - [x] As promos de ROE com marca-d'água, as sem borda da Secret Lair e as de Mystery Booster 2 saem na original, e a etiqueta diz que saem em inglês.
+
+### H22. Invocações de Final Fantasy (entregue em 26/11/2026, ADR 0042)
+Como jogador, quero imprimir em português as Invocações de Final Fantasy, as criaturas Saga.
+- [x] As Invocações de borda preta de FIN, FIC e das promos de pré-estreia saem em português: o lembrete oficial das Sagas impressas na faixa larga do alto, os capítulos ao lado dos marcadores, com os fios entre eles no lugar que o português pede, e a palavra-chave da criatura ou o flavor centralizados na caixa abaixo da barra de tipo.
+- [x] O lembrete desvia da curva da tira dos marcadores, como na carta impressa; o fio do lembrete, onde a arte começa, fica como está.
+- [x] O fim do tipo em inglês sai inteiro e o símbolo da coleção fica inteiro, com a barra escurecendo perto dele.
+- [x] Os Knights of Round, cujo lembrete nunca saiu impresso em PT, e as sem borda saem na original, e a etiqueta diz que saem em inglês.

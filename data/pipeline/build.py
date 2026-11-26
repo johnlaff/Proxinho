@@ -1575,9 +1575,11 @@ def saga_supported(card: dict) -> bool:
     capítulo (src/engine/saga.ts). O motor mede os fios entre as faixas na imagem e confere que
     batem com os capítulos do texto em PT; se não baterem, a arte sai como está.
 
-    As criaturas Saga (as Invocações de Final Fantasy) têm outra moldura, com o lembrete na
-    largura toda e a caixa de P/R embaixo, e ficam de fora, como as Sagas de duas faces, as sem
-    borda e as de vitrine (showcase).
+    As criaturas Saga (as Invocações de Final Fantasy) têm outra moldura, com o lembrete numa
+    faixa larga no alto, a coluna dos capítulos mais curta e uma caixa embaixo, com a palavra-chave
+    ou o flavor e a caixa de P/R (`SUMMON` em saga.ts, ADR 0042): entram também, e o motor confere
+    a moldura delas na imagem. Ficam de fora as Sagas de duas faces, as sem borda e as de vitrine
+    (showcase).
     """
     effects = set(card.get("frame_effects") or [])
     return (
@@ -1589,7 +1591,6 @@ def saga_supported(card: dict) -> bool:
         and not card.get("textless")
         and not drawn_frame(card)
         and "Saga" in card.get("type_line", "")
-        and "Creature" not in card.get("type_line", "")
     )
 
 

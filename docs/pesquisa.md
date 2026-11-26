@@ -341,6 +341,22 @@ Medidas nas imagens do Scryfall (745 × 1040), nas 55 impressões suportadas (41
 
 A escolha (ADR 0041): as faixas, as caixas de P/R, a palavra dos selos e o pé do papel medidos na imagem; cada faixa apagada como a caixa de sempre, à parte; o texto com a mesma letra nas três faixas e o "NÍVEL" no lugar do "LEVEL".
 
+### Invocações de Final Fantasy (26/11/2026)
+
+As criaturas Saga nasceram em Final Fantasy (2025): a MTG Wiki ("Saga creature") descreve a moldura como a da Saga com a barra de tipo mais alta, para caber a caixa de P/R, uma caixa pequena abaixo dela para as outras habilidades ou o flavor, a arte mais curta e o lembrete na largura da carta, logo abaixo do nome. As habilidades dessa caixa não são de capítulo. Não achei molde próprio para elas no Proxyshop (o molde de Saga monta a Saga comum) nem no Card Conjurer.
+
+Medidas nas imagens do Scryfall (745 × 1040), nas 29 impressões de borda preta (FIN, FIC e as promos de pré-estreia de FIN):
+
+| Medida | Valor |
+|---|---|
+| Faixa do lembrete | na largura da caixa, o papel até x ≈ 684; o fio de baixo em y = 221 nas 29, onde a arte começa; a curva da tira dos marcadores desce até o pé dela, à esquerda (a última linha em inglês começa uns 24 px depois) |
+| Coluna dos capítulos | do fio do lembrete ao alto da barra de tipo, com o fio da arte em x ≈ 370 a 374, como na Saga comum |
+| Barra de tipo | o fio de cima de 786 a 789 (uns 84 px acima do da Saga comum); escurece perto do símbolo da coleção, de ~225 em x 580 a ~170 em x 640; o símbolo começa em x ≈ 636 (FIN) ou 648 (FIC) |
+| Caixa de baixo | dos lados da caixa da carta comum (o papel de x 55 a 684) até y ≈ 953, a 12 px do pé da barra de tipo; a caixa de P/R e o selo da coleção como na carta comum |
+| Texto | a palavra-chave ("Flying", "Ward {2}") ou o flavor centralizados, no corpo da caixa da carta comum, maior que o dos capítulos |
+
+A escolha (ADR 0042): o caminho da Saga na coluna medida, com o fio do lembrete fixo e o lembrete desviando da curva; a barra de tipo sem o escurecimento enquanto se acha o símbolo e se apaga; a caixa de baixo como a da carta comum, com a letra dela.
+
 ### Moldura de 1993 (26/11/2026)
 
 A moldura que o Scryfall chama de `1993` vai de Alpha (1993) a Alliances (1996), com as edições básicas até a 4ª, as Collectors' Editions, Chronicles, Summer Magic, os decks de introdução da época e as promos (Arena League, livros, Harper Prism): 3.090 impressões em inglês, 1.754 de borda preta, 1.100 de borda branca e 236 douradas, do Campeonato Mundial.

@@ -169,6 +169,23 @@ describe("fitText", () => {
     expect(width).toBeLessThanOrEqual(600 - notch.width);
   });
 
+  it("desvia do canto da esquerda começando a linha mais para dentro (a curva das Invocações)", () => {
+    const rules = "palavra ".repeat(40).trim();
+    const notch = { width: 24, height: 40, left: true };
+    const res = fitText(rules, null, 600, 200, fake, 34, 15, notch);
+    expect(res.height).toBeLessThanOrEqual(200);
+    // a última linha, no pé da caixa, começa depois do canto e cabe no que sobra
+    const last = res.lines[res.lines.length - 1];
+    expect(last.indent).toBe(24);
+    const width = last.chunks.reduce(
+      (w, c, i) => w + (i ? fake.text(" ", res.size, false) : 0) + fake.text(c.map((r) => r.value).join(""), res.size, false),
+      0,
+    );
+    expect(width).toBeLessThanOrEqual(600 - 24);
+    // e a primeira, longe do pé, não
+    expect(res.lines[0].indent).toBeUndefined();
+  });
+
   it("monta um parágrafo por habilidade", () => {
     expect(buildParagraphs("Voar\nVigilância", null)).toHaveLength(2);
   });

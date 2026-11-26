@@ -11,7 +11,8 @@ A amostra tem dois pedaços:
    (1997), a sem borda, a arte estendida, as de duas faces, os planeswalkers, as fichas, os
    emblemas, as Sagas, Aventuras, Classes, cartas com Preparar, as Salas de Duskmourn, as
    outras divididas, a Consequência e o Fundir (as da moldura atual e as de 2003), as divididas
-   da moldura antiga, a moldura de 1993, as criaturas com Mutação, naves e a tradução não oficial.
+   da moldura antiga, a moldura de 1993, as criaturas com Mutação e com Subir de Nível, as
+   Invocações de Final Fantasy, naves e a tradução não oficial.
 
 Lê o banco montado pelo pipeline (data/out/cards.sql, depois de `pnpm data:build`). A amostra é
 versionada e só cresce: rodar de novo mantém as impressões que já estão nela e acrescenta as
@@ -68,6 +69,7 @@ GROUPS: dict[str, int] = {
     "1993": 40,
     "mutação": 15,
     "níveis": 15,
+    "invocações": 10,
 }
 
 
@@ -89,6 +91,9 @@ def group_of(row: sqlite3.Row) -> str | None:
     # (e Subir de Nível, ADR 0041)
     if layout == "leveler":
         return "níveis"
+    # (e as Invocações de Final Fantasy, Sagas que são criaturas, ADR 0042)
+    if layout == "saga" and "Creature" in type_line:
+        return "invocações"
     if frame == "1997":
         return "1997"
     # (e depois a marca-d'água de 2003, ADR 0024, o Preparar, ADR 0032, as Salas, ADR 0033, as

@@ -214,9 +214,10 @@ export interface SplitLayout {
  * letras ocupam bem menos da metade dela), alisado entre colunas vizinhas. O papel escurece em
  * direção à lombada, numa faixa de até 100 px na página da direita; com a máscara medida contra
  * a média em volta, a beira mais escura do retângulo virava "letra" e o remendo, mais claro,
- * deixava um degrau na sombra (ver `shadePage`).
+ * deixava um degrau na sombra (ver `shadePage`). `share` muda o percentil: na barra de tipo das
+ * Invocações, que escurece perto do símbolo da coleção, as letras ocupam mais da coluna (75).
  */
-export function pageShade(img: ImageData, rect: Rect): Float32Array {
+export function pageShade(img: ImageData, rect: Rect, share = 0.6): Float32Array {
   const x0 = Math.round(rect.x0);
   const x1 = Math.round(rect.x1);
   const y0 = Math.round(rect.y0);
@@ -227,7 +228,7 @@ export function pageShade(img: ImageData, rect: Rect): Float32Array {
     col.length = 0;
     for (let y = y0; y < y1; y++) col.push(lum(img.data, (y * img.width + x) * 4));
     col.sort((a, b) => a - b);
-    raw[x - x0] = Math.max(1, col[Math.floor(col.length * 0.6)] ?? 1);
+    raw[x - x0] = Math.max(1, col[Math.floor(col.length * share)] ?? 1);
   }
   const r = Math.max(2, Math.round((4 * img.width) / BASE_W));
   const out = new Float32Array(raw.length);

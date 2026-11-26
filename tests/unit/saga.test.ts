@@ -71,6 +71,16 @@ describe("sagaDividers", () => {
     expect(sagaDividers(c.img, art)).toEqual([701]);
   });
 
+  it("nas Invocações, só os fios acima da barra de tipo", () => {
+    const c = column();
+    shadow(c, 221, [232, 229, 226, 223, 220, 217, 214, 211]);
+    shadow(c, 575, [232, 229, 226, 223, 220, 217, 214, 211]);
+    shadow(c, 850, [232, 229, 226, 223, 220, 217, 214, 211]);
+    const art = sagaArtLeft(c.img)!;
+    expect(sagaDividers(c.img, art)).toEqual([221, 575, 850]);
+    expect(sagaDividers(c.img, art, 778)).toEqual([221, 575]);
+  });
+
   it("sem o fio preto da arte não é Saga", () => {
     expect(sagaArtLeft(canvas(gray(235)).img)).toBeNull();
   });
@@ -96,6 +106,7 @@ describe("sagaText", () => {
         { numerals: "I", text: "Compre um card.", line: 1 },
         { numerals: "II, III", text: "Use vidência 1.", line: 2 },
       ],
+      tail: [],
     });
   });
 
@@ -103,6 +114,28 @@ describe("sagaText", () => {
     expect(sagaText("I — Compre um card.\nVoar")).toBeNull();
     expect(sagaText("Voar")).toBeNull();
     expect(sagaText(null)).toBeNull();
+  });
+
+  it("nas Invocações, o que vem depois dos capítulos vai para a caixa de baixo", () => {
+    expect(sagaText("(Lembrete.)\nI — Compre um card.\nII — Ganhe 2 pontos de vida.\nVoar, ímpeto", true)).toEqual({
+      top: [{ text: "(Lembrete.)", line: 0 }],
+      chapters: [
+        { numerals: "I", text: "Compre um card.", line: 1 },
+        { numerals: "II", text: "Ganhe 2 pontos de vida.", line: 2 },
+      ],
+      tail: [{ text: "Voar, ímpeto", line: 3 }],
+    });
+  });
+
+  it("as opções de um capítulo vão com ele (Summon: Magus Sisters, FIC 71)", () => {
+    const text = "I, II, III — Escolha um aleatoriamente —\n•Unir Forças! — Três marcadores.\n•Defesa! — Um marcador.\nÍmpeto";
+    const parts = sagaText(text, true);
+    expect(parts?.chapters).toEqual([
+      { numerals: "I, II, III", text: "Escolha um aleatoriamente —\n•Unir Forças! — Três marcadores.\n•Defesa! — Um marcador.", line: 0 },
+    ]);
+    expect(parts?.tail).toEqual([{ text: "Ímpeto", line: 3 }]);
+    // na Saga comum, as opções também são do capítulo, e o texto depois dele ainda tira a carta da moldura
+    expect(sagaText("I — Escolha um —\n• Compre um card.\n• Ganhe 2 pontos de vida.")?.chapters).toHaveLength(1);
   });
 });
 
@@ -136,6 +169,25 @@ describe("sagaPlan", () => {
     expect(sagaPlan([150, 100, 100], true, markers, 308 - TOP_CURVE_CLEAR)).not.toBeNull();
     // sem mudar os fios, o texto do alto também para antes da curva
     expect(sagaBands([308, 560], 370)[0].text.y1).toBe(308 - TOP_CURVE_CLEAR);
+  });
+
+  it("na coluna das Invocações, entre o fio do lembrete e a barra de tipo", () => {
+    // Summon: Shiva (FIN 78): o fio do lembrete fica em 221 e a barra de tipo começa em 786
+    const column = { y0: 221, y1: 785 };
+    const markers = [
+      { first: 348.5, last: 426.5 },
+      { first: 673.5, last: 673.5 },
+    ];
+    const plan = sagaPlan([150, 100], false, markers, Infinity, column);
+    expect(plan).toHaveLength(1);
+    expect(plan![0]).toBeGreaterThan(426.5 + 31);
+    expect(plan![0]).toBeLessThan(673.5 - 31);
+    // o último capítulo não passa da barra de tipo
+    expect(sagaPlan([150, 320], false, markers, Infinity, column)).toBeNull();
+    // e as faixas começam no fio do lembrete, todas de capítulo (a tira dos marcadores fica)
+    const bands = sagaBands([575], 371, column, false);
+    expect(bands[0].erase).toEqual({ x0: 87, y0: 222, x1: 369, y1: 574 });
+    expect(bands[1].erase.y1).toBe(785);
   });
 
   it("um grupo só não tem fio; sem lugar, null", () => {
