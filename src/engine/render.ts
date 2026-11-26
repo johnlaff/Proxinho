@@ -138,10 +138,22 @@ import {
   type StationText,
 } from "./station";
 import { mdfcHint, type MdfcHint } from "./mdfc";
-import { OLD, oldCostLeft, oldLetters, oldTypeEnds } from "./old";
+import { fillAcross, OLD, oldCostLeft, oldLetters, oldTypeEnds } from "./old";
 import { prepareFrame, prepareLayout } from "./prepare";
 import { ROOM, roomCostLeft, roomFrame } from "./room";
-import { fuseBar, SPLIT, SPLIT_2003, splitBoxes, splitCostLeft, splitFrame } from "./split";
+import {
+  fuseBar,
+  oldSplitBoxes,
+  oldSplitCostLeft,
+  oldSplitFrame,
+  oldSplitHalf,
+  SPLIT,
+  SPLIT_1997,
+  SPLIT_2003,
+  splitBoxes,
+  splitCostLeft,
+  splitFrame,
+} from "./split";
 import { AFTERMATH, aftermathBox, aftermathCostLeft, aftermathFrame } from "./aftermath";
 import { preloadSymbols } from "./symbols";
 import {
@@ -1815,6 +1827,151 @@ async function renderSplit(p: {
 }
 
 /**
+ * Carta dividida da moldura antiga (ADR 0038): girada para a carta deitada, cada metade é uma carta
+ * pequena da moldura antiga (ver `renderOld`). O nome e o tipo de cada metade, letras brancas com
+ * sombra sobre a moldura texturizada, saem pela rede neural, num quadro por metade (o custo e o
+ * símbolo da coleção ficam, escondidos dela); as caixas, pelo apagamento de sempre, no papel medido
+ * na imagem (`oldSplitBoxes`: bisel, fio ou pergaminho, conforme a cor). Devolve "neural" quando a
+ * rede neural não rodou e `false` quando a imagem não tem a moldura ou as letras onde ela as põe.
+ */
+async function renderSplitOld(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  halves: [PtFace, PtFace];
+  print: PrintRecord;
+  W: number;
+  H: number;
+  neural: Neural;
+  plan: (frames: number) => void;
+}): Promise<"ok" | "neural" | false> {
+  const { ctx, src, halves, print, W, H, neural } = p;
+  const L = SPLIT_1997;
+  if (halves.some((h) => !h.type_pt)) return false;
+  const rot = document.createElement("canvas");
+  rot.width = src.height;
+  rot.height = src.width;
+  const rctx = rot.getContext("2d", { willReadFrequently: true });
+  if (!rctx) throw new Error("Seu navegador não liberou o canvas 2D.");
+  rctx.translate(rot.width, 0);
+  rctx.rotate(Math.PI / 2);
+  rctx.drawImage(src, 0, 0);
+  rctx.setTransform(1, 0, 0, 1, 0, 0);
+  const data = rctx.getImageData(0, 0, rot.width, rot.height);
+  if (!oldSplitFrame(data, L)) return false;
+  const fx = rot.width / L.width;
+  const fy = rot.height / L.height;
+  const toImg = (r: Rect) => roundRect({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
+  const sides = [0, 1] as const;
+
+  // 1. as letras do nome e do tipo de cada metade (as folgas na escala da carta de pé: a largura da
+  // imagem deitada é a altura da carta)
+  const costs = sides.map((h) => oldSplitCostLeft(halves[h].mana_cost, h, L));
+  const N = L.name;
+  const T = L.type;
+  const nameRects = sides.map((h) => toImg({ x0: N.x0 + h * L.dx, y0: N.y0, x1: costs[h] - 4, y1: N.y1 }));
+  const typeRects = sides.map((h) => toImg(oldSplitHalf({ x0: T.x0, y0: T.y0, x1: T.x1, y1: T.y1 }, h, L)));
+  const names = nameRects.map((r) => oldLetters(data, r, fy));
+  const types = typeRects.map((r) => oldLetters(data, r, fy));
+  // sem letras perto do começo das quatro linhas, não é a moldura que o motor conhece
+  const startsNear = (l: (typeof names)[number], x: number) => l.blocks.length > 0 && Math.abs(l.blocks[0].x0 / fx - x) <= 12;
+  if (sides.some((h) => !startsNear(names[h], N.x + h * L.dx) || !startsNear(types[h], T.x + h * L.dx))) return false;
+
+  // 2. as caixas: o papel medido na imagem, pelo apagamento de sempre
+  const boxes = oldSplitBoxes(data, L);
+  const boxRects = boxes.map((b) => toImg(b.erase));
+  // (cada metade como a dela: no Wax // Wane, INV 296, o texto da esquerda é alinhado à esquerda
+  // e o da direita, centralizado. O texto alinhado à esquerda começa sempre em `box.left`; o que
+  // começa depois é centralizado)
+  const centered = boxes.map((b, h) => {
+    if (!halves[h].text_pt?.trim()) return false;
+    const margin = L.box.left + h * L.dx - b.erase.x0;
+    return measureCentered(data, boxRects[h], [], fx, undefined, margin) === true;
+  });
+  const inks = eraseRegions(
+    data,
+    boxRects.map((rect) => ({ rect, threshold: 14, colorThreshold: 34, stains: true, attachedBelow: rect.y1 })),
+    [],
+  );
+
+  // 3. o nome e o tipo pela rede neural, um quadro por metade. O pé das letras do nome desce sobre
+  // os fios do alto da arte, e no lugar dele a rede neural deixava um borrão no fio (o "y" do Day,
+  // APC 131; o "p" do Spite, INV 293): dali para baixo as letras saem linha a linha, pelos pixels
+  // da mesma linha ao lado (`fillAcross`), e a rede neural fica com o resto
+  for (const h of sides) {
+    const r = nameRects[h];
+    const w = r.x1 - r.x0;
+    const from = Math.max(0, Math.min(r.y1 - r.y0, Math.round(N.band * fy) - r.y0)) * w;
+    const feet = new Uint8Array(names[h].mask.length);
+    feet.set(names[h].mask.subarray(from), from);
+    fillAcross(data, r, feet);
+    names[h].mask.fill(0, from);
+  }
+  p.plan(2);
+  for (const h of sides) {
+    const hide = [toImg({ x0: costs[h] - 2, y0: N.y0, x1: L.lama.x1 + h * L.dx + 2, y1: N.y1 }), toImg(oldSplitHalf(L.symbol, h, L))];
+    const clean = await lamaBox(
+      data,
+      [
+        { rect: nameRects[h], mask: names[h].mask, polarity: "light" },
+        { rect: typeRects[h], mask: types[h].mask, polarity: "light" },
+      ],
+      toImg(oldSplitHalf(L.lama, h, L)),
+      hide,
+      "light",
+      `${print.id}:${data.width}:antiga-dividida:${h}`,
+      { art: true, grow: Math.round(fy * 1), gap: 0, simple: false, neural },
+    );
+    if (!clean) return "neural";
+  }
+  rctx.putImageData(data, 0, 0);
+
+  // 4. o português, escrito na carta deitada e posta de pé de novo
+  const k = H / L.width;
+  ctx.save();
+  ctx.translate(0, H);
+  ctx.rotate(-Math.PI / 2);
+  ctx.drawImage(rot, 0, 0, H, W);
+  const m = measurer(ctx, k);
+  // a linha de base medida no inglês, se estiver perto da da moldura
+  const near = (v: number | null, expected: number) => (v !== null && Math.abs(v / fy - expected) <= 5 ? v / fy : expected);
+  const body = bodyFont();
+  const typeFont: TitleFont = { family: body.family, weight: "400", scale: body.scale, dx: 0, baseline: "alphabetic", rise: 0 };
+  const { pad, text } = L.box;
+  for (const h of sides) {
+    const half = halves[h];
+    const nx = N.x + h * L.dx;
+    drawOldLine(ctx, half.name_pt ?? half.name_en, nx, near(names[h].baseline, N.baseline), costs[h] - 12 - nx, N.size, k, oldNameFont());
+    const tx = T.x + h * L.dx;
+    const typeEnd = L.symbol.x0 + h * L.dx - 12;
+    drawOldLine(ctx, half.type_pt ?? "", tx, near(types[h].baseline, T.baseline), typeEnd - tx, T.size, k, typeFont);
+    if (!half.text_pt?.trim() && !half.flavor_pt) continue;
+    const b = boxes[h].paper;
+    const lim = oldSplitHalf(text, h, L);
+    const box = {
+      x0: Math.max(b.x0 + pad.x0, lim.x0),
+      y0: Math.max(b.y0 + pad.y0, lim.y0),
+      x1: Math.min(b.x1 - pad.x1, lim.x1),
+      y1: Math.min(b.y1 - pad.y1, lim.y1),
+    };
+    const symbols = await preloadSymbols(half.text_pt, half.flavor_pt);
+    const res = fitText(
+      half.text_pt,
+      half.flavor_pt,
+      box.x1 - box.x0,
+      box.y1 - box.y0,
+      m,
+      L.maxSize,
+      L.minSize,
+      undefined,
+      half.ability_words,
+    );
+    drawLayout(ctx, res, box, k, inks[h] ?? "dark", symbols, m, centered[h], undefined, false);
+  }
+  ctx.restore();
+  return "ok";
+}
+
+/**
  * Consequência (ADR 0035): a metade de cima é apagada e escrita na carta de pé, a de baixo na
  * carta girada 90° no sentido anti-horário, onde ela fica de pé. Sem as barras e as caixas das duas
  * metades na imagem, a carta sai na original.
@@ -2186,9 +2343,13 @@ export function usesNeuralFill(print: PrintRecord, face: PtFace | null, side: 0 
     (print.border === "borderless" ||
       isPlaneswalker(print, face, typeLine) ||
       (print.frame === "1997" && print.layout === "normal") ||
+      isOldSplit(print) ||
       isRoom(print, typeLine))
   );
 }
+
+/** Carta dividida da moldura antiga (ADR 0038): o nome e o tipo de cada metade vão para a rede neural. */
+const isOldSplit = (print: PrintRecord) => print.layout === "split" && print.frame === "1997" && print.border !== "borderless";
 
 /** Sala de Duskmourn (ver room.ts): carta dividida com o tipo "Room" nas duas metades. */
 const isRoom = (print: PrintRecord, typeLine?: string | null) =>
@@ -2217,7 +2378,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const old = print.frame === "1997" && !borderless && print.layout === "normal";
   // e as Salas de Duskmourn: a linha de tipo e a faixa do lembrete vão para a rede neural
   const room = isRoom(print, opts.typeLine);
-  const version = pw || borderless || saga || klass || stationParts || old || room ? "png" : (opts.imageVersion ?? "png");
+  // e as divididas da moldura antiga: o nome e o tipo de cada metade, também
+  const oldSplit = isOldSplit(print);
+  const version = pw || borderless || saga || klass || stationParts || old || room || oldSplit ? "png" : (opts.imageVersion ?? "png");
   const [img] = await Promise.all([opts.source ?? loadImage(printImage(print, version, side)), loadCardFonts()]);
 
   const W = Math.round(BASE_W * scale);
@@ -2274,8 +2437,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     },
   };
 
-  // cartas divididas: as Salas (renderRoom), as da moldura atual (renderSplit) e as com
-  // Consequência (renderAftermath); as outras saem na original
+  // cartas divididas: as Salas (renderRoom), as da moldura antiga (renderSplitOld), as da
+  // moldura atual e as de 2003 (renderSplit) e as com Consequência (renderAftermath); as outras
+  // saem na original
   if (print.layout === "split") {
     const other = opts.split ?? null;
     const halves: [PtFace, PtFace] | null = other?.name_pt && other.text_pt !== null ? [face, other] : null;
@@ -2283,10 +2447,12 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       ? false
       : room
         ? await renderRoom({ ctx, src, halves, print, W, H, neural, plan })
-        : (await renderSplit({ ctx, src, halves, frame2003: print.frame === "2003", W, H })) ||
-            (await renderAftermath({ ctx, src, halves, W, H }))
-          ? "ok"
-          : false;
+        : oldSplit
+          ? await renderSplitOld({ ctx, src, halves, print, W, H, neural, plan })
+          : (await renderSplit({ ctx, src, halves, frame2003: print.frame === "2003", W, H })) ||
+              (await renderAftermath({ ctx, src, halves, W, H }))
+            ? "ok"
+            : false;
     if (done === "ok") return { canvas: out, translated: true };
     ctx.drawImage(img, 0, 0, W, H);
     return done === "neural" ? { canvas: out, translated: false, reason: "neural" } : { canvas: out, translated: false };

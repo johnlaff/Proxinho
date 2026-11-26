@@ -12,6 +12,12 @@
  * As da moldura de 2003 (ADR 0037: Dissension, Planar Chaos, Dragon's Maze e as reimpressões)
  * seguem o mesmo caminho com as medidas delas (`SPLIT_2003`): cada metade é uma carta pequena da
  * moldura de 2003, a da direita 501 px adiante, com o nome e o tipo na Matrix Bold.
+ *
+ * As da moldura antiga (ADR 0038: Invasion, Apocalypse e as reimpressões de The List e de Time
+ * Spiral) não têm barras: cada metade é uma carta pequena da moldura antiga (old.ts), com o nome e
+ * o tipo em letras brancas com sombra sobre a moldura texturizada. As medidas delas são outras
+ * (`SPLIT_1997`), e o caminho também (`renderSplitOld`, em render.ts): as letras saem pela rede
+ * neural, como na carta de pé da moldura antiga.
  */
 import { BASE_H, BASE_W, type Rect } from "./geometry";
 
@@ -392,4 +398,203 @@ export function paperBoxes(
       y1: Math.max(core.y1, walk(core.y1, lim.y1, row) - inset),
     };
   });
+}
+
+/**
+ * Medidas das divididas da moldura antiga, na carta deitada (escala-base 1040 × 745), da metade da
+ * esquerda; a da direita fica `dx` adiante.
+ */
+export interface OldSplitGeometry {
+  width: number;
+  height: number;
+  dx: number;
+  /**
+   * onde se procuram as letras do nome (até o custo): `x` é a primeira letra, `baseline` a linha de
+   * base; de `band` para baixo ficam só os pés das letras, sobre os fios do alto da arte
+   */
+  name: { x0: number; y0: number; y1: number; x: number; baseline: number; size: number; band: number };
+  /** onde se procuram as letras do tipo (até antes do símbolo da coleção) */
+  type: { x0: number; x1: number; y0: number; y1: number; x: number; baseline: number; size: number };
+  /** o custo: o último círculo acaba em `right`, um a cada `pitch` */
+  cost: { right: number; pitch: number };
+  /** o símbolo da coleção, que fica como está, escondido da rede neural */
+  symbol: Rect;
+  /** o quadro da rede neural de cada metade: o nome, a arte e o tipo */
+  lama: Rect;
+  /**
+   * a caixa: o papel é medido na imagem (`oldSplitBoxes`) dentro de `lim`, nunca menor que `core`;
+   * o apagamento fica `inset` para dentro do papel medido e o português, `pad` para dentro, no
+   * máximo até `text` (onde vai o texto em inglês). O texto alinhado à esquerda nunca começa
+   * depois de `left`: o que começa depois é centralizado
+   */
+  box: {
+    lim: Rect;
+    core: Rect;
+    inset: number;
+    pad: { x0: number; y0: number; x1: number; y1: number };
+    text: Rect;
+    left: number;
+  };
+  maxSize: number;
+  minSize: number;
+  /** as pistas da moldura (`oldSplitFrame`): a borda preta entre as metades e o papel das caixas */
+  check: { border: Rect; box: Rect };
+}
+
+/**
+ * As divididas da moldura antiga (ADR 0038), medidas nas 13 impressões de borda preta: cada metade
+ * é uma carta pequena da moldura antiga, a da direita 499 px adiante. As letras do nome e do tipo
+ * têm o tamanho das da carta de pé (a Goudy Medieval de ≈ 42,5 px no nome e a serifada de ≈ 32,5
+ * no tipo), mais perto da borda.
+ */
+export const SPLIT_1997: OldSplitGeometry = {
+  width: BASE_H,
+  height: BASE_W,
+  dx: 499,
+  /**
+   * o nome começa em x ≈ 73 (572 na metade da direita), na linha de base 75 (de 74 a 77, com a
+   * sombra e a folga até 81). O pé do "p", do "y" e do "g" desce até ≈ 93, sobre os dois fios
+   * escuros do alto da arte (em ≈ 85 e ≈ 94, 3 px abaixo em algumas) e o bisel entre eles
+   */
+  name: { x0: 62, y0: 39, y1: 96, x: 73, baseline: 75, size: 42.5, band: 83 },
+  /**
+   * o tipo começa em x ≈ 72 (571), na linha de base 391 (de 388 a 394), entre o fio de baixo da
+   * arte (≈ 358) e o contorno da caixa (≈ 402); o tipo em inglês acaba antes de 190
+   */
+  type: { x0: 62, x1: 420, y0: 358, y1: 402, x: 72, baseline: 391, size: 32.5 },
+  /** os círculos do custo têm ≈ 35 px, um a cada 38, o último acabando em x ≈ 486 (985) */
+  cost: { right: 486, pitch: 38 },
+  /** o símbolo da coleção vai de x ≈ 434 a 466 e de y ≈ 363 a 399 */
+  symbol: { x0: 426, y0: 356, x1: 474, y1: 404 },
+  /** (a metade vai de x ≈ 41 a 500; a borda preta entre as metades, de 500 a 539) */
+  lama: { x0: 44, y0: 38, x1: 496, y1: 404 },
+  /**
+   * o papel da caixa vai de x ≈ 80 a 459 e de y ≈ 411 a 625 nas de bisel (as azuis e as
+   * vermelhas), de 74 a 465 e de 408 a 633 na branca, só com o fio, e de ≈ 71 a 466 e de 404 a
+   * 635 no pergaminho das pretas e das verdes, de beira irregular. O texto em inglês vai de x ≈ 89
+   * a 449 (86 a 456 na de Time Spiral) e de y ≈ 429 a 611; o alinhado à esquerda começa de 88 a
+   * 91 (82 a 86 na de Time Spiral), e o centralizado mais curto, em 95 ("Destroy target
+   * artifact." no Reality, APC 129)
+   */
+  box: {
+    lim: { x0: 64, y0: 394, x1: 478, y1: 644 },
+    core: { x0: 84, y0: 420, x1: 454, y1: 616 },
+    inset: 4,
+    pad: { x0: 9, y0: 5, x1: 9, y1: 4 },
+    text: { x0: 89, y0: 414, x1: 451, y1: 624 },
+    left: 94,
+  },
+  maxSize: 34,
+  minSize: 15,
+  check: {
+    border: { x0: 505, y0: 60, x1: 533, y1: 690 },
+    box: { x0: 120, y0: 440, x1: 420, y1: 600 },
+  },
+};
+
+/** Onde começa o custo de mana de uma metade da dividida antiga (escala-base deitada). */
+export function oldSplitCostLeft(manaCost: string | null | undefined, half: 0 | 1, L: OldSplitGeometry = SPLIT_1997): number {
+  const n = manaCost?.match(/\{[^}]+\}/g)?.length ?? 0;
+  return L.cost.right + half * L.dx - L.cost.pitch * n;
+}
+
+/** Um retângulo da metade `half` (a da direita, `dx` adiante). */
+export const oldSplitHalf = (r: Rect, half: 0 | 1, L: OldSplitGeometry = SPLIT_1997): Rect => ({
+  x0: r.x0 + half * L.dx,
+  y0: r.y0,
+  x1: r.x1 + half * L.dx,
+  y1: r.y1,
+});
+
+/**
+ * Confere na carta deitada a moldura das divididas antigas: a borda preta entre as metades e o
+ * papel das duas caixas (o mais escuro, o das vermelhas, fica em ≈ 117). As letras do nome e do
+ * tipo são conferidas depois, onde a moldura as põe (`renderSplitOld`).
+ */
+export function oldSplitFrame(img: ImageData, L: OldSplitGeometry = SPLIT_1997): boolean {
+  if (img.width <= img.height) return false;
+  if (percentile(img, L.check.border, 0.5, { w: L.width, h: L.height }) >= 80) return false;
+  return ([0, 1] as const).every((h) => percentile(img, oldSplitHalf(L.check.box, h, L), 0.5, { w: L.width, h: L.height }) >= 100);
+}
+
+/**
+ * O papel de cada caixa da dividida antiga, medido na imagem (escala-base deitada). A caixa muda
+ * com a cor: bisel nas azuis e nas vermelhas, só o fio na branca e pergaminho de beira irregular
+ * nas pretas e nas verdes. De cada lado, o papel vai até a primeira coluna (ou linha) que foge da
+ * cor do papel do miolo (a mediana da distância de cor na faixa do meio passa de 1,6 vez a de uma
+ * coluna de papel, mais 6, e de 12): o bisel, o fio ou a moldura. Devolve o papel medido e o
+ * retângulo do apagamento, `inset` para dentro dele e nunca menor que `core`.
+ */
+export function oldSplitBoxes(img: ImageData, L: OldSplitGeometry = SPLIT_1997): { paper: Rect; erase: Rect }[] {
+  const fx = img.width / L.width;
+  const fy = img.height / L.height;
+  const d = img.data;
+  return ([0, 1] as const).map((h) => {
+    const lim = oldSplitHalf(L.box.lim, h, L);
+    const core = oldSplitHalf(L.box.core, h, L);
+    const px = (v: number) => Math.round(v * fx);
+    const py = (v: number) => Math.round(v * fy);
+    const cx0 = px(core.x0);
+    const cx1 = px(core.x1);
+    const cy0 = py(core.y0);
+    const cy1 = py(core.y1);
+    // a cor do papel: a mediana de cada canal no miolo
+    const ch: number[][] = [[], [], []];
+    for (let y = cy0; y < cy1; y += 2)
+      for (let x = cx0; x < cx1; x += 2) {
+        const i = (y * img.width + x) * 4;
+        for (let c = 0; c < 3; c++) ch[c].push(d[i + c]);
+      }
+    const paper = ch.map(medianOf);
+    const dist = (x: number, y: number) => {
+      const i = (y * img.width + x) * 4;
+      return Math.hypot(d[i] - paper[0], d[i + 1] - paper[1], d[i + 2] - paper[2]);
+    };
+    // a faixa do meio de cada lado (com as letras: a mediana fica no papel)
+    const ry0 = cy0 + py(10);
+    const ry1 = cy1 - py(10);
+    const rx0 = cx0 + px(40);
+    const rx1 = cx1 - px(40);
+    const col = (x: number) => {
+      const v: number[] = [];
+      for (let y = ry0; y < ry1; y++) v.push(dist(x, y));
+      return medianOf(v);
+    };
+    const row = (y: number) => {
+      const v: number[] = [];
+      for (let x = rx0; x < rx1; x++) v.push(dist(x, y));
+      return medianOf(v);
+    };
+    const cols: number[] = [];
+    for (let x = cx0; x < cx1; x += 2) cols.push(col(x));
+    const limit = Math.max(12, medianOf(cols) * 1.6 + 6);
+    const walk = (from: number, to: number, test: (v: number) => number) => {
+      const dir = to > from ? 1 : -1;
+      let v = from;
+      while (v !== to && test(v + dir) <= limit) v += dir;
+      return v;
+    };
+    const edge = {
+      x0: walk(cx0, px(lim.x0), col) / fx,
+      y0: walk(cy0, py(lim.y0), row) / fy,
+      x1: (walk(cx1 - 1, px(lim.x1), col) + 1) / fx,
+      y1: (walk(cy1 - 1, py(lim.y1), row) + 1) / fy,
+    };
+    const inset = L.box.inset;
+    return {
+      paper: edge,
+      erase: {
+        x0: Math.min(core.x0, edge.x0 + inset),
+        y0: Math.min(core.y0, edge.y0 + inset),
+        x1: Math.max(core.x1, edge.x1 - inset),
+        y1: Math.max(core.y1, edge.y1 - inset),
+      },
+    };
+  });
+}
+
+function medianOf(values: number[]): number {
+  if (!values.length) return 0;
+  const s = [...values].sort((a, b) => a - b);
+  return s[s.length >> 1];
 }

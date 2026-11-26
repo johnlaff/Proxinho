@@ -10,8 +10,8 @@ A amostra tem dois pedaços:
    cartas com texto em PT: a moldura comum de 2015, a de 2003 (sem e com marca-d'água), a antiga
    (1997), a sem borda, a arte estendida, as de duas faces, os planeswalkers, as fichas, os
    emblemas, as Sagas, Aventuras, Classes, cartas com Preparar, as Salas de Duskmourn, as
-   outras divididas, a Consequência e o Fundir (as da moldura atual e as de 2003), naves e a
-   tradução não oficial.
+   outras divididas, a Consequência e o Fundir (as da moldura atual e as de 2003), as divididas
+   da moldura antiga, naves e a tradução não oficial.
 
 Lê o banco montado pelo pipeline (data/out/cards.sql, depois de `pnpm data:build`). A amostra é
 versionada e só cresce: rodar de novo mantém as impressões que já estão nela e acrescenta as
@@ -64,6 +64,7 @@ GROUPS: dict[str, int] = {
     "fundir": 9,
     "dividida de 2003": 10,
     "fundir de 2003": 8,
+    "dividida de 1997": 13,
 }
 
 
@@ -72,7 +73,10 @@ def group_of(row: sqlite3.Row) -> str | None:
     layout, frame, border = row["layout"], row["frame"], row["border"]
     effects = set((row["effects"] or "").split(","))
     type_line = row["type_line"] or ""
-    # a moldura antiga entrou depois (ADR 0031): antes de tudo, para não mudar os outros grupos
+    # a moldura antiga entrou depois (ADR 0031): antes de tudo, para não mudar os outros grupos; e
+    # as divididas dela (ADR 0038) mais tarde ainda, num grupo à parte
+    if frame == "1997" and layout == "split":
+        return "dividida de 1997"
     if frame == "1997":
         return "1997"
     # (e depois a marca-d'água de 2003, ADR 0024, o Preparar, ADR 0032, as Salas, ADR 0033, as

@@ -31,5 +31,5 @@ As 46 impressões, montadas com o código desta árvore e conferidas em folhas d
 ## Consequências
 
 - As divididas da moldura de 2003 saem em PT nas 46 artes de borda preta, e as com Fundir de Dragon's Maze com o lembrete oficial na faixa do pé.
-- As medidas de cada moldura de divididas ficam num objeto só (`SplitGeometry`): a de 1997 entra com outro objeto, sem mexer no caminho.
-- As divididas da moldura antiga (Invasion, Apocalypse e as reimpressões retrô) e as da Friday Night Magic de 2006 continuam na original.
+- As medidas de cada moldura de divididas de barras ficam num objeto só (`SplitGeometry`). A antiga, sem barras, ficou com medidas e caminho próprios (depois, ADR 0038).
+- As divididas da moldura antiga (Invasion, Apocalypse e as reimpressões; depois, ADR 0038) e as da Friday Night Magic de 2006 continuam na original.

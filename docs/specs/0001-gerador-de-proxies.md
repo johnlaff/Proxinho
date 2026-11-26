@@ -95,6 +95,12 @@ Como jogador, quero imprimir as Aventuras em português na arte que eu escolher.
 - [x] A sombra do papel perto da lombada continua igual depois de apagar o inglês.
 - [x] Quando o motor não acha o livro na imagem, a carta sai na original e a etiqueta diz que sai em inglês.
 
+### H11h. Divididas da moldura antiga (entregue em 26/11/2026, ADR 0038)
+Como jogador, quero imprimir as cartas divididas da moldura antiga (Fire // Ice, Life // Death, Wax // Wane e as outras de Invasion e Apocalypse) em português na arte que eu escolher.
+- [x] As de borda preta saem em português: o nome e o tipo das duas metades em letras brancas com sombra, como na carta de pé da moldura antiga, e o texto de cada uma, alinhado como o inglês daquela metade.
+- [x] O custo, o símbolo da coleção, os fios do alto da arte (onde o pé das letras passava) e a caixa de cada cor (com bisel, só com o fio ou de pergaminho) ficam como na carta impressa.
+- [x] Sem a rede neural no navegador, ou quando o motor não reconhece a moldura na imagem, a carta sai na original, e a etiqueta diz por quê.
+
 ### H11g. Divididas da moldura de 2003 (entregue em 26/11/2026, ADR 0037)
 Como jogador, quero imprimir as cartas divididas da moldura de 2003 (Crime // Punishment, Boom // Bust e as com Fundir de Dragon's Maze, como Turn // Burn) em português na arte que eu escolher.
 - [x] As de borda preta saem em português: o nome e o tipo das duas metades na letra da moldura de 2003, o texto de cada uma e, nas com Fundir, a faixa do pé com o lembrete oficial.

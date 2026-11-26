@@ -1125,7 +1125,13 @@ class Divididas(unittest.TestCase):
         self.assertTrue(split_supported({**self.base, "frame": "2003", "set": "dis", "card_faces": guild}))
         fnm = [{**self.faces[0], "watermark": "fnm"}, self.faces[1]]
         self.assertFalse(split_supported({**self.base, "frame": "2003", "set": "f06", "card_faces": fnm}))
-        self.assertFalse(split_supported({**self.base, "frame": "1997"}))
+        # a antiga (ADR 0038): sem marca-d'água e fora da Secret Lair, como as cartas de pé dela
+        self.assertTrue(split_supported({**self.base, "frame": "1997", "set": "apc"}))
+        marked = [{**f, "watermark": "wotc"} for f in self.faces]
+        self.assertFalse(split_supported({**self.base, "frame": "1997", "set": "apc", "card_faces": marked}))
+        self.assertFalse(split_supported({**self.base, "frame": "1997", "set": "sld"}))
+        self.assertFalse(split_supported({**self.base, "frame": "1997", "set": "wc01", "border_color": "gold"}))
+        self.assertFalse(split_supported({**self.base, "frame": "1993"}))
 
     def test_fundir(self):
         fuse = {**self.base, "name": "Wear // Tear", "set": "cmr", "keywords": ["Fuse"]}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OLD, oldCostLeft, oldLetters, oldTypeEnds } from "../../src/engine/old";
+import { fillAcross, OLD, oldCostLeft, oldLetters, oldTypeEnds } from "../../src/engine/old";
 
 const W = 745;
 const H = 640;
@@ -96,5 +96,33 @@ describe("moldura antiga (ADR 0031)", () => {
     for (let x = 80; x <= 590; x += 10) letter(x, 588, 608);
     const t = oldLetters(img, { x0: OLD.type.x0, y0: OLD.type.y0, x1: OLD.type.x1, y1: OLD.type.y1 });
     expect(oldTypeEnds(img, t)).toEqual({ textEnd: 594, symbol: null });
+  });
+});
+
+describe("pé das letras do nome das divididas antigas (ADR 0038)", () => {
+  it('refaz o fio fino que corre na horizontal, com o tom de cada linha (o "y" do Day, APC 131)', () => {
+    const w = 60;
+    const h = 12;
+    const data = new Uint8ClampedArray(w * h * 4);
+    const img = { width: w, height: h, data, colorSpace: "srgb" } as ImageData;
+    // o bisel claro, com grão, e o fio escuro de 1 px na linha 5
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const v = y === 5 ? 40 : 170 + ((x * 7 + y * 3) % 9);
+        data.set([v, v, v, 255], (y * w + x) * 4);
+      }
+    const before = data.slice();
+    // o pé da letra, branco, por cima do fio e do bisel
+    const mask = new Uint8Array(w * h);
+    for (let y = 2; y < 10; y++)
+      for (let x = 25; x < 34; x++) {
+        mask[y * w + x] = 1;
+        data.set([250, 250, 250], (y * w + x) * 4);
+      }
+    fillAcross(img, { x0: 0, y0: 0, x1: w, y1: h }, mask);
+    // o fio volta escuro de ponta a ponta, e o bisel fica no tom dele
+    for (let x = 25; x < 34; x++) expect(data[(5 * w + x) * 4]).toBe(40);
+    for (let y = 2; y < 10; y++)
+      for (let x = 25; x < 34; x++) if (y !== 5) expect(Math.abs(data[(y * w + x) * 4] - before[(y * w + x) * 4])).toBeLessThanOrEqual(8);
   });
 });

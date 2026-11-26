@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { fuseBar, SPLIT, SPLIT_2003, splitBoxes, splitCostLeft, splitFrame } from "../../src/engine/split";
+import {
+  fuseBar,
+  oldSplitBoxes,
+  oldSplitCostLeft,
+  oldSplitFrame,
+  SPLIT,
+  SPLIT_2003,
+  splitBoxes,
+  splitCostLeft,
+  splitFrame,
+} from "../../src/engine/split";
 
 // a carta deitada (ver split.ts)
 const W = 1040;
@@ -187,5 +197,66 @@ describe("divididas da moldura de 2003", () => {
   it("conta o custo do fim da barra de cada metade, 36 px por símbolo", () => {
     expect(splitCostLeft("{3}{W}{B}", 0, SPLIT_2003)).toBeCloseTo(483 - 3 * 36);
     expect(splitCostLeft("{X}{B}{G}", 1, SPLIT_2003)).toBeCloseTo(984 - 3 * 36);
+  });
+});
+
+/**
+ * Dividida antiga falsa nas medidas de APC 129 (Illusion // Reality) deitada: em cada metade, a
+ * moldura texturizada e a caixa de papel com o texto. `bevel` põe o bisel (as azuis e as
+ * vermelhas): o fio escuro em x 69 a 72 e o bisel, um pouco mais escuro que o papel, até 80; sem
+ * ele, o pergaminho das pretas encosta direto na moldura escura, em x 71.
+ */
+function oldSplit({ bevel = true } = {}) {
+  const c = canvas(gray(14));
+  for (const dx of [0, 499]) {
+    const frame: Color = bevel ? [90, 140, 170] : [40, 40, 44];
+    c.fill(41 + dx, 37, 500 + dx, 708, frame);
+    // a textura da moldura: pingos claros e escuros
+    for (let y = 40; y < 705; y += 7) for (let x = 44 + dx; x < 497 + dx; x += 9) c.fill(x, y, x + 2, y + 2, bevel ? gray(60) : gray(80));
+    c.fill(60 + dx, 110, 480 + dx, 355, gray(50));
+    if (bevel) {
+      c.fill(69 + dx, 402, 471 + dx, 637, gray(30));
+      c.fill(72 + dx, 404, 468 + dx, 634, [160, 185, 195]);
+      c.fill(80 + dx, 411, 460 + dx, 626, [207, 223, 227]);
+    } else c.fill(71 + dx, 404, 467 + dx, 635, [225, 179, 137]);
+    for (let y = 470; y < 560; y += 30) for (let x = 90 + dx; x < 440 + dx; x += 16) c.fill(x, y, x + 7, y + 20, gray(30));
+  }
+  return c;
+}
+
+describe("divididas da moldura antiga (ADR 0038)", () => {
+  it("reconhece a moldura: a borda preta entre as metades e o papel das duas caixas", () => {
+    expect(oldSplitFrame(oldSplit().img)).toBe(true);
+    expect(oldSplitFrame(oldSplit({ bevel: false }).img)).toBe(true);
+    const standing = { width: 745, height: 1040, data: new Uint8ClampedArray(745 * 1040 * 4), colorSpace: "srgb" } as ImageData;
+    expect(oldSplitFrame(standing)).toBe(false);
+    const joined = oldSplit();
+    joined.fill(500, 37, 540, 708, gray(200));
+    expect(oldSplitFrame(joined.img)).toBe(false);
+    const dark = oldSplit();
+    dark.fill(579, 404, 966, 635, gray(60));
+    expect(oldSplitFrame(dark.img)).toBe(false);
+  });
+
+  it("conta o custo de cada metade a partir do fim do nome dela", () => {
+    // (medidos no Order // Chaos, APC 132: o "3" começa em ≈ 412 e o "2" da direita, em ≈ 908)
+    expect(oldSplitCostLeft("{3}{W}", 0)).toBe(486 - 2 * 38);
+    expect(oldSplitCostLeft("{2}{R}", 1)).toBe(985 - 2 * 38);
+    expect(oldSplitCostLeft(null, 1)).toBe(985);
+  });
+
+  it("mede o papel da caixa dentro do bisel e apaga só nele", () => {
+    const [a, b] = oldSplitBoxes(oldSplit().img);
+    expect(a.paper).toEqual({ x0: 80, y0: 411, x1: 460, y1: 626 });
+    expect(b.paper).toEqual({ x0: 579, y0: 411, x1: 959, y1: 626 });
+    // o apagamento fica 4 px para dentro do papel, sem nunca chegar ao bisel
+    expect(a.erase).toEqual({ x0: 84, y0: 415, x1: 456, y1: 622 });
+  });
+
+  it("no pergaminho sem bisel, o papel vai até a moldura", () => {
+    const [a] = oldSplitBoxes(oldSplit({ bevel: false }).img);
+    expect(a.paper).toEqual({ x0: 71, y0: 404, x1: 467, y1: 635 });
+    // (o apagamento nunca fica menor que o miolo da caixa)
+    expect(a.erase).toEqual({ x0: 75, y0: 408, x1: 463, y1: 631 });
   });
 });

@@ -1565,15 +1565,22 @@ SPLIT_SETS_OFF = {"c16", "cmb1", "cmb2", "mb2", "unk"}
 
 
 def split_frame_ok(card: dict) -> bool:
-    """A moldura das divididas que o motor reescreve: a de 2015 (ADR 0034) e a de 2003 (ADR 0037,
-    as de Dissension, Planar Chaos e Dragon's Maze e as reimpressões), de borda preta, sem efeito
-    de moldura e fora das coleções de `SPLIT_SETS_OFF`. Na de 2003 a marca-d'água de cada metade
-    (das guildas) sai com o texto, como nas de 2015; o logotipo da Friday Night Magic (as promos
-    de 2006), não: fica de fora, como nas cartas de 2003 (`WATERMARKS_2003_OK`)."""
+    """A moldura das divididas que o motor reescreve: a de 2015 (ADR 0034), a de 2003 (ADR 0037,
+    as de Dissension, Planar Chaos e Dragon's Maze e as reimpressões) e a antiga (ADR 0038, as de
+    Invasion e Apocalypse e as reimpressões de The List e de Time Spiral), de borda preta, sem
+    efeito de moldura e fora das coleções de `SPLIT_SETS_OFF`. Na de 2003 a marca-d'água de cada
+    metade (das guildas) sai com o texto, como nas de 2015; o logotipo da Friday Night Magic (as
+    promos de 2006), não: fica de fora, como nas cartas de 2003 (`WATERMARKS_2003_OK`). Na antiga,
+    como nas cartas de pé dela, nenhuma marca-d'água e nada de `SETS_1997_OFF`; as douradas do
+    Campeonato Mundial (WC01, WC02) ficam de fora pela borda."""
     faces = card.get("card_faces") or []
     frame = card.get("frame")
     return (
-        (frame == "2015" or (frame == "2003" and all(f.get("watermark") in WATERMARKS_2003_OK for f in faces)))
+        (
+            frame == "2015"
+            or (frame == "2003" and all(f.get("watermark") in WATERMARKS_2003_OK for f in faces))
+            or (frame == "1997" and not any(f.get("watermark") for f in faces) and card.get("set") not in SETS_1997_OFF)
+        )
         and card.get("layout") == "split"
         and card.get("border_color") == "black"
         and not card.get("frame_effects")
@@ -1588,8 +1595,9 @@ def split_frame_ok(card: dict) -> bool:
 def split_supported(card: dict) -> bool:
     """Cartas divididas de 2015 (Guilds of Ravnica, Ravnica Allegiance, Murders at Karlov Manor e
     as reimpressões na moldura atual): duas cartas pequenas da M15 lado a lado na carta deitada,
-    cada uma com a barra do nome, a barra de tipo e a caixa (src/engine/split.ts, ADR 0034); e as
-    da moldura de 2003, pelo mesmo caminho com as medidas delas (ADR 0037). O motor confere as
+    cada uma com a barra do nome, a barra de tipo e a caixa (src/engine/split.ts, ADR 0034); as
+    da moldura de 2003, pelo mesmo caminho com as medidas delas (ADR 0037); e as da antiga, com o
+    nome e o tipo em letras brancas pela rede neural (ADR 0038). O motor confere as
     barras e as caixas na imagem; sem elas, a arte sai como está. Ficam de fora as Salas
     (room_supported), a Consequência e o Fundir, que têm outro desenho, e as de borda branca,
     prateada e sem borda."""

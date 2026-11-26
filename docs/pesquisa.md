@@ -292,6 +292,24 @@ Medidas nas imagens do Scryfall, na carta deitada (1040 × 745):
 
 As letras, na Matrix Bold: o nome tem maiúsculas de 27 px, como na carta de pé de 2003 (ADR 0024), e o tipo de 20 (23 na carta de pé). Nos dados, das 35 cartas, 14 têm o texto impresso em PT, 12 o do Arena e 9 só a tradução não oficial; as duas da Friday Night Magic de 2006 têm o logotipo da FNM como marca-d'água na primeira metade e ficam de fora, como as cartas de pé com ele.
 
+### Divididas da moldura antiga (26/11/2026)
+
+As divididas da moldura antiga são as de Invasion (INV 292 a 296) e Apocalypse (APC 128 a 132) e as reimpressões na mesma moldura, de The List (APC-129 e APC-131, a imagem de Apocalypse) e de Time Spiral (TSB 106): 13 impressões de papel de borda preta, de 10 cartas; as seis douradas do Campeonato Mundial (WC01, WC02) ficam de fora pela borda. Deitada, cada metade é uma carta pequena da moldura antiga, a da direita 499 px adiante, sem barras: o nome e o tipo são letras brancas com sombra sobre a moldura texturizada, do tamanho das da carta de pé (ADR 0031).
+
+Medidas nas imagens do Scryfall, na carta deitada (1040 × 745):
+
+| Medida | Valor |
+|---|---|
+| Metades | de x ≈ 41 a 500 e de 539 a 999, de y ≈ 37 a 708; a borda preta entre elas, de 500 a 539 |
+| Nome | primeira letra em x ≈ 73 e 572 (77 na de Time Spiral), linha de base em ≈ 75 (74 a 77), Goudy Medieval de ≈ 42,5 px; o pé do "p", do "y" e do "g" desce até ≈ 93, sobre os fios escuros do alto da arte, em ≈ 85 (a 89) e ≈ 94, com um bisel de ≈ 7 px entre eles |
+| Custo | círculos de ≈ 35 px, um a cada 38, o último acabando em x ≈ 486 e 985 |
+| Tipo | primeira letra em x ≈ 72 e 571, linha de base em ≈ 391 (388 a 394), serifada de ≈ 32,5 px; o fio de baixo da arte em ≈ 358 e o contorno da caixa em ≈ 402 |
+| Símbolo da coleção | de x ≈ 434 a 466 e de y ≈ 363 a 399 |
+| Caixa | muda com a cor: nas azuis e nas vermelhas, fio escuro em x ≈ 69 a 72 e bisel de 9 px (papel de 80 a 459 e de y 411 a 625); na branca, só o fio (papel de 74 a 465 e de 408 a 633); nas pretas e nas verdes, pergaminho de beira irregular sobre a moldura (de ≈ 71 a 466 e de 404 a 635). Na de Time Spiral, o papel vai de 80 a 463 e de 415 a 627 |
+| Texto em inglês | de x ≈ 89 a 449 (86 a 456 na de Time Spiral) e de y ≈ 429 a 611; o alinhado à esquerda começa de 88 a 91, e o centralizado mais curto, em 95 (Reality) |
+
+O papel da caixa não sai pela medida das cartas de pé (`insideBoxSides`): o degrau do papel para o bisel claro das azuis fica abaixo de 20 tons em boa parte das linhas, e a beira do pergaminho fica fora da busca dela. A distância de cor até o papel do miolo separa os três desenhos: numa coluna de papel ela fica de 6 a 26 (o grão das vermelhas é o mais forte), no bisel de 14 a 60 e na moldura acima de 30; o limite de 1,6 vez a do papel, mais 6, para no lugar certo nas 26 caixas. O texto alinhado varia por metade, não por carta: no Wax // Wane, o da esquerda é alinhado à esquerda e o da direita, centralizado. Nos dados, das 10 cartas, 2 têm o texto impresso em PT (Order // Chaos e Assault // Battery, este com o texto antigo da de Time Spiral), 1 o do Arena (Life // Death) e 7 só a tradução não oficial, com os nomes impressos em PT.
+
 ### Marcas-d'água na moldura de 2003 (25/11/2026)
 
 Como as ferramentas existentes fazem: o Proxyshop não reaproveita a imagem; ele monta a carta do zero e põe a marca-d'água como uma camada vetorial, desenhada à parte a partir do nome que o Scryfall dá (`watermark`). O Proxinho escreve sobre a digitalização, então a marca já está lá e precisa ficar: apagar a caixa inteira levava a marca junto, e apagar só onde as letras passam deixava a marca em cacos. A saída é a mesma da arte sem borda (ADR 0012): só as letras saem da máscara, e a rede neural (LaMa) refaz o que estava por baixo delas, a marca inclusive.

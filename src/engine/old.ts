@@ -66,12 +66,13 @@ export interface OldLetters {
  * Acha as letras brancas com sombra preta numa linha da moldura antiga. O tom da moldura é a
  * mediana de cada fatia de 24 px (as letras ocupam menos de um terço dela); letra é o que fica
  * bem mais claro que ela e quase sem cor, e sombra é o que fica bem mais escuro logo abaixo e à
- * direita de uma letra (a textura escura da moldura, longe das letras, fica).
+ * direita de uma letra (a textura escura da moldura, longe das letras, fica). `unit` é a escala
+ * das folgas contra a carta de pé de 745 px de largura: na carta deitada (as metades da
+ * dividida), a largura da imagem é a altura da carta, e a escala vem da altura.
  */
-export function oldLetters(img: ImageData, rect: Rect): OldLetters {
+export function oldLetters(img: ImageData, rect: Rect, unit = img.width / BASE_W): OldLetters {
   const w = rect.x1 - rect.x0;
   const h = rect.y1 - rect.y0;
-  const unit = img.width / BASE_W;
   const d = img.data;
   const L = new Float32Array(w * h);
   const sat = new Float32Array(w * h);
@@ -311,4 +312,40 @@ function inkFromRight(img: ImageData, rect: Rect, from: number): number | null {
   }
   const width = right - left + 1;
   return width >= 10 * unit && width <= 90 * unit ? left : null;
+}
+
+/**
+ * Preenche cada trecho da máscara linha a linha, com os pixels da mesma linha logo antes e logo
+ * depois dele, espelhados (a metade da esquerda do trecho copia o que está à esquerda dele, a da
+ * direita, o que está à direita): o fio fino que corre na horizontal continua inteiro e com o
+ * grão dele. Para o pé das letras do nome das divididas antigas, sobre os fios do alto da arte
+ * (ADR 0038): a rede neural deixava um borrão claro no fio, e o preenchimento das barras
+ * (`inpaint` com "rows") mistura as linhas vizinhas, e o fio de 1 ou 2 px sumia com elas. Sem
+ * pixel conhecido no espelho (a beira do retângulo, outro trecho), vale o do outro lado.
+ */
+export function fillAcross(img: ImageData, rect: Rect, mask: Uint8Array): void {
+  const w = rect.x1 - rect.x0;
+  const h = rect.y1 - rect.y0;
+  const d = img.data;
+  const at = (x: number, y: number) => ((rect.y0 + y) * img.width + rect.x0 + x) * 4;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w;) {
+      if (!mask[y * w + x]) {
+        x++;
+        continue;
+      }
+      let e = x;
+      while (e < w && mask[y * w + e]) e++;
+      const known = (q: number) => q >= 0 && q < w && !mask[y * w + q];
+      for (let q = x; q < e; q++) {
+        const left = x - 1 - (q - x);
+        const right = e + (e - 1 - q);
+        const first = q - x < e - q ? left : right;
+        const other = first === left ? right : left;
+        const src = known(first) ? first : known(other) ? other : null;
+        if (src === null) continue;
+        d.copyWithin(at(q, y), at(src, y), at(src, y) + 3);
+      }
+      x = e;
+    }
 }

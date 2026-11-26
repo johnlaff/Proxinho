@@ -34,4 +34,4 @@ As 9 impressões, montadas com o código desta árvore e conferidas na folha de 
 
 - As cartas com Fundir da moldura atual saem em PT, com o lembrete oficial na faixa do pé.
 - O nome das metades do Turn // Burn e do Armed // Dangerous fica certo ("Transformar // Queimar").
-- As de Dragon's Maze e as outras divididas da moldura de 2003 (depois, ADR 0037) e de 1997 continuam na original, até terem as medidas delas.
+- As de Dragon's Maze e as outras divididas da moldura de 2003 (depois, ADR 0037) e de 1997 (depois, ADR 0038) continuam na original, até terem as medidas delas.

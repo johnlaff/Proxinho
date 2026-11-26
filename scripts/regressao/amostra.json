@@ -8,6 +8,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "e8f109f1-9798-4bd3-b51a-49f173251dfd",
+    "oracle_id": "cb32ab3e-ef76-4afb-959f-f8cc2d18416e",
+    "set": "apc",
+    "number": "131",
+    "nome": "Night // Day",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "be8061c6-21b8-4146-8917-c73a82060ffe",
     "oracle_id": "20dbfc9a-172e-4065-bfde-d40de3131787",
     "set": "bbd",
@@ -285,6 +293,14 @@
     "set": "hoc",
     "number": "77",
     "nome": "Sauron, the Lidless Eye",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "054f1845-196f-41c1-9682-042171cccd49",
+    "oracle_id": "b829de81-04cd-498e-9f31-074f23e2a488",
+    "set": "inv",
+    "number": "293",
+    "nome": "Spite // Malice",
     "grupo": "citada nos documentos"
   },
   {
@@ -917,6 +933,14 @@
     "set": "trc",
     "number": "508",
     "nome": "Talisman of Progress",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "4a9f1e99-9de8-45cb-b035-4f920477e2e5",
+    "oracle_id": "fcdeb83f-531c-4087-9254-7f19eb065f00",
+    "set": "tsb",
+    "number": "106",
+    "nome": "Assault // Battery",
     "grupo": "citada nos documentos"
   },
   {
@@ -4310,6 +4334,78 @@
     "number": "225",
     "nome": "Fire // Ice",
     "grupo": "dividida"
+  },
+  {
+    "id": "f98f4538-5b5b-475d-b98f-49d01dae6f04",
+    "oracle_id": "ae92942b-919c-4ea9-b693-85fcef765d5a",
+    "set": "apc",
+    "number": "128",
+    "nome": "Fire // Ice",
+    "grupo": "dividida de 1997"
+  },
+  {
+    "id": "8e7dd90a-4f93-43aa-b503-18289fdd571e",
+    "oracle_id": "5af2689d-c45c-4d45-b6a9-f32e8410b336",
+    "set": "apc",
+    "number": "129",
+    "nome": "Illusion // Reality",
+    "grupo": "dividida de 1997"
+  },
+  {
+    "id": "7ab75cdb-93a1-4f78-b404-37566295c321",
+    "oracle_id": "d476f4b3-db63-4756-ab76-4b35f63c2825",
+    "set": "apc",
+    "number": "130",
+    "nome": "Life // Death",
+    "grupo": "dividida de 1997"
+  },
+  {
+    "id": "14e4f5a4-b1ea-4816-b2d7-cf148468a388",
+    "oracle_id": "bc540259-459d-4561-9268-c4f323ea62d2",
+    "set": "apc",
+    "number": "132",
+    "nome": "Order // Chaos",
+    "grupo": "dividida de 1997"
+  },
+  {
+    "id": "be8b338f-6f05-43c6-beeb-c5052cc0d6a9",
+    "oracle_id": "6343aa78-2df6-41f3-9366-4933f9e6a93e",
+    "set": "inv",
+    "number": "292",
+    "nome": "Stand // Deliver",
+    "grupo": "dividida de 1997"
+  },
+  {
+    "id": "81be27d6-e16f-4158-b2b6-66a0f3315327",
+    "oracle_id": "433fcba3-06b8-4f1a-a709-300838251439",
+    "set": "inv",
+    "number": "294",
+    "nome": "Pain // Suffering",
+    "grupo": "dividida de 1997"
+  },
+  {
+    "id": "0ec6a889-c941-4898-a2f6-4d3863faf535",
+    "oracle_id": "fcdeb83f-531c-4087-9254-7f19eb065f00",
+    "set": "inv",
+    "number": "295",
+    "nome": "Assault // Battery",
+    "grupo": "dividida de 1997"
+  },
+  {
+    "id": "d1280bdf-c718-4fd2-8504-5dac3a7b5f9f",
+    "oracle_id": "5af2689d-c45c-4d45-b6a9-f32e8410b336",
+    "set": "plst",
+    "number": "APC-129",
+    "nome": "Illusion // Reality",
+    "grupo": "dividida de 1997"
+  },
+  {
+    "id": "0b642120-9d56-448d-b969-588ebb735ea2",
+    "oracle_id": "cb32ab3e-ef76-4afb-959f-f8cc2d18416e",
+    "set": "plst",
+    "number": "APC-131",
+    "nome": "Night // Day",
+    "grupo": "dividida de 1997"
   },
   {
     "id": "f855144c-6adb-4cde-8a37-5fb0be775e5d",

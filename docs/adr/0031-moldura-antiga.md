@@ -38,7 +38,7 @@ O nome é impresso em Goudy Medieval; o tipo e as regras, numa serifada como a M
 
 - 8.151 das 9.666 impressões em inglês na moldura antiga passam a ser suportadas. 3.019 cartas com texto em PT ganham a primeira arte reescrita: 799 com o texto oficial e 2.220 com a tradução não oficial (ADR 0025); entre as mais jogadas, Gaea's Cradle, Grim Monolith, Serra's Sanctum e Replenish. Das 31.894 cartas com texto em PT, as que têm alguma arte reescrita vão de 26.606 para 29.625 (levantamento de 25/11, impressões em inglês em papel).
 - A rede neural roda em toda carta antiga: no computador, um quadro a mais por carta (o mesmo das artes sem borda, ADR 0015); no celular sem placa de vídeo, mais lento. O PDF adiantado e as cartas do servidor (ADR 0014 e 0022) escondem a espera.
-- Fora por ora: as de marca-d'água, as de duas faces e split da época, os planeswalkers antigos (Lorwyn em diante já são de 2003) e a borda dourada dos campeonatos (já de fora, `border_color`).
+- Fora por ora: as de marca-d'água, as de duas faces e split da época (as split depois, ADR 0038), os planeswalkers antigos (Lorwyn em diante já são de 2003) e a borda dourada dos campeonatos (já de fora, `border_color`).
 - Muda o resumo do código que desenha: as cartas do servidor são montadas de novo (ADR 0022). Publicar pede a `medieval.ttf` no KV antes do código novo (`wrangler kv key put --remote --binding FONTES medieval.ttf --path medieval.ttf`).
 
 ## Alternativas descartadas
