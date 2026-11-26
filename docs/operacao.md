@@ -88,6 +88,7 @@ pnpm exec wrangler d1 execute proxinho --remote --command "SELECT count(*) FROM 
 
 | Sintoma | Causa provável | O que fazer |
 |---|---|---|
+| "CI/CD" falha nos testes de unidade com "Test timed out in 5000ms" (ou outro limite), sem erro de asserção | Um teste do motor (que processa a carta inteira pixel a pixel) passou do limite de tempo na máquina do GitHub, 4 a 6 vezes mais lenta que um computador com a cobertura ligada; não é defeito do código | O limite é `testTimeout` em `vitest.config.ts` (30 s desde 26/11/2026). Rodar a esteira de novo; se o mesmo teste passar perto do limite em `pnpm test:coverage`, acelerar o teste (imagem menor) em vez de só subir o limite |
 | "Dados diários" falha em "Confere se o resultado é saudável" | Scryfall ou Untapped mudou formato ou ficou fora | O banco antigo continua no ar. Ver o log do passo "Gera o banco"; ajustar `build.py` |
 | Cartas novas do Arena sem português | Untapped ainda não publicou o arquivo novo | Esperar o próximo ciclo; rodar o workflow manualmente |
 | Prévias não carregam ("Não carregou") | CDN do Scryfall lento ou fora | Nada a fazer do nosso lado; o botão tenta de novo |
