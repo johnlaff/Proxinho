@@ -40,20 +40,20 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.69.1",
-    "@cloudflare/workers-types": "^5.20261116.1",
+    "@cloudflare/vite-plugin": "^1.70.0",
+    "@cloudflare/workers-types": "^5.20261119.1",
     "@playwright/test": "^1.65.1",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
-    "@vitest/coverage-v8": "^5.1.0",
-    "oxfmt": "^0.78.0",
-    "oxlint": "^1.90.0",
+    "@vitest/coverage-v8": "^5.1.1",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0",
     "typescript": "~7.0.2",
     "vite": "^8.3.6",
-    "vitest": "^5.1.0",
-    "wrangler": "^4.162.0"
+    "vitest": "^5.1.1",
+    "wrangler": "^4.165.0"
   },
   "engines": {
     "node": ">=24"
