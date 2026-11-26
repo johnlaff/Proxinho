@@ -36,6 +36,7 @@ import {
 import { bodyFont, loadCardFonts, oldNameFont, titleFont, type TitleFont } from "./fonts";
 import {
   BACK_PT_NOTCH,
+  starPoints,
   BASE_H,
   BASE_W,
   beside,
@@ -1701,15 +1702,32 @@ function drawMdfcHint(
   ctx.restore();
 }
 
-/** Lembrete de poder/resistência do verso, em cinza, no canto da caixa de texto. */
+/**
+ * Lembrete de poder/resistência do verso, em cinza, no canto da caixa de texto. O "*" sai como a
+ * estrela da carta impressa ("★/★" na frente da Titânia, Voz de Gaia, BRO 193): o asterisco da
+ * Beleren é pequeno e alto, e lia-se só a barra e um pingo (ver `starPoints`).
+ */
 function drawBackPt(ctx: CanvasRenderingContext2D, pt: string, centerY: number, k: number, ink: "dark" | "light") {
   const t = titleFont();
+  const size = 26 * t.scale * k;
   ctx.save();
-  ctx.font = `${t.weight} ${26 * t.scale * k}px ${t.family}`;
-  ctx.textAlign = "right";
+  ctx.font = `${t.weight} ${size}px ${t.family}`;
+  ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.fillStyle = ink === "light" ? "rgba(251,248,241,0.75)" : "rgba(11,11,11,0.62)";
-  ctx.fillText(pt, 682 * k, centerY * k);
+  const parts = pt.split(/(\*)/).filter(Boolean);
+  const star = size * 0.72;
+  const widths = parts.map((s) => (s === "*" ? star : ctx.measureText(s).width));
+  let x = 682 * k - widths.reduce((a, b) => a + b, 0);
+  parts.forEach((s, i) => {
+    if (s === "*") {
+      ctx.beginPath();
+      starPoints(x + star / 2, centerY * k, star * 0.5).forEach(([px, py], j) => (j ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+      ctx.closePath();
+      ctx.fill();
+    } else ctx.fillText(s, x, centerY * k);
+    x += widths[i];
+  });
   ctx.restore();
 }
 
@@ -3091,12 +3109,16 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     ) / fx;
   const manaCost = sideInfo ? sideInfo.mana_cost : print.mana_cost;
   const hasPt = sideInfo ? sideInfo.has_pt : print.has_pt;
-  // lembrete do verso ("4/4") na frente das cartas de transformar
-  const backPt = print.layout === "transform" && side === 0 ? (print.sides?.[1]?.pt ?? null) : null;
+  // lembrete do verso ("4/4") na frente das cartas de transformar, e o da carta fundida na frente
+  // das de fundir ("9/10" na Bruna, ADR 0043)
+  const meld = print.layout === "meld";
+  const backPt = print.layout === "transform" && side === 0 ? (print.sides?.[1]?.pt ?? null) : meld ? (face.meld_pt ?? null) : null;
   const rightIcon = Boolean(sideInfo && side === 1 && !manaCost && hasRightIcon(data));
   const layout = m15Layout(manaCost, hasPt, setLeft, {
     // (Lição sem o efeito marcado no Scryfall, como as de SOS: o ícone conferido na imagem)
-    leftIcon: hasLeftIcon(print.effects, Boolean(sideInfo), rightIcon) || (/\bLição\b/.test(face.type_pt ?? "") && hasLessonIcon(data)),
+    // (as de fundir têm o ícone das de duas faces, sem o verso)
+    leftIcon:
+      hasLeftIcon(print.effects, Boolean(sideInfo) || meld, rightIcon) || (/\bLição\b/.test(face.type_pt ?? "") && hasLessonIcon(data)),
     rightIcon,
     // (de uma face só, o da impressão: o círculo de Crashing Footfalls era apagado e o
     // "Feitiço" ia por cima do lugar dele)

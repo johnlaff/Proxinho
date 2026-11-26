@@ -357,6 +357,14 @@ Medidas nas imagens do Scryfall (745 × 1040), nas 29 impressões de borda preta
 
 A escolha (ADR 0042): o caminho da Saga na coluna medida, com o fio do lembrete fixo e o lembrete desviando da curva; a barra de tipo sem o escurecimento enquanto se acha o símbolo e se apaga; a caixa de baixo como a da carta comum, com a letra dela.
 
+### Cartas de fundir, meld (26/11/2026)
+
+Como as ferramentas existentes fazem: o Proxyshop trata a carta de fundir como a de transformar (o layout de transformar, com o ícone de fundir desde a v1.5 e os dados da carta fundida corrigidos na v1.4): o ícone fica visível e o P/R do outro lado vai numa camada própria no pé da caixa (`TransformMod`, `text_layers_transform_front`). A carta fundida não tem molde: a imagem é a junção dos dois versos.
+
+Na imagem do Scryfall (745 × 1040), nas 34 frentes de borda preta: a moldura da carta comum, com o ícone à esquerda do nome (o círculo; a lua com o Eldrazi em EMN, V17 e nas promos de EMN) e o P/R da carta fundida em cinza no canto de baixo da caixa, como o do verso nas de transformar, também nos terrenos (Ameias de Hanweir, "7/4") e com estrelas quando a fundida é "*/*" (Titânia, Voz de Gaia, e Argoth). A frente do Urza, Lorde Protetor e a das Pedras de Força e de Fraqueza não imprimem nada (a fundida é um planeswalker). Nas impressas em PT (EMN, BRO) o lembrete é "(Funde-se com Gisela, a Lâmina Partida.)".
+
+A escolha (ADR 0043): o caminho da carta comum com o ícone e o P/R do verso, o P/R vindo da carta fundida e o lembrete das impressas.
+
 ### Moldura de 1993 (26/11/2026)
 
 A moldura que o Scryfall chama de `1993` vai de Alpha (1993) a Alliances (1996), com as edições básicas até a 4ª, as Collectors' Editions, Chronicles, Summer Magic, os decks de introdução da época e as promos (Arena League, livros, Harper Prism): 3.090 impressões em inglês, 1.754 de borda preta, 1.100 de borda branca e 236 douradas, do Campeonato Mundial.

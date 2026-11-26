@@ -144,6 +144,22 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "deeb6a21-23b0-44f1-b70e-5899bb9d4a84",
+    "oracle_id": "42bccda5-1754-4619-b94f-7a72f934a718",
+    "set": "bro",
+    "number": "193",
+    "nome": "Titania, Voice of Gaea",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "a469d7ec-42de-45de-9d8f-469bb979de58",
+    "oracle_id": "26a623a1-60c9-47e3-af96-616e29551865",
+    "set": "bro",
+    "number": "216",
+    "nome": "Mishra, Claimed by Gix",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "8b76ba96-9630-44fb-849e-3c3848c03876",
     "oracle_id": "fb98f6b7-5986-4c5d-98fc-e5c4106f48bf",
     "set": "c13",
@@ -368,6 +384,22 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "27907985-b5f6-4098-ab43-15a0c2bf94d5",
+    "oracle_id": "bce7e45d-b2c5-43aa-91a6-3a3c24f30850",
+    "set": "emn",
+    "number": "15",
+    "nome": "Bruna, the Fading Light",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "1d743ad6-6ca2-409a-9773-581cc195dbf2",
+    "oracle_id": "0e735ba6-7fd1-4d12-b20c-21525dc1e2b5",
+    "set": "emn",
+    "number": "204",
+    "nome": "Hanweir Battlements",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "0cc59b5a-65fa-47cc-8ac7-b7c3f533a782",
     "oracle_id": "3aa0cda4-fb2d-4fd4-84f6-482089a85547",
     "set": "eoe",
@@ -549,6 +581,14 @@
     "set": "fin",
     "number": "78",
     "nome": "Summon: Shiva",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "f73a5cbb-905f-4b99-8d23-9d1b6bd47ee8",
+    "oracle_id": "04ac8b2c-95e9-40e9-8cc0-af9b075a94c0",
+    "set": "fin",
+    "number": "99",
+    "nome": "Fang, Fearless l'Cie",
     "grupo": "citada nos documentos"
   },
   {
@@ -6046,6 +6086,86 @@
     "number": "736",
     "nome": "Gallifrey Falls // No More",
     "grupo": "fundir"
+  },
+  {
+    "id": "e2b826be-4256-4fd6-ad4d-6c80933ee940",
+    "oracle_id": "022b42a6-ee0f-4080-b973-c1b68938c3be",
+    "set": "bro",
+    "number": "163",
+    "nome": "Phyrexian Dragon Engine",
+    "grupo": "fundir (meld)"
+  },
+  {
+    "id": "8aefe8bd-216a-4ec1-9362-3f9dbf7fd083",
+    "oracle_id": "df2af646-3e5b-43a3-8f3e-50565889f456",
+    "set": "bro",
+    "number": "225",
+    "nome": "Urza, Lord Protector",
+    "grupo": "fundir (meld)"
+  },
+  {
+    "id": "c75c035a-7da9-4b36-982d-fca8220b1797",
+    "oracle_id": "f3e23d5e-bd88-4e7c-a3fb-db2a8cb05b22",
+    "set": "emn",
+    "number": "28",
+    "nome": "Gisela, the Broken Blade",
+    "grupo": "fundir (meld)"
+  },
+  {
+    "id": "5a57187c-f0ec-40de-b725-786f787b00a2",
+    "oracle_id": "1c29ae09-cc93-4a2a-b432-3c78ae01c1ed",
+    "set": "emn",
+    "number": "96",
+    "nome": "Midnight Scavengers",
+    "grupo": "fundir (meld)"
+  },
+  {
+    "id": "6c752ee2-81b0-468a-a54b-740c22f2334e",
+    "oracle_id": "577725ae-290f-4081-8352-3317521a096f",
+    "set": "fin",
+    "number": "475",
+    "nome": "Vanille, Cheerful l'Cie",
+    "grupo": "fundir (meld)"
+  },
+  {
+    "id": "bc079c81-85e8-4a0d-83fe-533c4feaa343",
+    "oracle_id": "1c29ae09-cc93-4a2a-b432-3c78ae01c1ed",
+    "set": "inr",
+    "number": "123",
+    "nome": "Midnight Scavengers",
+    "grupo": "fundir (meld)"
+  },
+  {
+    "id": "1811b4fa-fed6-46ea-a6de-bb7624a5b1de",
+    "oracle_id": "7cb29569-48e1-4782-9906-fad155ebfafe",
+    "set": "inr",
+    "number": "157",
+    "nome": "Hanweir Garrison",
+    "grupo": "fundir (meld)"
+  },
+  {
+    "id": "8c0acb91-edfc-43a5-af77-6614327fce43",
+    "oracle_id": "0e735ba6-7fd1-4d12-b20c-21525dc1e2b5",
+    "set": "inr",
+    "number": "279",
+    "nome": "Hanweir Battlements",
+    "grupo": "fundir (meld)"
+  },
+  {
+    "id": "534b042b-1b86-4fc9-be3c-0d0f8c46d881",
+    "oracle_id": "022b42a6-ee0f-4080-b973-c1b68938c3be",
+    "set": "pbro",
+    "number": "163s",
+    "nome": "Phyrexian Dragon Engine",
+    "grupo": "fundir (meld)"
+  },
+  {
+    "id": "b3c2bd44-4d75-4f61-89c0-1f1ba4d59ffa",
+    "oracle_id": "f3e23d5e-bd88-4e7c-a3fb-db2a8cb05b22",
+    "set": "v17",
+    "number": "10",
+    "nome": "Gisela, the Broken Blade",
+    "grupo": "fundir (meld)"
   },
   {
     "id": "db84415e-048a-4cfc-9121-5ae17a412198",

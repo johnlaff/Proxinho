@@ -51,6 +51,19 @@ export interface FrameLayout {
 /** Canto da caixa reservado ao lembrete "4/4" do verso nas cartas de transformar. */
 export const BACK_PT_NOTCH = { width: 62, height: 34 };
 
+/**
+ * Os dez vértices de uma estrela de cinco pontas de raio `r` em volta de (cx, cy), a primeira
+ * ponta para cima: o "★" do P/R do verso e da carta fundida, no lugar do "*" (ver drawBackPt). O
+ * miolo tem 42% do raio, e a estrela desce 8% do raio para o meio dela ficar na altura das letras.
+ */
+export function starPoints(cx: number, cy: number, r: number): [number, number][] {
+  return Array.from({ length: 10 }, (_, i) => {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rr = i % 2 ? r * 0.42 : r;
+    return [cx + rr * Math.cos(a), cy + rr * Math.sin(a) + r * 0.08];
+  });
+}
+
 /** Detalhes da moldura que mudam o lugar do texto (cartas de duas faces). */
 export interface FrameExtras {
   /** ícone de transformar/modal à esquerda do nome (empurra o nome para a direita) */

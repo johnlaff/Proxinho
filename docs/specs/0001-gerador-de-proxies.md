@@ -220,3 +220,10 @@ Como jogador, quero imprimir em português as Invocações de Final Fantasy, as 
 - [x] O lembrete desvia da curva da tira dos marcadores, como na carta impressa; o fio do lembrete, onde a arte começa, fica como está.
 - [x] O fim do tipo em inglês sai inteiro e o símbolo da coleção fica inteiro, com a barra escurecendo perto dele.
 - [x] Os Knights of Round, cujo lembrete nunca saiu impresso em PT, e as sem borda saem na original, e a etiqueta diz que saem em inglês.
+
+### H23. A frente das cartas de fundir (entregue em 26/11/2026, ADR 0043)
+Como jogador, quero imprimir em português as cartas de fundir (meld), como Bruna e Gisela, Urza e as Pedras, Mishra e o Dragão Mecânico.
+- [x] A frente das cartas de fundir de borda preta sai em português, com o ícone à esquerda do nome e o P/R da carta fundida no pé da caixa, como na carta impressa ("★/★" com a estrela).
+- [x] O lembrete "(Funde-se com …)" sai com o texto oficial das cartas impressas em PT; sem impressa, a carta fica sem ele.
+- [x] O nome de cada carta de fundir é o dela, sem o da carta fundida ("Fang, l’Cie Destemida", não "Fang, l’Cie Destemida // Ragnarok, Salvação Divina").
+- [x] As cartas fundidas e as sem borda saem na original, e a etiqueta diz que saem em inglês.

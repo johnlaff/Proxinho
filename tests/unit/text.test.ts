@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildParagraphs, fitText, layoutAt, lineText, TABLE_ROW, tokenize, toChunks, type Measurer } from "../../src/engine/text";
-import { costLeft, countSymbols, frame2003Start, hasLeftIcon, m15Layout } from "../../src/engine/geometry";
+import { costLeft, countSymbols, frame2003Start, hasLeftIcon, m15Layout, starPoints } from "../../src/engine/geometry";
 import { normalizeName } from "../../src/lib/normalize";
 
 // Medidor falso: cada caractere mede metade do corpo.
@@ -304,5 +304,18 @@ describe("linhas da tabela de d20", () => {
     const res = fitText("1—9 | Coloque um marcador de componente em Bolsa de Componentes.", null, 300, 400, fake, 20, 20);
     expect(TABLE_ROW.test(lineText(res.lines[0].chunks))).toBe(true);
     expect(TABLE_ROW.test(lineText(res.lines[1].chunks))).toBe(false);
+  });
+});
+
+describe("starPoints", () => {
+  it("a estrela do P/R do verso: cinco pontas, a primeira para cima, e o miolo com 42% do raio", () => {
+    // ("★/★" na frente da Titânia, Voz de Gaia, BRO 193: o "*" da Beleren lia-se como um pingo)
+    const pts = starPoints(100, 50, 10);
+    expect(pts).toHaveLength(10);
+    expect(pts[0][0]).toBeCloseTo(100);
+    expect(pts[0][1]).toBeCloseTo(50 - 10 + 0.8);
+    const dist = pts.map(([x, y]) => Math.hypot(x - 100, y - 50.8));
+    expect(dist.filter((_, i) => i % 2 === 0).every((d) => Math.abs(d - 10) < 1e-9)).toBe(true);
+    expect(dist.filter((_, i) => i % 2 === 1).every((d) => Math.abs(d - 4.2) < 1e-9)).toBe(true);
   });
 });

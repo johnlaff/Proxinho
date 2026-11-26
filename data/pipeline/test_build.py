@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
+from build import add_meld_data, is_meld_result, meld_supported, own_faces, join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -891,6 +891,73 @@ class LevelerSupported(unittest.TestCase):
         self.assertFalse(leveler_supported({**self.base, "layout": "normal"}))
         self.assertFalse(leveler_supported({**self.base, "frame": "1997"}))
         self.assertFalse(leveler_supported({**self.base, "frame_effects": ["showcase"]}))
+
+
+class CartasDeFundir(unittest.TestCase):
+    parts = [
+        {"component": "meld_part", "name": "Bruna, the Fading Light"},
+        {"component": "meld_part", "name": "Gisela, the Broken Blade"},
+        {"component": "meld_result", "name": "Brisela, Voice of Nightmares"},
+    ]
+    bruna = {
+        "name": "Bruna, the Fading Light",
+        "oracle_id": "b",
+        "frame": "2015",
+        "layout": "meld",
+        "border_color": "black",
+        "frame_effects": ["mooneldrazidfc"],
+        "all_parts": parts,
+        "oracle_text": "When you cast this spell, you may return target Angel or Human creature card from your graveyard to the battlefield.\nFlying, vigilance\n(Melds with Gisela, the Broken Blade.)",
+    }
+    brisela = {"name": "Brisela, Voice of Nightmares", "oracle_id": "r", "layout": "meld", "power": "9", "toughness": "10", "all_parts": parts}
+
+    def test_so_a_frente(self):
+        # Eldritch Moon (o ícone da lua e do Eldrazi), The Brothers' War e a arte estendida de FIN
+        self.assertTrue(meld_supported(self.bruna))
+        self.assertTrue(meld_supported({**self.bruna, "frame_effects": ["legendary", "extendedart"]}))
+        # a carta fundida é a junção dos dois versos
+        self.assertTrue(is_meld_result({**self.brisela, "frame": "2015", "border_color": "black"}))
+        self.assertFalse(meld_supported({**self.bruna, **self.brisela, "frame_effects": []}))
+        # sem borda (Secret Lair, FIN) e as que não são de fundir
+        self.assertFalse(meld_supported({**self.bruna, "border_color": "borderless", "frame_effects": ["inverted"]}))
+        self.assertFalse(meld_supported({**self.bruna, "layout": "normal"}))
+
+    def test_so_a_face_da_carta(self):
+        # o Arena liga à Bruna a face da Brisela: o nome saía "Bruna // Brisela"
+        faces = [{"name_pt": "Bruna, a Luz Desvanecente"}, {"name_pt": "Brisela, Voz dos Pesadelos"}]
+        self.assertEqual(own_faces(self.bruna, faces), faces[:1])
+        self.assertEqual(own_faces({"layout": "transform"}, faces), faces)
+
+    def test_pr_e_lembrete(self):
+        rows = [
+            {"oracle_id": "b", "faces": [{"text_pt": "Quando conjura esta mágica, você pode devolver…\nVoar, vigilância"}]},
+            {"oracle_id": "r", "faces": [{"text_pt": "Voar, iniciativa, vigilância, vínculo com a vida"}]},
+        ]
+        printed = {
+            "b": {
+                "printed_name": "Bruna, a Luz Desvanecente",
+                "printed_text": "Quando conjura Bruna, a Luz Desvanecente, você pode…\nVoar, vigilância\n(Funde-se com Gisela, a Lâmina Partida.)",
+            }
+        }
+        self.assertEqual(add_meld_data(rows, [self.bruna, self.brisela], printed), (1, 1))
+        face = rows[0]["faces"][0]
+        self.assertEqual(face["meld_pt"], "9/10")
+        self.assertTrue(face["text_pt"].endswith("\nVoar, vigilância\n(Funde-se com Gisela, a Lâmina Partida.)"))
+        # a carta fundida não ganha nada
+        self.assertNotIn("meld_pt", rows[1]["faces"][0])
+        # de novo, nada muda (o lembrete não se repete)
+        self.assertEqual(add_meld_data(rows, [self.bruna, self.brisela], printed), (1, 0))
+        self.assertEqual(face["text_pt"].count("Funde-se"), 1)
+
+    def test_sem_impressa_sem_lembrete(self):
+        # o lembrete nunca é montado: sem impressa em PT (o Fang, de FIN), a carta fica sem ele
+        rows = [{"oracle_id": "b", "faces": [{"text_pt": "Voar, vigilância"}]}]
+        self.assertEqual(add_meld_data(rows, [self.bruna, self.brisela], {}), (1, 0))
+        self.assertEqual(rows[0]["faces"][0]["text_pt"], "Voar, vigilância")
+        # carta fundida planeswalker (Urza): a frente não imprime P/R nenhum
+        urza = {**self.brisela, "power": None, "toughness": None}
+        rows = [{"oracle_id": "b", "faces": [{"text_pt": "Voar"}]}]
+        self.assertEqual(add_meld_data(rows, [self.bruna, urza], {}), (0, 0))
 
 
 class KeywordReminders(unittest.TestCase):

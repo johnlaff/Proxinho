@@ -18,6 +18,11 @@ export interface PtFace {
    * de tipo e as caixas ("(Você pode conjurar qualquer metade. …)", da dica do Arena, ADR 0033).
    */
   reminder_pt?: string;
+  /**
+   * Na frente das cartas de fundir: o P/R da carta fundida, que ela imprime no pé da caixa ("9/10"
+   * na Bruna), como o do verso nas de transformar (ADR 0043).
+   */
+  meld_pt?: string;
 }
 
 /**

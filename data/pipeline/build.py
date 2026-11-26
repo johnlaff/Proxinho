@@ -1837,6 +1837,49 @@ def arena_name_pt(faces: list[dict]) -> str:
     return " // ".join(f["name_pt"] for f in faces)
 
 
+def own_faces(card: dict, faces: list[dict]) -> list[dict]:
+    """As faces do Arena que são da carta. Nas de fundir o Arena liga à carta as outras partes e a
+    carta fundida: a Bruna ficava com a face da Brisela, e o nome do Fang saía "Fang, l’Cie
+    Destemida // Ragnarok, Salvação Divina"."""
+    return faces[:1] if card.get("layout") == "meld" else faces
+
+
+MELD_REMINDER_EN = re.compile(r"^\(Melds with .+\.\)$")
+MELD_REMINDER_PT = re.compile(r"^\(Funde-se com .+\.\)$")
+
+
+def add_meld_data(rows: list[dict], oracle, printed: dict[str, dict]) -> tuple[int, int]:
+    """
+    A frente das cartas de fundir (ADR 0043): o P/R da carta fundida, que ela imprime no pé da caixa
+    ("9/10" na Bruna, `meld_pt`), e o lembrete "(Funde-se com Gisela, a Lâmina Partida.)", que o
+    Arena não tem, das impressas em PT (nunca montado: sem impressa, a carta fica sem ele).
+    Devolve quantas ganharam o P/R e quantas o lembrete.
+    """
+    by_name = {c["name"]: c for c in oracle}
+    by_oid = {c.get("oracle_id"): c for c in oracle}
+    pts = reminders = 0
+    for r in rows:
+        card = by_oid.get(r["oracle_id"])
+        if not card or card.get("layout") != "meld" or not r["faces"] or is_meld_result(card):
+            continue
+        face = r["faces"][0]
+        result = next((by_name.get(x.get("name")) for x in card.get("all_parts") or [] if x.get("component") == "meld_result"), None)
+        if result and result.get("power") is not None:
+            face["meld_pt"] = f"{result['power']}/{result['toughness']}"
+            pts += 1
+        lines = (face.get("text_pt") or "").split("\n")
+        if not any(MELD_REMINDER_EN.match(x.strip()) for x in (card.get("oracle_text") or "").split("\n")):
+            continue
+        if face.get("text_pt") is None or any(MELD_REMINDER_PT.match(x.strip()) for x in lines):
+            continue
+        p = printed.get(r["oracle_id"])
+        pt = [x.strip() for x in ((printed_faces(p)[0].get("text_pt") or "") if p else "").split("\n") if MELD_REMINDER_PT.match(x.strip())]
+        if pt:
+            face["text_pt"] = face["text_pt"] + "\n" + pt[0]
+            reminders += 1
+    return pts, reminders
+
+
 def add_room_reminders(rows: list[dict], oracle, hints: list[dict[str, str]]) -> int:
     """Põe o lembrete das Salas em PT (`reminder_pt`) em cada face delas, também nas de tradução não oficial."""
     by_oid = {c.get("oracle_id") or c["card_faces"][0]["oracle_id"]: c for c in oracle}
@@ -1917,6 +1960,36 @@ def leveler_supported(card: dict) -> bool:
         and not drawn_frame(card)
         and not card.get("watermark")
         and "playtest" not in (card.get("promo_types") or [])
+    )
+
+
+# efeitos que não mudam a frente das cartas de fundir: a coroa de lendária, o ícone da lua e
+# do Eldrazi de Eldritch Moon (no lugar do círculo das outras) e a arte estendida
+MELD_EFFECTS_OK = {"legendary", "mooneldrazidfc", "extendedart"}
+
+
+def is_meld_result(card: dict) -> bool:
+    """A carta fundida (Brisela, Chittering Host): a impressão dela é a junção dos versos das duas partes."""
+    return any(p.get("component") == "meld_result" and p.get("name") == card.get("name") for p in card.get("all_parts") or [])
+
+
+def meld_supported(card: dict) -> bool:
+    """A frente das cartas de fundir (Eldritch Moon, The Brothers' War, Final Fantasy e as
+    reimpressões; ADR 0043): a moldura da carta comum, com o ícone à esquerda do nome, como nas de
+    duas faces, e o P/R da carta fundida no pé da caixa, como o do verso nas de transformar. A carta
+    fundida (as duas metades juntas) fica de fora, como as sem borda e as de vitrine.
+    """
+    effects = set(card.get("frame_effects") or [])
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "meld"
+        and card.get("border_color") == "black"
+        and effects <= MELD_EFFECTS_OK
+        and not is_meld_result(card)
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not art_behind_box(card)
+        and not drawn_frame(card)
     )
 
 
@@ -2137,6 +2210,7 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or station_supported(c)
         or mutate_supported(c)
         or leveler_supported(c)
+        or meld_supported(c)
         or bool(sides and sides[0]["supported"]),
         "sides": sides,
         # nome de crossover no alto (o nome de jogo vai numa linha pequena abaixo da barra)
@@ -2547,7 +2621,7 @@ def build(offline: bool) -> list[dict]:
         p = printed.get(oid)
 
         if a:
-            source, faces, text_print = "arena", a["faces"], a["print"]
+            source, faces, text_print = "arena", own_faces(card, a["faces"]), a["print"]
         # (algumas impressões em PT do Scryfall vêm só com a imagem, sem nome, tipo nem
         # texto: aí não há tradução, e a carta não pode passar por "impresso")
         elif p and printed_has_text(p):
@@ -2602,8 +2676,8 @@ def build(offline: bool) -> list[dict]:
             if all(f["name_pt"] and f["name_pt"] != f["name_en"] for f in pf):
                 name_pt = " // ".join(f["name_pt"] for f in pf)
         if not name_pt and a:
-            name_pt = arena_name_pt(a["faces"])
-        aliases = {norm(x) for x in [name_pt or "", a and arena_name_pt(a["faces"]) or ""] if x}
+            name_pt = arena_name_pt(own_faces(card, a["faces"]))
+        aliases = {norm(x) for x in [name_pt or "", a and arena_name_pt(own_faces(card, a["faces"])) or ""] if x}
 
         rows.append(
             {
@@ -2636,6 +2710,9 @@ def build(offline: bool) -> list[dict]:
     log(f"Salas com o lembrete em PT: {add_room_reminders(rows, oracle, raw_hints)}")
     # o Fundir, na faixa do pé (o lembrete oficial das impressas em PT)
     log(f"cartas com Fundir, com o lembrete em PT: {add_fuse_reminders(rows, oracle, by_group)}")
+    # a frente das cartas de fundir: o P/R da carta fundida e o lembrete das impressas em PT
+    melded, meld_reminders = add_meld_data(rows, oracle, printed)
+    log(f"cartas de fundir: {melded} com o P/R da carta fundida, {meld_reminders} com o lembrete em PT")
     log(
         f"cartas: {len(rows)} | texto do Arena: {stats['arena']} | impresso: {stats['impresso']} | "
         f"tradução não oficial: {unofficial} | sem PT: {stats['sem'] - unofficial}"
