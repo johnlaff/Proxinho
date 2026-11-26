@@ -138,6 +138,8 @@ import {
   type StationText,
 } from "./station";
 import { mdfcHint, type MdfcHint } from "./mdfc";
+import { mutateBoxes, mutateRule, mutateText } from "./mutate";
+import { type LevelerFrame, levelerBoxes, levelerErase, levelerFrame, levelerText, levelerWords, levelerWordSpots } from "./leveler";
 import { fillAcross, OLD, oldCostLeft, oldLetters, oldTypeEnds } from "./old";
 import {
   addHull,
@@ -1211,6 +1213,44 @@ async function renderStation(p: {
     drawLayout(ctx, res, { x0: levelX, y0: t, x1, y1: t + res.height }, k, "dark", symbols, m);
   });
   return "ok";
+}
+
+/** Maior corpo do texto dos níveis (o inglês fica em ~30). */
+const LEVELER_MAX_SIZE = 30;
+/** Menor corpo do texto dos níveis: abaixo disso, a carta sai na original. */
+const LEVELER_MIN_SIZE = 16;
+
+/**
+ * A palavra dos selos dos níveis, "NÍVEL" como na impressa em PT, no lugar e na altura do "LEVEL"
+ * (na fonte do nome da moldura, mais estreita se passar da largura dele). Na moldura de 2003 as
+ * letras têm um contorno claro, como os números do selo.
+ */
+function drawLevelWords(ctx: CanvasRenderingContext2D, f: LevelerFrame, k: number, frame2003: boolean) {
+  const t = titleFont(frame2003);
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.lineJoin = "round";
+  for (const spot of levelerWordSpots(f)) {
+    ctx.font = `${t.weight} ${100 * k}px ${t.family}`;
+    const capAt100 = ctx.measureText("NVEL").actualBoundingBoxAscent / k;
+    const size = (100 * spot.cap) / capAt100;
+    ctx.font = `${t.weight} ${size * k}px ${t.family}`;
+    const w = ctx.measureText("NÍVEL").width / k;
+    const sx = Math.min(1, spot.width / w);
+    ctx.save();
+    ctx.translate(spot.x * k, spot.base * k);
+    ctx.scale(sx, 1);
+    if (frame2003) {
+      ctx.strokeStyle = "rgba(250,246,236,0.85)";
+      ctx.lineWidth = 2.4 * k;
+      ctx.strokeText("NÍVEL", 0, 0);
+    }
+    ctx.fillStyle = INK.dark;
+    ctx.fillText("NÍVEL", 0, 0);
+    ctx.restore();
+  }
+  ctx.restore();
 }
 
 /** Maior corpo do texto das naves com Posicionar (as artes estendidas, sem a explicação, ficam em ~30). */
@@ -2639,7 +2679,7 @@ const isPlaneswalker = (print: PrintRecord, face: PtFace | null, typeLine?: stri
 
 /**
  * A montagem passa pela rede neural (lama.ts): português a escrever num planeswalker, numa arte
- * sem borda ou na moldura antiga. A prévia usa para mostrar o andamento enquanto espera por ela.
+ * sem borda, na moldura antiga ou na faixa da Mutação. A prévia usa para mostrar o andamento enquanto espera por ela.
  */
 export function usesNeuralFill(print: PrintRecord, face: PtFace | null, side: 0 | 1 = 0, typeLine?: string | null): boolean {
   const supported = print.sides ? Boolean(print.sides[side]?.supported) : print.supported;
@@ -2649,7 +2689,8 @@ export function usesNeuralFill(print: PrintRecord, face: PtFace | null, side: 0 
       isPlaneswalker(print, face, typeLine) ||
       ((print.frame === "1997" || print.frame === "1993") && print.layout === "normal") ||
       isOldSplit(print) ||
-      isRoom(print, typeLine))
+      isRoom(print, typeLine) ||
+      print.layout === "mutate")
   );
 }
 
@@ -2687,8 +2728,10 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const room = isRoom(print, opts.typeLine);
   // e as divididas da moldura antiga: o nome e o tipo de cada metade, também
   const oldSplit = isOldSplit(print);
+  // e as criaturas com Mutação: a faixa translúcida do alto da caixa vai para a rede neural
+  const mutate = print.layout === "mutate" && !borderless;
   const version =
-    pw || borderless || saga || klass || stationParts || old || old93 || room || oldSplit ? "png" : (opts.imageVersion ?? "png");
+    pw || borderless || saga || klass || stationParts || old || old93 || room || oldSplit || mutate ? "png" : (opts.imageVersion ?? "png");
   const [img] = await Promise.all([opts.source ?? loadImage(printImage(print, version, side)), loadCardFonts()]);
 
   const W = Math.round(BASE_W * scale);
@@ -2875,6 +2918,35 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     return reason ? { canvas: out, translated: false, reason } : { canvas: out, translated: false };
   };
   if (blocked || (print.flavor_name && !subtitle)) return original();
+  // Mutação: a linha da palavra-chave vai na faixa translúcida do alto da caixa, e o resto no papel
+  // abaixo do fio (ver mutate.ts). Sem o fio, ou sem a Mutação na frente do texto, sai a original.
+  const mutateParts = mutate ? mutateText(face.text_pt, face.ability_words) : null;
+  const rule = mutateParts ? mutateRule(data) : null;
+  if (mutate && !rule) return original();
+  // Níveis (Level up): a caixa tem três faixas fixas, cada uma com o seu texto e a sua caixa de P/R,
+  // e os selos dos níveis ("LEVEL 2-6") à esquerda das duas de baixo (ver leveler.ts). O texto de
+  // cada faixa vai no lugar do dela, com a mesma letra nas três, e o selo ganha o "NÍVEL" da
+  // impressa em PT. Sem as faixas no lugar, ou com o texto de uma que não cabe, sai a original.
+  // (com marca-d'água, as promos de ROE, a marca sairia em cacos com o apagamento de cada faixa)
+  const levelParts = print.layout === "leveler" && !borderless && !print.watermark ? levelerText(face.text_pt, face.ability_words) : null;
+  const levels = levelParts ? levelerFrame(data, print.frame === "2003") : null;
+  const levelBoxes = levels ? levelerBoxes(levels, layout.box.x0, findCardStamp(data)?.y0 ?? null) : [];
+  const levelLayouts =
+    levelParts && levels
+      ? fitRows(
+          [levelParts.main, ...levelParts.levels.map((l) => l.text)].map((text, i) => ({
+            text,
+            width: levelBoxes[i].x1 - levelBoxes[i].x0,
+            height: levelBoxes[i].y1 - levelBoxes[i].y0,
+            italic: levelParts.italic[i],
+          })),
+          measurer(ctx, W / BASE_W),
+          LEVELER_MAX_SIZE,
+          LEVELER_MIN_SIZE,
+        )
+      : null;
+  if (print.layout === "leveler" && (!levelLayouts || levelLayouts.some((l, i) => l.height > levelBoxes[i].y1 - levelBoxes[i].y0)))
+    return original();
   // Aventura e Preparar: a caixa é dividida entre a criatura e a mágica. Na Aventura é um livro
   // aberto, conferido na imagem (a lombada entre as páginas e as barras da aventura, ver
   // adventureBook): a página da direita leva as regras e o flavor da criatura, a da esquerda, as
@@ -2985,7 +3057,11 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
           ? roundRect(toImg(r))
           : insideBoxSides(data, toImg(r), 30 * fx, true);
   const boxErase = layout.erase.find((e) => e.stains);
-  const measuredBox = boxErase ? boxRect(boxErase.rect) : null;
+  // (nos níveis as faixas são apagadas cada uma à parte, sem os selos e as caixas de P/R)
+  const wholeBox = boxErase && !levels ? boxRect(boxErase.rect) : null;
+  // (na Mutação a caixa medida é o papel, abaixo do fio; a faixa vai à rede neural, logo abaixo)
+  const measuredBox = wholeBox && rule ? { ...wholeBox, y0: Math.round((rule.bottom + 1) * fy) } : wholeBox;
+  const mutateBand = wholeBox && rule ? { ...wholeBox, y1: Math.round(rule.top * fy) } : null;
   const found = findCardStamp(data, frameBox?.y1);
   // nas cartas a última linha de texto desce até perto do selo: a folga de cima fica
   // só no aro dele, para o pé das letras não ficar protegido (sobrava um tracejado)
@@ -3074,7 +3150,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     // (abaixo da medida fixa, só o pé das letras: a medida do terço da esquerda pode
     // passar do fio de baixo nas outras partes da caixa)
     [
-      ...layout.erase.slice(subtitle ? 1 : 0, frameBox ? 0 : keepMark ? 2 : 3).map((e) => ({
+      ...layout.erase.slice(subtitle ? 1 : 0, frameBox ? 0 : keepMark || levels ? 2 : 3).map((e) => ({
         rect: e.stains && measuredBox ? measuredBox : glass && e === layout.erase[1] ? typeRect : toImg(e.rect),
         threshold: e.threshold,
         colorThreshold: e.colorThreshold,
@@ -3087,6 +3163,18 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
             ? bands.bands.map((b) => ({ x0: bands.x0 - 3 * fx, y0: b.y0 - 3 * fy, x1: bands.x1 + 3 * fx, y1: b.y1 + 3 * fy }))
             : undefined,
       })),
+      // (as faixas dos níveis como a caixa, e a palavra dos selos com a folga do contorno claro dela)
+      ...(levels
+        ? [
+            ...levelerErase(levels, layout.box.x0 - 8).map((r) => ({
+              rect: roundRect(toImg(r)),
+              threshold: 14,
+              colorThreshold: 34,
+              stains: true,
+            })),
+            ...levelerWords(levels).map((w) => ({ rect: roundRect(toImg(w.rect)), threshold: 20, force: [roundRect(toImg(w.word))] })),
+          ]
+        : []),
       // (as barras da aventura como as do nome e do tipo; a página da esquerda como a caixa)
       // (com o limiar mais baixo que o das barras do nome e do tipo, ver ADVENTURE.barThreshold e PREPARE.barThreshold)
       ...advBars.map((r) => ({ rect: toImg(r), threshold: advLayout?.barThreshold ?? 20, fill: "rows" as const })),
@@ -3123,7 +3211,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     // o selo de promoção (oval holográfico), a aba das cartas de duas faces e a caixa de
     // P/R sobem para dentro da caixa de texto: ficam, e a cor deles não entra no
     // preenchimento ao lado (a caixa de P/R dourada deixava um brilho dourado acima dela)
-    opaque,
+    // (e o número dos selos dos níveis, logo abaixo da palavra apagada)
+    levels ? [...opaque, ...levelerWords(levels).map((w) => roundRect(toImg(w.number)))] : opaque,
     capGuard,
   );
   for (const back of unshade) back();
@@ -3226,6 +3315,22 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     );
     if (!clean) return original("neural");
   }
+  // A faixa da Mutação é translúcida, com a arte por trás e a letra escura: só as letras saem, e a
+  // rede neural refaz a arte por baixo delas (a máscara como a das naves com Posicionar, sem as
+  // manchas grandes da arte, ver inkOnly)
+  if (mutateBand) {
+    plan(1);
+    const [found] = maskRegions(data, [{ rect: mutateBand, threshold: 14, colorThreshold: 34, polarity: "dark", tiles: false }], opaque);
+    const mask = inkOnly(data, found, Math.round(STATION.ink.area * fx * fy), Math.round(STATION.ink.pad * fx));
+    const clean = await lamaBox(data, [mask], mutateBand, opaque, "dark", `${print.id}:${data.width}:${side}:mutacao`, {
+      art: true,
+      grow: Math.round(fx * 2),
+      gap: 0,
+      simple: false,
+      neural,
+    });
+    if (!clean) return original("neural");
+  }
   // (sem a região do nome, apagada à parte, as cores medidas começam pela do tipo)
   const measured: ("dark" | "light" | undefined)[] = subtitle
     ? [undefined, ...inks]
@@ -3290,6 +3395,29 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     const page = advLayout.spell.text;
     const left = fitText(adv.text_pt, null, page.x1 - page.x0, page.y1 - page.y0, m, advLayout.maxSize, 15, undefined, adv.ability_words);
     drawLayout(ctx, left, page, k, advInks[2] ?? "dark", symbols, m, advCentered);
+  }
+  // Níveis: o texto de cada faixa no lugar dela, e o "NÍVEL" nos selos
+  if (levelLayouts && levels) {
+    levelLayouts.forEach((res, i) => drawLayout(ctx, res, levelBoxes[i], k, "dark", symbols, m));
+    drawLevelWords(ctx, levels, k, print.frame === "2003");
+    return { canvas: out, translated: true };
+  }
+  // Mutação: a linha da palavra-chave na faixa, o resto no papel, com a mesma letra (na impressa em
+  // PT a letra da carta inteira é a que faz o lembrete caber na faixa), sem flavor
+  if (mutateParts && rule) {
+    const parts = mutateBoxes(box, rule);
+    const [band, paper] = fitRows(
+      [
+        { text: mutateParts.band, width: box.x1 - box.x0, height: parts.band.y1 - parts.band.y0 },
+        { text: mutateParts.rest, width: box.x1 - box.x0, height: parts.paper.y1 - parts.paper.y0, italic: mutateParts.italic },
+      ],
+      m,
+      34,
+      15,
+    );
+    drawLayout(ctx, band, parts.band, k, "dark", symbols, m);
+    drawLayout(ctx, paper, parts.paper, k, boxInk, symbols, m, centered);
+    return { canvas: out, translated: true };
   }
   const res = fitText(
     face.text_pt,

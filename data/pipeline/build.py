@@ -203,16 +203,33 @@ def station_level(en_text: str | None) -> str | None:
     return m.group(1) if m else None
 
 
-def join_station(groups: list[tuple[str | None, list[str]]]) -> list[str]:
+_LEVELER_MARK = re.compile(r"LEVEL \[(\d+(?:-\d+|\+))\] \[(\d+/\d+)\]")
+
+
+def leveler_level(en_text: str | None) -> list[str] | None:
+    """As linhas de um nível de Subir de Nível (Level up) num marcador do Arena ("LEVEL [3-7] [4/4]
+    [Protection from instants]" → ["NÍVEL 3-7", "4/4"]), como no Oracle e na carta impressa em PT.
+
+    O marcador em PT ("NÍVEL [3-7] [4/4] [Proteção contra…]") passava por palavra-chave e se juntava
+    às habilidades de antes e de depois ("Proteção contra mágicas instantâneas, nÍVEL [8+]…",
+    Hexdrinker). As habilidades que vêm depois dele, até o próximo marcador, são as do nível.
+    """
+    m = _LEVELER_MARK.match(en_text or "")
+    return [f"NÍVEL {m.group(1)}", m.group(2)] if m else None
+
+
+def join_station(groups: list[tuple[str | None, list[str]]] | list[tuple[str | None, list[str], list[str]]]) -> list[str]:
     """Junta as palavras-chave de cada nível de Posicionar à parte e marca o começo de cada nível
     como o Oracle ("9+ | Voar, iniciativa"). Sem isso, o "Posicionar" e as palavras-chave do
-    nível viravam uma linha só ("Posicionar, voar, iniciativa", Nave-aríete Cuneilux)."""
+    nível viravam uma linha só ("Posicionar, voar, iniciativa", Nave-aríete Cuneilux). Os níveis
+    de Subir de Nível vêm com as linhas do selo e do P/R na frente, fora da junção (ver
+    `leveler_level`)."""
     out: list[str] = []
-    for level, lines in groups:
+    for level, lines, *header in groups:
         joined = join_keywords(lines)
         if level is not None and joined:
             joined[0] = f"{level} | {joined[0]}"
-        out += joined
+        out += (header[0] if header else []) + joined
     return out
 
 
@@ -297,10 +314,12 @@ def load_arena(offline: bool) -> dict[str, dict]:
             type_pt = f"{type_pt} — {sub}"
         type_en, sub_en = en.get(card.get("cardTypeTextId")), en.get(card.get("subtypeTextId"))
         # cada nível de Posicionar começa num marcador (ver station_level)
-        groups: list[tuple[str | None, list[str]]] = [(None, [])]
+        groups: list[tuple[str | None, list[str], list[str]]] = [(None, [], [])]
         for a in card.get("abilities", []):
             if level := station_level(en.get(a.get("TextId"))):
-                groups.append((level, []))
+                groups.append((level, [], []))
+            elif header := leveler_level(en.get(a.get("TextId"))):
+                groups.append((None, [], header))
             elif (t := text(br, a.get("TextId"))) and not is_intrinsic_mana(type_en, sub_en, en.get(a.get("TextId"))):
                 groups[-1][1].append(arena_symbols(t))
         return {
@@ -1174,6 +1193,46 @@ def face_reminders(oid: str, type_line: str | None, by_group: dict[str, dict[str
     return {**by_group.get("*", {}), **by_group.get(type_group(type_line), {}), **by_card.get(oid, {})}
 
 
+# linha do Oracle só com uma palavra-chave, sem custo nem lembrete ("Flash", "First strike")
+_BARE_KEYWORD = re.compile(r"^[A-Z][a-z]+(?: [a-z]+){0,2}$")
+
+
+def join_keyword_lines(en: list[str]) -> list[str]:
+    """
+    Junta numa linha só as linhas seguidas do Oracle que são só uma palavra-chave: o Arena as junta
+    ("Flash\nFlying" é "Lampejo, voar" no Dirge Bat, IKO 84), e as linhas deixavam de bater uma a
+    uma com o texto em PT, e a carta ficava sem o lembrete da Mutação que a física traz.
+    """
+    out: list[str] = []
+    bare = False
+    for line in en:
+        if bare and _BARE_KEYWORD.match(line):
+            out[-1] = f"{out[-1]}, {line.lower()}"
+        else:
+            out.append(line)
+            bare = bool(_BARE_KEYWORD.match(line))
+    return out
+
+
+# Palavra-chave com custo ("Mutate {3}{G} (If you cast…)") cujo nome falta no texto em PT, que começa
+# direto pelo custo: "{3}{G}" no Arena e "{3}{G} (Se você conjurar…)" no Scryfall, no Glowstone
+# Recluse (IKO 156) e no Sawtusk Demolisher (C20 64), com "Mutação" na carta impressa.
+COST_KEYWORDS_PT = {"Mutate": "Mutação"}
+_COST_KEYWORD = re.compile(r"^([A-Z][a-z]+) ((?:\{[^}]+\})+) \(")
+
+
+def restore_cost_keyword(oracle_text: str | None, text_pt: str | None) -> str | None:
+    """Põe o nome da palavra-chave (ver `COST_KEYWORDS_PT`) na frente da linha em PT que é só o custo dela, com o lembrete ou sem."""
+    if not text_pt:
+        return text_pt
+    costs = {m.group(2): COST_KEYWORDS_PT[m.group(1)] for line in (oracle_text or "").split("\n") if (m := _COST_KEYWORD.match(line.strip())) and m.group(1) in COST_KEYWORDS_PT}
+    out = []
+    for line in text_pt.split("\n"):
+        cost = re.match(r"^((?:\{[^}]+\})+)(?: \(|$)", line)
+        out.append(f"{costs[cost.group(1)]} {line}" if cost and cost.group(1) in costs else line)
+    return "\n".join(out)
+
+
 def add_reminders(oracle_text: str | None, text_pt: str | None, reminders: dict[str, str]) -> str | None:
     """
     Põe no fim de cada linha do texto em PT o lembrete oficial da mesma linha do Oracle (ver
@@ -1186,6 +1245,8 @@ def add_reminders(oracle_text: str | None, text_pt: str | None, reminders: dict[
         return None
     en = [x.strip() for x in (oracle_text or "").split("\n") if x.strip()]
     pt = text_pt.split("\n")
+    if len(en) != len(pt):
+        en = join_keyword_lines(en)
     if len(en) != len(pt):
         return text_pt
     out = []
@@ -1816,6 +1877,48 @@ def station_supported(card: dict) -> bool:
     )
 
 
+def mutate_supported(card: dict) -> bool:
+    """Criaturas com Mutação (Ikoria e as reimpressões de Commander) na moldura comum: a caixa partida
+    pelo fio da faixa translúcida da Mutação, no alto, com a arte atrás (src/engine/mutate.ts). O
+    motor confere o fio na imagem; sem ele, a arte sai como está. Ficam de fora as de vitrine e as
+    sem borda (as de Godzilla), com a caixa de outro desenho.
+    """
+    effects = set(card.get("frame_effects") or [])
+    return (
+        card.get("frame") == "2015"
+        and card.get("layout") == "mutate"
+        and card.get("border_color") == "black"
+        and effects <= {"legendary"}
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not art_behind_box(card)
+        and not drawn_frame(card)
+    )
+
+
+def leveler_supported(card: dict) -> bool:
+    """Criaturas com Subir de Nível (Level up) na moldura de 2003 (Rise of the Eldrazi, as Duel Decks
+    e Commander 2013) e na atual (Duel Decks, Commander, Modern Horizons): a caixa em três faixas
+    fixas, cada uma com a sua caixa de P/R, e os selos dos níveis (src/engine/leveler.ts). O motor
+    confere as faixas e as caixas de P/R na imagem; sem elas, a arte sai como está. Ficam de fora
+    as sem borda e as de vitrine, as cartas de teste (MB2), de outro desenho, e as com marca-d'água
+    (as promos de ROE): o apagamento de cada faixa levava a marca junto, em cacos.
+    """
+    effects = set(card.get("frame_effects") or [])
+    return (
+        card.get("frame") in {"2003", "2015"}
+        and card.get("layout") == "leveler"
+        and card.get("border_color") == "black"
+        and effects <= {"legendary"}
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not art_behind_box(card)
+        and not drawn_frame(card)
+        and not card.get("watermark")
+        and "playtest" not in (card.get("promo_types") or [])
+    )
+
+
 def class_supported(card: dict) -> bool:
     """Classe na moldura de Adventures in the Forgotten Realms em diante: a arte à esquerda e a
     coluna de texto à direita, com o lembrete no alto e uma barra por nível (src/engine/classCard.ts).
@@ -2031,6 +2134,8 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or fuse_supported(c)
         or class_supported(c)
         or station_supported(c)
+        or mutate_supported(c)
+        or leveler_supported(c)
         or bool(sides and sides[0]["supported"]),
         "sides": sides,
         # nome de crossover no alto (o nome de jogo vai numa linha pequena abaixo da barra)
@@ -2457,6 +2562,11 @@ def build(offline: bool) -> list[dict]:
                 PW_MISMATCH.add(oid)
             else:
                 faces[0]["text_pt"] = text_pt
+
+        # o nome da palavra-chave que falta na frente do custo dela (ver `restore_cost_keyword`)
+        for i, f in enumerate(faces):
+            if f.get("text_pt"):
+                f["text_pt"] = restore_cost_keyword(en_face_of(card, faces, i).get("oracle_text"), f["text_pt"])
 
         # Saga: o número de cada capítulo na frente, para o motor casar capítulo e faixa (e o
         # lembrete do alto das Sagas e das Classes)

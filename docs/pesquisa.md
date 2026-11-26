@@ -310,6 +310,37 @@ Medidas nas imagens do Scryfall, na carta deitada (1040 × 745):
 
 O papel da caixa não sai pela medida das cartas de pé (`insideBoxSides`): o degrau do papel para o bisel claro das azuis fica abaixo de 20 tons em boa parte das linhas, e a beira do pergaminho fica fora da busca dela. A distância de cor até o papel do miolo separa os três desenhos: numa coluna de papel ela fica de 6 a 26 (o grão das vermelhas é o mais forte), no bisel de 14 a 60 e na moldura acima de 30; o limite de 1,6 vez a do papel, mais 6, para no lugar certo nas 26 caixas. O texto alinhado varia por metade, não por carta: no Wax // Wane, o da esquerda é alinhado à esquerda e o da direita, centralizado. Nos dados, das 10 cartas, 2 têm o texto impresso em PT (Order // Chaos e Assault // Battery, este com o texto antigo da de Time Spiral), 1 o do Arena (Life // Death) e 7 só a tradução não oficial, com os nomes impressos em PT.
 
+### Mutação (26/11/2026)
+
+Como as ferramentas existentes fazem: o Proxyshop tem um molde próprio para a Mutação, com uma camada de texto à parte para a linha da Mutação, mas monta a carta inteira do zero, com a moldura digital do molde; ninguém reaproveita a faixa translúcida da carta impressa, com a arte por trás.
+
+Medidas nas imagens do Scryfall (745 × 1040), nas 59 impressões de papel na moldura comum (IKO, PIKO, C20, DMC, MOC, PL22, The List):
+
+| Medida | Valor |
+|---|---|
+| Faixa | do alto da caixa (y ≈ 654 a 657) até a sombra do fio, translúcida, com a arte por trás; mediana das linhas de 150 a 245 |
+| Fio | linha mais escura em y 783 a 787 (1 a 3 linhas), 85 a 160 tons abaixo do papel; a sombra acima dele escurece só nas 2 ou 3 linhas antes dele |
+| Papel | de y ≈ 787 a 956 a 964, mediana de 220 a 250, como o da M15 |
+| Texto | em inglês, o lembrete da Mutação em 4 linhas na faixa; na impressa em PT (IKO 155, IKO 16), em 5, com a letra da carta inteira menor, a mesma nas duas partes |
+
+A escolha (ADR 0040): o fio medido na imagem parte a caixa; o papel é apagado como o da M15 e a faixa vai à rede neural com a máscara das naves com Posicionar (a mesma caixa translúcida de letra escura), num quadro só; o texto é partido na primeira linha, e as duas partes saem com a mesma letra, como na impressa em PT.
+
+### Níveis, Subir de Nível (26/11/2026)
+
+Como as ferramentas existentes fazem: o Proxyshop tem um molde próprio (`LevelerTemplate`, com o `LevelerLayout` partindo o Oracle em três partes por uma expressão regular): uma camada de texto para o "Level up", e uma de texto, uma de intervalo e uma de P/R para cada nível, cada texto na caixa de referência da sua faixa, na moldura digital do molde. O fork do preshtildeath pedia ajuste à mão das camadas de texto dos níveis. Num fórum do Magic Set Editor, o molde dos níveis é criticado por não usar a mesma letra nas duas faixas de nível, como a carta impressa (Kargan Dragonlord). Ninguém reaproveita a moldura da imagem.
+
+Medidas nas imagens do Scryfall (745 × 1040), nas 55 impressões suportadas (41 na moldura de 2003: ROE, DDG, C13 e The List; 14 na atual: DDP, CMA, MH1, C21, LCC e The List):
+
+| Medida | Valor |
+|---|---|
+| Faixas | três, fixas; o papel da faixa do alto, de 220 a 245; cada faixa de baixo de 9 a 39 tons (2003) ou de 16 a 26 (atual) mais escura que a de cima, a mudança em y 743 a 749 e 835 a 842 (2003) ou 745 a 750 e 846 a 853 (atual) |
+| Caixas de P/R | uma por faixa, à direita, a partir de x ≈ 553 (2003, contorno preto) ou 576 (atual, contorno cinza, de 115 a 130) |
+| Selos | nas duas faixas de baixo, à esquerda, até x ≈ 184 (2003) ou 143 (atual); o "LEVEL" muda de 2 a 3 px de lugar entre coleções (C13, DDG) |
+| Pé do papel | o filete claro começa em y 931 a 933 (2003) ou 955 a 957 (atual), de 13 a 76 tons acima do papel |
+| Texto | em PT (ROE), a mesma letra nas três faixas; o selo diz "NÍVEL", e o intervalo e o P/R são os mesmos |
+
+A escolha (ADR 0041): as faixas, as caixas de P/R, a palavra dos selos e o pé do papel medidos na imagem; cada faixa apagada como a caixa de sempre, à parte; o texto com a mesma letra nas três faixas e o "NÍVEL" no lugar do "LEVEL".
+
 ### Moldura de 1993 (26/11/2026)
 
 A moldura que o Scryfall chama de `1993` vai de Alpha (1993) a Alliances (1996), com as edições básicas até a 4ª, as Collectors' Editions, Chronicles, Summer Magic, os decks de introdução da época e as promos (Arena League, livros, Harper Prism): 3.090 impressões em inglês, 1.754 de borda preta, 1.100 de borda branca e 236 douradas, do Campeonato Mundial.

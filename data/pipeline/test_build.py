@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
+from build import join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -799,6 +799,98 @@ class StationSupported(unittest.TestCase):
         self.assertFalse(station_supported({**self.base, "frame_effects": ["showcase"]}))
         self.assertFalse(station_supported({**self.base, "full_art": True}))
         self.assertFalse(station_supported({**self.base, "textless": True}))
+
+
+class MutateSupported(unittest.TestCase):
+    base = {"frame": "2015", "layout": "mutate", "border_color": "black", "type_line": "Creature — Beast"}
+
+    def test_moldura_padrao(self):
+        self.assertTrue(mutate_supported(self.base))
+        self.assertTrue(mutate_supported({**self.base, "frame_effects": ["legendary"]}))
+        # promos de pré-estreia e do pacote de promoções: a mesma caixa, com o selo na arte
+        self.assertTrue(mutate_supported({**self.base, "promo_types": ["prerelease", "datestamped"]}))
+
+    def test_outras_molduras(self):
+        # as de vitrine (a caixa de outro desenho) e as sem borda de Godzilla
+        self.assertFalse(mutate_supported({**self.base, "frame_effects": ["showcase", "inverted"]}))
+        self.assertFalse(mutate_supported({**self.base, "border_color": "borderless", "frame_effects": ["inverted"]}))
+        self.assertFalse(mutate_supported({**self.base, "layout": "normal"}))
+        self.assertFalse(mutate_supported({**self.base, "full_art": True}))
+        self.assertFalse(mutate_supported({**self.base, "textless": True}))
+
+
+class MutateText(unittest.TestCase):
+    MUTATE = "Mutate {3}{G} (If you cast this spell for its mutate cost, put it over or under target non-Human creature you own. They mutate into the creature on top plus all abilities from under it.)"
+
+    def test_nome_que_falta(self):
+        # Glowstone Recluse: "{3}{G}" no Arena, com o lembrete no Scryfall, e "Mutação" na carta impressa
+        en = f"{self.MUTATE}\nReach\nWhenever this creature mutates, put two +1/+1 counters on it."
+        self.assertEqual(restore_cost_keyword(en, "{3}{G}\nAlcance\nToda vez…"), "Mutação {3}{G}\nAlcance\nToda vez…")
+        self.assertEqual(restore_cost_keyword(en, "{3}{G} (Se você conjurar…)\nAlcance"), "Mutação {3}{G} (Se você conjurar…)\nAlcance")
+
+    def test_fica_como_esta(self):
+        en = f"{self.MUTATE}\n{{2}}, {{T}}: Draw a card."
+        # com o nome, com outro custo e uma habilidade ativada que começa pelo custo
+        self.assertEqual(restore_cost_keyword(en, "Mutação {3}{G}\n{2}, {T}: Compre um card."), "Mutação {3}{G}\n{2}, {T}: Compre um card.")
+        self.assertEqual(restore_cost_keyword(en, "{2}{G}\nAlcance"), "{2}{G}\nAlcance")
+        self.assertEqual(restore_cost_keyword("Echo {1}{G} (At the beginning…)", "{1}{G}"), "{1}{G}")
+        self.assertIsNone(restore_cost_keyword(en, None))
+
+    def test_palavras_chave_juntas(self):
+        # Dirge Bat: o Oracle tem "Flash" e "Flying" em linhas separadas, e o Arena, "Lampejo, voar"
+        en = ["Mutate {4}{B}{B} (If…)", "Flash", "Flying", "Whenever this creature mutates, destroy target creature."]
+        self.assertEqual(join_keyword_lines(en), ["Mutate {4}{B}{B} (If…)", "Flash, flying", "Whenever this creature mutates, destroy target creature."])
+        self.assertEqual(join_keyword_lines(["First strike", "Double strike", "Vigilance"]), ["First strike, double strike, vigilance"])
+        # palavra-chave com custo ou lembrete não junta
+        self.assertEqual(join_keyword_lines(["Flying", "Ward {2}"]), ["Flying", "Ward {2}"])
+        reminders = {"If…": "Se…"}
+        pt = "Mutação {4}{B}{B}\nLampejo, voar\nToda vez que esta criatura sofrer mutação, destrua a criatura alvo."
+        out = add_reminders("\n".join(en), pt, reminders)
+        self.assertEqual(out.split("\n")[0], "Mutação {4}{B}{B} (Se…)")
+        self.assertEqual(out.split("\n")[1:], pt.split("\n")[1:])
+
+
+class LevelerText(unittest.TestCase):
+    """Subir de Nível (Level up): o Arena marca cada nível com "LEVEL [3-7] [4/4] [Protection from instants]"
+    em inglês e "NÍVEL [3-7] [4/4] […]" em PT, antes das habilidades do nível."""
+
+    def test_selo_e_pt_do_marcador(self):
+        self.assertEqual(leveler_level("LEVEL [3-7] [4/4] [Protection from instants]"), ["NÍVEL 3-7", "4/4"])
+        self.assertEqual(leveler_level("LEVEL [8+] [6/6] [Protection from everything]"), ["NÍVEL 8+", "6/6"])
+        self.assertIsNone(leveler_level("Level up {1}"))
+        self.assertIsNone(leveler_level(None))
+
+    def test_niveis_como_o_oracle(self):
+        # Hexdrinker: saía "Proteção contra mágicas instantâneas, nÍVEL [8+] [6/6] […]" numa linha só
+        groups = [
+            (None, ["Subir de nível {1}"], []),
+            (None, ["Proteção contra mágicas instantâneas"], ["NÍVEL 3-7", "4/4"]),
+            (None, ["Proteção contra tudo"], ["NÍVEL 8+", "6/6"]),
+        ]
+        self.assertEqual(
+            join_station(groups),
+            ["Subir de nível {1}", "NÍVEL 3-7", "4/4", "Proteção contra mágicas instantâneas", "NÍVEL 8+", "6/6", "Proteção contra tudo"],
+        )
+
+
+class LevelerSupported(unittest.TestCase):
+    base = {"frame": "2003", "layout": "leveler", "border_color": "black", "type_line": "Creature — Human Warrior"}
+
+    def test_molduras_dos_niveis(self):
+        # Rise of the Eldrazi (2003) e Commander, Modern Horizons (atual)
+        self.assertTrue(leveler_supported(self.base))
+        self.assertTrue(leveler_supported({**self.base, "frame": "2015", "frame_effects": ["legendary"]}))
+
+    def test_outras_molduras(self):
+        # as promos de ROE com a marca-d'água, que saía em cacos com o apagamento de cada faixa
+        self.assertFalse(leveler_supported({**self.base, "watermark": "planeswalker"}))
+        # Secret Lair sem borda, a de borda branca e a carta de teste de MB2
+        self.assertFalse(leveler_supported({**self.base, "frame": "2015", "border_color": "borderless"}))
+        self.assertFalse(leveler_supported({**self.base, "frame": "2015", "border_color": "white"}))
+        self.assertFalse(leveler_supported({**self.base, "frame": "2015", "promo_types": ["playtest"]}))
+        self.assertFalse(leveler_supported({**self.base, "layout": "normal"}))
+        self.assertFalse(leveler_supported({**self.base, "frame": "1997"}))
+        self.assertFalse(leveler_supported({**self.base, "frame_effects": ["showcase"]}))
 
 
 class KeywordReminders(unittest.TestCase):

@@ -144,11 +144,27 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "8b76ba96-9630-44fb-849e-3c3848c03876",
+    "oracle_id": "fb98f6b7-5986-4c5d-98fc-e5c4106f48bf",
+    "set": "c13",
+    "number": "43",
+    "nome": "Echo Mage",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "0c2a6b15-e614-4f0b-84e4-8630516f3325",
     "oracle_id": "3adb7681-977f-4a32-9ec8-51481b958268",
     "set": "c16",
     "number": "268",
     "nome": "Rakdos Signet",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "574d1a02-a403-4b6e-8ce0-a472325c9c2c",
+    "oracle_id": "7f93a368-9568-456c-9bd6-20d5fe5ad2f1",
+    "set": "c20",
+    "number": "64",
+    "nome": "Sawtusk Demolisher",
     "grupo": "citada nos documentos"
   },
   {
@@ -536,6 +552,30 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "0095245c-a30e-4e2a-88c9-632c678e9f03",
+    "oracle_id": "3dfb0c0a-b68f-43b9-8475-28d0192fc4ed",
+    "set": "iko",
+    "number": "155",
+    "nome": "Gemrazer",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "06a9698d-400c-4c31-82cd-28d0897fe28c",
+    "oracle_id": "b2b76070-f103-4f83-ad21-119e6352f2cd",
+    "set": "iko",
+    "number": "156",
+    "nome": "Glowstone Recluse",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "058d6a7d-12b0-4d82-a5bd-91fa44bbc5e1",
+    "oracle_id": "38f5e6bf-18a3-4ff3-9726-a25a9715a2d9",
+    "set": "iko",
+    "number": "16",
+    "nome": "Huntmaster Liger",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "054f1845-196f-41c1-9682-042171cccd49",
     "oracle_id": "b829de81-04cd-498e-9f31-074f23e2a488",
     "set": "inv",
@@ -565,6 +605,14 @@
     "set": "khm",
     "number": "251",
     "nome": "Barkchannel Pathway // Tidechannel Pathway",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "46246d37-dfce-4977-854e-ee79d47cea05",
+    "oracle_id": "0ca0a186-026d-4cec-9c23-15d94e6acca9",
+    "set": "lcc",
+    "number": "148",
+    "nome": "Coralhelm Commander",
     "grupo": "citada nos documentos"
   },
   {
@@ -741,6 +789,14 @@
     "set": "mbs",
     "number": "119",
     "nome": "Peace Strider",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "89f5cc05-5d9d-4709-b3c5-a6249c294acc",
+    "oracle_id": "69bc2afd-9f53-47f2-b9c8-f12732784e10",
+    "set": "mh1",
+    "number": "168",
+    "nome": "Hexdrinker",
     "grupo": "citada nos documentos"
   },
   {
@@ -925,6 +981,46 @@
     "set": "rix",
     "number": "204",
     "nome": "Angrath's Fury",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "b669d2d9-649b-4941-9a76-9833bdf77ca4",
+    "oracle_id": "eb4e6d97-f5df-4290-b193-912f44f43a67",
+    "set": "roe",
+    "number": "152",
+    "nome": "Kargan Dragonlord",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "b2159a7d-e37a-4c43-a7b9-1e7179a7e43b",
+    "oracle_id": "d369a02b-c282-454a-9f89-480f4f5d838c",
+    "set": "roe",
+    "number": "156",
+    "nome": "Lord of Shatterskull Pass",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "b24c2406-ba46-428b-9d5c-38954818edc0",
+    "oracle_id": "8c77f436-81ab-4200-b76d-58b1f91fc3d0",
+    "set": "roe",
+    "number": "178",
+    "nome": "Beastbreaker of Bala Ged",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "9f4df9be-324b-458a-9379-ab4aa437a6d2",
+    "oracle_id": "0bc2875b-3a5a-4885-86b9-16ab7330ac10",
+    "set": "roe",
+    "number": "47",
+    "nome": "Student of Warfare",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "4f8d1bea-58cd-4483-a70a-0330ad5ab4a1",
+    "oracle_id": "0ca0a186-026d-4cec-9c23-15d94e6acca9",
+    "set": "roe",
+    "number": "57",
+    "nome": "Coralhelm Commander",
     "grupo": "citada nos documentos"
   },
   {
@@ -5936,6 +6032,126 @@
     "grupo": "fundir de 2003"
   },
   {
+    "id": "639df7bc-b87d-4bf5-8005-8eabc54e955b",
+    "oracle_id": "c5054364-2a19-4b70-869b-94d48b7b12c0",
+    "set": "c20",
+    "number": "12",
+    "nome": "Otrimi, the Ever-Playful",
+    "grupo": "mutação"
+  },
+  {
+    "id": "2bf6b21a-8e18-400c-a39c-d693e487e47b",
+    "oracle_id": "4864cc98-4fde-4010-81e9-ea4944347e7e",
+    "set": "c20",
+    "number": "44",
+    "nome": "Mindleecher",
+    "grupo": "mutação"
+  },
+  {
+    "id": "856892c8-ba47-46d0-aec2-0416b55b9e88",
+    "oracle_id": "e1efd99f-d918-4cd1-b85f-b90b106c3c88",
+    "set": "iko",
+    "number": "128",
+    "nome": "Porcuparrot",
+    "grupo": "mutação"
+  },
+  {
+    "id": "c9f07625-fbd8-4581-8568-eb3cfb2a4c1e",
+    "oracle_id": "e9137b54-3464-4f57-95e3-f94bf2ac854e",
+    "set": "iko",
+    "number": "179",
+    "nome": "Brokkos, Apex of Forever",
+    "grupo": "mutação"
+  },
+  {
+    "id": "8ca6eb5a-8bc9-4091-bcfb-b207f0afd188",
+    "oracle_id": "66bef5a7-79b7-4a9c-98dc-8670f867f04c",
+    "set": "iko",
+    "number": "197",
+    "nome": "Nethroi, Apex of Death",
+    "grupo": "mutação"
+  },
+  {
+    "id": "063a95ee-3fda-436f-9ff8-de80cc874dde",
+    "oracle_id": "734be5ec-6148-48b9-9021-380e9b62ec23",
+    "set": "iko",
+    "number": "213",
+    "nome": "Trumpeting Gnarr",
+    "grupo": "mutação"
+  },
+  {
+    "id": "ed7b0256-d342-4523-9516-6a007bf51825",
+    "oracle_id": "775c41fa-2316-43c9-af34-ac9c9b0db7e2",
+    "set": "iko",
+    "number": "214",
+    "nome": "Vadrok, Apex of Thunder",
+    "grupo": "mutação"
+  },
+  {
+    "id": "c859b339-b55b-41fe-948c-27502e3b3ea8",
+    "oracle_id": "38630f89-bc22-49b2-b97e-d31a5169decc",
+    "set": "iko",
+    "number": "64",
+    "nome": "Pouncing Shoreshark",
+    "grupo": "mutação"
+  },
+  {
+    "id": "64ae7651-4a5c-41f3-b528-41b9b0f2e5d8",
+    "oracle_id": "b42147e1-cf90-4c12-8abe-7f2931d0607c",
+    "set": "iko",
+    "number": "79",
+    "nome": "Cavern Whisperer",
+    "grupo": "mutação"
+  },
+  {
+    "id": "59677c76-8148-4b6f-95b0-0e3ccf137a3f",
+    "oracle_id": "4746828f-46ea-439f-88de-5e54cc536545",
+    "set": "iko",
+    "number": "84",
+    "nome": "Dirge Bat",
+    "grupo": "mutação"
+  },
+  {
+    "id": "b841a987-7ab6-4ea1-a648-82afeb1fccd4",
+    "oracle_id": "56ba78c1-d1eb-4cc1-b70d-98c35d2972ba",
+    "set": "piko",
+    "number": "114p",
+    "nome": "Everquill Phoenix",
+    "grupo": "mutação"
+  },
+  {
+    "id": "6cea21b9-a87b-4d15-a4e3-1d03ab886d8b",
+    "oracle_id": "3dfb0c0a-b68f-43b9-8475-28d0192fc4ed",
+    "set": "piko",
+    "number": "155p",
+    "nome": "Gemrazer",
+    "grupo": "mutação"
+  },
+  {
+    "id": "8050dc13-0d70-4c39-a79e-212c6c884da6",
+    "oracle_id": "08daa30f-7ce0-4a72-b539-fbb0c585fd73",
+    "set": "piko",
+    "number": "190p",
+    "nome": "Illuna, Apex of Wishes",
+    "grupo": "mutação"
+  },
+  {
+    "id": "d6749d17-318c-4ca4-a7b2-b4a49fa975fc",
+    "oracle_id": "66bef5a7-79b7-4a9c-98dc-8670f867f04c",
+    "set": "piko",
+    "number": "197s",
+    "nome": "Nethroi, Apex of Death",
+    "grupo": "mutação"
+  },
+  {
+    "id": "39be4040-d32a-42ef-91cf-8d86ecbb4979",
+    "oracle_id": "1cadb1e1-19b6-4ce5-8eb5-7851cec7dfa3",
+    "set": "plst",
+    "number": "IKO-47",
+    "nome": "Dreamtail Heron",
+    "grupo": "mutação"
+  },
+  {
     "id": "fba6332c-acba-43f9-877c-ca6c5328aae9",
     "oracle_id": "a37314cf-bbbd-4003-b94d-0e6e60edfc15",
     "set": "eoe",
@@ -6334,6 +6550,126 @@
     "number": "8",
     "nome": "Missy",
     "grupo": "não oficial"
+  },
+  {
+    "id": "d4de23f9-8612-4c5e-8c96-3581893976eb",
+    "oracle_id": "ee60ccae-b3ae-47a1-a0bb-2fe51645e95d",
+    "set": "c13",
+    "number": "152",
+    "nome": "Kazandu Tuskcaller",
+    "grupo": "níveis"
+  },
+  {
+    "id": "a9110a51-a83b-4af8-bd52-32d42688a26b",
+    "oracle_id": "8db3152a-11b1-4c59-a745-1c40a9b235b7",
+    "set": "c13",
+    "number": "46",
+    "nome": "Hada Spy Patrol",
+    "grupo": "níveis"
+  },
+  {
+    "id": "f5453591-6377-40de-892c-e8dd46687d11",
+    "oracle_id": "ee60ccae-b3ae-47a1-a0bb-2fe51645e95d",
+    "set": "c21",
+    "number": "196",
+    "nome": "Kazandu Tuskcaller",
+    "grupo": "níveis"
+  },
+  {
+    "id": "f2a569c8-d51c-4414-a227-40dc05c2aed8",
+    "oracle_id": "9a9c221d-9bb4-4ec4-b5db-cb26db6065df",
+    "set": "ddg",
+    "number": "2",
+    "nome": "Caravan Escort",
+    "grupo": "níveis"
+  },
+  {
+    "id": "20bc9c3c-0c20-4ea6-a182-b7f3a75f5982",
+    "oracle_id": "c43c76d5-aa11-4fce-911a-ec60cb06ce2a",
+    "set": "ddp",
+    "number": "4",
+    "nome": "Kabira Vindicator",
+    "grupo": "níveis"
+  },
+  {
+    "id": "cfe2d590-e94f-4aa3-804c-9b6e4618bf10",
+    "oracle_id": "8db3152a-11b1-4c59-a745-1c40a9b235b7",
+    "set": "plst",
+    "number": "CMA-40",
+    "nome": "Hada Spy Patrol",
+    "grupo": "níveis"
+  },
+  {
+    "id": "925835da-fc8e-4020-b0a7-331f12b8b113",
+    "oracle_id": "5045cfc3-ea63-4e0d-bf6a-bdeaf841ae3c",
+    "set": "plst",
+    "number": "DDP-5",
+    "nome": "Knight of Cliffhaven",
+    "grupo": "níveis"
+  },
+  {
+    "id": "f06edfd4-3044-41dc-b6a7-77908c2d0dc4",
+    "oracle_id": "c6fb6971-112b-4c82-a0a3-4acdde970b30",
+    "set": "plst",
+    "number": "ROE-112",
+    "nome": "Guul Draz Assassin",
+    "grupo": "níveis"
+  },
+  {
+    "id": "de6b6d2d-c2b0-421b-aad6-41e80d325fff",
+    "oracle_id": "a011aefe-5853-4435-b686-179e931ba897",
+    "set": "plst",
+    "number": "ROE-190",
+    "nome": "Joraga Treespeaker",
+    "grupo": "níveis"
+  },
+  {
+    "id": "64733788-f936-4195-96e7-f0755a856ac9",
+    "oracle_id": "44f01491-cce4-442e-a8d9-345a074805bd",
+    "set": "plst",
+    "number": "ROE-72",
+    "nome": "Halimar Wavewatch",
+    "grupo": "níveis"
+  },
+  {
+    "id": "72de01ef-cdf2-44ad-bf2f-a927d82a4f72",
+    "oracle_id": "c6fb6971-112b-4c82-a0a3-4acdde970b30",
+    "set": "roe",
+    "number": "112",
+    "nome": "Guul Draz Assassin",
+    "grupo": "níveis"
+  },
+  {
+    "id": "1975d18a-df3f-4c1f-8fde-d11dabbc4adc",
+    "oracle_id": "0ab5fde8-e7db-4265-81c6-2a6488ba56c4",
+    "set": "roe",
+    "number": "133",
+    "nome": "Zulaport Enforcer",
+    "grupo": "níveis"
+  },
+  {
+    "id": "8452b0b7-8157-4a3f-8bef-a34e322b9463",
+    "oracle_id": "9a9c221d-9bb4-4ec4-b5db-cb26db6065df",
+    "set": "roe",
+    "number": "15",
+    "nome": "Caravan Escort",
+    "grupo": "níveis"
+  },
+  {
+    "id": "5e8332e9-7b02-4d58-b081-11004e690524",
+    "oracle_id": "5045cfc3-ea63-4e0d-bf6a-bdeaf841ae3c",
+    "set": "roe",
+    "number": "29",
+    "nome": "Knight of Cliffhaven",
+    "grupo": "níveis"
+  },
+  {
+    "id": "0ff68d2f-6758-45ee-8109-4e8909f49de8",
+    "oracle_id": "44f01491-cce4-442e-a8d9-345a074805bd",
+    "set": "roe",
+    "number": "72",
+    "nome": "Halimar Wavewatch",
+    "grupo": "níveis"
   },
   {
     "id": "420a5689-d73e-4dda-82fd-8b8897ff5b55",

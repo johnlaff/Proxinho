@@ -198,3 +198,18 @@ Como jogador, quero imprimir em português as artes da moldura de 1993 (Alpha a 
 - [x] O nome sem tradução (o da carta em inglês) fica como está. O terreno básico fica com a caixa vazia, como o texto oficial dele em PT.
 - [x] Quando a carta tem arte na moldura atual, na de 2003 ou na antiga, ela continua sendo a padrão; a de 1993 vira a padrão só quando é a única em PT.
 - [x] Sem a rede neural, a carta sai na original, e a etiqueta diz que o apagador de texto não rodou. As douradas do Campeonato Mundial, as promos da DragonCon e do Celebration e as impressões com marca-d'água saem na original, e a etiqueta diz que saem em inglês.
+
+### H20. Criaturas com Mutação (entregue em 26/11/2026, ADR 0040)
+Como jogador, quero imprimir em português as criaturas com Mutação de Ikoria e das reimpressões.
+- [x] As criaturas com Mutação na moldura comum, de borda preta, saem em português: a linha da Mutação, com o lembrete oficial, na faixa translúcida do alto da caixa, com a arte por trás refeita pela rede neural onde estava o inglês, e o resto no papel abaixo do fio.
+- [x] As duas partes saem com a mesma letra, a maior em que as duas cabem, como na carta impressa em PT; o fio e a sombra dele ficam como estão.
+- [x] O Glowstone Recluse e o Sawtusk Demolisher saem com o "Mutação" que faltava nos dados, e o Dirge Bat com o lembrete da Mutação, como na carta física.
+- [x] Sem a rede neural, a carta sai na original, e a etiqueta diz que o apagador de texto não rodou. As de vitrine, as de Godzilla e as de Fallout saem na original, e a etiqueta diz que saem em inglês.
+
+### H21. Criaturas com Subir de Nível (entregue em 26/11/2026, ADR 0041)
+Como jogador, quero imprimir em português as criaturas com Subir de Nível de Rise of the Eldrazi e das reimpressões.
+- [x] As criaturas com Subir de Nível na moldura de 2003 e na atual, de borda preta, saem em português: o "Subir de nível" com o lembrete oficial na faixa do alto e as habilidades de cada nível na faixa dele, entre o selo e a caixa de P/R.
+- [x] As três faixas saem com a mesma letra, a maior em que todas cabem, como na carta impressa em PT; as mudanças de tom entre elas, as caixas de P/R e o filete do pé da caixa ficam como estão.
+- [x] Os selos dizem "NÍVEL", com o intervalo como impresso.
+- [x] O Hexdrinker, que vem do Arena, sai com os níveis como o Oracle e a carta impressa.
+- [x] As promos de ROE com marca-d'água, as sem borda da Secret Lair e as de Mystery Booster 2 saem na original, e a etiqueta diz que saem em inglês.
