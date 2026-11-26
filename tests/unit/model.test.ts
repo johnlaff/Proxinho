@@ -113,6 +113,14 @@ describe("defaultChoice", () => {
     expect(defaultChoice(card(), [m97, print("x", { supported: false })])).toEqual({ kind: "print", printId: "m97" });
   });
 
+  it("a moldura de 1993 vem depois da antiga e só é a padrão sem as outras (ADR 0039)", () => {
+    const m97 = print("m97", { frame: "1997", released: "1998-01-01" });
+    const m93 = print("m93", { frame: "1993", released: "2021-06-18" });
+    expect(defaultChoice(card(), [m93, m97])).toEqual({ kind: "print", printId: "m97" });
+    expect(defaultChoice(card(), [m93, print("m03", { frame: "2003" })])).toEqual({ kind: "print", printId: "m03" });
+    expect(defaultChoice(card(), [m93, print("x", { supported: false })])).toEqual({ kind: "print", printId: "m93" });
+  });
+
   it("sem moldura suportada, usa a imagem oficial em português", () => {
     const c = card({ pt_print: { id: "pt", set: "war", number: "1", hires: true } });
     expect(defaultChoice(c, [print("x", { supported: false })])).toEqual({ kind: "pt" });

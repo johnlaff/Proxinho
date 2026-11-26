@@ -139,6 +139,31 @@ import {
 } from "./station";
 import { mdfcHint, type MdfcHint } from "./mdfc";
 import { fillAcross, OLD, oldCostLeft, oldLetters, oldTypeEnds } from "./old";
+import {
+  addHull,
+  asEngraved,
+  boxCentered93,
+  boxLetters93,
+  paleBox93,
+  paperRect93,
+  paperTint93,
+  ENGRAVED_SETS93,
+  frameEdge93,
+  inkBand,
+  inkLetters,
+  type InkLetters,
+  lineFeet93,
+  maskBounds,
+  OLD93,
+  type OldLayer,
+  old93Layers,
+  oldBox93,
+  oldCostLeft93,
+  softened,
+  tameLow,
+  trimAfterGap,
+  typeEnds93,
+} from "./old93";
 import { prepareFrame, prepareLayout } from "./prepare";
 import { ROOM, roomCostLeft, roomFrame } from "./room";
 import {
@@ -360,7 +385,10 @@ type Neural = { enabled: boolean; tick: (frames?: number) => void };
  * modelo (ver `lamaInpaint`). `art` diz que há arte atrás da caixa (sem borda): a cor que o
  * modelo inventa volta à da vizinhança e o grão da arte volta ao remendo (`tameInvented`,
  * `regrain`). `keep` fica como está, sem sair do buraco nem do que o modelo vê. `grow` e `gap` são a folga da máscara e os
- * vãos entre pedaços dela que entram no buraco (ver `combineMasks`). A prévia e o PDF desenham a mesma arte: a
+ * vãos entre pedaços dela que entram no buraco (ver `combineMasks`). `soften` (px) é a gaussiana da
+ * cópia que o modelo vê (a retícula da moldura de 1993, ver `softened`), e `grainFrom` o retângulo
+ * de onde vem o grão devolvido ao remendo (ver `regrain`); `tint`, que o remendo fica com a cor do
+ * papel em volta (a caixa sem cor da moldura de 1993, ver `paperTint93`). A prévia e o PDF desenham a mesma arte: a
  * caixa limpa fica guardada por `key` para não rodar o modelo de novo (e, se as duas pedem ao
  * mesmo tempo, a segunda espera a primeira). Sem o modelo, volta
  * para o preenchimento simples, salvo com `simple: false`: aí devolve `false` e a imagem fica
@@ -381,7 +409,20 @@ async function lamaBox(
     simple = true,
     neural,
     keep = [],
-  }: { art?: boolean; grow?: number; gap?: number; simple?: boolean; neural?: Neural; keep?: Rect[] } = {},
+    soften = 0,
+    grainFrom,
+    tint = false,
+  }: {
+    art?: boolean;
+    grow?: number;
+    gap?: number;
+    simple?: boolean;
+    neural?: Neural;
+    keep?: Rect[];
+    soften?: number;
+    grainFrom?: Rect;
+    tint?: boolean;
+  } = {},
 ): Promise<boolean> {
   const fx = data.width / BASE_W;
   const quick = () => {
@@ -407,16 +448,34 @@ async function lamaBox(
     const hole = combineMasks(data, masks, grow ?? Math.round(fx * 3) + 1, gap ?? Math.round(fx * 4));
     for (const r of [...protect, ...keep].map(roundRect))
       for (let y = r.y0; y < r.y1; y++) hole.fill(0, y * data.width + r.x0, y * data.width + r.x1);
-    if (!(await lamaInpaint(data, area, hole, protect.map(roundRect), () => neural?.tick()))) {
+    // com `soften`, o modelo vê a imagem alisada e o remendo volta para a original (o grão volta
+    // depois, em `regrain`)
+    const seen = soften ? softened(data, { x0: 0, y0: 0, x1: data.width, y1: data.height }, soften) : data;
+    if (!(await lamaInpaint(seen, area, hole, protect.map(roundRect), () => neural?.tick()))) {
       if (!simple) return false;
       quick();
       return true;
+    }
+    if (seen !== data) {
+      for (let y = area.y0; y < area.y1; y++)
+        for (let x = area.x0; x < area.x1; x++) {
+          const q = y * data.width + x;
+          if (hole[q]) for (let c = 0; c < 3; c++) data.data[q * 4 + c] = seen.data[q * 4 + c];
+        }
+      // na retícula, a mancha que o modelo inventa só aparece na média (ver `tameLow`)
+      tameLow(data, area, hole, protect.map(roundRect));
     }
     // na arte calma atrás da caixa sem borda o modelo às vezes inventa cor que não há em volta
     if (art) tameInvented(data, area, hole, protect.map(roundRect));
     // o modelo às vezes inventa um pingo de tinta no meio do papel liso
     dropSpecks(data, area, hole, polarity);
-    if (art) regrain(data, area, hole);
+    // no papel sem cor, o remendo fica com a cor do papel (ver `paperTint93`)
+    if (tint) paperTint93(data, area, hole);
+    // (na retícula da moldura de 1993 os pontos fogem mais de 40 tons da média: com o teto de
+    // sempre só o desvio fraco servia de fonte e o remendo saía liso e mais claro, Life Matrix,
+    // LEG 284; e o grão vem da linha inteira, `grainFrom`: só do quadro, quase todo buraco, o
+    // começo do tipo saía liso, Unholy Citadel, LEG 309)
+    if (art) regrain(data, area, hole, soften ? { ceiling: 120, from: grainFrom, skip: protect.map(roundRect) } : undefined);
     const box = new ImageData(area.x1 - area.x0, area.y1 - area.y0);
     for (let y = 0; y < box.height; y++)
       box.data.set(
@@ -1471,7 +1530,10 @@ function emblemTitle(
  */
 /**
  * Uma linha da moldura antiga: letras brancas com a sombra preta 2 px abaixo e à direita, com a
- * primeira letra (o desenho dela, sem o recuo da fonte) em `x`; comprime como `drawLine`.
+ * primeira letra (o desenho dela, sem o recuo da fonte) em `x`; comprime como `drawLine`. As
+ * camadas (deslocamento e cor, de baixo para cima, e a largura do contorno, quando a camada é o
+ * contorno das letras) mudam o estilo: a moldura de 1993 passa as cores medidas nas letras em
+ * inglês (`old93Layers`).
  */
 function drawOldLine(
   ctx: CanvasRenderingContext2D,
@@ -1482,6 +1544,10 @@ function drawOldLine(
   size: number,
   k: number,
   t: TitleFont,
+  layers: readonly OldLayer[] = [
+    [OLD.shadow, OLD.shadowInk],
+    [0, OLD.ink],
+  ],
 ) {
   let s = size * t.scale;
   const measure = () => {
@@ -1495,16 +1561,20 @@ function drawOldLine(
     m = measure();
   }
   const sx = m.width > maxWidth ? maxWidth / m.width : 1;
-  for (const [d, color] of [
-    [OLD.shadow, OLD.shadowInk],
-    [0, OLD.ink],
-  ] as const) {
+  for (const [d, color, stroke] of layers) {
     ctx.save();
     ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = color;
     ctx.translate((x + d) * k, (baseline + d) * k);
     ctx.scale(sx, 1);
-    ctx.fillText(text, m.left * k, 0);
+    if (stroke) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = stroke * k;
+      ctx.lineJoin = "round";
+      ctx.strokeText(text, m.left * k, 0);
+    } else {
+      ctx.fillStyle = color;
+      ctx.fillText(text, m.left * k, 0);
+    }
     ctx.restore();
   }
 }
@@ -1557,12 +1627,16 @@ async function renderOld(p: {
   const boxRect = insideBoxSides(data, toImg(outer), 16 * fx, false);
   const boxBase = { x0: boxRect.x0 / fx, y0: boxRect.y0 / fy, x1: boxRect.x1 / fx, y1: boxRect.y1 / fy };
   const hasText = Boolean((face.text_pt ?? "").trim() || p.flavor);
+  // terreno básico sem texto: o símbolo grande na caixa é desenho, fica como está
+  const keepBox = /Básic/.test(face.type_pt ?? "") && !hasText;
   const centered = hasText ? measureCentered(data, roundRect(boxRect), [], fx) === true : false;
-  const inks = eraseRegions(
-    data,
-    [{ rect: roundRect(boxRect), threshold: 14, colorThreshold: 34, stains: true, attachedBelow: roundRect(boxRect).y1 }],
-    [],
-  );
+  const inks = keepBox
+    ? []
+    : eraseRegions(
+        data,
+        [{ rect: roundRect(boxRect), threshold: 14, colorThreshold: 34, stains: true, attachedBelow: roundRect(boxRect).y1 }],
+        [],
+      );
   p.plan(1);
   const area = { x0: nameRect.x0, y0: nameRect.y0, x1: typeRect.x1, y1: typeRect.y1 };
   const clean = await lamaBox(
@@ -1600,6 +1674,237 @@ async function renderOld(p: {
   const m = measurer(ctx, k);
   const res = fitText(face.text_pt, p.flavor, box.x1 - box.x0, box.y1 - box.y0, m, 34, 15, undefined, face.ability_words);
   drawLayout(ctx, res, box, k, inks[0] ?? "dark", symbols, m, centered, undefined, false);
+  return "ok";
+}
+
+/**
+ * Moldura de 1993 (ADR 0039): como a antiga, o nome e o tipo ficam direto sobre a moldura e saem
+ * pela rede neural, num quadro só; a caixa de texto, de papel, sai pelo apagamento de sempre. As
+ * letras são achadas pelas duas pontas (claras com sombra ou gravadas, ver `inkLetters`) e o
+ * português sai no estilo e na linha de base medidos nelas, a partir da primeira letra do inglês.
+ * Devolve "neural" quando a rede neural não rodou e `false` quando a imagem não tem as letras onde
+ * a moldura as põe (a carta sai na original).
+ */
+async function renderOld93(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  sctx: CanvasRenderingContext2D;
+  data: ImageData;
+  face: PtFace;
+  print: PrintRecord;
+  flavor: string | null;
+  side: number;
+  W: number;
+  H: number;
+  neural: Neural;
+  plan: (frames: number) => void;
+}): Promise<"ok" | "neural" | false> {
+  const { ctx, src, sctx, data, face, print, W, H, neural } = p;
+  const fx = data.width / BASE_W;
+  const fy = data.height / BASE_H;
+  const X = (v: number) => Math.round(v * fx);
+  const Y = (v: number) => Math.round(v * fy);
+  const N = OLD93.name;
+  const T = OLD93.type;
+  const cost = oldCostLeft93(print.mana_cost);
+  const boxRect = oldBox93(data);
+  const nameRect = { x0: X(N.x0), y0: Y(N.y0), x1: X(cost - 4), y1: Y(N.y1) };
+  const typeRect = { x0: X(T.x0), y0: Y(T.y0), x1: X(T.x1), y1: boxRect.y0 - Y(3) };
+  if (typeRect.y1 - typeRect.y0 < Y(30)) return false;
+  const name = inkLetters(data, nameRect, [Y(N.peak[0]), Y(N.peak[1])]);
+  const type = inkLetters(data, typeRect, [Y(T.peak), boxRect.y0 - Y(8)]);
+  // a faixa das letras pela energia da imagem alisada (ver `inkBand`): vale até nas gravadas finas
+  if (ENGRAVED_SETS93.has(print.set_code)) {
+    asEngraved(name);
+    asEngraved(type);
+  }
+  const nameBand = inkBand(data, nameRect, [Y(N.peak[0]), Y(N.peak[1])], fx);
+  const typeBand = inkBand(data, typeRect, [Y(T.peak), boxRect.y0 - Y(8)], fx, 16 * fx);
+  // o que vem depois de um vão largo no nome é a moldura (as bolhas da pedra das pretas)
+  trimAfterGap(name, 30 * fx);
+  const ends = typeEnds93(type, fx);
+  while (ends.symbol !== null && type.blocks.length && type.blocks[type.blocks.length - 1].x0 >= ends.symbol) type.blocks.pop();
+  trimAfterGap(type, 30 * fx);
+  // A linha de base: a das letras achadas, se bate com a da faixa (até 3 px), senão a da faixa. A
+  // do nome tem de estar onde a moldura a põe (senão a carta sai na original); a do tipo, fora do
+  // lugar, fica 16 px acima da caixa
+  const k = W / BASE_W;
+  const baseOf = (l: InkLetters, band: { bottom: number }) => {
+    const b = band.bottom / fy;
+    return l.baseline !== null && Math.abs(l.baseline / fy - b) <= 3 ? l.baseline / fy : b;
+  };
+  const nameBase = baseOf(name, nameBand);
+  if (nameBase < N.baseMin || nameBase > N.baseMax) return false;
+  const typeSeen = baseOf(type, typeBand);
+  const typeBase = typeSeen >= T.baseMin && typeSeen <= T.baseMax ? typeSeen : boxRect.y0 / fy - 16;
+  const span = (l: InkLetters) => (l.blocks.length ? { x0: l.blocks[0].x0 / fx, x1: l.blocks[l.blocks.length - 1].x1 / fx } : null);
+  // De Alpha a Revised, nas Collectors' Editions e nas terras da Arena League (a linha de base do
+  // nome de 79 para baixo), as letras são menores: o nome em inglês tem 93% da largura dele na Goudy
+  // Medieval de 41,5 px
+  const small = nameBase >= 79;
+  const nameFont = oldNameFont();
+  ctx.font = `${nameFont.weight} ${N.size * nameFont.scale * k}px ${nameFont.family}`;
+  const en = ctx.measureText(face.name_en);
+  const enWidth = (en.actualBoundingBoxLeft + en.actualBoundingBoxRight) / k;
+  // O nome: a medida das letras vale (letras claras, do começo ao fim do trecho da faixa e com a
+  // largura do nome em inglês) e dá o começo e o tamanho das letras; senão a rede neural apaga a
+  // faixa inteira, da beira da moldura ao fim do trecho, e o português começa onde a moldura põe a
+  // primeira letra
+  const nameSeen = span(name);
+  const nameStart = nameSeen && nameSeen.x0 >= N.xMin && nameSeen.x0 <= N.xMax ? nameSeen.x0 : null;
+  const capEnd = (nameStart ?? N.x) + enWidth * 1.15 + 10;
+  const nameEnd = nameBand.segs.length ? Math.min(capEnd, nameBand.segs[0].x1 / fx) : null;
+  const measured = nameSeen ? (nameSeen.x1 - nameSeen.x0 - 2) / enWidth : 0;
+  const nameFull =
+    name.style === "light" &&
+    nameStart !== null &&
+    nameSeen !== null &&
+    (nameEnd === null || nameSeen.x1 >= nameEnd - 8) &&
+    measured >= 0.85 &&
+    measured <= 1.1;
+  const ratio = nameFull ? Math.max(0.88, Math.min(1.05, measured)) : small ? 0.93 : 1;
+  const nameDefault = small ? 54 : 58;
+  const nameX = nameFull ? (nameStart ?? N.x) : Math.max(N.xMin, Math.min(nameDefault + 4, nameStart ?? nameDefault));
+  // A moldura da linha vai do fio de cima à beira da arte (ver `frameEdge93`): o que fica fora
+  // dela não entra no buraco nem é a vizinhança que o remendo copia
+  const nameSpan = {
+    top: frameEdge93(data, nameRect, Y(nameBase - 28 * ratio), -1) / fy,
+    bottom: frameEdge93(data, nameRect, Y(nameBase + 7), 1) / fy,
+  };
+  // (o retângulo das gravadas desce até a beira da arte, no máximo 18 px abaixo da linha de base:
+  // até 12, o pé do "g" e a sombra dele ficavam e viravam uma mancha escura, Surge of Strength, ALL 109)
+  if (!nameFull)
+    addHull(name, {
+      x0: X(N.x0 + 1),
+      y0: Y(Math.max(nameSpan.top, Math.min(nameBand.top / fy, nameBase - 34 * ratio) - 5)),
+      x1: X(Math.min(cost - 4, Math.max(nameEnd ?? 0, nameSeen?.x1 ?? 0, nameX + enWidth * ratio) + 6)),
+      y1: Y(Math.min(nameSpan.bottom, nameBase + 18)),
+    });
+  // o nome sem tradução (o da carta em inglês) fica como está
+  const keepName = !face.name_pt || face.name_pt === face.name_en;
+  if (keepName) name.mask.fill(0);
+  // O tipo: o mesmo, com o fim do trecho antes do símbolo da coleção
+  const typeSeenSpan = span(type);
+  const typeStart = typeSeenSpan && typeSeenSpan.x0 >= T.xMin && typeSeenSpan.x0 <= T.xMax ? typeSeenSpan.x0 : null;
+  const symbolAt = ends.symbol !== null ? ends.symbol / fx : null;
+  const typeEndSeen = typeBand.segs.length ? Math.min(typeBand.segs[0].x1 / fx, (symbolAt ?? OLD93.typeEnd) - 4) : null;
+  const typeFull =
+    type.style === "light" && typeStart !== null && typeSeenSpan !== null && (typeEndSeen === null || typeSeenSpan.x1 >= typeEndSeen - 8);
+  const typeX = typeStart ?? T.x;
+  const typeSpan = {
+    top: frameEdge93(data, typeRect, Y(typeBase - 28), -1) / fy,
+    bottom: frameEdge93(data, typeRect, Y(typeBase + 4), 1, fx, true) / fy,
+  };
+  if (!typeFull)
+    addHull(type, {
+      x0: X(T.xMin),
+      y0: Y(Math.max(typeSpan.top, typeBase - 26)),
+      x1: X(Math.min((symbolAt ?? OLD93.typeEnd) - 4, Math.max(typeEndSeen ?? 0, typeSeenSpan?.x1 ?? 0, typeX + 40) + 6)),
+      y1: Y(Math.min(typeSpan.bottom, typeBase + 12)),
+    });
+  // o custo de mana e o símbolo da coleção ficam escondidos da rede neural (a cor deles não vaza)
+  const hide = [
+    { x0: X(cost - 2), y0: nameRect.y0, x1: X(700), y1: nameRect.y1 },
+    ...(ends.symbol !== null ? [{ x0: ends.symbol - X(2), y0: typeRect.y0, x1: typeRect.x1, y1: typeRect.y1 }] : []),
+  ];
+  const hasText = Boolean((face.text_pt ?? "").trim() || p.flavor);
+  const inner = { x0: boxRect.x0 + X(1), y0: boxRect.y0 + Y(1), x1: boxRect.x1 - X(1), y1: boxRect.y1 - Y(1) };
+  const centered = hasText ? boxCentered93(data, inner) : false;
+  // (a beira queimada é só do pergaminho das pretas, de custo só preto; nas outras, abaixo do papel
+  // é o bisel)
+  const costColors = new Set([...(print.mana_cost ?? "").matchAll(/\{([WUBRG])\}/g)].map((c) => c[1]));
+  const boxMask = boxLetters93(data, inner, costColors.size === 1 && costColors.has("B"));
+  // o papel claro e sem cor (a renda das brancas) vai à rede neural com o nome e o tipo (ver `paleBox93`)
+  const pale = paleBox93(data, inner);
+  // fora do papel da caixa, nada é visto pela rede neural nem serve de fonte do apagamento (ver
+  // `paperRect93`), e a beira queimada que fica também não (ver `burntRim`)
+  const paper = paperRect93(data, inner);
+  const outsidePaper = [
+    { x0: 0, y0: 0, x1: data.width, y1: paper.y0 },
+    { x0: 0, y0: paper.y1, x1: data.width, y1: data.height },
+    { x0: 0, y0: paper.y0, x1: paper.x0, y1: paper.y1 },
+    { x0: paper.x1, y0: paper.y0, x1: data.width, y1: paper.y1 },
+  ];
+  if (!pale)
+    eraseRegions(
+      data,
+      [{ rect: inner, threshold: 14, letters: boxMask.mask, attachedBelow: inner.y1 }],
+      [],
+      [...outsidePaper, ...boxMask.rim],
+    );
+  // um quadro da rede neural por linha, em volta das letras (ver `maskBounds`)
+  const frames = [
+    { tag: "nome", m: { rect: nameRect, mask: name.mask, polarity: name.style }, span: nameSpan },
+    { tag: "tipo", m: { rect: typeRect, mask: type.mask, polarity: type.style }, span: typeSpan },
+  ].flatMap((f) => {
+    const found = maskBounds(f.m.rect, f.m.mask, X(24));
+    if (!found) return [];
+    // (o buraco que chega à beira esquerda da linha leva junto 16 px da moldura de fora: sem nada
+    // à esquerda, a rede neural escurecia o começo da linha, Unholy Citadel, LEG 309)
+    const box = found.x0 <= f.m.rect.x0 ? { ...found, x0: Math.max(0, found.x0 - X(16)) } : found;
+    const area = { ...box, y0: Math.max(box.y0, Y(f.span.top)), y1: Math.min(box.y1, Y(f.span.bottom)) };
+    return [{ ...f, area: area.y1 - area.y0 >= Y(16) ? area : box }];
+  });
+  if (pale && boxMask.mask.some(Boolean))
+    frames.push({
+      tag: "caixa",
+      m: { rect: inner, mask: boxMask.mask, polarity: boxMask.polarity },
+      span: { top: inner.y0 / fy, bottom: inner.y1 / fy },
+      area: roundRect(inner),
+    });
+  // o pé das letras sobre o fio de baixo de cada linha sai pelos pixels da mesma linha (ver `lineFeet93`)
+  for (const f of frames) {
+    if (f.tag === "caixa") continue;
+    const feet = lineFeet93(data, f.m, Y(f.span.bottom));
+    if (feet.mask.some(Boolean)) fillAcross(data, feet.rect, feet.mask);
+  }
+  const keep = [nameSpan, typeSpan].flatMap((sp) => [
+    { x0: 0, y0: Math.max(0, Y(sp.top - 40)), x1: data.width, y1: Y(sp.top) },
+    { x0: 0, y0: Y(sp.bottom), x1: data.width, y1: Math.min(data.height, Y(sp.bottom + 40)) },
+  ]);
+  p.plan(frames.length);
+  for (const f of frames) {
+    const key = `${print.id}:${data.width}:${p.side}:1993:${f.tag}`;
+    const clean =
+      f.tag === "caixa"
+        ? await lamaBox(data, [f.m], f.area, outsidePaper, f.m.polarity, key, {
+            art: true,
+            grow: X(2),
+            gap: X(4),
+            simple: false,
+            neural,
+            tint: true,
+          })
+        : await lamaBox(data, [f.m], f.area, hide, f.m.polarity, key, {
+            art: true,
+            grow: X(3),
+            gap: X(4),
+            simple: false,
+            neural,
+            keep,
+            soften: 1.2 * fx,
+            grainFrom: { x0: Math.min(f.area.x0, f.m.rect.x0), y0: f.area.y0, x1: f.m.rect.x1, y1: f.area.y1 },
+          });
+    if (!clean) return "neural";
+  }
+  sctx.putImageData(data, 0, 0);
+  ctx.drawImage(src, 0, 0, W, H);
+
+  const typeEnd = symbolAt !== null ? symbolAt - 12 : OLD93.typeEnd;
+  if (!keepName)
+    drawOldLine(ctx, face.name_pt ?? face.name_en, nameX, nameBase, cost - 10 - nameX, N.size * ratio, k, nameFont, old93Layers(name));
+  if (face.type_pt) {
+    const body = bodyFont();
+    const t: TitleFont = { family: body.family, weight: "400", scale: body.scale, dx: 0, baseline: "alphabetic", rise: 0 };
+    drawOldLine(ctx, face.type_pt, typeX, typeBase, typeEnd - typeX, T.size, k, t, old93Layers(type));
+  }
+  if (!hasText) return "ok";
+  const pad = OLD93.boxPad;
+  const box = { x0: boxRect.x0 / fx + pad.x0, y0: boxRect.y0 / fy + pad.y0, x1: boxRect.x1 / fx - pad.x1, y1: boxRect.y1 / fy - pad.y1 };
+  const symbols = await preloadSymbols(face.text_pt, p.flavor);
+  const m = measurer(ctx, k);
+  const res = fitText(face.text_pt, p.flavor, box.x1 - box.x0, box.y1 - box.y0, m, 34, 15, undefined, face.ability_words);
+  drawLayout(ctx, res, box, k, boxMask.polarity, symbols, m, centered, undefined, false);
   return "ok";
 }
 
@@ -2342,7 +2647,7 @@ export function usesNeuralFill(print: PrintRecord, face: PtFace | null, side: 0 
     Boolean(supported && face?.name_pt && face.text_pt !== null) &&
     (print.border === "borderless" ||
       isPlaneswalker(print, face, typeLine) ||
-      (print.frame === "1997" && print.layout === "normal") ||
+      ((print.frame === "1997" || print.frame === "1993") && print.layout === "normal") ||
       isOldSplit(print) ||
       isRoom(print, typeLine))
   );
@@ -2376,11 +2681,14 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const stationParts = !borderless && print.layout === "normal" ? stationText(face?.text_pt) : null;
   // e a moldura antiga: o nome e o tipo, sobre a moldura texturizada, vão para a rede neural
   const old = print.frame === "1997" && !borderless && print.layout === "normal";
+  // e a de 1993, do mesmo jeito
+  const old93 = print.frame === "1993" && !borderless && print.layout === "normal";
   // e as Salas de Duskmourn: a linha de tipo e a faixa do lembrete vão para a rede neural
   const room = isRoom(print, opts.typeLine);
   // e as divididas da moldura antiga: o nome e o tipo de cada metade, também
   const oldSplit = isOldSplit(print);
-  const version = pw || borderless || saga || klass || stationParts || old || room || oldSplit ? "png" : (opts.imageVersion ?? "png");
+  const version =
+    pw || borderless || saga || klass || stationParts || old || old93 || room || oldSplit ? "png" : (opts.imageVersion ?? "png");
   const [img] = await Promise.all([opts.source ?? loadImage(printImage(print, version, side)), loadCardFonts()]);
 
   const W = Math.round(BASE_W * scale);
@@ -2476,8 +2784,9 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     return { canvas: out, translated: done };
   }
 
-  if (old) {
-    const done = await renderOld({ ctx, src, sctx, data, toImg, face, print, flavor: opts.flavor ?? null, side, W, H, neural, plan });
+  if (old || old93) {
+    const args = { ctx, src, sctx, data, face, print, flavor: opts.flavor ?? null, side, W, H, neural, plan };
+    const done = old ? await renderOld({ ...args, toImg }) : await renderOld93(args);
     if (done === "ok") return { canvas: out, translated: true };
     ctx.drawImage(img, 0, 0, W, H);
     return done === "neural" ? { canvas: out, translated: false, reason: "neural" } : { canvas: out, translated: false };

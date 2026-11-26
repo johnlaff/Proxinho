@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
+from build import FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -487,6 +487,23 @@ class FrameSupported(unittest.TestCase):
             self.assertFalse(frame_supported({**old, "layout": layout}), layout)
         # Secret Lair na antiga: o tipo em outras letras (SLD 2517)
         self.assertFalse(frame_supported({**old, "set": "sld"}))
+
+    def test_moldura_de_1993(self) -> None:
+        # ADR 0039: a moldura de Alpha a Alliances entra (Serra Angel 3ED 40, Holy Armor LEB 24),
+        # com borda preta ou branca
+        m93 = {**self.base, "frame": "1993"}
+        self.assertTrue(frame_supported(m93))
+        self.assertTrue(frame_supported({**m93, "border_color": "white", "set": "4ed"}))
+        # as douradas (Pro Tour Collector Set, World Championship) ficam de fora pela borda, e os
+        # outros layouts também
+        self.assertFalse(frame_supported({**m93, "border_color": "gold", "set": "ptc"}))
+        self.assertFalse(frame_supported({**m93, "layout": "token"}))
+        # a DragonCon (uma linha a mais na caixa) e as de comemoração têm outro desenho
+        for code in ("pdrc", "pcel"):
+            self.assertFalse(frame_supported({**m93, "set": code}), code)
+        # efeito ou marca-d'água: nenhuma impressão de 1993 tem, e um desenho novo não entra sozinho
+        self.assertFalse(frame_supported({**m93, "frame_effects": ["legendary"]}))
+        self.assertFalse(frame_supported({**m93, "watermark": "wotc"}))
 
 
 class BorderlessSupported(unittest.TestCase):
@@ -1276,6 +1293,16 @@ class Salas(unittest.TestCase):
         # as de Apocalypse estão certas
         apc = {"set": "apc", "collector_number": "128", "card_faces": [{"name": "Fire", "printed_name": "Fogo"}, {"name": "Ice", "printed_name": "Gelo"}]}
         self.assertIs(swap_half_names(apc), apc)
+
+    def test_a_com_anel_no_nome_impresso(self):
+        # Aladdin's Lamp da Quarta Edição: o Scryfall tem "Låmpada de Aladin"
+        card = {"name": "Aladdin's Lamp", "printed_name": "Låmpada de Aladin"}
+        self.assertEqual(fix_ring_a(card)["printed_name"], "Lâmpada de Aladin")
+        # com o "å" no nome em inglês, fica
+        nordic = {"name": "Ålborg", "printed_name": "Ålborg"}
+        self.assertIs(fix_ring_a(nordic), nordic)
+        ok = {"name": "Pestilence", "printed_name": "Pestilência"}
+        self.assertIs(fix_ring_a(ok), ok)
 
     def test_segunda_metade_no_texto_da_primeira(self):
         # Assault // Battery de TSB: o Scryfall tem a segunda metade inteira no texto da primeira

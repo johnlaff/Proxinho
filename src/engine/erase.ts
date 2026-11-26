@@ -1011,24 +1011,38 @@ export function smoothNoisyPaper(c: Float32Array, a: Float32Array, w: number, h:
  * próprio remendo mais o desvio copiado de pixels conhecidos (`addGrain`). A rede neural
  * não reproduz a retícula de 2 a 3 px de uma arte impressa atrás da caixa sem borda (a
  * gravura do Shivan Dragon da Secret Lair): o remendo saía liso, a forma das letras
- * apagadas aparecendo como faixas. Numa arte lisa o grão copiado é quase nada.
+ * apagadas aparecendo como faixas. Numa arte lisa o grão copiado é quase nada. `ceiling` é
+ * o teto do desvio copiado; `from`, um retângulo maior de onde o grão pode vir (a linha
+ * inteira da moldura), sem o que fica em `skip` (o símbolo da coleção, o custo).
  */
-export function regrain(img: ImageData, rect: Rect, hole: Uint8Array): void {
-  const w = rect.x1 - rect.x0;
-  const h = rect.y1 - rect.y0;
+export function regrain(
+  img: ImageData,
+  rect: Rect,
+  hole: Uint8Array,
+  { ceiling = 40, from, skip = [] }: { ceiling?: number; from?: Rect; skip?: Rect[] } = {},
+): void {
+  const R = from ?? rect;
+  const w = R.x1 - R.x0;
+  const h = R.y1 - R.y0;
   if (w <= 0 || h <= 0) return;
+  // `local` é o que recebe o grão (o buraco dentro de `rect`); `unknown`, o que não serve de fonte
   const local = new Uint8Array(w * h);
+  const unknown = new Uint8Array(w * h);
   const weight = new Float32Array(w * h);
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
-      const v = hole[(rect.y0 + y) * img.width + rect.x0 + x];
-      local[y * w + x] = v;
-      weight[y * w + x] = v ? 1 : 0;
+      const gx = R.x0 + x;
+      const gy = R.y0 + y;
+      const v = hole[gy * img.width + gx];
+      const inside = gx >= rect.x0 && gx < rect.x1 && gy >= rect.y0 && gy < rect.y1;
+      local[y * w + x] = v && inside ? 1 : 0;
+      unknown[y * w + x] = v || skip.some((s) => gx >= s.x0 && gx < s.x1 && gy >= s.y0 && gy < s.y1) ? 1 : 0;
+      weight[y * w + x] = local[y * w + x];
     }
   const r = Math.max(1, Math.round((2 * img.width) / 745));
   const base = [0, 1, 2].map((c) => {
     const v = new Float32Array(w * h);
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) v[y * w + x] = img.data[((rect.y0 + y) * img.width + rect.x0 + x) * 4 + c];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) v[y * w + x] = img.data[((R.y0 + y) * img.width + R.x0 + x) * 4 + c];
     return boxMean(v, weight, w, h, r);
   });
   // O grão de cada ponto vai até 2 + 3 vezes o grão fino da vizinhança: o desvio copiado vem
@@ -1041,12 +1055,13 @@ export function regrain(img: ImageData, rect: Rect, hole: Uint8Array): void {
   // poucas). Na retícula e no brilho do foil o grão fino é forte, e volta inteiro.
   const unit = img.width / 745;
   const ones = new Float32Array(w * h).fill(1);
-  const near = boxMean(weight, ones, w, h, Math.max(2, Math.round(3 * unit)));
+  const unknownW = new Float32Array(w * h);
+  for (let k = 0; k < w * h; k++) unknownW[k] = unknown[k];
+  const near = boxMean(unknownW, ones, w, h, Math.max(2, Math.round(3 * unit)));
   const lum = new Float32Array(w * h);
-  for (let y = 0; y < h; y++)
-    for (let x = 0; x < w; x++) lum[y * w + x] = luminance(img.data, ((rect.y0 + y) * img.width + rect.x0 + x) * 4);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) lum[y * w + x] = luminance(img.data, ((R.y0 + y) * img.width + R.x0 + x) * 4);
   const known = new Float32Array(w * h);
-  for (let k = 0; k < w * h; k++) known[k] = local[k] ? 0 : 1;
+  for (let k = 0; k < w * h; k++) known[k] = unknown[k] ? 0 : 1;
   const smooth = boxMean(lum, known, w, h, Math.max(1, Math.round(unit)));
   const B = Math.max(8, Math.round(16 * unit));
   const bw = Math.ceil(w / B);
@@ -1077,16 +1092,17 @@ export function regrain(img: ImageData, rect: Rect, hole: Uint8Array): void {
     }
   addGrain(
     img,
-    rect,
+    R,
     local,
     (k, c) => base[c][k],
     10,
-    local,
+    unknown,
     (k) => {
       const x = k % w;
       const y = (k - x) / w;
       return 2 + 3 * fine[Math.floor(y / B) * bw + Math.floor(x / B)];
     },
+    ceiling,
   );
 }
 
@@ -1204,6 +1220,8 @@ function addGrain(
   unknown: Uint8Array = mask,
   /** teto do grão em cada ponto, além do teto do papel (ver `regrain`) */
   limitAt?: (k: number) => number,
+  /** teto do desvio copiado nos remendos (ver `regrain`) */
+  ceiling = 40,
 ): void {
   const w = rect.x1 - rect.x0;
   const h = rect.y1 - rect.y0;
@@ -1213,7 +1231,7 @@ function addGrain(
   // reproduzem também os veios maiores do papel; ponto a ponto, sobrava um trecho liso
   const patch = ry > 1;
   const radius = patch ? 8 : 3;
-  const limit = patch ? 40 : 20;
+  const limit = patch ? ceiling : 20;
   const chan = [0, 1, 2].map((c) => {
     const v = new Float32Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) v[y * w + x] = img.data[((rect.y0 + y) * img.width + rect.x0 + x) * 4 + c];

@@ -1,5 +1,77 @@
 [
   {
+    "id": "18d9c85a-ba8e-40d4-ab09-1a22a7462030",
+    "oracle_id": "6e3befe3-38c1-42d1-8825-c40eb0c6adec",
+    "set": "10e",
+    "number": "244",
+    "nome": "Uncontrollable Anger",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "a80e1e4c-4b53-41d2-b038-2f9135d8455d",
+    "oracle_id": "20d69989-7250-40c7-a064-8ed78ccbe556",
+    "set": "2ed",
+    "number": "129",
+    "nome": "Simulacrum",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "df03759e-17a0-4191-bd4d-e823846924ce",
+    "oracle_id": "342199e0-15b6-4824-83da-25caef2592b3",
+    "set": "2ed",
+    "number": "158",
+    "nome": "Hill Giant",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "a804f742-f7cf-427e-ad0a-742587328156",
+    "oracle_id": "1973f1e9-aa14-49dc-bafe-be17b30ba288",
+    "set": "2ed",
+    "number": "242",
+    "nome": "Dingus Egg",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "076d132a-fa3d-464b-b5f9-a12e46c9f2df",
+    "oracle_id": "cd0d7141-46d2-4aa3-bc77-6b3b4513803e",
+    "set": "2ed",
+    "number": "53",
+    "nome": "Control Magic",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "3561cc9a-9270-4c75-90ca-1425b2724abc",
+    "oracle_id": "7a7425ba-4478-4bc4-855f-abf947ea4fa2",
+    "set": "3ed",
+    "number": "212",
+    "nome": "Lure",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "5cbc686e-a8ef-40de-b79a-803ef42f8384",
+    "oracle_id": "736892cb-a34b-4bb9-b56c-e26e3db207a2",
+    "set": "3ed",
+    "number": "263",
+    "nome": "Mana Vault",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "97fa5f07-46ba-408d-a861-bdb1791cc188",
+    "oracle_id": "4b7ac066-e5c7-43e6-9e7e-2739b24a905d",
+    "set": "3ed",
+    "number": "40",
+    "nome": "Serra Angel",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "f3575259-b019-47d0-a6d3-3fe4963294ae",
+    "oracle_id": "df2738fe-9cd1-4347-8808-105fcfde1190",
+    "set": "4ed",
+    "number": "17",
+    "nome": "Circle of Protection: Red",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "62906879-fcc3-4ede-aa9e-b63d963d331a",
     "oracle_id": "a361fdd1-7f97-4aed-8e24-ab2a03387f73",
     "set": "afr",
@@ -8,11 +80,51 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "96fff700-af02-4861-b7ed-be9950e69bf1",
+    "oracle_id": "bd3e55cf-ffca-402c-91ea-2420035a9dd1",
+    "set": "all",
+    "number": "109",
+    "nome": "Surge of Strength",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "35a8080f-ca3c-46fe-81cf-003ac7ba7f24",
+    "oracle_id": "99dcde0b-4f4d-4d7a-89aa-8a89c256e38f",
+    "set": "all",
+    "number": "116a",
+    "nome": "Aesthir Glider",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "1438606d-556d-4b96-9662-fcac051af045",
+    "oracle_id": "5028dfe8-c505-4643-b493-760b1f19d47f",
+    "set": "all",
+    "number": "141",
+    "nome": "School of the Unseen",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "e8f109f1-9798-4bd3-b51a-49f173251dfd",
     "oracle_id": "cb32ab3e-ef76-4afb-959f-f8cc2d18416e",
     "set": "apc",
     "number": "131",
     "nome": "Night // Day",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "c321d0e1-ff30-4424-979b-25e1a33e45d5",
+    "oracle_id": "a3fb7228-e76b-4e96-a40e-20b5fed75685",
+    "set": "arn",
+    "number": "77",
+    "nome": "Mountain",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "cc78f2e5-c02b-4f58-8510-660ca27d9a71",
+    "oracle_id": "32fbb638-ab14-4e8b-a07a-d4c44e3496f2",
+    "set": "atq",
+    "number": "85d",
+    "nome": "Urza's Tower",
     "grupo": "citada nos documentos"
   },
   {
@@ -37,6 +149,70 @@
     "set": "c16",
     "number": "268",
     "nome": "Rakdos Signet",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "9ef11af8-3050-4ee7-a287-a53cc9fe38c6",
+    "oracle_id": "92d6af2f-728e-4e41-87cb-5c90878a2f2f",
+    "set": "ced",
+    "number": "141",
+    "nome": "Disintegrate",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "e7bf120c-c229-4c97-8d88-09d8a6c7ba78",
+    "oracle_id": "1a91ca69-e890-41dc-866b-3aabf10c9a9c",
+    "set": "ced",
+    "number": "22",
+    "nome": "Guardian Angel",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "5c6db89c-21ce-4123-955a-310c3978b2fc",
+    "oracle_id": "a3fb7228-e76b-4e96-a40e-20b5fed75685",
+    "set": "ced",
+    "number": "297",
+    "nome": "Mountain",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "6f36c32e-e750-4895-b6de-7f489fe17f41",
+    "oracle_id": "f75f9006-217d-4ec8-9c35-ceefe1c5ae4e",
+    "set": "cei",
+    "number": "110",
+    "nome": "Frozen Shade",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "660ee846-668e-4b3a-b5d3-0dd0d3afd175",
+    "oracle_id": "3912d21e-1ebc-4a81-9dc9-f404248d564a",
+    "set": "cei",
+    "number": "149",
+    "nome": "Fire Elemental",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "9ffc356f-9053-435c-ac1c-e36c2806b6fa",
+    "oracle_id": "6ad8011d-3471-4369-9d68-b264cc027487",
+    "set": "cei",
+    "number": "270",
+    "nome": "Sol Ring",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "cdb19bc2-1ebc-4f5c-92cb-66e22a0d92f0",
+    "oracle_id": "cd8ae9f2-edac-473a-8846-c08219e617c3",
+    "set": "cei",
+    "number": "82",
+    "nome": "Steal Artifact",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "52263b78-9829-4778-b7a9-8c4a97d1c6df",
+    "oracle_id": "32fbb638-ab14-4e8b-a07a-d4c44e3496f2",
+    "set": "chr",
+    "number": "116c",
+    "nome": "Urza's Tower",
     "grupo": "citada nos documentos"
   },
   {
@@ -109,6 +285,30 @@
     "set": "dmr",
     "number": "264",
     "nome": "Glory",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "42dcceee-2a47-4eaa-a6a3-2931b3d50244",
+    "oracle_id": "38a12bd7-4394-44a8-91a0-6a4ff7fa4f71",
+    "set": "drk",
+    "number": "117",
+    "nome": "Maze of Ith",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "f395278e-6d74-4f35-af9d-21bad7b19763",
+    "oracle_id": "20347559-95a9-4689-bb79-c5bb3809b719",
+    "set": "drk",
+    "number": "76",
+    "nome": "Elves of Deep Shadow",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "5542d236-af43-43b8-b30f-8980d74bbdd0",
+    "oracle_id": "5314e57b-107c-4478-9cdb-51d1732f9468",
+    "set": "drk",
+    "number": "94",
+    "nome": "Scarwood Goblins",
     "grupo": "citada nos documentos"
   },
   {
@@ -208,6 +408,30 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "5c7fb804-65ba-477e-93e8-eea101c1521e",
+    "oracle_id": "b6b6e085-eef8-486d-9d66-1b7f1ee7d0dc",
+    "set": "fem",
+    "number": "23b",
+    "nome": "Merseine",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "58e125c6-81dc-4907-aad2-2ccd1cb166f0",
+    "oracle_id": "992d9a72-d34d-47d7-96fb-37f0efb515ef",
+    "set": "fem",
+    "number": "38c",
+    "nome": "Hymn to Tourach",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "2be5ab7a-e7db-4c09-8df2-6fe55fa4a116",
+    "oracle_id": "26112ba7-2859-4af3-93c3-e62c31177216",
+    "set": "fem",
+    "number": "8c",
+    "nome": "Icatian Javelineers",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "8fcf3fbb-1ddd-437e-81c1-f5a3133f5ee8",
     "oracle_id": "6d3ca5cb-781d-4608-b7f1-38c020536376",
     "set": "fin",
@@ -280,6 +504,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "cd736532-8e98-4f4a-b48f-a66c57efcbfd",
+    "oracle_id": "51635f96-af1d-4b33-9118-432495aaf07f",
+    "set": "hml",
+    "number": "115",
+    "nome": "Wizards' School",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "1127eb51-50ef-47f3-abfe-48895c832296",
     "oracle_id": "2550099d-b3e2-4eb6-9f36-0fc412828ca6",
     "set": "hoc",
@@ -293,6 +525,14 @@
     "set": "hoc",
     "number": "77",
     "nome": "Sauron, the Lidless Eye",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "b1420ec5-367c-4514-86c5-3993bf339e37",
+    "oracle_id": "b1e1ebc8-cd09-4280-a169-58ab7ece43ff",
+    "set": "ice",
+    "number": "267",
+    "nome": "Tarpan",
     "grupo": "citada nos documentos"
   },
   {
@@ -349,6 +589,94 @@
     "set": "lci",
     "number": "344",
     "nome": "Roaming Throne",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "7ffaedb9-25f8-4304-9085-e12505b93312",
+    "oracle_id": "0b8e3f9b-a4da-49a3-8545-ce7a265e5856",
+    "set": "lea",
+    "number": "176",
+    "nome": "Stone Giant",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "a8917dc8-01c0-4e72-9310-c4d501775411",
+    "oracle_id": "57f90b30-bcb0-447e-8788-5c5ded187207",
+    "set": "lea",
+    "number": "212",
+    "nome": "Natural Selection",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "13a68a17-22ee-47c9-870a-83e911862b94",
+    "oracle_id": "5ba73182-30a7-4bad-9cb6-c0feecc2db33",
+    "set": "lea",
+    "number": "260",
+    "nome": "Meekstone",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "15967a39-303f-457d-bcde-51837c8d63e1",
+    "oracle_id": "7861ac9b-3024-4935-804c-2ca4c5a46bf4",
+    "set": "lea",
+    "number": "5",
+    "nome": "Black Ward",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "995b58e6-5c69-4fdf-9c41-61cef7a610c4",
+    "oracle_id": "16cf1cf9-6900-406c-a5b4-0e5750f530e0",
+    "set": "leb",
+    "number": "122",
+    "nome": "Plague Rats",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "a2b5f545-a87d-4292-880f-5cd2f6755748",
+    "oracle_id": "0b8e3f9b-a4da-49a3-8545-ce7a265e5856",
+    "set": "leb",
+    "number": "177",
+    "nome": "Stone Giant",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "6ab1d885-989c-4d71-8139-9e35d2f16d03",
+    "oracle_id": "912164c2-b4d4-42e3-a10e-903b8c7b2e6d",
+    "set": "leb",
+    "number": "24",
+    "nome": "Holy Armor",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "f3020304-7a39-411e-b055-3ade72b4bff8",
+    "oracle_id": "d47e55a6-7a16-4ed9-a94b-f1575588ee9e",
+    "set": "leg",
+    "number": "118",
+    "nome": "Syphon Soul",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "c99a3abc-e2a3-4eee-8f72-b1b25dcd1d0b",
+    "oracle_id": "0fd1ddc3-65cc-489f-81b9-6c144843fc67",
+    "set": "leg",
+    "number": "284",
+    "nome": "Life Matrix",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "9de534ff-fb48-4692-bd0f-dd237ca28502",
+    "oracle_id": "d410027b-1c22-461e-939d-06a2c851352e",
+    "set": "leg",
+    "number": "309",
+    "nome": "Unholy Citadel",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "df608b59-cc07-4e1d-b6d6-f15e69b15b92",
+    "oracle_id": "ca00eb17-e5c3-42c8-a665-431f5f95b67f",
+    "set": "leg",
+    "number": "35",
+    "nome": "Seeker",
     "grupo": "citada nos documentos"
   },
   {
@@ -904,6 +1232,22 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "ce4296cb-50f7-4a31-8dd1-b4e1d647df87",
+    "oracle_id": "7810915f-df4d-445a-8ba8-fe6ed3abf1ae",
+    "set": "sum",
+    "number": "232",
+    "nome": "Aladdin's Ring",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "c0924444-2a53-4c1f-a273-f9e48560bef6",
+    "oracle_id": "eb098958-50d3-4476-ba74-382033703ff9",
+    "set": "sum",
+    "number": "43",
+    "nome": "Wall of Swords",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "49b5b348-1415-4062-a2a7-017694424c05",
     "oracle_id": "eea6ba94-8755-45c0-94ea-cde68e4a1e7c",
     "set": "thb",
@@ -966,6 +1310,326 @@
     "number": "329",
     "nome": "Circle of Confinement",
     "grupo": "citada nos documentos"
+  },
+  {
+    "id": "1dba16d3-292d-430c-88cc-c49ded13effb",
+    "oracle_id": "9a40614b-50a3-422c-849e-53c8b7d3d204",
+    "set": "2ed",
+    "number": "147",
+    "nome": "Earthquake",
+    "grupo": "1993"
+  },
+  {
+    "id": "a38b2f1c-a69b-467a-a749-d7fbc1fb6dbb",
+    "oracle_id": "8da8644c-75a1-4fe9-8e94-900d948d631c",
+    "set": "2ed",
+    "number": "23",
+    "nome": "Healing Salve",
+    "grupo": "1993"
+  },
+  {
+    "id": "9254b0be-d350-41c1-8ed9-41a22525adf9",
+    "oracle_id": "c071be90-0531-40cc-af46-0cbe80c4ddd4",
+    "set": "2ed",
+    "number": "31",
+    "nome": "Pearled Unicorn",
+    "grupo": "1993"
+  },
+  {
+    "id": "fa161987-2dd1-4efe-b934-acbd93653169",
+    "oracle_id": "cc7f290f-ca00-4285-9bdb-4b4402444f30",
+    "set": "2ed",
+    "number": "63",
+    "nome": "Lord of Atlantis",
+    "grupo": "1993"
+  },
+  {
+    "id": "b6647e7d-b0ad-4170-8dce-ea4c89897c6a",
+    "oracle_id": "dafe63ef-f3d6-45e7-877a-573da92ba85e",
+    "set": "3ed",
+    "number": "122",
+    "nome": "Pestilence",
+    "grupo": "1993"
+  },
+  {
+    "id": "919f184b-421c-413c-a95c-05bb145f93ba",
+    "oracle_id": "11720db4-5b6b-49ba-bf31-4d944921d6f1",
+    "set": "3ed",
+    "number": "272",
+    "nome": "Rocket Launcher",
+    "grupo": "1993"
+  },
+  {
+    "id": "9521375e-0bc1-45ef-b513-6d332a25f9d2",
+    "oracle_id": "4457ed35-7c10-48c8-9776-456485fdf070",
+    "set": "4ed",
+    "number": "208",
+    "nome": "Lightning Bolt",
+    "grupo": "1993"
+  },
+  {
+    "id": "c14d2c73-1934-4504-bbfb-62ba82e0a0e3",
+    "oracle_id": "f7ac18bc-ea63-4808-b709-92c1e69cf541",
+    "set": "all",
+    "number": "20",
+    "nome": "Unlikely Alliance",
+    "grupo": "1993"
+  },
+  {
+    "id": "d22104df-8147-45fd-897a-f99a815be062",
+    "oracle_id": "57aeb106-dc4f-4069-b596-f997263dc0cf",
+    "set": "all",
+    "number": "38",
+    "nome": "Suffocation",
+    "grupo": "1993"
+  },
+  {
+    "id": "7d39be8d-26fe-4598-80d7-4ac73e41f943",
+    "oracle_id": "4ff9af56-ac18-4966-9e48-183e1ca1c2d0",
+    "set": "ced",
+    "number": "209",
+    "nome": "Living Artifact",
+    "grupo": "1993"
+  },
+  {
+    "id": "e42cbf92-2c44-4534-bc35-97fdf7905760",
+    "oracle_id": "727ab7f2-741e-4442-b5cb-e3032549fa87",
+    "set": "ced",
+    "number": "21",
+    "nome": "Green Ward",
+    "grupo": "1993"
+  },
+  {
+    "id": "a58fe572-1115-49cb-b803-c925232ae69b",
+    "oracle_id": "aa5e6894-8c97-46f8-a0fd-07c6db51e9a7",
+    "set": "ced",
+    "number": "226",
+    "nome": "Wall of Wood",
+    "grupo": "1993"
+  },
+  {
+    "id": "42d09ab8-6696-47d5-9c0f-409bcd7b04e1",
+    "oracle_id": "837182db-1bf3-4a2c-bd01-1af9d9873561",
+    "set": "ced",
+    "number": "87",
+    "nome": "Unsummon",
+    "grupo": "1993"
+  },
+  {
+    "id": "1df15316-3916-4f1d-8145-5d29a07e6bac",
+    "oracle_id": "8ffe4986-9e09-4421-ad26-296a4c0df9e4",
+    "set": "cei",
+    "number": "133",
+    "nome": "Wall of Bone",
+    "grupo": "1993"
+  },
+  {
+    "id": "1fd3860d-c303-4936-a4f1-eeeac77a18e7",
+    "oracle_id": "0b8e3f9b-a4da-49a3-8545-ce7a265e5856",
+    "set": "cei",
+    "number": "177",
+    "nome": "Stone Giant",
+    "grupo": "1993"
+  },
+  {
+    "id": "5b61d695-5594-4885-abe1-8a7a548f8f12",
+    "oracle_id": "cd30a128-4b23-476e-8066-2272fdc395d9",
+    "set": "cei",
+    "number": "243",
+    "nome": "Disrupting Scepter",
+    "grupo": "1993"
+  },
+  {
+    "id": "5510650a-8399-46a4-8c68-90c892c476d7",
+    "oracle_id": "42226b87-0746-4ebf-9fd0-108d508462af",
+    "set": "cei",
+    "number": "52",
+    "nome": "Clone",
+    "grupo": "1993"
+  },
+  {
+    "id": "d36351c7-1383-448a-b9f8-c4f8d924d449",
+    "oracle_id": "c6b3f924-806d-47d3-b044-72b48470196c",
+    "set": "cei",
+    "number": "71",
+    "nome": "Pirate Ship",
+    "grupo": "1993"
+  },
+  {
+    "id": "b401d253-4e51-42db-91cc-ac8cc3d06ae6",
+    "oracle_id": "42c7e933-f169-444b-917d-b4dca918d989",
+    "set": "chr",
+    "number": "23",
+    "nome": "Puppet Master",
+    "grupo": "1993"
+  },
+  {
+    "id": "14c65a4e-ea5a-4cad-9542-1cfd18eb3c25",
+    "oracle_id": "10889b44-d031-413c-a8c4-d6c13c400e01",
+    "set": "chr",
+    "number": "28",
+    "nome": "Wall of Wonder",
+    "grupo": "1993"
+  },
+  {
+    "id": "cd3890d1-563d-4519-ab8c-913031d71918",
+    "oracle_id": "0d058991-3751-4afe-80c9-79f0c6e10282",
+    "set": "fem",
+    "number": "61a",
+    "nome": "Orcish Spy",
+    "grupo": "1993"
+  },
+  {
+    "id": "5af19ab0-4bd0-4d5f-8d2e-507e4fe87c18",
+    "oracle_id": "f6ea2b1b-1403-4ccd-a23c-48e0e81ceb91",
+    "set": "fem",
+    "number": "63",
+    "nome": "Orgg",
+    "grupo": "1993"
+  },
+  {
+    "id": "4b456355-9f73-45c2-9554-6e6b20d949a1",
+    "oracle_id": "bc416c17-e1f0-4344-8c21-6184cac10205",
+    "set": "hml",
+    "number": "67b",
+    "nome": "Anaba Shaman",
+    "grupo": "1993"
+  },
+  {
+    "id": "de89e9e1-485b-42e5-9728-5d6f948999e1",
+    "oracle_id": "413172aa-b508-4e67-b68e-6a749d2e8130",
+    "set": "ice",
+    "number": "290",
+    "nome": "Flooded Woodlands",
+    "grupo": "1993"
+  },
+  {
+    "id": "768c4d8f-5700-4f0a-9ff2-58422aeb1dac",
+    "oracle_id": "b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6",
+    "set": "ice",
+    "number": "382",
+    "nome": "Forest",
+    "grupo": "1993"
+  },
+  {
+    "id": "4c0ad95c-d62c-4138-ada0-fa39a63a449e",
+    "oracle_id": "5f0d3be8-e63e-4ade-ae58-6b0c14f2ce6d",
+    "set": "ice",
+    "number": "383",
+    "nome": "Snow-Covered Forest",
+    "grupo": "1993"
+  },
+  {
+    "id": "e9be6dcf-5e25-4b8c-9cd0-badf3771f81e",
+    "oracle_id": "e0fefaf0-da20-4d58-8db7-019dba16c780",
+    "set": "lea",
+    "number": "125",
+    "nome": "Scathe Zombies",
+    "grupo": "1993"
+  },
+  {
+    "id": "41faed1a-ded8-49ee-8e2a-c60d377775d7",
+    "oracle_id": "608cc65c-f99a-4ca3-be24-190d2556b411",
+    "set": "lea",
+    "number": "90",
+    "nome": "Wall of Water",
+    "grupo": "1993"
+  },
+  {
+    "id": "67d1945d-d228-4dc3-a593-859408b2016b",
+    "oracle_id": "60ba93eb-39e6-4af2-9c66-cd38f72daff2",
+    "set": "leb",
+    "number": "39",
+    "nome": "Savannah Lions",
+    "grupo": "1993"
+  },
+  {
+    "id": "0aa81390-4e0b-484b-a5be-a9449cd41860",
+    "oracle_id": "cba229fa-9035-405b-b091-3798898a37ee",
+    "set": "leb",
+    "number": "64",
+    "nome": "Magical Hack",
+    "grupo": "1993"
+  },
+  {
+    "id": "f486df00-7c4a-4ff0-bb0b-c8b5432ac742",
+    "oracle_id": "92eed395-62ca-4293-882b-8565c40daab5",
+    "set": "leg",
+    "number": "207",
+    "nome": "Sylvan Library",
+    "grupo": "1993"
+  },
+  {
+    "id": "25a173fd-e10c-45f8-a6e5-ad7a747a8050",
+    "oracle_id": "b5e44bd6-0b67-4770-868d-c46af5b6a42f",
+    "set": "leg",
+    "number": "86",
+    "nome": "Zephyr Falcon",
+    "grupo": "1993"
+  },
+  {
+    "id": "45d8846a-ce2e-4261-908a-29fb1ef7caa1",
+    "oracle_id": "45b94e3c-a905-435b-aee5-bec9239fd24c",
+    "set": "rqs",
+    "number": "15",
+    "nome": "Bog Imp",
+    "grupo": "1993"
+  },
+  {
+    "id": "e3e847b8-7fb4-4455-b859-2d68a9f44061",
+    "oracle_id": "8ffe4986-9e09-4421-ad26-296a4c0df9e4",
+    "set": "rqs",
+    "number": "26",
+    "nome": "Wall of Bone",
+    "grupo": "1993"
+  },
+  {
+    "id": "353b0834-1c08-478f-a3a9-1f17b51494de",
+    "oracle_id": "e7b91fba-8d96-4040-95e8-f0023b65c497",
+    "set": "rqs",
+    "number": "47",
+    "nome": "Battering Ram",
+    "grupo": "1993"
+  },
+  {
+    "id": "30125a5d-f9cd-47df-9314-5ba2deff35ba",
+    "oracle_id": "e0fefaf0-da20-4d58-8db7-019dba16c780",
+    "set": "sum",
+    "number": "127",
+    "nome": "Scathe Zombies",
+    "grupo": "1993"
+  },
+  {
+    "id": "ce4c5db4-6532-417d-9c66-2eafda11f133",
+    "oracle_id": "9a40614b-50a3-422c-849e-53c8b7d3d204",
+    "set": "sum",
+    "number": "148",
+    "nome": "Earthquake",
+    "grupo": "1993"
+  },
+  {
+    "id": "0a5453f5-065b-4134-b6f5-2f1cf460a9ac",
+    "oracle_id": "1940e56d-0972-4ca4-946c-bbd42dde1dcb",
+    "set": "sum",
+    "number": "241",
+    "nome": "Conservator",
+    "grupo": "1993"
+  },
+  {
+    "id": "0d446f70-cdbf-4ac3-81db-6fe77e064dd0",
+    "oracle_id": "a3fb7228-e76b-4e96-a40e-20b5fed75685",
+    "set": "sum",
+    "number": "302",
+    "nome": "Mountain",
+    "grupo": "1993"
+  },
+  {
+    "id": "d9785c6c-9f02-45bc-89e5-ea5dd0e768df",
+    "oracle_id": "837417d8-8260-486d-a3ed-3b5711eaf34a",
+    "set": "sum",
+    "number": "34",
+    "nome": "Resurrection",
+    "grupo": "1993"
   },
   {
     "id": "5026d8d4-bafd-4d98-8dee-23fb43b45e89",

@@ -310,6 +310,28 @@ Medidas nas imagens do Scryfall, na carta deitada (1040 × 745):
 
 O papel da caixa não sai pela medida das cartas de pé (`insideBoxSides`): o degrau do papel para o bisel claro das azuis fica abaixo de 20 tons em boa parte das linhas, e a beira do pergaminho fica fora da busca dela. A distância de cor até o papel do miolo separa os três desenhos: numa coluna de papel ela fica de 6 a 26 (o grão das vermelhas é o mais forte), no bisel de 14 a 60 e na moldura acima de 30; o limite de 1,6 vez a do papel, mais 6, para no lugar certo nas 26 caixas. O texto alinhado varia por metade, não por carta: no Wax // Wane, o da esquerda é alinhado à esquerda e o da direita, centralizado. Nos dados, das 10 cartas, 2 têm o texto impresso em PT (Order // Chaos e Assault // Battery, este com o texto antigo da de Time Spiral), 1 o do Arena (Life // Death) e 7 só a tradução não oficial, com os nomes impressos em PT.
 
+### Moldura de 1993 (26/11/2026)
+
+A moldura que o Scryfall chama de `1993` vai de Alpha (1993) a Alliances (1996), com as edições básicas até a 4ª, as Collectors' Editions, Chronicles, Summer Magic, os decks de introdução da época e as promos (Arena League, livros, Harper Prism): 3.090 impressões em inglês, 1.754 de borda preta, 1.100 de borda branca e 236 douradas, do Campeonato Mundial.
+
+Medidas nas imagens do Scryfall (745 × 1040), em 149 impressões de 24 coleções:
+
+| Medida | Valor |
+|---|---|
+| Letras | claras com sombra nas molduras escuras de Revised em diante; "gravadas" (miolo cinza um pouco mais claro que a moldura, contorno escuro, brilho claro do outro lado) de Alpha a Unlimited, nas Collectors' Editions e nas molduras claras; traço de 1 ou 2 px nas gravadas |
+| Retícula | de Alpha a Revised, nas Collectors' Editions, em Legends e em Summer Magic: 40 tons ou mais de um ponto a outro; some numa gaussiana de 1,2 px, o traço das letras fica |
+| Nome | primeira letra em x ≈ 51 a 67 (69 a 79 nas terras da Arena League); linha de base de 70 a 88; de Alpha a Revised, nas Collectors' Editions e na Arena League (linha de base de 79 para baixo) o nome tem 93% da largura dele na Goudy Medieval de 41,5 px, e de 4ª em diante, ~102% |
+| Custo | círculos de ≈ 35 px, um a cada 40,5, o último acabando em x ≈ 676 a 681 |
+| Tipo | primeira letra em x ≈ 62 a 86, linha de base de 606 a 616, serifada de ≈ 33 px; "Summon Giant", "Enchant Creature", "Mono Artifact" de Alpha a Revised |
+| Símbolo da coleção | na ponta direita da linha de tipo, de x ≈ 570 (a cimitarra de Arabian Nights) a 690; as básicas até a Revised e as Collectors' Editions não têm |
+| Caixa | papel de x ≈ 80 a 104 até 642 a 670 e de y ≈ 615 a 632 até 910 a 946; bisel com fio, pergaminho queimado nas pretas, tábuas nas verdes, papel texturizado nas brancas e nos artefatos |
+
+A faixa das letras sai melhor pela energia da imagem bem alisada (a média, linha a linha, da diferença de brilho entre colunas vizinhas numa gaussiana de 1,6 px) que pixel a pixel: o pé da faixa fica na linha de base (diferença mediana de 0 px contra a medida das letras claras) e o fim do primeiro trecho, no fim do texto em inglês (3 a 6 px depois, salvo bolhas da pedra coladas). O começo do trecho não serve: a beira da moldura (x ≈ 46) e o canto da arte, na linha de tipo, também têm energia.
+
+A caixa muda de papel com a cor: a água das azuis, a pedra das vermelhas, as tábuas das verdes, o pergaminho queimado das pretas, o mosaico dos artefatos e, claros e sem cor (mediana do brilho de 150 para cima e da diferença entre os canais até 34, e a cor das médias de blocos de 10 px quase sem variar, 20 das 149 da amostra), a renda das brancas, a névoa das douradas e o papel das terras. Nos cinco primeiros o apagamento de sempre (a pirâmide com o grão copiado) não deixa marca, desde que a beira queimada e o bisel não sirvam de fonte. Na renda, com o texto denso, ele deixava um cinza liso e manchado, com tracinhos do grão copiado da renda nas linhas apagadas (Wall of Swords, SUM 43), e a rede neural refaz uma textura parecida, sem as manchas; no mosaico, de pedras de cores diferentes, ela borrava as pedras, e a pirâmide acerta.
+
+A escolha (ADR 0039): o estilo, o tamanho e a linha medidos no inglês; quando a medida não fecha, a faixa inteira à rede neural, em dois quadros na resolução da imagem; a caixa medida pela cor e as letras dela numa cópia alisada.
+
 ### Marcas-d'água na moldura de 2003 (25/11/2026)
 
 Como as ferramentas existentes fazem: o Proxyshop não reaproveita a imagem; ele monta a carta do zero e põe a marca-d'água como uma camada vetorial, desenhada à parte a partir do nome que o Scryfall dá (`watermark`). O Proxinho escreve sobre a digitalização, então a marca já está lá e precisa ficar: apagar a caixa inteira levava a marca junto, e apagar só onde as letras passam deixava a marca em cacos. A saída é a mesma da arte sem borda (ADR 0012): só as letras saem da máscara, e a rede neural (LaMa) refaz o que estava por baixo delas, a marca inclusive.

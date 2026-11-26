@@ -188,3 +188,13 @@ Como jogador, quero imprimir em português as artes da moldura antiga (Mirage a 
 - [x] O custo de mana e o símbolo da coleção ficam como estão, e o tipo em PT vai até o símbolo.
 - [x] Quando a carta tem arte na moldura atual ou na de 2003, ela continua sendo a padrão; a antiga aparece na gaveta e vira a padrão só quando é a única em PT.
 - [x] Sem a rede neural, a carta sai na original, e a etiqueta diz que o apagador de texto não rodou. O nome em PT começa depois da lápide de Odyssey a Scourge, que fica como está. As impressões com marca-d'água, os planeswalkers e a Secret Lair na moldura antiga saem na original, e a etiqueta diz que saem em inglês.
+
+### H19. Moldura de 1993 (entregue em 26/11/2026, ADR 0039)
+Como jogador, quero imprimir em português as artes da moldura de 1993 (Alpha a Alliances: as edições básicas até a 4ª, as Collectors' Editions, Arabian Nights, Antiquities, Legends, The Dark, Fallen Empires, Homelands, Ice Age, Chronicles e as promos da época), inclusive das cartas que só têm arte nela.
+- [x] As cartas normais na moldura de 1993, com borda preta ou branca, saem em português, com o nome e o tipo no estilo de letra da própria carta: brancas com sombra nas molduras escuras de Revised em diante, "gravadas" (miolo cinza, contorno escuro e brilho claro) de Alpha a Unlimited, nas Collectors' Editions e nas molduras claras.
+- [x] O nome sai na Goudy Medieval do tamanho do nome em inglês da carta (menor de Alpha a Revised), a partir da primeira letra dele; o tipo, na serifada do texto, até o símbolo da coleção.
+- [x] O inglês sai inteiro também nas digitalizações com a retícula da impressão, sem fantasma embaixo do português, no nome, no tipo e na caixa.
+- [x] A caixa apagada fica com a textura dela, sem mancha: a beira queimada do pergaminho das pretas fica como é, e o papel claro (a renda das brancas, a névoa das douradas) é refeito pela rede neural, na cor do papel.
+- [x] O nome sem tradução (o da carta em inglês) fica como está. O terreno básico fica com a caixa vazia, como o texto oficial dele em PT.
+- [x] Quando a carta tem arte na moldura atual, na de 2003 ou na antiga, ela continua sendo a padrão; a de 1993 vira a padrão só quando é a única em PT.
+- [x] Sem a rede neural, a carta sai na original, e a etiqueta diz que o apagador de texto não rodou. As douradas do Campeonato Mundial, as promos da DragonCon e do Celebration e as impressões com marca-d'água saem na original, e a etiqueta diz que saem em inglês.

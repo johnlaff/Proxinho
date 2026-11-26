@@ -495,11 +495,28 @@ def swap_half_names(card: dict) -> dict:
     return {**card, "card_faces": fixed, "printed_name": " // ".join(n or "" for n in names) if all(names) else card.get("printed_name")}
 
 
+def fix_ring_a(card: dict) -> dict:
+    """
+    O "å" no nome impresso em PT é o "â" trocado: o Scryfall tem "Låmpada de Aladin" nas duas
+    impressões de Aladdin's Lamp da Quarta Edição, e o nome saía assim na carta. O português não
+    tem "å"; ele só fica quando o nome em inglês também o tem.
+    """
+    def fixed(f: dict, en: str | None) -> str | None:
+        n = f.get("printed_name")
+        return n.replace("å", "â").replace("Å", "Â") if n and "å" not in (en or "").lower() else n
+
+    faces = card.get("card_faces") or []
+    out = {**card, "printed_name": fixed(card, card.get("name"))}
+    if faces:
+        out["card_faces"] = [{**f, "printed_name": fixed(f, f.get("name"))} for f in faces]
+    return out if out != card else card
+
+
 def read_printed_pt(table: dict[str, dict]):
     """As impressões em PT do cache do Scryfall, com as transcritas completadas (`transcribe`)."""
     with open(CACHE / "scryfall_pt.jsonl") as fh:
         for line in fh:
-            yield swap_half_names(transcribe(json.loads(line), table))
+            yield fix_ring_a(swap_half_names(transcribe(json.loads(line), table)))
 
 
 def load_printed_pt(offline: bool) -> dict[str, dict]:
@@ -1329,8 +1346,9 @@ def drawn_frame(card: dict) -> bool:
 
 
 def frame_supported(card: dict) -> bool:
-    """O motor do Proxinho reescreve a moldura moderna (2015+), a de 2003 a 2014 (ADR 0024) e a
-    antiga, de 1997 a 2003 e das reimpressões retrô (ADR 0031), de layout normal.
+    """O motor do Proxinho reescreve a moldura moderna (2015+), a de 2003 a 2014 (ADR 0024), a
+    antiga, de 1997 a 2003 e das reimpressões retrô (ADR 0031), e a de 1993 a 1996 (ADR 0039), de
+    layout normal.
 
     Outras molduras entram por etapas (docs/roadmap.md). Quando a impressão não é
     suportada, o site mostra a imagem oficial em PT (se houver) ou avisa.
@@ -1338,7 +1356,7 @@ def frame_supported(card: dict) -> bool:
     effects = set(card.get("frame_effects") or [])
     type_line = card.get("type_line", "")
     return (
-        (card.get("frame") == "2015" or frame2003_supported(card) or frame1997_supported(card))
+        (card.get("frame") == "2015" or frame2003_supported(card) or frame1997_supported(card) or frame1993_supported(card))
         and card.get("layout") == "normal"
         and card.get("border_color") in {"black", "white"}
         and not card.get("full_art")
@@ -1385,6 +1403,27 @@ def frame1997_supported(card: dict) -> bool:
         and not card.get("watermark")
         and card.get("set") not in SETS_1997_OFF
     )
+
+
+def frame1993_supported(card: dict) -> bool:
+    """Moldura de 1993 (ADR 0039): de Alpha a Alliances, das edições básicas de Beta a 4ª, das
+    Collectors' Editions, de Chronicles, Summer Magic e das promos da época. Como na antiga, o nome
+    e o tipo ficam sobre a moldura texturizada (claros com sombra ou gravados) e saem pela rede
+    neural; a caixa é de papel. Só a comum: sem efeito nem marca-d'água (nenhuma de 1993 tem) e
+    fora das promos com outro desenho (`SETS_1993_OFF`)."""
+    return (
+        card.get("frame") == "1993"
+        and not card.get("frame_effects")
+        and not card.get("watermark")
+        and card.get("set") not in SETS_1993_OFF
+    )
+
+
+# Promos de 1993 com outro desenho, sem nada que o Scryfall marque: o Nalathni Dragon da DragonCon
+# de 1994 (PDRC 1) tem uma linha "DragonCon 1994" a mais no pé da caixa, com o texto em letra menor,
+# e as duas cartas de comemoração (PCEL: o 1996 World Champion e o Shichifukujin Dragon) têm a caixa
+# e o nome desenhados de outro jeito.
+SETS_1993_OFF = {"pdrc", "pcel"}
 
 
 # Coleções da moldura antiga com o desenho refeito, sem nada que o Scryfall marque: a Secret Lair

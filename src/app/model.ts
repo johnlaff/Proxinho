@@ -125,9 +125,10 @@ function byQuality(a: PrintRecord, b: PrintRecord): number {
     Number(b.highres) - Number(a.highres) ||
     // a arte sem borda só é escolhida pela pessoa: o apagamento da moldura comum é mais seguro
     Number(a.border === "borderless") - Number(b.border === "borderless") ||
-    // a moldura de 2003 (ADR 0024) e a antiga (ADR 0031) também, nessa ordem: com uma arte na
-    // moldura atual, a padrão continua a mesma (e a carta já montada no servidor, ADR 0022,
-    // continua valendo); a antiga, que depende da rede neural, só quando é a única
+    // a moldura de 2003 (ADR 0024), a antiga (ADR 0031) e a de 1993 (ADR 0039) também, nessa
+    // ordem: com uma arte na moldura atual, a padrão continua a mesma (e a carta já montada no
+    // servidor, ADR 0022, continua valendo); as antigas, que dependem da rede neural, só quando
+    // são as únicas
     frameRank(a) - frameRank(b) ||
     Number(a.promo) - Number(b.promo) ||
     Number(isReprintList(a)) - Number(isReprintList(b)) ||
@@ -135,8 +136,9 @@ function byQuality(a: PrintRecord, b: PrintRecord): number {
   );
 }
 
-/** A moldura na escolha inicial: a atual, a de 2003 e a antiga. */
-const frameRank = (p: PrintRecord) => (p.frame === "2003" ? 1 : p.frame === "1997" ? 2 : 0);
+/** A moldura na escolha inicial: a atual, a de 2003, a antiga e a de 1993 (ADR 0039). */
+const FRAME_RANK: Record<string, number> = { "2003": 1, "1997": 2, "1993": 3 };
+const frameRank = (p: PrintRecord) => FRAME_RANK[p.frame ?? ""] ?? 0;
 
 /** "The List" e afins trazem um símbolo de coleção extra que atrapalha o apagamento. */
 function isReprintList(p: PrintRecord): boolean {

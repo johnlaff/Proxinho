@@ -11,7 +11,7 @@ A amostra tem dois pedaços:
    (1997), a sem borda, a arte estendida, as de duas faces, os planeswalkers, as fichas, os
    emblemas, as Sagas, Aventuras, Classes, cartas com Preparar, as Salas de Duskmourn, as
    outras divididas, a Consequência e o Fundir (as da moldura atual e as de 2003), as divididas
-   da moldura antiga, naves e a tradução não oficial.
+   da moldura antiga, a moldura de 1993, naves e a tradução não oficial.
 
 Lê o banco montado pelo pipeline (data/out/cards.sql, depois de `pnpm data:build`). A amostra é
 versionada e só cresce: rodar de novo mantém as impressões que já estão nela e acrescenta as
@@ -65,6 +65,7 @@ GROUPS: dict[str, int] = {
     "dividida de 2003": 10,
     "fundir de 2003": 8,
     "dividida de 1997": 13,
+    "1993": 40,
 }
 
 
@@ -77,6 +78,9 @@ def group_of(row: sqlite3.Row) -> str | None:
     # as divididas dela (ADR 0038) mais tarde ainda, num grupo à parte
     if frame == "1997" and layout == "split":
         return "dividida de 1997"
+    # (e a de 1993, ADR 0039, depois de todas)
+    if frame == "1993":
+        return "1993"
     if frame == "1997":
         return "1997"
     # (e depois a marca-d'água de 2003, ADR 0024, o Preparar, ADR 0032, as Salas, ADR 0033, as
@@ -134,7 +138,8 @@ def cited(db: sqlite3.Connection) -> list[tuple[str, str]]:
         text += "\n" + adr.read_text()
     out: list[tuple[str, str]] = []
     seen: set[tuple[str, str]] = set()
-    for m in re.finditer(r"\b([A-Z][A-Z0-9]{1,4}) (IFIYW-\d+|\d{1,4}[a-z★]?)(?![\d,.])", text):
+    # (o código pode começar por algarismo: "2ED 242", "3ED 40", "2X2 577", "30A")
+    for m in re.finditer(r"\b((?=[A-Z0-9]*[A-Z])[A-Z0-9]{2,5}) (IFIYW-\d+|\d{1,4}[a-z★]?)(?![\d,.])", text):
         key = (m.group(1).lower(), m.group(2))
         if key in seen:
             continue
