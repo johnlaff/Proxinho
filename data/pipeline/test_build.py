@@ -1382,6 +1382,50 @@ class DfcSagaSupported(unittest.TestCase):
         self.assertFalse(face_supported({**self.base, "set": "pneo"}, self.creature))
 
 
+class BattleSupported(unittest.TestCase):
+    """A frente das batalhas (ADR 0048), impressa deitada, com moldura própria."""
+
+    battle = {"type_line": "Battle — Siege"}
+    base = {"frame": "2015", "layout": "transform", "border_color": "black", "frame_effects": [], "set": "mom"}
+
+    def test_frente_de_batalha(self):
+        self.assertTrue(face_supported(self.base, self.battle))
+        # a coroa das lendárias (Invasion of Ikoria) e o fundo de encantamento (Invasion of Theros, INR)
+        self.assertTrue(face_supported({**self.base, "frame_effects": ["legendary", "enchantment"]}, self.battle))
+        # as promos de pré-estreia, com a data
+        self.assertTrue(face_supported({**self.base, "set": "pmom", "promo_types": ["prerelease", "datestamped"]}, self.battle))
+
+    def test_fora(self):
+        # as cartas de teste (The Battle of Dragon Brothers, UNK) têm outro desenho
+        self.assertFalse(face_supported({**self.base, "set": "unk", "promo_types": ["playtest"]}, self.battle))
+        self.assertFalse(face_supported({**self.base, "border_color": "borderless"}, self.battle))
+        self.assertFalse(face_supported({**self.base, "frame_effects": ["showcase"]}, self.battle))
+        self.assertFalse(face_supported({**self.base, "frame": "2003"}, self.battle))
+
+
+class BattleReminder(unittest.TestCase):
+    """O lembrete do Cerco vem das batalhas impressas em PT; o Arena não o traz."""
+
+    EN = "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)"
+    PT = "(Conforme um Cerco entrar no campo de batalha, escolha um oponente para protegê-lo. Você e outros podem atacá-lo. Quando ele for derrotado, exile-o e depois o conjure transformado.)"
+
+    def test_lembrete_das_impressas(self):
+        face = {"type_line": "Battle — Siege", "oracle_text": self.EN + "\nWhen this Siege enters, draw a card.", "printed_text": self.PT + "\nQuando este Cerco entrar, compre um card."}
+        printed = {"a": {"type_line": "Battle — Siege // Creature — Elemental", "card_faces": [face, {"type_line": "Creature — Elemental", "oracle_text": "Trample", "printed_text": "Atropelar"}]}}
+        self.assertEqual(top_reminders(printed), {self.EN: self.PT})
+
+    def test_vai_no_alto_do_texto_do_arena(self):
+        # Invasion of Zendikar: o Arena começa direto pela habilidade
+        texto = "Quando este Cerco entrar, procure em seu grimório até dois cards de terreno básico."
+        en = self.EN + "\nWhen this Siege enters, search your library for up to two basic land cards."
+        self.assertEqual(top_reminder(en, texto, {self.EN: self.PT}), self.PT + "\n" + texto)
+        # Invasion of Innistrad: o lembrete vem antes do "Lampejo", como no Oracle
+        en = self.EN + "\nFlash\nWhen this Siege enters, target creature gets -13/-13."
+        self.assertEqual(top_reminder(en, "Lampejo\nQuando…", {self.EN: self.PT}), self.PT + "\nLampejo\nQuando…")
+        # Invasion of Alara: sem o lembrete no Oracle, a carta impressa também não o traz
+        self.assertEqual(top_reminder("When this Siege enters, exile cards.", "Quando este Cerco entrar, exile cards.", {self.EN: self.PT}), "Quando este Cerco entrar, exile cards.")
+
+
 class PrepareSupported(unittest.TestCase):
     faces = [{"name": "Scathing Shadelock", "power": "4"}, {"name": "Venomous Words"}]
     base = {"frame": "2015", "layout": "prepare", "border_color": "black", "frame_effects": [], "card_faces": faces}
