@@ -14,7 +14,8 @@ A amostra tem dois pedaços:
    da moldura antiga, a moldura de 1993, as criaturas com Mutação e com Subir de Nível, as
    Invocações de Final Fantasy, a frente das cartas de fundir (meld), as cartas viradas de
    Kamigawa (flip), as criaturas com Protótipo, os Casos, as Sagas de duas faces, a frente das
-   batalhas, as cartas de transformar da moldura de 2003, naves e a tradução não oficial.
+   batalhas, as cartas de transformar da moldura de 2003, as cartas de transformar com uma face
+   planeswalker, naves e a tradução não oficial.
 
 Lê o banco montado pelo pipeline (data/out/cards.sql, depois de `pnpm data:build`). A amostra é
 versionada e só cresce: rodar de novo mantém as impressões que já estão nela e acrescenta as
@@ -79,6 +80,7 @@ GROUPS: dict[str, int] = {
     "saga de duas faces": 10,
     "batalha": 10,
     "transformar de 2003": 12,
+    "planeswalker de transformar": 12,
 }
 
 
@@ -124,6 +126,9 @@ def group_of(row: sqlite3.Row) -> str | None:
     # (e as cartas de transformar da moldura de 2003, de Innistrad e Dark Ascension, ADR 0049)
     if layout == "transform" and frame == "2003":
         return "transformar de 2003"
+    # (e as cartas de transformar com uma face planeswalker, ADR 0050)
+    if layout == "transform" and "Planeswalker" in type_line:
+        return "planeswalker de transformar"
     if frame == "1997":
         return "1997"
     # (e depois a marca-d'água de 2003, ADR 0024, o Preparar, ADR 0032, as Salas, ADR 0033, as

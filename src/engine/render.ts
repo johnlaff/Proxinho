@@ -90,7 +90,9 @@ import { lamaInpaint } from "./lama";
 import {
   abilityKinds,
   alignOnIcon,
+  clipBoxFoot,
   countLoyaltyAbilities,
+  hasLoyaltyBox,
   isTallPlaneswalker,
   measureBoxBottom,
   measureTallPlaneswalker,
@@ -520,6 +522,7 @@ async function renderPlaneswalker(p: {
   toImg: (r: Rect) => Rect;
   face: PtFace;
   print: PrintRecord;
+  side: 0 | 1;
   W: number;
   H: number;
   neural: Neural;
@@ -554,18 +557,47 @@ async function renderPlaneswalker(p: {
   const fx = data.width / BASE_W;
   const fy = data.height / BASE_H;
   const tb = tall ? PW.type.tall : PW.type.normal;
-  const setLeft = Math.min(Math.max(findSetSymbolLeft(data, Math.round((tb.y0 + 4) * fy), Math.round((tb.y1 - 4) * fy)) / fx, 560), 660);
-  const cost = costLeft(print.mana_cost);
+  // A face de uma carta de transformar (ADR 0050), como na carta comum (ver faceBars): o ícone das
+  // de duas faces à esquerda do nome, ou à direita no verso sem custo; o indicador de cor no começo
+  // do tipo; e o verso desde Kamigawa: Neon Dynasty sem o símbolo da coleção. A barra do nome do
+  // planeswalker fica 19 px acima da M15, e o ícone da direita é procurado ali
+  const bars = print.sides ? faceBars(data, print, p.side, PW.title.centerY - 82) : null;
+  const symbolInfo: { colored: number; lim: number; tight?: boolean; none?: boolean } = { colored: -1, lim: 0 };
+  const measuredSetLeft = bars
+    ? findSetSymbolLeft(
+        data,
+        Math.round((tb.y0 + 4) * fy),
+        Math.round((tb.y1 - 4) * fy),
+        undefined,
+        100,
+        symbolInfo,
+        false,
+        bars.symbolless,
+      )
+    : findSetSymbolLeft(data, Math.round((tb.y0 + 4) * fy), Math.round((tb.y1 - 4) * fy));
+  const manaCost = bars ? bars.manaCost : print.mana_cost;
+  // (só as medidas da esquerda para a direita: o nome e o tipo do planeswalker ficam em outra altura)
+  const g = m15Layout(manaCost, false, measuredSetLeft / fx, {
+    leftIcon: bars?.leftIcon,
+    rightIcon: bars?.rightIcon,
+    indicator: bars?.indicator,
+    noSetSymbol: symbolInfo.none,
+  });
+  const [nameX, typeX] = [g.erase[0].rect, g.erase[1].rect];
   const rects = rows.map(rowRects);
   // a última faixa apaga até logo acima do fio da caixa: o pé das letras da última linha
   // em inglês passa da medida padrão
   const boxBottom = measureBoxBottom(data);
   const lastErase = rects[rects.length - 1].erase;
   if (boxBottom !== null) lastErase.y1 = Math.max(lastErase.y1, Math.min(boxBottom - 2, PW.area.bottom + 12));
-  const protect = [toImg(PW.loyaltyBox)];
+  // a caixa da lealdade inicial fica como está; o verso que vem de outro planeswalker não a tem
+  // (ver hasLoyaltyBox), e o texto vai até o canto
+  const shield = !print.sides || hasLoyaltyBox(data);
+  const loyaltyBox = shield ? [PW.loyaltyBox] : [];
+  const protect = loyaltyBox.map(toImg);
   // nome e tipo ficam em barras opacas: preenchimento linha a linha, que segue o degradê da barra
-  const titleBar = toImg({ x0: 50, y0: PW.title.erase.y0, x1: cost - 6, y1: PW.title.erase.y1 });
-  const typeBar = toImg({ x0: 50, y0: tb.y0, x1: face.type_pt ? setLeft - 6 : 50, y1: tb.y1 });
+  const titleBar = toImg({ x0: nameX.x0, y0: PW.title.erase.y0, x1: nameX.x1, y1: PW.title.erase.y1 });
+  const typeBar = toImg({ x0: typeX.x0, y0: tb.y0, x1: face.type_pt ? typeX.x1 : typeX.x0, y1: tb.y1 });
   const barInks = eraseRegions(
     data,
     [
@@ -575,11 +607,13 @@ async function renderPlaneswalker(p: {
     ],
     protect,
     [],
-    // a ponta arredondada das barras fica como está (ver barCapGuard)
+    // a ponta arredondada das barras fica como está (ver barCapGuard); com o ícone das de duas faces
+    // ou o indicador de cor, a barra começa depois deles, e o nome sem custo do verso com o ícone da
+    // direita acaba antes dele
     [
-      ...barCapGuard(data, titleBar, "left"),
-      ...barCapGuard(data, typeBar, "left"),
-      ...(print.mana_cost ? [] : barCapGuard(data, titleBar, "right")),
+      ...(nameX.x0 <= 50 ? barCapGuard(data, titleBar, "left") : []),
+      ...(typeX.x0 <= 50 ? barCapGuard(data, typeBar, "left") : []),
+      ...(manaCost || bars?.rightIcon ? [] : barCapGuard(data, titleBar, "right")),
     ],
   );
   // a caixa de texto é translúcida, com a arte aparecendo por trás: rede neural (ver lama.ts)
@@ -593,8 +627,10 @@ async function renderPlaneswalker(p: {
     rects.map((r) => ({ rect: toImg(r.erase), threshold: 14, colorThreshold: 34, polarity: boxPolarity, tiles: false })),
     protect,
   );
-  // abaixo da medida padrão, só o pé das letras de cima (não o canto da moldura)
+  // abaixo da medida padrão, só o pé das letras de cima (não o canto da moldura); sem a caixa da
+  // lealdade, nada do fio do pé e da curva dele no canto
   keepAttachedBelow(masks[masks.length - 1], PW.area.bottom * fy);
+  if (!shield) clipBoxFoot(data, masks[masks.length - 1]);
   const area = roundRect(toImg({ x0: PW.staticText.erase, y0: rows[0].y0, x1: PW.eraseRight, y1: lastErase.y1 }));
   p.plan(1);
   await lamaBox(data, masks, area, protect, boxPolarity, `${print.id}:${data.width}:${paragraphs.length}`, { neural: p.neural });
@@ -607,7 +643,7 @@ async function renderPlaneswalker(p: {
     rs.map((r, i) => {
       const { text } = rowRects(r);
       // a faixa de baixo desvia da caixa da lealdade inicial
-      const under = text.y1 - PW.loyaltyBox.y0;
+      const under = shield ? text.y1 - PW.loyaltyBox.y0 : 0;
       return {
         text: texts[i],
         width: text.x1 - text.x0,
@@ -626,7 +662,7 @@ async function renderPlaneswalker(p: {
       rows[rows.length - 1].y1,
       measuredRows.slice(1).map((r) => r.y0),
       planned.rows.slice(1).map((r) => r.y0),
-      [PW.loyaltyBox],
+      loyaltyBox,
     );
     rows = planned.rows;
     layouts = planned.layouts;
@@ -634,12 +670,12 @@ async function renderPlaneswalker(p: {
   p.sctx.putImageData(data, 0, 0);
   ctx.drawImage(p.src, 0, 0, p.W, p.H);
 
-  drawLine(ctx, face.name_pt ?? face.name_en, 66, PW.title.centerY, cost - 12 - 66, 35, k, INK[inks[0]]);
-  if (face.type_pt) drawLine(ctx, face.type_pt, 66, tb.centerY, setLeft - 10 - 66, 30, k, INK[inks[1]]);
+  drawLine(ctx, face.name_pt ?? face.name_en, g.title.x, PW.title.centerY, g.title.maxWidth, 35, k, INK[inks[0]]);
+  if (face.type_pt) drawLine(ctx, face.type_pt, g.type.x, tb.centerY, g.type.maxWidth, 30, k, INK[inks[1]]);
 
   layouts.forEach((res, i) => {
     const text = rowRects(rows![i]).text;
-    const box = alignOnIcon(text, res.height, rows![i].icon, text.y1 > PW.loyaltyBox.y0);
+    const box = alignOnIcon(text, res.height, rows![i].icon, shield && text.y1 > PW.loyaltyBox.y0);
     drawLayout(ctx, res, box, k, inks[2 + i], symbols, m);
   });
   return true;
@@ -3341,9 +3377,15 @@ function paintPlaque(data: ImageData, pl: Plaque) {
 /** Impressões desenhadas na moldura de ficha (emblemas e cada face das fichas de duas faces também). */
 const TOKEN_LAYOUTS = new Set(["token", "emblem", "double_faced_token"]);
 
-/** Planeswalker de uma face (o tipo em PT, ou o em inglês quando falta). */
-const isPlaneswalker = (print: PrintRecord, face: PtFace | null, typeLine?: string | null) =>
-  !print.sides && /planeswalker/i.test(face?.type_pt ?? typeLine ?? "");
+/**
+ * Planeswalker (o tipo em PT, ou o em inglês quando falta): o de uma face só e a face planeswalker
+ * de uma carta de transformar (ADR 0050). As modais ficam de fora: a faixa de baixo, com o outro
+ * lado, passa por cima da caixa de lealdade.
+ */
+const isPlaneswalker = (print: PrintRecord, face: PtFace | null, typeLine?: string | null, side: 0 | 1 = 0) =>
+  print.layout === "transform"
+    ? /planeswalker/i.test(face?.type_pt ?? sideTypeLine(typeLine, side))
+    : !print.sides && /planeswalker/i.test(face?.type_pt ?? typeLine ?? "");
 
 /**
  * A montagem passa pela rede neural (lama.ts): português a escrever num planeswalker, numa arte
@@ -3354,7 +3396,7 @@ export function usesNeuralFill(print: PrintRecord, face: PtFace | null, side: 0 
   return (
     Boolean(supported && face?.name_pt && face.text_pt !== null) &&
     (print.border === "borderless" ||
-      isPlaneswalker(print, face, typeLine) ||
+      isPlaneswalker(print, face, typeLine, side) ||
       ((print.frame === "1997" || print.frame === "1993") && print.layout === "normal") ||
       isOldSplit(print) ||
       isRoom(print, typeLine) ||
@@ -3381,12 +3423,13 @@ const sideTypeLine = (typeLine: string | null | undefined, side: 0 | 1) => (type
  * ícone das de duas faces fica à esquerda do nome, ou à direita no verso sem custo (os pretores
  * de March of the Machine, as Invocações de Final Fantasy, `hasRightIcon`); o indicador de cor
  * começa o tipo; e o verso impresso desde Kamigawa: Neon Dynasty não tem o símbolo da coleção
- * (ver `SYMBOLLESS_BACKS_SINCE`). Como na carta comum (ver renderCard).
+ * (ver `SYMBOLLESS_BACKS_SINCE`). Como na carta comum (ver renderCard). `iconDy` leva a busca
+ * do ícone da direita para a barra do nome do planeswalker (ver renderPlaneswalker).
  */
-function faceBars(data: ImageData, print: PrintRecord, side: 0 | 1) {
+function faceBars(data: ImageData, print: PrintRecord, side: 0 | 1, iconDy = 0) {
   const sideInfo = print.sides?.[side] ?? null;
   const manaCost = sideInfo ? sideInfo.mana_cost : print.mana_cost;
-  const rightIcon = Boolean(sideInfo && side === 1 && !manaCost && hasRightIcon(data));
+  const rightIcon = Boolean(sideInfo && side === 1 && !manaCost && hasRightIcon(data, iconDy));
   return {
     manaCost,
     hasPt: sideInfo ? sideInfo.has_pt : print.has_pt,
@@ -3424,7 +3467,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const scale = opts.scale ?? 1.6;
   // Planeswalker usa sempre o PNG, também na prévia: a rede neural limpa a caixa
   // melhor na imagem sem compressão JPEG, e a caixa limpa é reaproveitada no PDF.
-  const pw = isPlaneswalker(print, face, opts.typeLine);
+  const pw = isPlaneswalker(print, face, opts.typeLine, side);
   // A moldura sem borda também: a caixa é translúcida e vai para a mesma rede neural.
   const borderless = print.border === "borderless";
   // Saga também: os fios entre os capítulos são degraus de uma linha, que o JPEG reduzido espalha
@@ -3551,7 +3594,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   }
 
   if (pw) {
-    const done = await renderPlaneswalker({ ctx, src, sctx, data, toImg, face, print, W, H, neural, plan });
+    const done = await renderPlaneswalker({ ctx, src, sctx, data, toImg, face, print, side, W, H, neural, plan });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: done };
   }

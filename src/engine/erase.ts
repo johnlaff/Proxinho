@@ -2832,15 +2832,16 @@ export function dropSpecks(img: ImageData, area: Rect, hole: Uint8Array, polarit
 /**
  * Procura o ícone redondo à direita do nome (verso das cartas de transformar
  * desde 2023, que não têm custo de mana). O anel do ícone contrasta muito com
- * a barra do nome em toda a altura.
+ * a barra do nome em toda a altura. `dy` sobe a busca para a barra do nome do
+ * planeswalker, 19 px acima da M15 (ADR 0050).
  */
-export function hasRightIcon(img: ImageData): boolean {
+export function hasRightIcon(img: ImageData, dy = 0): boolean {
   const k = img.width / 745;
   const ky = img.height / 1040;
   const x0 = Math.round(660 * k);
   const x1 = Math.round(700 * k);
-  const y0 = Math.round(64 * ky);
-  const y1 = Math.round(100 * ky);
+  const y0 = Math.round((64 + dy) * ky);
+  const y1 = Math.round((100 + dy) * ky);
   let lo = 0;
   let hi = 0;
   let n = 0;

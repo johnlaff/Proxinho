@@ -432,6 +432,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "1dab370a-1067-4d94-be1f-10362d4abf5a",
+    "oracle_id": "a0c956dc-d7de-4f11-b76f-7537fbee1731",
+    "set": "ecl",
+    "number": "61",
+    "nome": "Oko, Lorwyn Liege // Oko, Shadowmoor Scion",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "70adc870-f0db-4d4b-863b-673c2c258751",
     "oracle_id": "9cc91ac5-6f2b-4fc0-b810-cdc92eebe6de",
     "set": "ecl",
@@ -757,6 +765,14 @@
     "set": "iko",
     "number": "16",
     "nome": "Huntmaster Liger",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "e72d7c11-2165-4c72-80f3-3c1a7b4b5572",
+    "oracle_id": "6bb7d0df-7a9f-4e17-8c31-7628c4b12356",
+    "set": "inr",
+    "number": "230",
+    "nome": "Arlinn Kord // Arlinn, Embraced by the Moon",
     "grupo": "citada nos documentos"
   },
   {
@@ -1093,6 +1109,14 @@
     "set": "mom",
     "number": "23",
     "nome": "Invasion of Theros // Ephara, Ever-Sheltering",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "1b83af86-e1a9-4be1-83dc-0c1ab81b129e",
+    "oracle_id": "480ea052-87d7-4fea-ac97-b6121b78f863",
+    "set": "mom",
+    "number": "239",
+    "nome": "Invasion of New Phyrexia // Teferi Akosa of Zhalfir",
     "grupo": "citada nos documentos"
   },
   {
@@ -1597,6 +1621,14 @@
     "set": "soc",
     "number": "49",
     "nome": "Lorehold Archivist // Restore Relic",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "b37aa12c-a6b3-4cf8-b5a4-0a999ff12d02",
+    "oracle_id": "6bb7d0df-7a9f-4e17-8c31-7628c4b12356",
+    "set": "soi",
+    "number": "243",
+    "nome": "Arlinn Kord // Arlinn, Embraced by the Moon",
     "grupo": "citada nos documentos"
   },
   {
@@ -7534,6 +7566,102 @@
     "number": "54",
     "nome": "Jace, Wielder of Mysteries",
     "grupo": "planeswalker"
+  },
+  {
+    "id": "d8b718d8-fca3-4b3e-9448-6067c8656a9a",
+    "oracle_id": "b96a8ad2-3d86-459b-a34f-19c9dc07c3c4",
+    "set": "cc2",
+    "number": "1",
+    "nome": "Liliana, Heretical Healer // Liliana, Defiant Necromancer",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "6897514f-e396-46d6-91e3-158366c741bb",
+    "oracle_id": "7cec9021-6f25-4fd8-b40e-adf4ffd3a7b8",
+    "set": "inr",
+    "number": "197",
+    "nome": "Garruk Relentless // Garruk, the Veil-Cursed",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "1d7474fc-0042-4be9-81f3-5f66f4b16740",
+    "oracle_id": "84e84532-498b-40ea-9510-46fb2403939b",
+    "set": "mh3",
+    "number": "245",
+    "nome": "Sorin of House Markov // Sorin, Ravenous Neonate",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "9f25e1cf-eeb4-458d-8fb2-b3a2f86bdd54",
+    "oracle_id": "b96a8ad2-3d86-459b-a34f-19c9dc07c3c4",
+    "set": "ori",
+    "number": "106",
+    "nome": "Liliana, Heretical Healer // Liliana, Defiant Necromancer",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "02d6d693-f1f3-4317-bcc0-c21fa8490d38",
+    "oracle_id": "594f6881-c059-46f8-aa4e-7151d502de73",
+    "set": "ori",
+    "number": "60",
+    "nome": "Jace, Vryn's Prodigy // Jace, Telepath Unbound",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "b910c6a1-7701-45f1-9dc8-4a3e8a8f023e",
+    "oracle_id": "6f6b8e14-c247-4dfd-8b39-38c7a5f2f354",
+    "set": "plst",
+    "number": "ORI-135",
+    "nome": "Chandra, Fire of Kaladesh // Chandra, Roaring Flame",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "aa4103ef-4778-41da-99f5-fa590074cd52",
+    "oracle_id": "35754a21-9fba-4370-a254-292918a777ba",
+    "set": "plst",
+    "number": "ORI-189",
+    "nome": "Nissa, Vastwood Seer // Nissa, Sage Animist",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "047f196b-a9d1-4cd3-b665-3b304cc59767",
+    "oracle_id": "2588f348-d7a3-46c8-9ace-dca53ed5ef99",
+    "set": "pmh3",
+    "number": "237s",
+    "nome": "Ajani, Nacatl Pariah // Ajani, Nacatl Avenger",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "4e96867e-f127-44cc-8f48-3d32878185de",
+    "oracle_id": "16d40f56-691b-42a7-a5ab-157568921e03",
+    "set": "pmh3",
+    "number": "247s",
+    "nome": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "ca605a6c-a709-4c4d-98e6-81dbfcef12e2",
+    "oracle_id": "f227ce07-7e96-4a36-ab7c-9be6e777d649",
+    "set": "pmid",
+    "number": "211s",
+    "nome": "Arlinn, the Pack's Hope // Arlinn, the Moon's Fury",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "8c40a7db-12f2-41bc-9025-d243208e8d70",
+    "oracle_id": "35754a21-9fba-4370-a254-292918a777ba",
+    "set": "pori",
+    "number": "189s",
+    "nome": "Nissa, Vastwood Seer // Nissa, Sage Animist",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "a893bffb-1ced-49be-96a6-2ecfb98b60fb",
+    "oracle_id": "594f6881-c059-46f8-aa4e-7151d502de73",
+    "set": "pori",
+    "number": "60s",
+    "nome": "Jace, Vryn's Prodigy // Jace, Telepath Unbound",
+    "grupo": "planeswalker de transformar"
   },
   {
     "id": "7d17f7e3-7b63-4674-9024-4fd1827f40ec",

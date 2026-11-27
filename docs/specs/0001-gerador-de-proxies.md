@@ -263,3 +263,10 @@ Como jogador, quero imprimir em português as cartas de transformar de Innistrad
 - [x] O P/R do verso na frente fica como na carta, e o texto desvia dele.
 - [x] As de ISD e DKA, as promos de pré-estreia e de lançamento e a Elbrus de The List saem em PT; o Garruk Relentless, planeswalker, fica de fora.
 - [x] Em toda criatura da moldura de 2003, o canto da caixa de P/R sai inteiro, com a sombra do chanfro.
+
+### H30. A face planeswalker das cartas de transformar (entregue em 27/11/2026, ADR 0050)
+Como jogador, quero imprimir em português os planeswalkers de transformar, como Arlinn Kord // Arlinn, Embraced by the Moon e Jace, Vryn's Prodigy // Jace, Telepath Unbound.
+- [x] A face planeswalker sai em PT na caixa do planeswalker, com o nome depois do ícone e o tipo do verso depois do indicador de cor, e o custo de lealdade na frente de cada habilidade.
+- [x] A frente criatura das de Magic Origins e do Nicol Bolas, the Ravager, também sai em PT.
+- [x] O verso de um planeswalker que vira outro sai sem a caixa da lealdade, como na carta, com o texto em PT até o canto e o fio do pé da caixa inteiro.
+- [x] As modais com face planeswalker, as de vitrine, as sem borda e o Garruk Relentless de Innistrad (moldura de 2003) ficam de fora.
