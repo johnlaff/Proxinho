@@ -80,6 +80,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "1abecc77-07f2-43e4-8585-0a8199cdcf01",
+    "oracle_id": "51b55057-8b14-4277-894b-4813b4f7eb39",
+    "set": "ala",
+    "number": "202",
+    "nome": "Tidehollow Sculler",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "96fff700-af02-4861-b7ed-be9950e69bf1",
     "oracle_id": "bd3e55cf-ffca-402c-91ea-2420035a9dd1",
     "set": "all",
@@ -344,11 +352,27 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "e4edad09-bf7b-40e9-ac2a-100da8a43274",
+    "oracle_id": "326adf88-3f6d-4bc2-aafa-dd55c6c95784",
+    "set": "dgm",
+    "number": "57",
+    "nome": "Blood Baron of Vizkopa",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "d91a527d-51f1-4fb1-9016-fc923fd43a6a",
     "oracle_id": "e018773f-95b3-49a3-9674-6f04ddef2092",
     "set": "dis",
     "number": "159",
     "nome": "Azorius Signet",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "aae6fb12-b252-453b-bca7-1ea2a0d6c8dc",
+    "oracle_id": "582328cd-660d-47a4-bb23-e91e80b9a907",
+    "set": "dka",
+    "number": "140",
+    "nome": "Huntmaster of the Fells // Ravager of the Fells",
     "grupo": "citada nos documentos"
   },
   {
@@ -405,6 +429,14 @@
     "set": "dsk",
     "number": "358",
     "nome": "Kona, Rescue Beastie",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "1dab370a-1067-4d94-be1f-10362d4abf5a",
+    "oracle_id": "a0c956dc-d7de-4f11-b76f-7537fbee1731",
+    "set": "ecl",
+    "number": "61",
+    "nome": "Oko, Lorwyn Liege // Oko, Shadowmoor Scion",
     "grupo": "citada nos documentos"
   },
   {
@@ -736,6 +768,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "e72d7c11-2165-4c72-80f3-3c1a7b4b5572",
+    "oracle_id": "6bb7d0df-7a9f-4e17-8c31-7628c4b12356",
+    "set": "inr",
+    "number": "230",
+    "nome": "Arlinn Kord // Arlinn, Embraced by the Moon",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "054f1845-196f-41c1-9682-042171cccd49",
     "oracle_id": "b829de81-04cd-498e-9f31-074f23e2a488",
     "set": "inv",
@@ -749,6 +789,22 @@
     "set": "inv",
     "number": "296",
     "nome": "Wax // Wane",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "b4160322-ff40-41a4-887a-73cd6b85ae45",
+    "oracle_id": "7cec9021-6f25-4fd8-b40e-adf4ffd3a7b8",
+    "set": "isd",
+    "number": "181",
+    "nome": "Garruk Relentless // Garruk, the Veil-Cursed",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "f7314414-c2d2-48ed-af2c-764cf0207c62",
+    "oracle_id": "faeaa3eb-6eb8-4621-98c7-0c6f58bbff85",
+    "set": "isd",
+    "number": "6",
+    "nome": "Champion of the Parish",
     "grupo": "citada nos documentos"
   },
   {
@@ -1056,6 +1112,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "1b83af86-e1a9-4be1-83dc-0c1ab81b129e",
+    "oracle_id": "480ea052-87d7-4fea-ac97-b6121b78f863",
+    "set": "mom",
+    "number": "239",
+    "nome": "Invasion of New Phyrexia // Teferi Akosa of Zhalfir",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "e8919452-ca45-450c-b970-351910926efc",
     "oracle_id": "67af9477-82b2-459e-8c09-b9a93a1d1c94",
     "set": "msc",
@@ -1120,6 +1184,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "abbbb466-31ef-42dd-9993-124f7ec3d8ae",
+    "oracle_id": "18932bb9-e054-4ad6-80c8-d2f177312da0",
+    "set": "pdka",
+    "number": "71★",
+    "nome": "Ravenous Demon // Archdemon of Greed",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "5bb06121-b390-4e3d-8822-4389570b0e15",
     "oracle_id": "b6b22bac-853a-45a8-a74d-9904ec2b34fd",
     "set": "pfin",
@@ -1173,6 +1245,14 @@
     "set": "pip",
     "number": "466",
     "nome": "Chaos Warp",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "340b660c-9aa1-4bd2-8c6f-d9af7fee5f4a",
+    "oracle_id": "53175678-1f5c-4889-9086-66381b3ddc3a",
+    "set": "pisd",
+    "number": "64★",
+    "nome": "Ludevic's Test Subject // Ludevic's Abomination",
     "grupo": "citada nos documentos"
   },
   {
@@ -1541,6 +1621,14 @@
     "set": "soc",
     "number": "49",
     "nome": "Lorehold Archivist // Restore Relic",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "b37aa12c-a6b3-4cf8-b5a4-0a999ff12d02",
+    "oracle_id": "6bb7d0df-7a9f-4e17-8c31-7628c4b12356",
+    "set": "soi",
+    "number": "243",
+    "nome": "Arlinn Kord // Arlinn, Embraced by the Moon",
     "grupo": "citada nos documentos"
   },
   {
@@ -7480,6 +7568,102 @@
     "grupo": "planeswalker"
   },
   {
+    "id": "d8b718d8-fca3-4b3e-9448-6067c8656a9a",
+    "oracle_id": "b96a8ad2-3d86-459b-a34f-19c9dc07c3c4",
+    "set": "cc2",
+    "number": "1",
+    "nome": "Liliana, Heretical Healer // Liliana, Defiant Necromancer",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "6897514f-e396-46d6-91e3-158366c741bb",
+    "oracle_id": "7cec9021-6f25-4fd8-b40e-adf4ffd3a7b8",
+    "set": "inr",
+    "number": "197",
+    "nome": "Garruk Relentless // Garruk, the Veil-Cursed",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "1d7474fc-0042-4be9-81f3-5f66f4b16740",
+    "oracle_id": "84e84532-498b-40ea-9510-46fb2403939b",
+    "set": "mh3",
+    "number": "245",
+    "nome": "Sorin of House Markov // Sorin, Ravenous Neonate",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "9f25e1cf-eeb4-458d-8fb2-b3a2f86bdd54",
+    "oracle_id": "b96a8ad2-3d86-459b-a34f-19c9dc07c3c4",
+    "set": "ori",
+    "number": "106",
+    "nome": "Liliana, Heretical Healer // Liliana, Defiant Necromancer",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "02d6d693-f1f3-4317-bcc0-c21fa8490d38",
+    "oracle_id": "594f6881-c059-46f8-aa4e-7151d502de73",
+    "set": "ori",
+    "number": "60",
+    "nome": "Jace, Vryn's Prodigy // Jace, Telepath Unbound",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "b910c6a1-7701-45f1-9dc8-4a3e8a8f023e",
+    "oracle_id": "6f6b8e14-c247-4dfd-8b39-38c7a5f2f354",
+    "set": "plst",
+    "number": "ORI-135",
+    "nome": "Chandra, Fire of Kaladesh // Chandra, Roaring Flame",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "aa4103ef-4778-41da-99f5-fa590074cd52",
+    "oracle_id": "35754a21-9fba-4370-a254-292918a777ba",
+    "set": "plst",
+    "number": "ORI-189",
+    "nome": "Nissa, Vastwood Seer // Nissa, Sage Animist",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "047f196b-a9d1-4cd3-b665-3b304cc59767",
+    "oracle_id": "2588f348-d7a3-46c8-9ace-dca53ed5ef99",
+    "set": "pmh3",
+    "number": "237s",
+    "nome": "Ajani, Nacatl Pariah // Ajani, Nacatl Avenger",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "4e96867e-f127-44cc-8f48-3d32878185de",
+    "oracle_id": "16d40f56-691b-42a7-a5ab-157568921e03",
+    "set": "pmh3",
+    "number": "247s",
+    "nome": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "ca605a6c-a709-4c4d-98e6-81dbfcef12e2",
+    "oracle_id": "f227ce07-7e96-4a36-ab7c-9be6e777d649",
+    "set": "pmid",
+    "number": "211s",
+    "nome": "Arlinn, the Pack's Hope // Arlinn, the Moon's Fury",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "8c40a7db-12f2-41bc-9025-d243208e8d70",
+    "oracle_id": "35754a21-9fba-4370-a254-292918a777ba",
+    "set": "pori",
+    "number": "189s",
+    "nome": "Nissa, Vastwood Seer // Nissa, Sage Animist",
+    "grupo": "planeswalker de transformar"
+  },
+  {
+    "id": "a893bffb-1ced-49be-96a6-2ecfb98b60fb",
+    "oracle_id": "594f6881-c059-46f8-aa4e-7151d502de73",
+    "set": "pori",
+    "number": "60s",
+    "nome": "Jace, Vryn's Prodigy // Jace, Telepath Unbound",
+    "grupo": "planeswalker de transformar"
+  },
+  {
     "id": "7d17f7e3-7b63-4674-9024-4fd1827f40ec",
     "oracle_id": "f3ed157f-a09b-405f-aec4-0e7a81d80fc8",
     "set": "fra",
@@ -8358,6 +8542,102 @@
     "number": "99",
     "nome": "Sneak Attack",
     "grupo": "sem borda"
+  },
+  {
+    "id": "932d753d-9584-4ad8-9a5e-a3524184f961",
+    "oracle_id": "12330f42-0e3f-40e1-86f3-57a34403d143",
+    "set": "dka",
+    "number": "122",
+    "nome": "Lambholt Elder // Silverpelt Werewolf",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "cb09041b-4d09-4cae-9e85-b859edae885b",
+    "oracle_id": "bf28a2ed-cad7-48a7-9dec-06e43af73e9c",
+    "set": "dka",
+    "number": "13",
+    "nome": "Loyal Cathar // Unhallowed Cathar",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "1303e02a-ef69-4817-bca5-02c74774b811",
+    "oracle_id": "7f59252f-3a37-4a22-938c-001f3208bd94",
+    "set": "dka",
+    "number": "133",
+    "nome": "Wolfbitten Captive // Krallenhorde Killer",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "9d9c1c46-7aa7-464c-87b0-b29b9663daef",
+    "oracle_id": "28df85d6-e13a-4178-a361-7015afd316ca",
+    "set": "dka",
+    "number": "146",
+    "nome": "Chalice of Life // Chalice of Death",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "6aef77b3-4b38-4902-9f7a-dc18b5bb9da9",
+    "oracle_id": "18932bb9-e054-4ad6-80c8-d2f177312da0",
+    "set": "dka",
+    "number": "71",
+    "nome": "Ravenous Demon // Archdemon of Greed",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "bb90a6f1-c7f2-4c2e-ab1e-59c5c7937841",
+    "oracle_id": "27c2bb87-7e50-4a80-b41c-ff0237a3d648",
+    "set": "isd",
+    "number": "149",
+    "nome": "Instigator Gang // Wildblood Pack",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "25b54a1d-e201-453b-9173-b04e06ee6fb7",
+    "oracle_id": "280624aa-5f9a-48fd-85ea-815c96c747b3",
+    "set": "isd",
+    "number": "176",
+    "nome": "Daybreak Ranger // Nightfall Predator",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "57f0907f-74f4-4d86-93df-f2e50c9d0b2f",
+    "oracle_id": "c05c5375-d0d7-4cf2-92e6-76f86cd0febf",
+    "set": "isd",
+    "number": "182",
+    "nome": "Gatstaf Shepherd // Gatstaf Howler",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "8325c570-4d74-4e65-891c-3e153abf4bf9",
+    "oracle_id": "4418ff27-57c0-4c94-8aee-6151e4f8b0f9",
+    "set": "isd",
+    "number": "208",
+    "nome": "Ulvenwald Mystics // Ulvenwald Primordials",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "e42a0a3d-a987-4b24-b9d4-27380a12e093",
+    "oracle_id": "dcf692f6-baec-4b60-a6e3-2a8b731d7816",
+    "set": "isd",
+    "number": "209",
+    "nome": "Villagers of Estwald // Howlpack of Estwald",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "11bf83bb-c95b-4b4f-9a56-ce7a1816307a",
+    "oracle_id": "edd531b9-f615-4399-8c8c-1c5e18c4acbf",
+    "set": "isd",
+    "number": "51",
+    "nome": "Delver of Secrets // Insectile Aberration",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "98fc475a-809d-4278-be03-86eab62b46ce",
+    "oracle_id": "f94cb722-7e46-4569-b474-9654ecf7ec14",
+    "set": "pdka",
+    "number": "98★",
+    "nome": "Mondronen Shaman // Tovolar's Magehunter",
+    "grupo": "transformar de 2003"
   },
   {
     "id": "758abd53-6ad2-406e-8615-8e48678405b4",

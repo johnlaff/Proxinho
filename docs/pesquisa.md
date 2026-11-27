@@ -406,6 +406,58 @@ Medidas nas imagens do Scryfall (745 × 1040), na carta girada 90° no sentido h
 
 A escolha (ADR 0048): o caminho da carta deitada das Salas, com a moldura conferida pelas barras, os fios e o escudo, o escudo protegido pela forma, o P/R do verso apagado e escrito de novo e o lembrete das impressas em PT no alto.
 
+### Cartas de transformar da moldura de 2003 (27/11/2026)
+
+As primeiras cartas de transformar (Innistrad, 2011, e Dark Ascension, 2012) saíram na moldura de 2003. O Scryfall tem 39 impressões de papel: 20 de ISD, 13 de DKA, 4 promos de pré-estreia e de lançamento (PISD 64★ e 193★, PDKA 71★ e 98★) e 2 de The List (PLST DKA-147 e ISD-181), todas de borda preta, com o efeito `sunmoondfc` (o sol na frente e a lua no verso, à esquerda do nome). O Garruk Relentless (ISD 181 e a de The List) é planeswalker. De Shadows over Innistrad em diante as cartas de transformar estão na moldura atual. Todas as 37 que não são planeswalker têm texto oficial em PT.
+
+Medidas nas imagens do Scryfall (745 × 1040), nas 74 faces:
+
+| Medida | Valor |
+| --- | --- |
+| Ícone e nome | o sol ou a lua de x ≈ 35 a 108; a ponta da barra segue a curva, com uma sombra até x ≈ 121 no alto e no pé; a primeira letra começa em ≈ 125 |
+| Indicador de cor (verso sem custo) | a bolinha de x ≈ 70 a 97 na barra de tipo; a primeira letra do tipo começa em ≈ 109 |
+| Símbolo da coleção | começa de x 629 a 642 (a medida de `findSetSymbolLeft`); na promo de foil do Mondronen Shaman, o "Shaman" acaba em 626, a 3 px dele |
+| P/R do verso (frente) | algarismos cinza na Matrix Bold, de y 895 a 916, acabando em x 677 (o "13/13" começa em 611, o "3/2" em 633), com até 9 px entre eles; a ponta de papel vai de y ≈ 889 a 922 e a moldura começa em x ≈ 680; existe também na frente sem P/R (Elbrus) |
+| Última linha do texto em PT | a 12 px dos algarismos (com 6, encostava no "4/4" do Huntmaster of the Fells, DKA 140) |
+
+E, em toda criatura da moldura de 2003 (68 conferidas, uma de cada coleção de Eighth Edition a Conspiracy):
+
+| Medida | Valor |
+| --- | --- |
+| Chanfro da caixa de P/R | uma sombra do lado esquerdo, que desce na diagonal de x ≈ 559, cinco linhas acima do topo da caixa, a ≈ 550, até o fio de baixo da caixa de texto |
+| Fio de baixo da caixa de texto | começa em y 935 a 937; em Shards of Alara e Dragon's Maze fica em 942 do meio da caixa para a esquerda e sobe para 936 perto da caixa de P/R |
+
+A Matrix Bold do site tem os algarismos antigos (o "3" descendo abaixo da linha, o "1" como um "I"), diferentes dos da carta; os algarismos do P/R do verso são os mesmos em PT.
+
+A escolha (ADR 0049): o caminho da carta comum de 2003, com as medidas do ícone e do indicador, os algarismos do P/R do verso como estão, protegidos, e o texto desviando deles; e, em toda criatura de 2003, a proteção da caixa de P/R pelo chanfro e o pé da caixa no fio de baixo.
+
+### Planeswalkers de transformar (27/11/2026)
+
+Dezessete cartas de transformar têm uma face planeswalker. O Scryfall tem 47 impressões de papel suportáveis (de borda preta, sem as de vitrine, sem as sem borda e sem as "inverted" da Comic-Con de 2015), 94 faces, 58 delas planeswalker, todas com texto oficial em PT:
+
+| Tipo | Cartas e impressões |
+| --- | --- |
+| Planeswalker que vira planeswalker | Arlinn Kord (SOI 243, a promo de pré-estreia, a de The List, From the Vault: Transform e Innistrad Remastered), Garruk Relentless (V17 e INR; a de Innistrad, na moldura de 2003, fica de fora), Arlinn, the Pack's Hope (MID 211, a promo e a de The List) e Oko, Lorwyn Liege (ECL 61) |
+| Criatura que vira planeswalker | as cinco lendas de Magic Origins (ORI, as promos, The List, V17 e a Liliana de Commander Collection: Black), com o efeito `originpwdfc`; o Nicol Bolas, the Ravager (M19 218, a promo e a de juiz); e as cinco lendas de Modern Horizons 3 |
+| Batalha que vira planeswalker | Invasion of New Phyrexia (MOM 239 e a promo) |
+
+As impressões só digitais (Shadows over Innistrad Remastered, Shadows of the Past, Pioneer Masters, as promos do MTGO) não estão nos dados. As modais com face planeswalker (Valki e Tibalt, de Kaldheim; Mila e Lukka, Rowan e Will, de Strixhaven) têm a faixa das modais dentro da caixa do planeswalker.
+
+Medidas nas imagens do Scryfall (745 × 1040), nas 58 faces planeswalker:
+
+| Medida | Valor |
+| --- | --- |
+| Barra do nome | centro em y 63, 19 px acima da M15 (82) |
+| Ícone à esquerda | o sol, a lua, o ícone de Magic Origins (no lugar do sol) ou o das de transformar atuais, como na carta comum |
+| Ícone à direita (verso sem custo, desde 2023: MH3, MOM, ECL, INR) | de y ≈ 45 a 81 |
+| Indicador de cor | no começo do tipo, nos versos |
+| Caixa da lealdade inicial | nas 50 faces com ela, o miolo do escudo logo abaixo do topo (y 925 a 940, x 620 a 730) tem de 71% a 92% dos pixels abaixo de 60; nas 8 sem ela, de 34% a 43% (o papel da caixa e o fio) |
+| Fio do pé da caixa sem a lealdade | reto até x ≈ 600 em y ≈ 952 e subindo em curva até ≈ 932 em x 684 |
+
+O verso de um planeswalker que vira outro (Arlinn, Embraced by the Moon; Garruk, the Veil-Cursed; Oko, Shadowmoor Scion) não tem a caixa da lealdade: a lealdade vem da frente, e a caixa de texto desce até o canto. O Scryfall dá lealdade a esses versos (o "3" do Oko, Shadowmoor Scion), que a carta não imprime. Os versos das outras (Arlinn, the Moon's Fury; os de Magic Origins, do Bolas, de MH3 e o Teferi Akosa of Zhalfir) têm a caixa.
+
+A escolha (ADR 0050): o desenho do planeswalker, com o ícone e o indicador de cor das de duas faces da carta comum, a caixa da lealdade achada na imagem e, sem ela, o canto livre para o texto e a curva do fio do pé fora da máscara das letras.
+
 ### Sagas de duas faces (26/11/2026)
 
 O Scryfall tem 126 impressões de papel de cartas de transformar com uma face Saga, todas na moldura atual: a frente Saga de Kamigawa: Neon Dynasty (23 cartas, a Saga que vira criatura encantamento, com o leque das de duas faces, `fandfc`) e de Avatar: The Last Airbender (5), e o verso Saga dos cinco pretores de March of the Machine, da Huatli, Poet of Unity (LCI) e de 8 cartas de Final Fantasy (o verso é uma Invocação, a moldura do ADR 0042). 70 são de borda preta sem arte estendida, vitrine nem sem borda; as outras ficam de fora como as Sagas de uma face. Na frente, o P/R do verso vai no pé da coluna, à esquerda, logo abaixo da ponta da tira dos marcadores, como o "3/4" da The Restoration of Eiganjo; o último capítulo acaba acima dele, e a impressa em PT faz o mesmo.

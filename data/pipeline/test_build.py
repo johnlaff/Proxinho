@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import face_supported, add_meld_data, case_supported, flip_supported, prototype_cost, prototype_reminders, prototype_supported, prototype_text, is_meld_result, meld_supported, own_faces, join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
+from build import face_supported, pw_faces, PW_FACE_MISMATCH, add_meld_data, case_supported, flip_supported, prototype_cost, prototype_reminders, prototype_supported, prototype_text, is_meld_result, meld_supported, own_faces, join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -1401,6 +1401,70 @@ class BattleSupported(unittest.TestCase):
         self.assertFalse(face_supported({**self.base, "border_color": "borderless"}, self.battle))
         self.assertFalse(face_supported({**self.base, "frame_effects": ["showcase"]}, self.battle))
         self.assertFalse(face_supported({**self.base, "frame": "2003"}, self.battle))
+
+
+class Dfc2003Supported(unittest.TestCase):
+    """As de duas faces de Innistrad e Dark Ascension na moldura de 2003 (ADR 0049)."""
+
+    front = {"type_line": "Creature — Human Wizard"}
+    base = {"frame": "2003", "layout": "transform", "border_color": "black", "frame_effects": ["sunmoondfc"], "set": "isd"}
+
+    def test_de_transformar(self):
+        self.assertTrue(face_supported(self.base, self.front))
+        self.assertTrue(face_supported(self.base, {"type_line": "Legendary Artifact — Equipment"}))
+        # as promos de pré-estreia e de lançamento (PISD, PDKA) e a reimpressão de The List
+        self.assertTrue(face_supported({**self.base, "set": "pisd", "promo_types": ["setpromo", "prerelease"]}, self.front))
+        self.assertTrue(face_supported({**self.base, "set": "plst"}, self.front))
+
+    def test_fora(self):
+        # Garruk Relentless: a caixa dos planeswalkers de 2003 não é reescrita
+        self.assertFalse(face_supported(self.base, {"type_line": "Legendary Planeswalker — Garruk"}))
+        self.assertFalse(face_supported({**self.base, "layout": "modal_dfc"}, self.front))
+        self.assertFalse(face_supported({**self.base, "watermark": "fnm"}, self.front))
+        self.assertFalse(face_supported({**self.base, "frame_effects": ["sunmoondfc", "tombstone"]}, self.front))
+        self.assertFalse(face_supported({**self.base, "border_color": "white"}, self.front))
+
+
+class PwDfcSupported(unittest.TestCase):
+    """A face planeswalker das cartas de transformar (ADR 0050)."""
+
+    back = {"type_line": "Legendary Planeswalker — Jace"}
+    base = {"frame": "2015", "layout": "transform", "border_color": "black", "frame_effects": ["originpwdfc"], "set": "ori"}
+
+    def test_de_transformar(self):
+        self.assertTrue(face_supported(self.base, self.back))
+        # e a frente de Magic Origins, criatura com o ícone do planeswalker no lugar do sol
+        self.assertTrue(face_supported(self.base, {"type_line": "Legendary Creature — Human Wizard"}))
+        # o sol e a lua de Shadows over Innistrad (Arlinn Kord, planeswalker nas duas faces)
+        self.assertTrue(face_supported({**self.base, "frame_effects": ["sunmoondfc"], "set": "soi"}, self.back))
+        # o ícone à direita do verso de Modern Horizons 3
+        self.assertTrue(face_supported({**self.base, "frame_effects": ["legendary"], "set": "mh3"}, self.back))
+
+    def test_fora(self):
+        # a Comic-Con de 2015 ("inverted"), as de vitrine, as cartas de teste e as modais
+        self.assertFalse(face_supported({**self.base, "frame_effects": ["inverted", "originpwdfc"]}, self.back))
+        self.assertFalse(face_supported({**self.base, "frame_effects": ["showcase", "sunmoondfc"]}, self.back))
+        self.assertFalse(face_supported({**self.base, "promo_types": ["playtest"]}, self.back))
+        self.assertFalse(face_supported({**self.base, "layout": "modal_dfc"}, self.back))
+        self.assertFalse(face_supported({**self.base, "border_color": "borderless"}, self.back))
+
+    def test_custos_da_face(self):
+        card = {
+            "layout": "transform",
+            "card_faces": [
+                {"type_line": "Legendary Creature — Human Wizard", "oracle_text": "{T}: Draw a card, then discard a card."},
+                {"type_line": "Legendary Planeswalker — Jace", "oracle_text": "+1: Up to one target creature gets -2/-0.\n−3: Flashback.\n−9: Emblem."},
+            ],
+        }
+        faces = [{"text_pt": "{T}: Compre um card."}, {"text_pt": "Até uma criatura alvo recebe -2/-0.\nRecapitular.\nEmblema."}]
+        pw_faces(card, faces, "jace")
+        self.assertEqual(faces[1]["text_pt"], "+1: Até uma criatura alvo recebe -2/-0.\n−3: Recapitular.\n−9: Emblema.")
+        self.assertEqual(faces[0]["text_pt"], "{T}: Compre um card.")
+        self.assertNotIn("jace", PW_FACE_MISMATCH)
+        # com um parágrafo a menos, a face sai como está
+        faces = [{"text_pt": "x"}, {"text_pt": "Até uma criatura alvo recebe -2/-0.\nRecapitular."}]
+        pw_faces(card, faces, "jace2")
+        self.assertIn("jace2", PW_FACE_MISMATCH)
 
 
 class BattleReminder(unittest.TestCase):

@@ -35,6 +35,7 @@ import {
   restoreBevel,
 } from "./classCard";
 import { FLIP_2003, FLIP_2015, flipBar, flipBox, flipPtLine, flipTypeEnd } from "./flip";
+import { backPtDigits2003, backPtNotch2003, dfcSymbolLeft2003 } from "./dfc2003";
 import { bodyFont, loadCardFonts, oldNameFont, titleFont, type TitleFont } from "./fonts";
 import {
   BACK_PT_NOTCH,
@@ -42,12 +43,14 @@ import {
   BASE_H,
   BASE_W,
   beside,
+  BOX_FOOT_2003,
   costLeft,
   hasLeftIcon,
   m15Layout,
   MDFC_STRIP,
   mdfcCostLeft,
   ptProtect,
+  ptProtect2003,
   TYPE_BAR_END_2003,
   WATERMARK_2003,
   type FrameLayout,
@@ -73,6 +76,7 @@ import {
   maskRegions,
   notM15Frame,
   type RegionMask,
+  boxBorderAt,
   ptBoxLeft,
   ptBoxTop,
   regrain,
@@ -86,7 +90,9 @@ import { lamaInpaint } from "./lama";
 import {
   abilityKinds,
   alignOnIcon,
+  clipBoxFoot,
   countLoyaltyAbilities,
+  hasLoyaltyBox,
   isTallPlaneswalker,
   measureBoxBottom,
   measureTallPlaneswalker,
@@ -516,6 +522,7 @@ async function renderPlaneswalker(p: {
   toImg: (r: Rect) => Rect;
   face: PtFace;
   print: PrintRecord;
+  side: 0 | 1;
   W: number;
   H: number;
   neural: Neural;
@@ -550,18 +557,47 @@ async function renderPlaneswalker(p: {
   const fx = data.width / BASE_W;
   const fy = data.height / BASE_H;
   const tb = tall ? PW.type.tall : PW.type.normal;
-  const setLeft = Math.min(Math.max(findSetSymbolLeft(data, Math.round((tb.y0 + 4) * fy), Math.round((tb.y1 - 4) * fy)) / fx, 560), 660);
-  const cost = costLeft(print.mana_cost);
+  // A face de uma carta de transformar (ADR 0050), como na carta comum (ver faceBars): o ícone das
+  // de duas faces à esquerda do nome, ou à direita no verso sem custo; o indicador de cor no começo
+  // do tipo; e o verso desde Kamigawa: Neon Dynasty sem o símbolo da coleção. A barra do nome do
+  // planeswalker fica 19 px acima da M15, e o ícone da direita é procurado ali
+  const bars = print.sides ? faceBars(data, print, p.side, PW.title.centerY - 82) : null;
+  const symbolInfo: { colored: number; lim: number; tight?: boolean; none?: boolean } = { colored: -1, lim: 0 };
+  const measuredSetLeft = bars
+    ? findSetSymbolLeft(
+        data,
+        Math.round((tb.y0 + 4) * fy),
+        Math.round((tb.y1 - 4) * fy),
+        undefined,
+        100,
+        symbolInfo,
+        false,
+        bars.symbolless,
+      )
+    : findSetSymbolLeft(data, Math.round((tb.y0 + 4) * fy), Math.round((tb.y1 - 4) * fy));
+  const manaCost = bars ? bars.manaCost : print.mana_cost;
+  // (só as medidas da esquerda para a direita: o nome e o tipo do planeswalker ficam em outra altura)
+  const g = m15Layout(manaCost, false, measuredSetLeft / fx, {
+    leftIcon: bars?.leftIcon,
+    rightIcon: bars?.rightIcon,
+    indicator: bars?.indicator,
+    noSetSymbol: symbolInfo.none,
+  });
+  const [nameX, typeX] = [g.erase[0].rect, g.erase[1].rect];
   const rects = rows.map(rowRects);
   // a última faixa apaga até logo acima do fio da caixa: o pé das letras da última linha
   // em inglês passa da medida padrão
   const boxBottom = measureBoxBottom(data);
   const lastErase = rects[rects.length - 1].erase;
   if (boxBottom !== null) lastErase.y1 = Math.max(lastErase.y1, Math.min(boxBottom - 2, PW.area.bottom + 12));
-  const protect = [toImg(PW.loyaltyBox)];
+  // a caixa da lealdade inicial fica como está; o verso que vem de outro planeswalker não a tem
+  // (ver hasLoyaltyBox), e o texto vai até o canto
+  const shield = !print.sides || hasLoyaltyBox(data);
+  const loyaltyBox = shield ? [PW.loyaltyBox] : [];
+  const protect = loyaltyBox.map(toImg);
   // nome e tipo ficam em barras opacas: preenchimento linha a linha, que segue o degradê da barra
-  const titleBar = toImg({ x0: 50, y0: PW.title.erase.y0, x1: cost - 6, y1: PW.title.erase.y1 });
-  const typeBar = toImg({ x0: 50, y0: tb.y0, x1: face.type_pt ? setLeft - 6 : 50, y1: tb.y1 });
+  const titleBar = toImg({ x0: nameX.x0, y0: PW.title.erase.y0, x1: nameX.x1, y1: PW.title.erase.y1 });
+  const typeBar = toImg({ x0: typeX.x0, y0: tb.y0, x1: face.type_pt ? typeX.x1 : typeX.x0, y1: tb.y1 });
   const barInks = eraseRegions(
     data,
     [
@@ -571,11 +607,13 @@ async function renderPlaneswalker(p: {
     ],
     protect,
     [],
-    // a ponta arredondada das barras fica como está (ver barCapGuard)
+    // a ponta arredondada das barras fica como está (ver barCapGuard); com o ícone das de duas faces
+    // ou o indicador de cor, a barra começa depois deles, e o nome sem custo do verso com o ícone da
+    // direita acaba antes dele
     [
-      ...barCapGuard(data, titleBar, "left"),
-      ...barCapGuard(data, typeBar, "left"),
-      ...(print.mana_cost ? [] : barCapGuard(data, titleBar, "right")),
+      ...(nameX.x0 <= 50 ? barCapGuard(data, titleBar, "left") : []),
+      ...(typeX.x0 <= 50 ? barCapGuard(data, typeBar, "left") : []),
+      ...(manaCost || bars?.rightIcon ? [] : barCapGuard(data, titleBar, "right")),
     ],
   );
   // a caixa de texto é translúcida, com a arte aparecendo por trás: rede neural (ver lama.ts)
@@ -589,8 +627,10 @@ async function renderPlaneswalker(p: {
     rects.map((r) => ({ rect: toImg(r.erase), threshold: 14, colorThreshold: 34, polarity: boxPolarity, tiles: false })),
     protect,
   );
-  // abaixo da medida padrão, só o pé das letras de cima (não o canto da moldura)
+  // abaixo da medida padrão, só o pé das letras de cima (não o canto da moldura); sem a caixa da
+  // lealdade, nada do fio do pé e da curva dele no canto
   keepAttachedBelow(masks[masks.length - 1], PW.area.bottom * fy);
+  if (!shield) clipBoxFoot(data, masks[masks.length - 1]);
   const area = roundRect(toImg({ x0: PW.staticText.erase, y0: rows[0].y0, x1: PW.eraseRight, y1: lastErase.y1 }));
   p.plan(1);
   await lamaBox(data, masks, area, protect, boxPolarity, `${print.id}:${data.width}:${paragraphs.length}`, { neural: p.neural });
@@ -603,7 +643,7 @@ async function renderPlaneswalker(p: {
     rs.map((r, i) => {
       const { text } = rowRects(r);
       // a faixa de baixo desvia da caixa da lealdade inicial
-      const under = text.y1 - PW.loyaltyBox.y0;
+      const under = shield ? text.y1 - PW.loyaltyBox.y0 : 0;
       return {
         text: texts[i],
         width: text.x1 - text.x0,
@@ -622,7 +662,7 @@ async function renderPlaneswalker(p: {
       rows[rows.length - 1].y1,
       measuredRows.slice(1).map((r) => r.y0),
       planned.rows.slice(1).map((r) => r.y0),
-      [PW.loyaltyBox],
+      loyaltyBox,
     );
     rows = planned.rows;
     layouts = planned.layouts;
@@ -630,12 +670,12 @@ async function renderPlaneswalker(p: {
   p.sctx.putImageData(data, 0, 0);
   ctx.drawImage(p.src, 0, 0, p.W, p.H);
 
-  drawLine(ctx, face.name_pt ?? face.name_en, 66, PW.title.centerY, cost - 12 - 66, 35, k, INK[inks[0]]);
-  if (face.type_pt) drawLine(ctx, face.type_pt, 66, tb.centerY, setLeft - 10 - 66, 30, k, INK[inks[1]]);
+  drawLine(ctx, face.name_pt ?? face.name_en, g.title.x, PW.title.centerY, g.title.maxWidth, 35, k, INK[inks[0]]);
+  if (face.type_pt) drawLine(ctx, face.type_pt, g.type.x, tb.centerY, g.type.maxWidth, 30, k, INK[inks[1]]);
 
   layouts.forEach((res, i) => {
     const text = rowRects(rows![i]).text;
-    const box = alignOnIcon(text, res.height, rows![i].icon, text.y1 > PW.loyaltyBox.y0);
+    const box = alignOnIcon(text, res.height, rows![i].icon, shield && text.y1 > PW.loyaltyBox.y0);
     drawLayout(ctx, res, box, k, inks[2 + i], symbols, m);
   });
   return true;
@@ -3337,9 +3377,15 @@ function paintPlaque(data: ImageData, pl: Plaque) {
 /** Impressões desenhadas na moldura de ficha (emblemas e cada face das fichas de duas faces também). */
 const TOKEN_LAYOUTS = new Set(["token", "emblem", "double_faced_token"]);
 
-/** Planeswalker de uma face (o tipo em PT, ou o em inglês quando falta). */
-const isPlaneswalker = (print: PrintRecord, face: PtFace | null, typeLine?: string | null) =>
-  !print.sides && /planeswalker/i.test(face?.type_pt ?? typeLine ?? "");
+/**
+ * Planeswalker (o tipo em PT, ou o em inglês quando falta): o de uma face só e a face planeswalker
+ * de uma carta de transformar (ADR 0050). As modais ficam de fora: a faixa de baixo, com o outro
+ * lado, passa por cima da caixa de lealdade.
+ */
+const isPlaneswalker = (print: PrintRecord, face: PtFace | null, typeLine?: string | null, side: 0 | 1 = 0) =>
+  print.layout === "transform"
+    ? /planeswalker/i.test(face?.type_pt ?? sideTypeLine(typeLine, side))
+    : !print.sides && /planeswalker/i.test(face?.type_pt ?? typeLine ?? "");
 
 /**
  * A montagem passa pela rede neural (lama.ts): português a escrever num planeswalker, numa arte
@@ -3350,7 +3396,7 @@ export function usesNeuralFill(print: PrintRecord, face: PtFace | null, side: 0 
   return (
     Boolean(supported && face?.name_pt && face.text_pt !== null) &&
     (print.border === "borderless" ||
-      isPlaneswalker(print, face, typeLine) ||
+      isPlaneswalker(print, face, typeLine, side) ||
       ((print.frame === "1997" || print.frame === "1993") && print.layout === "normal") ||
       isOldSplit(print) ||
       isRoom(print, typeLine) ||
@@ -3377,12 +3423,13 @@ const sideTypeLine = (typeLine: string | null | undefined, side: 0 | 1) => (type
  * ícone das de duas faces fica à esquerda do nome, ou à direita no verso sem custo (os pretores
  * de March of the Machine, as Invocações de Final Fantasy, `hasRightIcon`); o indicador de cor
  * começa o tipo; e o verso impresso desde Kamigawa: Neon Dynasty não tem o símbolo da coleção
- * (ver `SYMBOLLESS_BACKS_SINCE`). Como na carta comum (ver renderCard).
+ * (ver `SYMBOLLESS_BACKS_SINCE`). Como na carta comum (ver renderCard). `iconDy` leva a busca
+ * do ícone da direita para a barra do nome do planeswalker (ver renderPlaneswalker).
  */
-function faceBars(data: ImageData, print: PrintRecord, side: 0 | 1) {
+function faceBars(data: ImageData, print: PrintRecord, side: 0 | 1, iconDy = 0) {
   const sideInfo = print.sides?.[side] ?? null;
   const manaCost = sideInfo ? sideInfo.mana_cost : print.mana_cost;
-  const rightIcon = Boolean(sideInfo && side === 1 && !manaCost && hasRightIcon(data));
+  const rightIcon = Boolean(sideInfo && side === 1 && !manaCost && hasRightIcon(data, iconDy));
   return {
     manaCost,
     hasPt: sideInfo ? sideInfo.has_pt : print.has_pt,
@@ -3420,7 +3467,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const scale = opts.scale ?? 1.6;
   // Planeswalker usa sempre o PNG, também na prévia: a rede neural limpa a caixa
   // melhor na imagem sem compressão JPEG, e a caixa limpa é reaproveitada no PDF.
-  const pw = isPlaneswalker(print, face, opts.typeLine);
+  const pw = isPlaneswalker(print, face, opts.typeLine, side);
   // A moldura sem borda também: a caixa é translúcida e vai para a mesma rede neural.
   const borderless = print.border === "borderless";
   // Saga também: os fios entre os capítulos são degraus de uma linha, que o JPEG reduzido espalha
@@ -3547,7 +3594,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   }
 
   if (pw) {
-    const done = await renderPlaneswalker({ ctx, src, sctx, data, toImg, face, print, W, H, neural, plan });
+    const done = await renderPlaneswalker({ ctx, src, sctx, data, toImg, face, print, side, W, H, neural, plan });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: done };
   }
@@ -3599,7 +3646,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // grudava nele e a estrela, solta, ficava de fora e era apagada, Lord of the Pit SLD 1857)
   // (na de 2003 a barra acaba antes, ver TYPE_BAR_END_2003)
   const symbolEnd = frameBox ? Math.round((frameBox.x1 + 4) * fx) : print.frame === "2003" ? Math.round(TYPE_BAR_END_2003 * fx) : undefined;
-  const setLeft =
+  const measuredSetLeft =
     findSetSymbolLeft(
       data,
       Math.round((594 + typeShift) * fy),
@@ -3610,12 +3657,15 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       Boolean(frameBox),
       symbolless,
     ) / fx;
+  const setLeft = print.frame === "2003" && print.layout === "transform" ? dfcSymbolLeft2003(measuredSetLeft) : measuredSetLeft;
   const manaCost = sideInfo ? sideInfo.mana_cost : print.mana_cost;
   const hasPt = sideInfo ? sideInfo.has_pt : print.has_pt;
   // lembrete do verso ("4/4") na frente das cartas de transformar, e o da carta fundida na frente
   // das de fundir ("9/10" na Bruna, ADR 0043)
   const meld = print.layout === "meld";
   const backPt = print.layout === "transform" && side === 0 ? (print.sides?.[1]?.pt ?? null) : meld ? (face.meld_pt ?? null) : null;
+  // (na de 2003 os algarismos do inglês ficam, protegidos: ver backPtDigits2003)
+  const backDigits = backPt && print.frame === "2003" ? backPtDigits2003(data) : null;
   const rightIcon = Boolean(sideInfo && side === 1 && !manaCost && hasRightIcon(data));
   const layout = m15Layout(manaCost, hasPt, setLeft, {
     // (Lição sem o efeito marcado no Scryfall, como as de SOS: o ícone conferido na imagem)
@@ -3667,6 +3717,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     return reason ? { canvas: out, translated: false, reason } : { canvas: out, translated: false };
   };
   if (blocked || (print.flavor_name && !subtitle)) return original();
+  if (backPt && print.frame === "2003" && !backDigits) return original();
   // Mutação: a linha da palavra-chave vai na faixa translúcida do alto da caixa, e o resto no papel
   // abaixo do fio (ver mutate.ts). Sem o fio, ou sem a Mutação na frente do texto, sai a original.
   const mutateParts = mutate ? mutateText(face.text_pt, face.ability_words) : null;
@@ -3857,11 +3908,18 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     layout.protect.splice(0, 1, ...ptProtect(pt.top, pt.left));
   } else if (hasPt && layout.protect[0]) {
     const top = ptBoxTop(ptSource, 610 * fx, 670 * fx, 905 * fy, 950 * fy, 890 * fy);
-    if (top !== null) {
+    // (na de 2003 a caixa tem a sombra do chanfro à esquerda, ver ptProtect2003)
+    if (top !== null && print.frame === "2003") {
+      const border = boxBorderAt(ptSource, 536 * fx, 544 * fx, top, top + 20 * fy, 890 * fy);
+      layout.protect.splice(0, 1, ...ptProtect2003(top / fy, border === null ? null : border / fy));
+    } else if (top !== null) {
       const left = ptBoxLeft(ptSource, top + 22 * fy, 545 * fx, 610 * fx, 890 * fy);
       layout.protect.splice(0, 1, ...ptProtect(top / fy, left === null ? null : left / fx));
     }
   }
+  // O P/R do verso na frente das de duas faces de 2003 fica como está, protegido (os algarismos
+  // são os mesmos em PT, ver backPtDigits2003); sem ele onde fica, a carta sai na original
+  if (backDigits) layout.protect.push(backDigits);
   // o texto centrado no original (alguns feitiços curtos) sai centrado: medido antes de
   // apagar; na dúvida, à esquerda
   const boxGuard = [...stampGuard, ...layout.protect.map(toImg)];
@@ -3921,7 +3979,13 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
         fill: glass && e === layout.erase[1] ? ("pyramid" as const) : e.fill,
         letters: glass && e === layout.erase[1] ? glass : undefined,
         stains: e.stains,
-        attachedBelow: e.stains ? (advLayout?.attachedBelow ? advLayout.attachedBelow * fy : toImg(e.rect).y1) : undefined,
+        attachedBelow: e.stains
+          ? advLayout?.attachedBelow
+            ? advLayout.attachedBelow * fy
+            : e.attachedBelow
+              ? e.attachedBelow * fy
+              : toImg(e.rect).y1
+          : undefined,
         force:
           e.stains && bands
             ? bands.bands.map((b) => ({ x0: bands.x0 - 3 * fx, y0: b.y0 - 3 * fy, x1: bands.x1 + 3 * fx, y1: b.y1 + 3 * fy }))
@@ -4064,21 +4128,16 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     plan(1);
     // (só as letras: a marca é uns 20 a 40 tons mais escura que o papel, e as letras, pretas)
     const mask = textMask(data, measuredBox, WATERMARK_2003.ink, opaque, WATERMARK_2003.color, markInk);
-    const clean = await lamaBox(
-      data,
-      [{ rect: measuredBox, mask, polarity: markInk }],
-      measuredBox,
-      opaque,
-      markInk,
-      `${print.id}:${data.width}:${side}:marca`,
-      {
-        art: true,
-        grow: Math.round(fx * 2),
-        gap: 0,
-        simple: false,
-        neural,
-      },
-    );
+    const marked = { rect: measuredBox, mask, polarity: markInk };
+    // (abaixo do fio de baixo, só o pé das letras, como no apagamento de sempre)
+    keepAttachedBelow(marked, BOX_FOOT_2003 * fy, Math.round(8 * fy));
+    const clean = await lamaBox(data, [marked], measuredBox, opaque, markInk, `${print.id}:${data.width}:${side}:marca`, {
+      art: true,
+      grow: Math.round(fx * 2),
+      gap: 0,
+      simple: false,
+      neural,
+    });
     if (!clean) return original("neural");
   }
   // A faixa da Mutação é translúcida, com a arte por trás e a letra escura: só as letras saem, e a
@@ -4109,7 +4168,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const advInks = advLayout ? inks.slice(-3) : [];
   const stripInk = strip ? stripPolarity : undefined;
   // o lembrete do verso pode passar do lado da caixa, no canto que avança para a moldura (SOI)
-  if (backPt && measuredBox && !keepBox) {
+  // (na de 2003 os algarismos ficam, ver backPtDigits2003)
+  if (backPt && measuredBox && !keepBox && !backDigits) {
     const y1 = layout.box.y1;
     eraseBackPtNotch(data, toImg({ x0: 600, y0: y1 - BACK_PT_NOTCH.height - 14, x1: 716, y1 }), measuredBox.x1);
   }
@@ -4138,7 +4198,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     );
   if (face.type_pt)
     drawLine(ctx, face.type_pt, layout.type.x, layout.type.centerY, layout.type.maxWidth, layout.type.size, k, INK[typeInk], tf);
-  if (backPt) drawBackPt(ctx, backPt, layout.box.y1 - BACK_PT_NOTCH.height / 2, k, boxInk);
+  if (backPt && !backDigits) drawBackPt(ctx, backPt, layout.box.y1 - BACK_PT_NOTCH.height / 2, k, boxInk);
 
   const box = layout.box;
   const symbols = await preloadSymbols(face.text_pt, opts.flavor, adv?.text_pt, strip ? hint?.mana : null);
@@ -4215,7 +4275,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     m,
     advLayout ? advLayout.maxSize : 34,
     15,
-    backPt ? BACK_PT_NOTCH : undefined,
+    backDigits ? backPtNotch2003(box, backDigits) : backPt ? BACK_PT_NOTCH : undefined,
     face.ability_words,
   );
   const shade = bands ? { x0: bands.x0 / fx, x1: bands.x1 / fx, color: `rgb(${bands.color.join(",")})` } : undefined;

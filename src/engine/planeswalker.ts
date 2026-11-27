@@ -15,6 +15,7 @@
  * Medidas na escala-base de 745 × 1040 (PNG do Scryfall), conferidas em KLD,
  * WAR, C18, BRO, J22 e outras coleções.
  */
+import type { RegionMask } from "./erase";
 import type { Rect } from "./geometry";
 import { shadeProfile, shadeRatio } from "./station";
 
@@ -81,6 +82,82 @@ export function measureBoxBottom(img: ImageData): number | null {
     if (hit >= (x1 - x0) * 0.6) return y / fy;
   }
   return null;
+}
+
+/**
+ * Se a carta tem a caixa da lealdade inicial no canto de baixo à direita. O verso de um
+ * planeswalker que vira outro (Garruk, the Veil-Cursed; Arlinn, Embraced by the Moon; Oko,
+ * Shadowmoor Scion) não tem: a lealdade vem da frente, e a caixa de texto desce até o fio no
+ * canto (ADR 0050). Protegido como se tivesse, o fim da última linha em inglês ficava ao lado do
+ * português. Logo abaixo do topo do escudo (y 925 a 940, x 620 a 730) o miolo dele é preto: com
+ * o escudo, 71% ou mais dos pixels são escuros; sem ele, é o papel da caixa e o fio, até 43%.
+ */
+export function hasLoyaltyBox(img: ImageData): boolean {
+  const fx = img.width / 745;
+  const fy = img.height / 1040;
+  const [x0, x1] = [Math.round(620 * fx), Math.round(730 * fx)];
+  const [y0, y1] = [Math.round(925 * fy), Math.round(940 * fy)];
+  let dark = 0;
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (lum(img.data, (y * img.width + x) * 4) < 60) dark++;
+  return dark >= (x1 - x0) * (y1 - y0) * 0.6;
+}
+
+/**
+ * Sem a caixa da lealdade (ver `hasLoyaltyBox`), o canto de baixo à direita da caixa de texto
+ * é a curva do fio, que sobe de y ≈ 952 em x 600 a ≈ 932 em x 684 e chega ao lado da caixa em
+ * x ≈ 687, dentro do retângulo da última faixa: na máscara das letras, escura como elas, a rede
+ * neural a repintava num borrão escuro subindo pela curva e numa mancha no pé (Arlinn, Embraced
+ * by the Moon, INR 230; Garruk, the Veil-Cursed, INR 197). O fio é achado coluna a coluna, de cima
+ * para baixo (de y 900 a 965), e linha a linha, da esquerda para a direita (de x 600 a 700): começa
+ * na queda de 35 tons em 3 px depois da qual nada volta a ficar claro (abaixo de 130) até o fim
+ * (o pé e o lado de uma letra têm papel depois); a coluna ou a linha sem o fio achado fica com a
+ * medida da vizinha. Do fio para fora, com 2 px de folga, nada fica na máscara; e a folga que a
+ * máscara ganhou em volta do fio (`textMask` dilata e fecha) sai também: a até 8 px dele, fica só
+ * a borda das letras mais longe (a até 3 px delas), que se emendava com a folga do fio quando a
+ * última linha chega perto da curva (o "graveyard." do Garruk, the Veil-Cursed). O fio continua à vista da rede neural, como os lados da caixa:
+ * escondido dela, a beira do buraco logo acima saía num risco escuro.
+ */
+export function clipBoxFoot(img: ImageData, m: RegionMask): void {
+  const { rect, mask } = m;
+  const w = rect.x1 - rect.x0;
+  const h = rect.y1 - rect.y0;
+  if (!mask.length || w <= 0 || h <= 0) return;
+  const fx = img.width / 745;
+  const fy = img.height / 1040;
+  const at = (x: number, y: number) => lum(img.data, (y * img.width + x) * 4);
+  // a primeira queda, entre `from` e `to`, depois da qual tudo fica escuro
+  const edge = (from: number, to: number, d: number, px: (i: number) => number): number | null => {
+    for (let i = from; i <= to; i++) {
+      if (px(i - d) - px(i) <= 35) continue;
+      let dark = true;
+      for (let j = i; j <= to && dark; j++) dark = px(j) < 130;
+      if (dark) return i;
+    }
+    return null;
+  };
+  const [y0, y1] = [Math.round(900 * fy), Math.min(img.height - 1, Math.round(965 * fy))];
+  const [x0, x1] = [Math.round(600 * fx), Math.min(img.width - 1, Math.round(700 * fx))];
+  const foot = new Int32Array(w);
+  let last = Math.round(PW.area.bottom * fy);
+  for (let x = 0; x < w; x++) foot[x] = last = edge(y0, y1, Math.max(2, Math.round(3 * fy)), (y) => at(rect.x0 + x, y)) ?? last;
+  const side = new Int32Array(h);
+  last = Math.round(PW.eraseRight * fx);
+  for (let y = 0; y < h; y++) side[y] = last = edge(x0, x1, Math.max(2, Math.round(3 * fx)), (x) => at(x, rect.y0 + y)) ?? last;
+  // quanto o pixel fica antes do fio (negativo: no fio ou depois dele)
+  const gap = (x: number, y: number) => Math.min(foot[x] - (rect.y0 + y), side[y] - (rect.x0 + x)) - 2;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (gap(x, y) <= 0) mask[y * w + x] = 0;
+  // a folga em volta do fio: a até 8 px dele, só fica o que está a até 3 px de um pedaço da
+  // máscara mais longe (a borda das letras)
+  const near = Math.round(8 * Math.min(fx, fy));
+  const reach = Math.max(1, Math.round(3 * Math.min(fx, fy)));
+  const far = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      if (!mask[y * w + x] || gap(x, y) <= near) continue;
+      for (let yy = Math.max(0, y - reach); yy <= Math.min(h - 1, y + reach); yy++)
+        far.fill(1, yy * w + Math.max(0, x - reach), yy * w + Math.min(w, x + reach + 1));
+    }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (gap(x, y) <= near && !far[y * w + x]) mask[y * w + x] = 0;
 }
 
 export const PW = {

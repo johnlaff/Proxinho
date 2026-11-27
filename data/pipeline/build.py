@@ -765,6 +765,21 @@ def pw_costs(oracle_text: str | None, text_pt: str | None) -> str | None:
     return "\n".join(out)
 
 
+def pw_faces(card: dict, faces: list[dict], oid: str) -> None:
+    """O custo de lealdade na frente de cada habilidade da face planeswalker de uma carta de
+    transformar (ADR 0050), como em `pw_costs`. Quando os parágrafos não batem com o Oracle da
+    face, a carta entra em `PW_FACE_MISMATCH` e a face sai como está."""
+    for i, f in enumerate(faces):
+        en_face = en_face_of(card, faces, i)
+        if "Planeswalker" not in (en_face.get("type_line") or "") or f.get("text_pt") is None:
+            continue
+        text_pt = pw_costs(en_face.get("oracle_text"), f["text_pt"])
+        if text_pt is None:
+            PW_FACE_MISMATCH.add(oid)
+        else:
+            f["text_pt"] = text_pt
+
+
 # capítulo de Saga no Oracle: "I — …", "I, II — …"
 _CHAPTER = re.compile(r"^((?:[IVX]+)(?:, [IVX]+)*) — (.+)$")
 
@@ -2139,8 +2154,11 @@ def class_supported(card: dict) -> bool:
 
 
 DFC_LAYOUTS = {"transform", "modal_dfc"}
-# molduras de duas faces com desenho próprio (bússola de Ixalan, planeswalker de Magic Origins…)
-UNSUPPORTED_DFC_EFFECTS = UNSUPPORTED_EFFECTS | {"compasslanddfc", "originpwdfc", "convertdfc"}
+# molduras de duas faces com desenho próprio (o verso da bússola de Ixalan, a conversão dos
+# Transformers). O ícone do planeswalker de Magic Origins fica no lugar do sol (ADR 0050)
+UNSUPPORTED_DFC_EFFECTS = UNSUPPORTED_EFFECTS | {"compasslanddfc", "convertdfc"}
+# a face planeswalker das cartas de transformar (ADR 0050): o sol e a lua, o ícone de Magic Origins
+PW_DFC_EFFECTS_OK = {"sunmoondfc", "originpwdfc", "legendary"}
 # o leque de Kamigawa: Neon Dynasty é só o ícone das de duas faces (ADR 0047)
 DFC_SAGA_EFFECTS_OK = SAGA_EFFECTS_OK | {"fandfc"}
 # As promos de pré-estreia de Kamigawa: Neon Dynasty (PNEO, foil) têm a imagem lavada na
@@ -2154,17 +2172,33 @@ BATTLE_EFFECTS_OK = {"legendary", "enchantment"}
 
 
 def face_supported(card: dict, face: dict) -> bool:
-    """Uma face de carta de duas faces (transformar ou modal) na moldura 2015.
+    """Uma face de carta de duas faces (transformar ou modal) na moldura 2015, ou de transformar na
+    de 2003 (Innistrad e Dark Ascension, ADR 0049).
 
     A face que é Saga (as de Kamigawa: Neon Dynasty e de Avatar na frente, as dos pretores de March
     of the Machine, a do Huatli e as Invocações de Final Fantasy no verso) tem a moldura da Saga,
     com o ícone das de duas faces e, na frente, o P/R do verso no pé da coluna (ADR 0047): entra
     como as Sagas de uma face, de borda preta, sem a arte estendida e sem as de vitrine. A frente
-    das batalhas (ADR 0048) é impressa deitada e tem moldura própria (src/engine/battle.ts).
+    das batalhas (ADR 0048) é impressa deitada e tem moldura própria (src/engine/battle.ts). A face
+    planeswalker (ADR 0050) tem a caixa do planeswalker, com o ícone e o indicador de cor.
     """
     effects = set(card.get("frame_effects") or [])
     if card.get("set") in DFC_SAGA_SETS_OFF:
         return False
+    # as de Innistrad e Dark Ascension na moldura de 2003 (ADR 0049): o sol e a lua à esquerda do
+    # nome, o verso com as barras escuras e a letra branca, e na frente o P/R do verso numa ponta
+    # da caixa. Fora o Garruk Relentless, planeswalker (a caixa de 2003 deles não é reescrita)
+    if card.get("frame") == "2003":
+        return (
+            card.get("layout") == "transform"
+            and card.get("border_color") == "black"
+            and effects <= {"sunmoondfc"}
+            and not card.get("full_art")
+            and not card.get("textless")
+            and card.get("watermark") in WATERMARKS_2003_OK
+            and card.get("set") not in SETS_2003_OFF
+            and not any(t in face.get("type_line", "") for t in UNSUPPORTED_TYPES)
+        )
     # a frente das batalhas, impressa deitada (ADR 0048): só a de borda preta, sem as cartas de teste
     if "Battle" in face.get("type_line", ""):
         return (
@@ -2172,6 +2206,20 @@ def face_supported(card: dict, face: dict) -> bool:
             and card.get("layout") == "transform"
             and card.get("border_color") == "black"
             and effects <= BATTLE_EFFECTS_OK
+            and not card.get("full_art")
+            and not card.get("textless")
+            and not drawn_frame(card)
+            and "playtest" not in (card.get("promo_types") or [])
+        )
+    # a face planeswalker das de transformar (ADR 0050): a caixa do planeswalker, com o ícone das de
+    # duas faces à esquerda do nome (ou à direita, no verso sem custo) e o indicador de cor. Só a de
+    # borda preta, sem as de vitrine e as "inverted" (Comic-Con de 2015) e sem as cartas de teste
+    if "Planeswalker" in face.get("type_line", ""):
+        return (
+            card.get("frame") == "2015"
+            and card.get("layout") == "transform"
+            and card.get("border_color") == "black"
+            and effects <= PW_DFC_EFFECTS_OK
             and not card.get("full_art")
             and not card.get("textless")
             and not drawn_frame(card)
@@ -2201,6 +2249,8 @@ def face_supported(card: dict, face: dict) -> bool:
 
 # As faces que são Saga nas cartas de duas faces: {id da impressão: [face]} (ver `SAGA_MISMATCH`)
 SAGA_SIDES: dict[str, list[int]] = {}
+# e as que são planeswalker (ver `PW_FACE_MISMATCH`)
+PW_SIDES: dict[str, list[int]] = {}
 
 
 def sides_of(card: dict) -> list[dict] | None:
@@ -2212,6 +2262,8 @@ def sides_of(card: dict) -> list[dict] | None:
     for i, f in enumerate(faces):
         if "Saga" in f.get("type_line", ""):
             SAGA_SIDES.setdefault(card["id"], []).append(i)
+        if "Planeswalker" in f.get("type_line", ""):
+            PW_SIDES.setdefault(card["id"], []).append(i)
         has_pt = f.get("power") is not None
         out.append(
             {
@@ -2461,6 +2513,8 @@ def load_prints(offline: bool) -> list[dict]:
 
 # planeswalkers cujo texto em PT tem outro número de habilidades que o inglês
 PW_MISMATCH: set[str] = set()
+# a face planeswalker de uma carta de transformar com as habilidades que não batem: só ela sai como está
+PW_FACE_MISMATCH: set[str] = set()
 # Sagas cujo texto do Arena não casa com os capítulos do Oracle
 SAGA_MISMATCH: set[str] = set()
 
@@ -2754,6 +2808,8 @@ def add_unofficial(rows: list[dict], oracle: list[dict], reminders: dict[str, st
                 PW_MISMATCH.add(oid)
             else:
                 faces[0]["text_pt"] = text_pt
+        if card.get("layout") == "transform":
+            pw_faces(card, faces, oid)
         for i, f in enumerate(faces):
             e = en_face_of(card, faces, i)
             if any(t in (e.get("type_line") or "") for t in TOP_REMINDER_TYPES):
@@ -2822,6 +2878,9 @@ def build(offline: bool) -> list[dict]:
                 PW_MISMATCH.add(oid)
             else:
                 faces[0]["text_pt"] = text_pt
+        # (e a face planeswalker das de transformar, ADR 0050)
+        if card.get("layout") == "transform":
+            pw_faces(card, faces, oid)
 
         # o nome da palavra-chave que falta na frente do custo dela (ver `restore_cost_keyword`)
         for i, f in enumerate(faces):
@@ -3086,14 +3145,17 @@ def main() -> None:
     for p in prints:
         if p["oracle_id"] in PW_MISMATCH or (p["oracle_id"] in SAGA_MISMATCH and p["layout"] == "saga"):
             p["supported"] = False
-        # (a face Saga de uma carta de duas faces com os capítulos que não batem: só ela sai como está)
-        if p["oracle_id"] in SAGA_MISMATCH and p.get("sides"):
-            for i in SAGA_SIDES.get(p["id"], ()):
-                p["sides"][i]["supported"] = False
-            if p["layout"] == "transform":
-                p["supported"] = p["sides"][0]["supported"]
+        # (a face Saga de uma carta de duas faces com os capítulos que não batem: só ela sai como está;
+        # e a face planeswalker com as habilidades que não batem, também)
+        for bad, by_print in ((SAGA_MISMATCH, SAGA_SIDES), (PW_FACE_MISMATCH, PW_SIDES)):
+            if p["oracle_id"] in bad and p.get("sides"):
+                for i in by_print.get(p["id"], ()):
+                    p["sides"][i]["supported"] = False
+                if p["layout"] == "transform":
+                    p["supported"] = p["sides"][0]["supported"]
     log(f"planeswalkers com habilidades que não batem (saem como estão): {len(PW_MISMATCH)}")
     log(f"Sagas com capítulos que não batem (saem como estão): {len(SAGA_MISMATCH)}")
+    log(f"faces planeswalker de cartas de transformar que não batem (saem como estão): {len(PW_FACE_MISMATCH)}")
     log(f"artes com o flavor da impressão do texto em PT: {mark_text_flavor(rows, prints, FLAVORS)}")
     log(f"artes com o flavor de outra versão do Arena: {mark_print_flavors(rows, prints, ARENA_FLAVORS)}")
     write(rows, prints)

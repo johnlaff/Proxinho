@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   barCapGuard,
+  boxBorderAt,
   centralSpan,
   coloredInk,
   darkTextBox,
@@ -26,7 +27,7 @@ import {
   typeBarEdges,
   typeBarTop,
 } from "../../src/engine/erase";
-import { m15Layout, ptProtect } from "../../src/engine/geometry";
+import { m15Layout, ptProtect, ptProtect2003 } from "../../src/engine/geometry";
 import { findBoxHighlight, findStamp, findTokenBoxBottom, measureCentered, stampShape } from "../../src/engine/token";
 
 /** Imagem falsa 745×1040 de uma cor só, com um pintor de retângulos. */
@@ -1277,6 +1278,54 @@ describe("ptBoxLeft e ptProtect", () => {
     const rects = ptProtect(936, 573);
     for (let y = 925; y < 929; y++) for (let x = 576; x < 584; x++) expect(inside(rects, x, y)).toBe(false);
     expect(inside(rects, 590, 934)).toBe(true);
+  });
+});
+
+describe("ptProtect2003", () => {
+  const inside = (rects: { x0: number; y0: number; x1: number; y1: number }[], x: number, y: number) =>
+    rects.some((r) => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
+
+  it("protege a sombra do chanfro, que desce na diagonal à esquerda da caixa até o fio (Champion of the Parish, ISD 6)", () => {
+    // a sombra vai de x ≈ 559 em 924 a ≈ 550 em 942; a caixa começa em 568 e o fio de baixo da caixa de texto, em 943
+    const rects = ptProtect2003(929, 943);
+    for (const [x, y] of [
+      [559, 924],
+      [556, 926],
+      [553, 928],
+      [550, 931],
+      [549, 942],
+      [600, 929],
+    ])
+      expect(inside(rects, x, y)).toBe(true);
+  });
+
+  it("acima e à esquerda da sombra, o papel fica de fora", () => {
+    const rects = ptProtect2003(929, 943);
+    // o pé da última linha acima da caixa e as letras à esquerda dela
+    for (let x = 560; x < 680; x += 10) expect(inside(rects, x, 922)).toBe(false);
+    expect(inside(rects, 545, 933)).toBe(false);
+    expect(inside(rects, 550, 925)).toBe(false);
+  });
+
+  it("do fio para baixo, a proteção de antes (Tidehollow Sculler, ALA 202: o fio sobe à direita)", () => {
+    const rects = ptProtect2003(928, 935);
+    expect(inside(rects, 550, 934)).toBe(true);
+    expect(inside(rects, 550, 936)).toBe(false);
+    expect(inside(rects, 565, 936)).toBe(true);
+    // sem o fio medido, sete linhas abaixo do topo
+    expect(inside(rects, 550, 935)).toBe(false);
+    expect(inside(ptProtect2003(928, null), 550, 934)).toBe(true);
+  });
+});
+
+describe("boxBorderAt", () => {
+  it("acha o fio de baixo da caixa de texto, e não as letras soltas acima dele", () => {
+    const { img, fill } = canvas([235, 230, 220]);
+    fill(0, 943, 560, 950, [30, 30, 30]);
+    // o pé de uma letra só numa coluna
+    fill(538, 930, 540, 936, [20, 20, 20]);
+    expect(boxBorderAt(img, 536, 544, 929, 949, 890)).toBe(943);
+    expect(boxBorderAt(img, 536, 544, 929, 940, 890)).toBeNull();
   });
 });
 
