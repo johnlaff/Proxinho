@@ -250,3 +250,9 @@ Como jogador, quero imprimir em português as cartas de transformar com uma face
 - [x] A face Saga sai como as Sagas de uma face, com os capítulos ao lado dos marcadores e os fios onde o português pede; a outra face sai como as cartas de transformar.
 - [x] Na frente de Kamigawa: Neon Dynasty e de Avatar, o P/R do verso fica no pé da coluna, e o último capítulo acaba acima dele.
 - [x] O verso Saga dos pretores de March of the Machine, da Huatli e das Invocações de Final Fantasy sai com o ícone e o indicador de cor das de duas faces.
+
+### H28. A frente das batalhas (entregue em 27/11/2026, ADR 0048)
+Como jogador, quero imprimir em português a frente das batalhas de March of the Machine, como Invasion of Zendikar // Awakened Skyclave.
+- [x] O nome, o tipo ("Batalha — Cerco") e o texto da frente saem em PT na carta deitada, com o lembrete dos Cercos das impressas em PT no alto.
+- [x] O P/R do verso fica no mesmo lugar, e o escudo da defesa fica inteiro, com o texto desviando dos dois.
+- [x] As de March of the Machine, as promos de pré-estreia e a de Innistrad Remastered saem em PT; as cartas de teste ficam de fora.

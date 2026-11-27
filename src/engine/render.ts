@@ -175,6 +175,7 @@ import {
 } from "./old93";
 import { prepareFrame, prepareLayout } from "./prepare";
 import { ROOM, roomCostLeft, roomFrame } from "./room";
+import { BATTLE, battleBox, battleCostLeft, battleFrame, battleNotch, battleShield } from "./battle";
 import {
   fuseBar,
   oldSplitBoxes,
@@ -1893,7 +1894,15 @@ function drawMdfcHint(
  * estrela da carta impressa ("★/★" na frente da Titânia, Voz de Gaia, BRO 193): o asterisco da
  * Beleren é pequeno e alto, e lia-se só a barra e um pingo (ver `starPoints`).
  */
-function drawBackPt(ctx: CanvasRenderingContext2D, pt: string, centerY: number, k: number, ink: "dark" | "light") {
+function drawBackPt(
+  ctx: CanvasRenderingContext2D,
+  pt: string,
+  centerY: number,
+  k: number,
+  ink: "dark" | "light",
+  /** onde o P/R acaba (alinhado à direita): o canto da caixa da M15, ou o da batalha deitada */
+  right = 682,
+) {
   const t = titleFont();
   const size = 26 * t.scale * k;
   ctx.save();
@@ -1904,7 +1913,7 @@ function drawBackPt(ctx: CanvasRenderingContext2D, pt: string, centerY: number, 
   const parts = pt.split(/(\*)/).filter(Boolean);
   const star = size * 0.72;
   const widths = parts.map((s) => (s === "*" ? star : ctx.measureText(s).width));
-  let x = 682 * k - widths.reduce((a, b) => a + b, 0);
+  let x = right * k - widths.reduce((a, b) => a + b, 0);
   parts.forEach((s, i) => {
     if (s === "*") {
       ctx.beginPath();
@@ -2493,6 +2502,94 @@ async function renderRoom(p: {
   }
   ctx.restore();
   return "ok";
+}
+
+/**
+ * Frente das batalhas (ADR 0048, ver battle.ts): girada para a carta deitada, é uma carta de duas
+ * faces da M15 alargada. O nome, o tipo e a caixa saem pelo apagamento de sempre (o custo, o
+ * símbolo da coleção e o escudo da defesa ficam, o escudo pela forma dele), o P/R do verso sai
+ * com o texto e é escrito de novo no mesmo lugar, como nas cartas de transformar de pé, e o
+ * português é escrito na carta deitada, posta de pé de novo, em volta do P/R e do escudo.
+ */
+async function renderBattle(p: {
+  ctx: CanvasRenderingContext2D;
+  src: HTMLCanvasElement;
+  face: PtFace;
+  print: PrintRecord;
+  flavor: string | null;
+  W: number;
+  H: number;
+}): Promise<boolean> {
+  const { ctx, src, face, print, W, H } = p;
+  if (!face.type_pt) return false;
+  const rot = document.createElement("canvas");
+  rot.width = src.height;
+  rot.height = src.width;
+  const rctx = rot.getContext("2d", { willReadFrequently: true });
+  if (!rctx) throw new Error("Seu navegador não liberou o canvas 2D.");
+  rctx.translate(rot.width, 0);
+  rctx.rotate(Math.PI / 2);
+  rctx.drawImage(src, 0, 0);
+  rctx.setTransform(1, 0, 0, 1, 0, 0);
+  const data = rctx.getImageData(0, 0, rot.width, rot.height);
+  if (!battleFrame(data)) return false;
+  const shield = battleShield(data);
+  if (!shield) return false;
+  const B = BATTLE;
+  const fx = rot.width / B.width;
+  const fy = rot.height / B.height;
+  const toImg = (r: Rect) => roundRect({ x0: r.x0 * fx, y0: r.y0 * fy, x1: r.x1 * fx, y1: r.y1 * fy });
+
+  const cost = battleCostLeft(print.sides?.[0]?.mana_cost ?? print.mana_cost);
+  const nameRect = toImg({ x0: B.name.x0, y0: B.name.y0, x1: cost - 6, y1: B.name.y1 });
+  const costGuard = toImg({ x0: cost - 4, y0: B.name.y0 - 2, x1: B.name.costRight + 10, y1: B.name.y1 + 1 });
+  const typeRect = toImg(B.type);
+  const paper = battleBox(data);
+  const backPt = print.sides?.[1]?.pt ?? null;
+  // (o P/R do verso fica na ponta em seta da moldura, onde o papel passa do lado medido da caixa:
+  // o fim dele, a 1 px do lado, ficava como um risco cinza)
+  const ptRect = toImg({ x0: B.backPt.left, y0: B.backPt.top + 4, x1: paper.x1 + 4, y1: B.backPt.top + 41 });
+  const inks = eraseRegions(
+    data,
+    [
+      { rect: nameRect, threshold: 28, fill: "rows" },
+      { rect: typeRect, threshold: 28, fill: "rows" },
+      { rect: toImg(paper), threshold: 14, colorThreshold: 34, stains: true },
+      ...(backPt ? [{ rect: ptRect, threshold: 14 }] : []),
+    ],
+    [costGuard, ...shield],
+    [costGuard, ...shield],
+    // (a curva depois do ícone e a ponta arredondada da barra de tipo ficam, ver barCapGuard)
+    [nameRect, typeRect].flatMap((r) => barCapGuard(data, r, "left")),
+  );
+  rctx.putImageData(data, 0, 0);
+
+  const k = H / B.width;
+  ctx.save();
+  ctx.translate(0, H);
+  ctx.rotate(-Math.PI / 2);
+  ctx.drawImage(rot, 0, 0, H, W);
+  const boxInk = inks[2] ?? "dark";
+  drawLine(ctx, face.name_pt ?? face.name_en, B.name.x, B.name.center, cost - 12 - B.name.x, B.name.size, k, INK[inks[0] ?? "dark"]);
+  drawLine(ctx, face.type_pt, B.type.x, B.type.center, B.type.end - B.type.x, B.type.size, k, INK[inks[1] ?? "dark"]);
+  if (backPt) drawBackPt(ctx, backPt, B.backPt.center, k, boxInk, B.backPt.right);
+  const t = B.text;
+  const m = measurer(ctx, k);
+  const symbols = await preloadSymbols(face.text_pt, p.flavor);
+  const res = fitText(
+    face.text_pt,
+    p.flavor,
+    t.x1 - t.x0,
+    t.y1 - t.y0,
+    m,
+    B.maxSize,
+    B.minSize,
+    battleNotch(t, Boolean(backPt)),
+    face.ability_words,
+  );
+  drawLayout(ctx, res, t, k, boxInk, symbols, m);
+  ctx.restore();
+  return true;
 }
 
 /**
@@ -3346,6 +3443,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const room = isRoom(print, opts.typeLine);
   // e as divididas da moldura antiga: o nome e o tipo de cada metade, também
   const oldSplit = isOldSplit(print);
+  // e a frente das batalhas, impressa deitada (ADR 0048)
+  const battle = print.layout === "transform" && side === 0 && /\bBattle\b/.test(faceType) && !borderless;
   // e as criaturas com Mutação: a faixa translúcida do alto da caixa vai para a rede neural
   const mutate = print.layout === "mutate" && !borderless;
   const version =
@@ -3437,6 +3536,12 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       other?.name_pt && other.text_pt !== null
         ? await renderFlip({ ctx, src, halves: [face, other], frame2003: print.frame === "2003", W, H })
         : false;
+    if (!done) ctx.drawImage(img, 0, 0, W, H);
+    return { canvas: out, translated: done };
+  }
+
+  if (battle) {
+    const done = await renderBattle({ ctx, src, face, print, flavor: opts.flavor ?? null, W, H });
     if (!done) ctx.drawImage(img, 0, 0, W, H);
     return { canvas: out, translated: done };
   }

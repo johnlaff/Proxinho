@@ -385,6 +385,27 @@ Nenhuma saiu em PT com texto no Scryfall, e o bloco de Kamigawa não está no Ar
 
 A escolha (ADR 0044): como a Consequência, cada metade apagada e escrita na orientação dela (a de baixo na carta girada 180°), com as barras de tipo achadas pelos fios, a caixa de P/R pelo fio de dentro, a caixa pelo papel; o nome fica.
 
+### Batalhas (27/11/2026)
+
+As batalhas são o tipo de permanente de March of the Machine (regras 310): a frente tem a defesa num escudo, e a batalha derrotada é exilada e conjurada transformada. No papel só há Cercos ("Battle — Siege"): o Scryfall tem 56 impressões de papel, 36 de MOM, 16 promos de pré-estreia (PMOM), a Invasion of Innistrad de Innistrad Remastered (INR 120) e 3 cartas de teste (UNK, `playtest`), todas na moldura atual e, salvo as de teste, de borda preta. A frente é impressa deitada, como as Salas; o verso, de pé, tem a moldura das cartas de transformar. O Proxyshop tem modelos de batalha desde a versão de March of the Machine (a moldura comum e a de Universes Beyond, com o `BattleMod`), que desenham a moldura do zero.
+
+O Arena traz as duas faces sem o lembrete dos Cercos, que a carta física traz. As impressas em PT (MOM) o têm: "(Conforme um Cerco entrar no campo de batalha, escolha um oponente para protegê-lo. Você e outros podem atacá-lo. Quando ele for derrotado, exile-o e depois o conjure transformado.)". A Invasion of Alara não tem o lembrete nem em inglês.
+
+Medidas nas imagens do Scryfall (745 × 1040), na carta girada 90° no sentido horário (1040 × 745), nas 53 frentes:
+
+| Medida | Valor |
+| --- | --- |
+| Barra do nome | papel de y 37 a 88; a curva depois do ícone das de duas faces acaba em x ≈ 186 e a primeira letra começa em 195; maiúsculas de y 50 a 77; o custo acaba em 968, com ~38 px por símbolo (45 nos híbridos) |
+| Barra de tipo | papel de y 434 a 484; a ponta arredondada acaba em x ≈ 125 e a primeira letra começa em 135 (maiúsculas de 449 a 472); "Battle — Siege" acaba antes de x 350, o símbolo da coleção fica de 905 a 965 |
+| Fios abaixo das barras | o pé da barra do nome sobre a arte (y 88 a 100) e o fio entre a barra de tipo e a caixa (484 a 498), com a mediana da linha mais escura abaixo de 41 |
+| Caixa | papel de x ≈ 121 a 972 e de y 493 a 716 (acima de 175); na moldura branca o fio da esquerda tem a cor do papel, e o bisel cinza fica no alto e à direita |
+| Texto do inglês | de x ≈ 135 a 950, da primeira linha em y ≈ 506 à última antes de 705 |
+| P/R do verso | algarismos em cinza de x ≈ 918 a 962 e de y 607 a 630, numa ponta de papel que passa do lado da caixa (até x ≈ 989, de y ≈ 595 a 640); a ponta existe também quando o verso não tem P/R |
+| Escudo da defesa | estrela preta de x 946 a 1009 e de y 655 a 721 (3 px antes na de INR), ~2500 px, com o número branco no meio, um aro claro e um contorno de ~6 px; avança sobre a moldura; mediana do preto abaixo de 49 |
+| Letras mais perto do escudo | 4 px do aro (a vírgula de "field," na Invasion of Eldraine, MOM 113) |
+
+A escolha (ADR 0048): o caminho da carta deitada das Salas, com a moldura conferida pelas barras, os fios e o escudo, o escudo protegido pela forma, o P/R do verso apagado e escrito de novo e o lembrete das impressas em PT no alto.
+
 ### Sagas de duas faces (26/11/2026)
 
 O Scryfall tem 126 impressões de papel de cartas de transformar com uma face Saga, todas na moldura atual: a frente Saga de Kamigawa: Neon Dynasty (23 cartas, a Saga que vira criatura encantamento, com o leque das de duas faces, `fandfc`) e de Avatar: The Last Airbender (5), e o verso Saga dos cinco pretores de March of the Machine, da Huatli, Poet of Unity (LCI) e de 8 cartas de Final Fantasy (o verso é uma Invocação, a moldura do ADR 0042). 70 são de borda preta sem arte estendida, vitrine nem sem borda; as outras ficam de fora como as Sagas de uma face. Na frente, o P/R do verso vai no pé da coluna, à esquerda, logo abaixo da ponta da tira dos marcadores, como o "3/4" da The Restoration of Eiganjo; o último capítulo acaba acima dele, e a impressa em PT faz o mesmo.

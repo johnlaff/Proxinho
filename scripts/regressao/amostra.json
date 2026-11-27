@@ -1024,6 +1024,22 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "92f5b177-b0c6-4573-b860-f75dad1941bd",
+    "oracle_id": "329fcb1e-7066-46c5-ba27-20ed2b18c1ba",
+    "set": "mom",
+    "number": "113",
+    "nome": "Invasion of Eldraine // Prickle Faeries",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "a98f71a0-7c99-4cee-8f70-877e698cca84",
+    "oracle_id": "5c7f02ad-1daf-4d1a-bef0-0b2064f9b67e",
+    "set": "mom",
+    "number": "149",
+    "nome": "Invasion of Tarkir // Defiant Thundermaw",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "81039daf-0d54-4474-a833-fa287ec10cf9",
     "oracle_id": "18591d9e-c9f5-4ae8-aee1-8580bc8fa600",
     "set": "mom",
@@ -1165,6 +1181,14 @@
     "set": "plc",
     "number": "114",
     "nome": "Rough // Tumble",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "2daea13f-ae10-4355-870f-ac5c823f39ae",
+    "oracle_id": "9d9b52b2-2edc-4f7f-a8d9-e024b1398847",
+    "set": "pneo",
+    "number": "34s",
+    "nome": "The Restoration of Eiganjo // Architect of Restoration",
     "grupo": "citada nos documentos"
   },
   {
@@ -5054,6 +5078,86 @@
     "number": "76",
     "nome": "Virtue of Knowledge // Vantress Visions",
     "grupo": "aventura"
+  },
+  {
+    "id": "370412b1-85ec-42a9-90fe-c35a6249e149",
+    "oracle_id": "a3c1af66-63c8-41ec-a401-a3da1131dc67",
+    "set": "inr",
+    "number": "120",
+    "nome": "Invasion of Innistrad // Deluge of the Dead",
+    "grupo": "batalha"
+  },
+  {
+    "id": "b3af679b-6ee6-4a1d-8ec3-b659bdd90b4a",
+    "oracle_id": "7209f2b6-8851-42ab-bac6-5cf06e211e46",
+    "set": "mom",
+    "number": "114",
+    "nome": "Invasion of Fiora // Marchesa, Resolute Monarch",
+    "grupo": "batalha"
+  },
+  {
+    "id": "93345804-dda4-42a2-84d4-8fcd376dd2d4",
+    "oracle_id": "2e0d12dc-55fa-4363-b28f-612e7cfa12c6",
+    "set": "mom",
+    "number": "192",
+    "nome": "Invasion of Muraganda // Primordial Plasm",
+    "grupo": "batalha"
+  },
+  {
+    "id": "7e784d3d-0c6d-4ce5-beb5-edd2adb32385",
+    "oracle_id": "dcbd8b15-e5fd-4f0d-ba2d-06f018b64fb3",
+    "set": "mom",
+    "number": "21",
+    "nome": "Invasion of Dominaria // Serra Faithkeeper",
+    "grupo": "batalha"
+  },
+  {
+    "id": "b3e0fc49-f765-4bd1-a2b9-23e703388b50",
+    "oracle_id": "fe84933e-d98f-4cbc-b272-387a80894e31",
+    "set": "mom",
+    "number": "233",
+    "nome": "Invasion of Ergamon // Truga Cliffcharger",
+    "grupo": "batalha"
+  },
+  {
+    "id": "f5926c8e-8049-418e-9a84-f8558e5ba9d1",
+    "oracle_id": "530dc119-e266-4525-abe9-7fab599e9de2",
+    "set": "mom",
+    "number": "238",
+    "nome": "Invasion of New Capenna // Holy Frazzle-Cannon",
+    "grupo": "batalha"
+  },
+  {
+    "id": "00255899-aaaf-46c6-8037-bd0e3c06250c",
+    "oracle_id": "7f8dad7f-a573-469f-9095-4ba3886b4f0b",
+    "set": "mom",
+    "number": "241",
+    "nome": "Invasion of Tolvada // The Broken Sky",
+    "grupo": "batalha"
+  },
+  {
+    "id": "1c3f661d-b9f7-48e7-afe3-3eaea1022bc1",
+    "oracle_id": "9794e31f-e73d-4aa0-a421-dc496080c987",
+    "set": "mom",
+    "number": "61",
+    "nome": "Invasion of Arcavios // Invocation of the Founders",
+    "grupo": "batalha"
+  },
+  {
+    "id": "c0ef6737-8e85-42ca-8ee6-6a34f9462de3",
+    "oracle_id": "73c7fdb3-4742-4d08-8658-daa4435c49b1",
+    "set": "mom",
+    "number": "64",
+    "nome": "Invasion of Vryn // Overloaded Mage-Ring",
+    "grupo": "batalha"
+  },
+  {
+    "id": "144c4e3b-1679-4937-8637-05a98295168a",
+    "oracle_id": "a3c1af66-63c8-41ec-a401-a3da1131dc67",
+    "set": "pmom",
+    "number": "115s",
+    "nome": "Invasion of Innistrad // Deluge of the Dead",
+    "grupo": "batalha"
   },
   {
     "id": "65463a1b-39c1-4fc8-8de2-85224de810ac",
