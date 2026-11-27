@@ -2154,7 +2154,8 @@ BATTLE_EFFECTS_OK = {"legendary", "enchantment"}
 
 
 def face_supported(card: dict, face: dict) -> bool:
-    """Uma face de carta de duas faces (transformar ou modal) na moldura 2015.
+    """Uma face de carta de duas faces (transformar ou modal) na moldura 2015, ou de transformar na
+    de 2003 (Innistrad e Dark Ascension, ADR 0049).
 
     A face que é Saga (as de Kamigawa: Neon Dynasty e de Avatar na frente, as dos pretores de March
     of the Machine, a do Huatli e as Invocações de Final Fantasy no verso) tem a moldura da Saga,
@@ -2165,6 +2166,20 @@ def face_supported(card: dict, face: dict) -> bool:
     effects = set(card.get("frame_effects") or [])
     if card.get("set") in DFC_SAGA_SETS_OFF:
         return False
+    # as de Innistrad e Dark Ascension na moldura de 2003 (ADR 0049): o sol e a lua à esquerda do
+    # nome, o verso com as barras escuras e a letra branca, e na frente o P/R do verso numa ponta
+    # da caixa. Fora o Garruk Relentless, planeswalker (a caixa de 2003 deles não é reescrita)
+    if card.get("frame") == "2003":
+        return (
+            card.get("layout") == "transform"
+            and card.get("border_color") == "black"
+            and effects <= {"sunmoondfc"}
+            and not card.get("full_art")
+            and not card.get("textless")
+            and card.get("watermark") in WATERMARKS_2003_OK
+            and card.get("set") not in SETS_2003_OFF
+            and not any(t in face.get("type_line", "") for t in UNSUPPORTED_TYPES)
+        )
     # a frente das batalhas, impressa deitada (ADR 0048): só a de borda preta, sem as cartas de teste
     if "Battle" in face.get("type_line", ""):
         return (

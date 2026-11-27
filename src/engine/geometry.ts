@@ -37,7 +37,11 @@ export function costLeft(manaCost: string | null | undefined): number {
 export interface FrameLayout {
   /** Regiões onde o texto em inglês é apagado (com limiar de contraste). */
   /** `fill: "rows"` nas barras: fundo e preenchimento linha a linha */
-  erase: { rect: Rect; threshold: number; colorThreshold?: number; fill?: "rows"; stains?: boolean }[];
+  /**
+   * `attachedBelow` na caixa: da linha (escala-base) para baixo só sai o que se liga às letras
+   * (ver `keepAttachedBelow`); sem ele, o pé do retângulo
+   */
+  erase: { rect: Rect; threshold: number; colorThreshold?: number; fill?: "rows"; stains?: boolean; attachedBelow?: number }[];
   /** Regiões que nunca são apagadas (ex.: caixa de poder/resistência). */
   protect: Rect[];
   /** Onde o nome em português é escrito. */
@@ -141,6 +145,22 @@ const DFC = {
 };
 
 /**
+ * O fio de baixo da caixa de texto da moldura de 2003 (escala-base): começa em 935 a 937 nas
+ * 68 criaturas conferidas, uma de cada coleção de Eighth Edition a Conspiracy; em algumas
+ * (Shards of Alara, Dragon's Maze) ele fica em 942 do meio da caixa para a esquerda e sobe
+ * para 936 perto da caixa de P/R.
+ */
+export const BOX_FOOT_2003 = 936;
+
+/**
+ * As mesmas medidas na moldura de 2003 (Innistrad e Dark Ascension, ADR 0049, conferidas nas 37
+ * impressões). O sol e a lua vão de x ≈ 35 a 108, e a ponta da barra do nome segue a curva do
+ * ícone, com uma sombra que chega a x ≈ 121 no alto e no pé; a primeira letra começa em ≈ 125. A
+ * bolinha do indicador de cor vai de x ≈ 70 a 97, e a primeira letra do tipo começa em ≈ 109.
+ */
+const DFC_2003 = { iconTitleX: 124, iconEraseX0: 122, indicatorTypeX: 108, indicatorEraseX0: 100 };
+
+/**
  * A faixa de baixo das cartas modais (ADR 0029), medida em ZNR, KHM, STX, MH3, SPM e MSH: o
  * miolo vai de y ≈ 927 a 965 (925 a 964 nas digitalizações novas, de 744 px), o triângulo
  * acaba em x ≈ 44 e a ponta da direita começa em ≈ 322. A palavra começa em x ≈ 52,5, com as
@@ -218,6 +238,29 @@ export function ptProtect(top: number, left: number | null): Rect[] {
 }
 
 /**
+ * Proteção da caixa de P/R na moldura de 2003 (escala-base), a partir do topo medido. A caixa
+ * tem um chanfro com sombra do lado esquerdo, que desce na diagonal de x ≈ 559, cinco linhas
+ * acima do topo, a ≈ 550, até o fio de baixo da caixa de texto (`border`, medido logo à
+ * esquerda; medido em 66 cartas, uma de cada coleção de Eighth Edition a Conspiracy, e nas de
+ * duas faces de Innistrad). Com a proteção da M15, a partir de x 564, a sombra e a ponta do fio
+ * de cima da caixa eram apagadas, e o canto saía cortado num degrau claro (Champion of the
+ * Parish, ISD 6). Do fio para baixo fica a de antes: em algumas molduras o fio sobe perto da
+ * caixa de P/R (de 942 para 936 em Shards of Alara), e o alto dele, que o apagamento levava até
+ * o pé da caixa, medido no terço da esquerda (ver `BOX_FOOT_2003`), ficava como um degrau no
+ * fio (Tidehollow Sculler, ALA 202).
+ */
+export function ptProtect2003(top: number, border: number | null): Rect[] {
+  const t = Math.max(916, Math.min(940, top));
+  const b = Math.max(t + 1, Math.min(t + 20, border ?? t + 7));
+  return [
+    { x0: 555, y0: t - 5, x1: 566, y1: t - 3 },
+    { x0: 551, y0: t - 3, x1: BASE_W, y1: t - 1 },
+    { x0: 547, y0: t - 1, x1: BASE_W, y1: b },
+    { x0: 564, y0: b, x1: BASE_W, y1: BASE_H },
+  ];
+}
+
+/**
  * A moldura tem o círculo à esquerda do nome? As de duas faces têm (menos o verso com
  * o ícone à direita), e as Lições (STX, TLA) trazem o mesmo círculo no mesmo lugar: sem
  * ele, o nome em português era escrito por cima do ícone.
@@ -237,8 +280,9 @@ export function m15Layout(manaCost: string | null, hasPt: boolean, setSymbolLeft
   // (na de 2003, onde começava o inglês na época da impressão; a primeira letra da Matrix Bold
   // fica 1 px depois da posição da linha)
   const start = extras.frame2003 ? frame2003Start(extras.released) : null;
-  const titleX = extras.leftIcon ? DFC.iconTitleX : start ? start.title - 1 : 66;
-  const typeX = extras.indicator ? DFC.indicatorTypeX : start ? start.type - 1 : 66;
+  const D = extras.frame2003 ? DFC_2003 : DFC;
+  const titleX = extras.leftIcon ? D.iconTitleX : start ? start.title - 1 : 66;
+  const typeX = extras.indicator ? D.indicatorTypeX : start ? start.type - 1 : 66;
   // A ponta das barras de 2003 é mais funda: o fio escuro de dentro fica em x ≈ 50 a 56 no
   // meio da barra e em 54 a 60 no alto e no pé, com uns 5 px de degradê até o papel (a
   // primeira letra começa em x ≈ 63). Começando em 50, como na M15, a curva passava dos
@@ -255,13 +299,22 @@ export function m15Layout(manaCost: string | null, hasPt: boolean, setSymbolLeft
   const typeCenter = extras.frame2003 ? 617.5 : 613;
   return {
     erase: [
-      { rect: { x0: extras.leftIcon ? DFC.iconEraseX0 : barX0, y0: nameY.y0, x1: cost - 6, y1: nameY.y1 }, threshold: 28, fill: "rows" },
+      { rect: { x0: extras.leftIcon ? D.iconEraseX0 : barX0, y0: nameY.y0, x1: cost - 6, y1: nameY.y1 }, threshold: 28, fill: "rows" },
       {
-        rect: { x0: extras.indicator ? DFC.indicatorEraseX0 : barX0, y0: 590 + dy, x1: setLeft - 6, y1: 636 + dy },
+        rect: { x0: extras.indicator ? D.indicatorEraseX0 : barX0, y0: 590 + dy, x1: setLeft - 6, y1: 636 + dy },
         threshold: 28,
         fill: "rows",
       },
-      { rect: { x0: 58, y0: 646 + dy, x1: 688, y1: eraseBottom }, threshold: 14, colorThreshold: 34, stains: true },
+      {
+        rect: { x0: 58, y0: 646 + dy, x1: 688, y1: eraseBottom },
+        threshold: 14,
+        colorThreshold: 34,
+        stains: true,
+        // (na de 2003 o fio de baixo da caixa fica em ~936, e à esquerda chega a descer até 943
+        // (Shards of Alara, Dragon's Maze): a caixa, medida no terço da esquerda, passava do fio
+        // do lado da caixa de P/R, e o alto dele saía pintado de papel (Tidehollow Sculler, ALA 202)
+        attachedBelow: extras.frame2003 ? BOX_FOOT_2003 : undefined,
+      },
     ],
     // começa no fio da caixa de P/R (~922): acima disso, letras cortadas pela proteção
     // deixavam meio pedaço que o preenchimento espalhava como mancha

@@ -1609,6 +1609,25 @@ export function ptBoxLeft(img: ImageData, y: number, x0: number, x1: number, pap
 }
 
 /**
+ * O fio de baixo da caixa de texto entre `x0` e `x1` (escala da imagem): a primeira linha, de
+ * `y0` para baixo, em que a mediana dessas colunas fica 60 tons abaixo do papel (o de `paperY`,
+ * como em `ptBoxLeft`). Na moldura de 2003, logo à esquerda da caixa de P/R, onde a sombra do
+ * chanfro dela acaba (ver ptProtect2003). `null` sem fio até `y1`.
+ */
+export function boxBorderAt(img: ImageData, x0: number, x1: number, y0: number, y1: number, paperY: number): number | null {
+  const at = (x: number, yy: number) => luminance(img.data, (Math.round(yy) * img.width + Math.round(x)) * 4);
+  const ref: number[] = [];
+  for (let yy = paperY - 10; yy < paperY; yy++) for (let x = x0 - 95; x < x0 - 5; x += 2) ref.push(at(x, yy));
+  const paper = median(Float32Array.from(ref));
+  for (let y = Math.round(y0); y < y1; y++) {
+    const row: number[] = [];
+    for (let x = Math.round(x0); x < x1; x++) row.push(at(x, y));
+    if (median(Float32Array.from(row)) < paper - 60) return y;
+  }
+  return null;
+}
+
+/**
  * Topo da barra de tipo (escala-base): a primeira linha, de 570 para baixo, em que
  * quase toda a largura muda de tom de repente (o fio de cima da barra). Na moldura
  * padrão fica em ~589; em algumas artes estendidas (VOW) a caixa é curta e a barra

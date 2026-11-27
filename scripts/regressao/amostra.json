@@ -80,6 +80,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "1abecc77-07f2-43e4-8585-0a8199cdcf01",
+    "oracle_id": "51b55057-8b14-4277-894b-4813b4f7eb39",
+    "set": "ala",
+    "number": "202",
+    "nome": "Tidehollow Sculler",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "96fff700-af02-4861-b7ed-be9950e69bf1",
     "oracle_id": "bd3e55cf-ffca-402c-91ea-2420035a9dd1",
     "set": "all",
@@ -344,11 +352,27 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "e4edad09-bf7b-40e9-ac2a-100da8a43274",
+    "oracle_id": "326adf88-3f6d-4bc2-aafa-dd55c6c95784",
+    "set": "dgm",
+    "number": "57",
+    "nome": "Blood Baron of Vizkopa",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "d91a527d-51f1-4fb1-9016-fc923fd43a6a",
     "oracle_id": "e018773f-95b3-49a3-9674-6f04ddef2092",
     "set": "dis",
     "number": "159",
     "nome": "Azorius Signet",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "aae6fb12-b252-453b-bca7-1ea2a0d6c8dc",
+    "oracle_id": "582328cd-660d-47a4-bb23-e91e80b9a907",
+    "set": "dka",
+    "number": "140",
+    "nome": "Huntmaster of the Fells // Ravager of the Fells",
     "grupo": "citada nos documentos"
   },
   {
@@ -752,6 +776,22 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "b4160322-ff40-41a4-887a-73cd6b85ae45",
+    "oracle_id": "7cec9021-6f25-4fd8-b40e-adf4ffd3a7b8",
+    "set": "isd",
+    "number": "181",
+    "nome": "Garruk Relentless // Garruk, the Veil-Cursed",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "f7314414-c2d2-48ed-af2c-764cf0207c62",
+    "oracle_id": "faeaa3eb-6eb8-4621-98c7-0c6f58bbff85",
+    "set": "isd",
+    "number": "6",
+    "nome": "Champion of the Parish",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "9710889c-0fc6-43a9-83df-484ab0659030",
     "oracle_id": "fe16f1ab-58b4-4452-abe4-cbd9addd348f",
     "set": "jou",
@@ -1120,6 +1160,14 @@
     "grupo": "citada nos documentos"
   },
   {
+    "id": "abbbb466-31ef-42dd-9993-124f7ec3d8ae",
+    "oracle_id": "18932bb9-e054-4ad6-80c8-d2f177312da0",
+    "set": "pdka",
+    "number": "71★",
+    "nome": "Ravenous Demon // Archdemon of Greed",
+    "grupo": "citada nos documentos"
+  },
+  {
     "id": "5bb06121-b390-4e3d-8822-4389570b0e15",
     "oracle_id": "b6b22bac-853a-45a8-a74d-9904ec2b34fd",
     "set": "pfin",
@@ -1173,6 +1221,14 @@
     "set": "pip",
     "number": "466",
     "nome": "Chaos Warp",
+    "grupo": "citada nos documentos"
+  },
+  {
+    "id": "340b660c-9aa1-4bd2-8c6f-d9af7fee5f4a",
+    "oracle_id": "53175678-1f5c-4889-9086-66381b3ddc3a",
+    "set": "pisd",
+    "number": "64★",
+    "nome": "Ludevic's Test Subject // Ludevic's Abomination",
     "grupo": "citada nos documentos"
   },
   {
@@ -8358,6 +8414,102 @@
     "number": "99",
     "nome": "Sneak Attack",
     "grupo": "sem borda"
+  },
+  {
+    "id": "932d753d-9584-4ad8-9a5e-a3524184f961",
+    "oracle_id": "12330f42-0e3f-40e1-86f3-57a34403d143",
+    "set": "dka",
+    "number": "122",
+    "nome": "Lambholt Elder // Silverpelt Werewolf",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "cb09041b-4d09-4cae-9e85-b859edae885b",
+    "oracle_id": "bf28a2ed-cad7-48a7-9dec-06e43af73e9c",
+    "set": "dka",
+    "number": "13",
+    "nome": "Loyal Cathar // Unhallowed Cathar",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "1303e02a-ef69-4817-bca5-02c74774b811",
+    "oracle_id": "7f59252f-3a37-4a22-938c-001f3208bd94",
+    "set": "dka",
+    "number": "133",
+    "nome": "Wolfbitten Captive // Krallenhorde Killer",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "9d9c1c46-7aa7-464c-87b0-b29b9663daef",
+    "oracle_id": "28df85d6-e13a-4178-a361-7015afd316ca",
+    "set": "dka",
+    "number": "146",
+    "nome": "Chalice of Life // Chalice of Death",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "6aef77b3-4b38-4902-9f7a-dc18b5bb9da9",
+    "oracle_id": "18932bb9-e054-4ad6-80c8-d2f177312da0",
+    "set": "dka",
+    "number": "71",
+    "nome": "Ravenous Demon // Archdemon of Greed",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "bb90a6f1-c7f2-4c2e-ab1e-59c5c7937841",
+    "oracle_id": "27c2bb87-7e50-4a80-b41c-ff0237a3d648",
+    "set": "isd",
+    "number": "149",
+    "nome": "Instigator Gang // Wildblood Pack",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "25b54a1d-e201-453b-9173-b04e06ee6fb7",
+    "oracle_id": "280624aa-5f9a-48fd-85ea-815c96c747b3",
+    "set": "isd",
+    "number": "176",
+    "nome": "Daybreak Ranger // Nightfall Predator",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "57f0907f-74f4-4d86-93df-f2e50c9d0b2f",
+    "oracle_id": "c05c5375-d0d7-4cf2-92e6-76f86cd0febf",
+    "set": "isd",
+    "number": "182",
+    "nome": "Gatstaf Shepherd // Gatstaf Howler",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "8325c570-4d74-4e65-891c-3e153abf4bf9",
+    "oracle_id": "4418ff27-57c0-4c94-8aee-6151e4f8b0f9",
+    "set": "isd",
+    "number": "208",
+    "nome": "Ulvenwald Mystics // Ulvenwald Primordials",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "e42a0a3d-a987-4b24-b9d4-27380a12e093",
+    "oracle_id": "dcf692f6-baec-4b60-a6e3-2a8b731d7816",
+    "set": "isd",
+    "number": "209",
+    "nome": "Villagers of Estwald // Howlpack of Estwald",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "11bf83bb-c95b-4b4f-9a56-ce7a1816307a",
+    "oracle_id": "edd531b9-f615-4399-8c8c-1c5e18c4acbf",
+    "set": "isd",
+    "number": "51",
+    "nome": "Delver of Secrets // Insectile Aberration",
+    "grupo": "transformar de 2003"
+  },
+  {
+    "id": "98fc475a-809d-4278-be03-86eab62b46ce",
+    "oracle_id": "f94cb722-7e46-4569-b474-9654ecf7ec14",
+    "set": "pdka",
+    "number": "98★",
+    "nome": "Mondronen Shaman // Tovolar's Magehunter",
+    "grupo": "transformar de 2003"
   },
   {
     "id": "758abd53-6ad2-406e-8615-8e48678405b4",

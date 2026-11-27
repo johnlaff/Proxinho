@@ -252,7 +252,9 @@ describe("geometria", () => {
     // o resto continua como na M15
     expect(m03.title.size).toBe(m15.title.size);
     expect(m03.erase[0].rect.x1).toBe(m15.erase[0].rect.x1);
-    expect(m03.erase[2]).toEqual(m15.erase[2]);
+    // (a caixa é apagada no mesmo retângulo; abaixo do fio de baixo, em ~936, só o pé das letras)
+    expect({ ...m03.erase[2], attachedBelow: undefined }).toEqual(m15.erase[2]);
+    expect(m03.erase[2].attachedBelow).toBe(936);
     expect(m15.box).toEqual({ x0: 68, y0: 656, x1: 677, y1: 944 });
     expect(m15.erase[1].rect.x0).toBe(50);
   });

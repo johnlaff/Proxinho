@@ -35,6 +35,7 @@ import {
   restoreBevel,
 } from "./classCard";
 import { FLIP_2003, FLIP_2015, flipBar, flipBox, flipPtLine, flipTypeEnd } from "./flip";
+import { backPtDigits2003, backPtNotch2003, dfcSymbolLeft2003 } from "./dfc2003";
 import { bodyFont, loadCardFonts, oldNameFont, titleFont, type TitleFont } from "./fonts";
 import {
   BACK_PT_NOTCH,
@@ -42,12 +43,14 @@ import {
   BASE_H,
   BASE_W,
   beside,
+  BOX_FOOT_2003,
   costLeft,
   hasLeftIcon,
   m15Layout,
   MDFC_STRIP,
   mdfcCostLeft,
   ptProtect,
+  ptProtect2003,
   TYPE_BAR_END_2003,
   WATERMARK_2003,
   type FrameLayout,
@@ -73,6 +76,7 @@ import {
   maskRegions,
   notM15Frame,
   type RegionMask,
+  boxBorderAt,
   ptBoxLeft,
   ptBoxTop,
   regrain,
@@ -3599,7 +3603,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   // grudava nele e a estrela, solta, ficava de fora e era apagada, Lord of the Pit SLD 1857)
   // (na de 2003 a barra acaba antes, ver TYPE_BAR_END_2003)
   const symbolEnd = frameBox ? Math.round((frameBox.x1 + 4) * fx) : print.frame === "2003" ? Math.round(TYPE_BAR_END_2003 * fx) : undefined;
-  const setLeft =
+  const measuredSetLeft =
     findSetSymbolLeft(
       data,
       Math.round((594 + typeShift) * fy),
@@ -3610,12 +3614,15 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
       Boolean(frameBox),
       symbolless,
     ) / fx;
+  const setLeft = print.frame === "2003" && print.layout === "transform" ? dfcSymbolLeft2003(measuredSetLeft) : measuredSetLeft;
   const manaCost = sideInfo ? sideInfo.mana_cost : print.mana_cost;
   const hasPt = sideInfo ? sideInfo.has_pt : print.has_pt;
   // lembrete do verso ("4/4") na frente das cartas de transformar, e o da carta fundida na frente
   // das de fundir ("9/10" na Bruna, ADR 0043)
   const meld = print.layout === "meld";
   const backPt = print.layout === "transform" && side === 0 ? (print.sides?.[1]?.pt ?? null) : meld ? (face.meld_pt ?? null) : null;
+  // (na de 2003 os algarismos do inglês ficam, protegidos: ver backPtDigits2003)
+  const backDigits = backPt && print.frame === "2003" ? backPtDigits2003(data) : null;
   const rightIcon = Boolean(sideInfo && side === 1 && !manaCost && hasRightIcon(data));
   const layout = m15Layout(manaCost, hasPt, setLeft, {
     // (Lição sem o efeito marcado no Scryfall, como as de SOS: o ícone conferido na imagem)
@@ -3667,6 +3674,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     return reason ? { canvas: out, translated: false, reason } : { canvas: out, translated: false };
   };
   if (blocked || (print.flavor_name && !subtitle)) return original();
+  if (backPt && print.frame === "2003" && !backDigits) return original();
   // Mutação: a linha da palavra-chave vai na faixa translúcida do alto da caixa, e o resto no papel
   // abaixo do fio (ver mutate.ts). Sem o fio, ou sem a Mutação na frente do texto, sai a original.
   const mutateParts = mutate ? mutateText(face.text_pt, face.ability_words) : null;
@@ -3857,11 +3865,18 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     layout.protect.splice(0, 1, ...ptProtect(pt.top, pt.left));
   } else if (hasPt && layout.protect[0]) {
     const top = ptBoxTop(ptSource, 610 * fx, 670 * fx, 905 * fy, 950 * fy, 890 * fy);
-    if (top !== null) {
+    // (na de 2003 a caixa tem a sombra do chanfro à esquerda, ver ptProtect2003)
+    if (top !== null && print.frame === "2003") {
+      const border = boxBorderAt(ptSource, 536 * fx, 544 * fx, top, top + 20 * fy, 890 * fy);
+      layout.protect.splice(0, 1, ...ptProtect2003(top / fy, border === null ? null : border / fy));
+    } else if (top !== null) {
       const left = ptBoxLeft(ptSource, top + 22 * fy, 545 * fx, 610 * fx, 890 * fy);
       layout.protect.splice(0, 1, ...ptProtect(top / fy, left === null ? null : left / fx));
     }
   }
+  // O P/R do verso na frente das de duas faces de 2003 fica como está, protegido (os algarismos
+  // são os mesmos em PT, ver backPtDigits2003); sem ele onde fica, a carta sai na original
+  if (backDigits) layout.protect.push(backDigits);
   // o texto centrado no original (alguns feitiços curtos) sai centrado: medido antes de
   // apagar; na dúvida, à esquerda
   const boxGuard = [...stampGuard, ...layout.protect.map(toImg)];
@@ -3921,7 +3936,13 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
         fill: glass && e === layout.erase[1] ? ("pyramid" as const) : e.fill,
         letters: glass && e === layout.erase[1] ? glass : undefined,
         stains: e.stains,
-        attachedBelow: e.stains ? (advLayout?.attachedBelow ? advLayout.attachedBelow * fy : toImg(e.rect).y1) : undefined,
+        attachedBelow: e.stains
+          ? advLayout?.attachedBelow
+            ? advLayout.attachedBelow * fy
+            : e.attachedBelow
+              ? e.attachedBelow * fy
+              : toImg(e.rect).y1
+          : undefined,
         force:
           e.stains && bands
             ? bands.bands.map((b) => ({ x0: bands.x0 - 3 * fx, y0: b.y0 - 3 * fy, x1: bands.x1 + 3 * fx, y1: b.y1 + 3 * fy }))
@@ -4064,21 +4085,16 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     plan(1);
     // (só as letras: a marca é uns 20 a 40 tons mais escura que o papel, e as letras, pretas)
     const mask = textMask(data, measuredBox, WATERMARK_2003.ink, opaque, WATERMARK_2003.color, markInk);
-    const clean = await lamaBox(
-      data,
-      [{ rect: measuredBox, mask, polarity: markInk }],
-      measuredBox,
-      opaque,
-      markInk,
-      `${print.id}:${data.width}:${side}:marca`,
-      {
-        art: true,
-        grow: Math.round(fx * 2),
-        gap: 0,
-        simple: false,
-        neural,
-      },
-    );
+    const marked = { rect: measuredBox, mask, polarity: markInk };
+    // (abaixo do fio de baixo, só o pé das letras, como no apagamento de sempre)
+    keepAttachedBelow(marked, BOX_FOOT_2003 * fy, Math.round(8 * fy));
+    const clean = await lamaBox(data, [marked], measuredBox, opaque, markInk, `${print.id}:${data.width}:${side}:marca`, {
+      art: true,
+      grow: Math.round(fx * 2),
+      gap: 0,
+      simple: false,
+      neural,
+    });
     if (!clean) return original("neural");
   }
   // A faixa da Mutação é translúcida, com a arte por trás e a letra escura: só as letras saem, e a
@@ -4109,7 +4125,8 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
   const advInks = advLayout ? inks.slice(-3) : [];
   const stripInk = strip ? stripPolarity : undefined;
   // o lembrete do verso pode passar do lado da caixa, no canto que avança para a moldura (SOI)
-  if (backPt && measuredBox && !keepBox) {
+  // (na de 2003 os algarismos ficam, ver backPtDigits2003)
+  if (backPt && measuredBox && !keepBox && !backDigits) {
     const y1 = layout.box.y1;
     eraseBackPtNotch(data, toImg({ x0: 600, y0: y1 - BACK_PT_NOTCH.height - 14, x1: 716, y1 }), measuredBox.x1);
   }
@@ -4138,7 +4155,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     );
   if (face.type_pt)
     drawLine(ctx, face.type_pt, layout.type.x, layout.type.centerY, layout.type.maxWidth, layout.type.size, k, INK[typeInk], tf);
-  if (backPt) drawBackPt(ctx, backPt, layout.box.y1 - BACK_PT_NOTCH.height / 2, k, boxInk);
+  if (backPt && !backDigits) drawBackPt(ctx, backPt, layout.box.y1 - BACK_PT_NOTCH.height / 2, k, boxInk);
 
   const box = layout.box;
   const symbols = await preloadSymbols(face.text_pt, opts.flavor, adv?.text_pt, strip ? hint?.mana : null);
@@ -4215,7 +4232,7 @@ export async function renderCard(opts: RenderOptions): Promise<RenderResult> {
     m,
     advLayout ? advLayout.maxSize : 34,
     15,
-    backPt ? BACK_PT_NOTCH : undefined,
+    backDigits ? backPtNotch2003(box, backDigits) : backPt ? BACK_PT_NOTCH : undefined,
     face.ability_words,
   );
   const shade = bands ? { x0: bands.x0 / fx, x1: bands.x1 / fx, color: `rgb(${bands.color.join(",")})` } : undefined;

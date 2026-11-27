@@ -1403,6 +1403,28 @@ class BattleSupported(unittest.TestCase):
         self.assertFalse(face_supported({**self.base, "frame": "2003"}, self.battle))
 
 
+class Dfc2003Supported(unittest.TestCase):
+    """As de duas faces de Innistrad e Dark Ascension na moldura de 2003 (ADR 0049)."""
+
+    front = {"type_line": "Creature — Human Wizard"}
+    base = {"frame": "2003", "layout": "transform", "border_color": "black", "frame_effects": ["sunmoondfc"], "set": "isd"}
+
+    def test_de_transformar(self):
+        self.assertTrue(face_supported(self.base, self.front))
+        self.assertTrue(face_supported(self.base, {"type_line": "Legendary Artifact — Equipment"}))
+        # as promos de pré-estreia e de lançamento (PISD, PDKA) e a reimpressão de The List
+        self.assertTrue(face_supported({**self.base, "set": "pisd", "promo_types": ["setpromo", "prerelease"]}, self.front))
+        self.assertTrue(face_supported({**self.base, "set": "plst"}, self.front))
+
+    def test_fora(self):
+        # Garruk Relentless: a caixa dos planeswalkers de 2003 não é reescrita
+        self.assertFalse(face_supported(self.base, {"type_line": "Legendary Planeswalker — Garruk"}))
+        self.assertFalse(face_supported({**self.base, "layout": "modal_dfc"}, self.front))
+        self.assertFalse(face_supported({**self.base, "watermark": "fnm"}, self.front))
+        self.assertFalse(face_supported({**self.base, "frame_effects": ["sunmoondfc", "tombstone"]}, self.front))
+        self.assertFalse(face_supported({**self.base, "border_color": "white"}, self.front))
+
+
 class BattleReminder(unittest.TestCase):
     """O lembrete do Cerco vem das batalhas impressas em PT; o Arena não o traz."""
 

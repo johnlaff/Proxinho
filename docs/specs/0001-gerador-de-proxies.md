@@ -256,3 +256,10 @@ Como jogador, quero imprimir em português a frente das batalhas de March of the
 - [x] O nome, o tipo ("Batalha — Cerco") e o texto da frente saem em PT na carta deitada, com o lembrete dos Cercos das impressas em PT no alto.
 - [x] O P/R do verso fica no mesmo lugar, e o escudo da defesa fica inteiro, com o texto desviando dos dois.
 - [x] As de March of the Machine, as promos de pré-estreia e a de Innistrad Remastered saem em PT; as cartas de teste ficam de fora.
+
+### H29. As cartas de transformar da moldura de 2003 (entregue em 27/11/2026, ADR 0049)
+Como jogador, quero imprimir em português as cartas de transformar de Innistrad e Dark Ascension, como Delver of Secrets // Insectile Aberration e Huntmaster of the Fells // Ravager of the Fells.
+- [x] As duas faces saem em PT na moldura de 2003, com o nome depois do sol ou da lua e o tipo do verso depois do indicador de cor.
+- [x] O P/R do verso na frente fica como na carta, e o texto desvia dele.
+- [x] As de ISD e DKA, as promos de pré-estreia e de lançamento e a Elbrus de The List saem em PT; o Garruk Relentless, planeswalker, fica de fora.
+- [x] Em toda criatura da moldura de 2003, o canto da caixa de P/R sai inteiro, com a sombra do chanfro.
