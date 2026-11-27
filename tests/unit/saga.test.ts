@@ -4,6 +4,7 @@ import {
   dividerProfile,
   drawDivider,
   sagaArtLeft,
+  sagaBackPt,
   sagaBands,
   sagaDividers,
   sagaNumerals,
@@ -81,6 +82,35 @@ describe("sagaDividers", () => {
     expect(sagaDividers(c.img, art, 778)).toEqual([221, 575]);
   });
 
+  it("a linha de base cheia de serifas não é fio (The Legend of Yangchen, TLA 27)", () => {
+    // ela clareia 85% da largura e tem a mediana abaixo da linha 6 px acima, como a sombra; mas a
+    // sombra é lisa e a linha de base tem tinta de letra em mais da metade
+    const c = column();
+    shadow(c, 500, [232, 229, 226, 223, 220, 217, 214, 211]);
+    for (const y of [791, 792]) {
+      c.fill(87, y, 368, y + 1, gray(225));
+      for (let x = 100; x < 360; x += 10) c.fill(x, y, x + 6, y + 1, gray(40));
+    }
+    const art = sagaArtLeft(c.img)!;
+    expect(sagaDividers(c.img, art)).toEqual([500]);
+  });
+
+  it("a retícula na linha mais escura da sombra não tira o fio (The Great Synthesis, PMOM 65s)", () => {
+    const c = column();
+    shadow(c, 500, [232, 229, 226, 223, 220, 217, 214, 200]);
+    // 22% dos pixels da linha logo antes do degrau são pontos escuros da retícula
+    for (let x = 100; x < 360; x += 9) c.fill(x, 499, x + 2, 500, gray(120));
+    const art = sagaArtLeft(c.img)!;
+    expect(sagaDividers(c.img, art)).toEqual([500]);
+  });
+
+  it("o lado da arte é o fio, não a arte mais escura logo depois (The Dragon-Kami Reborn, NEO 181†)", () => {
+    const c = column();
+    c.fill(370, 0, 383, H, gray(28)); // o fio, e a arte quase preta grudada nele
+    c.fill(381, 0, 383, H, gray(20));
+    expect(sagaArtLeft(c.img)).toBe(370);
+  });
+
   it("sem o fio preto da arte não é Saga", () => {
     expect(sagaArtLeft(canvas(gray(235)).img)).toBeNull();
   });
@@ -95,6 +125,50 @@ describe("sagaNumerals", () => {
     c.fill(30, 700, 85, 760, gray(200));
     c.fill(50, 705, 64, 755, gray(40)); // alto demais para um número
     expect(sagaNumerals(c.img, 300, 867)).toEqual([588.5]);
+  });
+
+  it("a ponta da tira em seta ao lado do P/R do verso fica de fora com a busca até o fim da coluna (PTLA 27s)", () => {
+    const c = column();
+    c.fill(28, 119, 86, 867, gray(30));
+    c.fill(30, 745, 85, 790, gray(200));
+    c.fill(50, 755, 64, 778, gray(40)); // o "III"
+    // a seta: o foil claro da moldura à esquerda, o contorno preto e o papel à direita
+    c.fill(30, 808, 43, 834, gray(220));
+    c.fill(43, 808, 72, 834, gray(20));
+    c.fill(72, 808, 86, 834, gray(235));
+    expect(sagaNumerals(c.img, 300, 867)).toEqual([766, 820.5]);
+    // o P/R do verso começa em 827, e a coluna acaba 4 px antes
+    expect(sagaNumerals(c.img, 300, 823)).toEqual([766]);
+  });
+});
+
+describe("sagaBackPt", () => {
+  /** O pé da coluna da Saga de transformar: a tira dos marcadores em ponta e o papel ao lado. */
+  function foot() {
+    const c = column();
+    c.fill(28, 119, 58, 830, gray(30)); // a tira, até a ponta
+    c.fill(28, 830, 40, 867, gray(30)); // a ponta e a moldura do recorte
+    return c;
+  }
+
+  it("acha o alto do P/R do verso, ao lado da ponta da tira", () => {
+    const c = foot();
+    c.fill(66, 832, 80, 854, gray(110)); // "0"
+    c.fill(84, 832, 88, 854, gray(110)); // "/"
+    c.fill(92, 832, 108, 854, gray(110)); // "0"
+    // a última linha em inglês desce ao lado, depois de um vão: não é o fim dos algarismos
+    c.fill(130, 832, 300, 840, gray(20));
+    expect(sagaBackPt(c.img)).toEqual({ y0: 832, y1: 853, x1: 107 });
+  });
+
+  it("o texto do último capítulo, que começa em x 100, não conta; sem o P/R, nada", () => {
+    const c = foot();
+    c.fill(100, 790, 300, 812, gray(20)); // a última linha do capítulo
+    c.fill(102, 812, 108, 818, gray(20)); // a perna do "y"
+    expect(sagaBackPt(c.img)).toBeNull();
+    // uma mancha que não tem a altura de um algarismo também não
+    c.fill(70, 840, 80, 846, gray(110));
+    expect(sagaBackPt(c.img)).toBeNull();
   });
 });
 

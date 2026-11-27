@@ -779,30 +779,48 @@ def saga_chapters(oracle_text: str | None, text_pt: str | None) -> str | None:
     ("Ler adiante", a palavra-chave das criaturas Saga) ficam onde o Oracle as põe. O lembrete
     do Oracle ("(As this Saga enters…)") não está no Arena e entra depois, pelo texto das Sagas
     impressas em PT (ver `top_reminder`). Devolve None quando as
-    linhas não batem, ou quando os parágrafos de um mesmo grupo diferem.
+    linhas não batem, ou quando os parágrafos de um mesmo grupo diferem. As opções "•" depois de
+    um capítulo ("I, II — Choose one —", Life of Toshiro Umezawa) são dele: o Arena repete o
+    capítulo inteiro, com elas, uma vez por número do grupo.
     """
     en = [x.strip() for x in (oracle_text or "").split("\n") if x.strip() and not x.strip().startswith("(")]
     pt = [x.strip() for x in (text_pt or "").split("\n") if x.strip()]
-    plan = [m.group(1) if (m := _CHAPTER.match(x)) else None for x in en]
-    if not any(plan):
+    # cada capítulo com as opções "•" logo abaixo dele; o que não é capítulo, uma linha só
+    blocks: list[tuple[str | None, int]] = []
+    for x in en:
+        m = _CHAPTER.match(x)
+        if m:
+            blocks.append((m.group(1), 1))
+        elif x.startswith("•") and blocks and blocks[-1][0]:
+            blocks[-1] = (blocks[-1][0], blocks[-1][1] + 1)
+        else:
+            blocks.append((None, 1))
+    if not any(g for g, _ in blocks):
         return None
-    sizes = [len(g.split(", ")) if g else 1 for g in plan]
-    if len(pt) == sum(sizes):
-        take = sizes
-    elif len(pt) == len(plan):
-        take = [1] * len(plan)
+    times = [len(g.split(", ")) if g else 1 for g, _ in blocks]
+    if len(pt) == sum(t * n for t, (_, n) in zip(times, blocks)):
+        repeat = times
+    elif len(pt) == sum(n for _, n in blocks):
+        repeat = [1] * len(blocks)
     else:
         return None
     out: list[str] = []
     j = 0
-    for group, n in zip(plan, take):
+    for (group, n), t in zip(blocks, repeat):
         # alguns capítulos vêm do Arena com o travessão do número na frente ("— Procure…" no
         # Roads Go Ever, Ever On): sai só o travessão, o número já vem do Oracle
-        part = [re.sub(r"^—\s*", "", x) if group else x for x in pt[j : j + n]]
-        j += n
-        if len(set(part)) != 1:
+        copies = []
+        for _ in range(t):
+            lines = pt[j : j + n]
+            j += n
+            if group:
+                lines = [re.sub(r"^—\s*", "", lines[0]), *lines[1:]]
+            copies.append(tuple(lines))
+        if len(set(copies)) != 1:
             return None
-        out.append(f"{group} — {part[0]}" if group else part[0])
+        first = copies[0]
+        out.append(f"{group} — {first[0]}" if group else first[0])
+        out.extend(first[1:])
     return "\n".join(out)
 
 
@@ -2029,6 +2047,24 @@ def prototype_supported(card: dict) -> bool:
     )
 
 
+def case_supported(card: dict) -> bool:
+    """Os Casos de Murders at Karlov Manor (ADR 0046): a coluna da Classe sem as barras, com a
+    habilidade, "To solve" e "Solved" separados por dois fios finos (src/engine/caseCard.ts). O
+    motor confere a coluna, os dois fios e a barra de tipo no pé na imagem; sem eles, a arte sai
+    como está. Só a moldura de papel de borda preta sem efeito (as de MKM, MKC e as promos de PMKM;
+    a Case of the Lost Witness, MBC 62, com o céu estrelado na moldura, fica de fora)."""
+    return (
+        card.get("layout") == "case"
+        and card.get("frame") == "2015"
+        and card.get("border_color") == "black"
+        and not card.get("frame_effects")
+        and not card.get("full_art")
+        and not card.get("textless")
+        and not drawn_frame(card)
+        and "Case" in card.get("type_line", "")
+    )
+
+
 # a linha do Protótipo no Oracle ("Prototype {1}{W}{W} — 3/3 (You may cast…)") e o lembrete das impressas em PT
 PROTOTYPE_EN = re.compile(r"^Prototype ((?:\{[^}]+\})+) — \d+/\d+ \(")
 PROTOTYPE_PT = re.compile(r"^Protótipo \(.+\)$")
@@ -2100,12 +2136,37 @@ def class_supported(card: dict) -> bool:
 
 DFC_LAYOUTS = {"transform", "modal_dfc"}
 # molduras de duas faces com desenho próprio (bússola de Ixalan, planeswalker de Magic Origins…)
-UNSUPPORTED_DFC_EFFECTS = UNSUPPORTED_EFFECTS | {"compasslanddfc", "originpwdfc", "fandfc", "convertdfc"}
+UNSUPPORTED_DFC_EFFECTS = UNSUPPORTED_EFFECTS | {"compasslanddfc", "originpwdfc", "convertdfc"}
+# o leque de Kamigawa: Neon Dynasty é só o ícone das de duas faces (ADR 0047)
+DFC_SAGA_EFFECTS_OK = SAGA_EFFECTS_OK | {"fandfc"}
+# As promos de pré-estreia de Kamigawa: Neon Dynasty (PNEO, foil) têm a imagem lavada na
+# digitalização: na Saga, o degrau dos fios entre os capítulos tem 1 tom, e o motor não os acha (as
+# nove saíam na original); no verso, as letras brancas da barra clara da The Restoration of Eiganjo
+# (PNEO 34s) ficavam por baixo do português. As duas faces saem como estão; as da coleção, não.
+DFC_SAGA_SETS_OFF = {"pneo"}
 
 
 def face_supported(card: dict, face: dict) -> bool:
-    """Uma face de carta de duas faces (transformar ou modal) na moldura 2015."""
+    """Uma face de carta de duas faces (transformar ou modal) na moldura 2015.
+
+    A face que é Saga (as de Kamigawa: Neon Dynasty e de Avatar na frente, as dos pretores de March
+    of the Machine, a do Huatli e as Invocações de Final Fantasy no verso) tem a moldura da Saga,
+    com o ícone das de duas faces e, na frente, o P/R do verso no pé da coluna (ADR 0047): entra
+    como as Sagas de uma face, de borda preta, sem a arte estendida e sem as de vitrine.
+    """
     effects = set(card.get("frame_effects") or [])
+    if card.get("set") in DFC_SAGA_SETS_OFF:
+        return False
+    if "Saga" in face.get("type_line", ""):
+        return (
+            card.get("frame") == "2015"
+            and card.get("layout") == "transform"
+            and card.get("border_color") == "black"
+            and effects <= DFC_SAGA_EFFECTS_OK
+            and not card.get("full_art")
+            and not card.get("textless")
+            and not drawn_frame(card)
+        )
     return (
         card.get("frame") == "2015"
         and card.get("layout") in DFC_LAYOUTS
@@ -2118,13 +2179,19 @@ def face_supported(card: dict, face: dict) -> bool:
     )
 
 
+# As faces que são Saga nas cartas de duas faces: {id da impressão: [face]} (ver `SAGA_MISMATCH`)
+SAGA_SIDES: dict[str, list[int]] = {}
+
+
 def sides_of(card: dict) -> list[dict] | None:
     """Dados de cada face de uma impressão de duas faces (para o motor da carta)."""
     faces = card.get("card_faces")
     if card.get("layout") not in DFC_LAYOUTS or not faces or card.get("image_uris"):
         return None
     out = []
-    for f in faces:
+    for i, f in enumerate(faces):
+        if "Saga" in f.get("type_line", ""):
+            SAGA_SIDES.setdefault(card["id"], []).append(i)
         has_pt = f.get("power") is not None
         out.append(
             {
@@ -2296,6 +2363,7 @@ def print_row(c: dict, oid: str, face: dict, sides: list[dict] | None, pid: str 
         or meld_supported(c)
         or flip_supported(c)
         or prototype_supported(c)
+        or case_supported(c)
         or bool(sides and sides[0]["supported"]),
         "sides": sides,
         # nome de crossover no alto (o nome de jogo vai numa linha pequena abaixo da barra)
@@ -2997,6 +3065,12 @@ def main() -> None:
     for p in prints:
         if p["oracle_id"] in PW_MISMATCH or (p["oracle_id"] in SAGA_MISMATCH and p["layout"] == "saga"):
             p["supported"] = False
+        # (a face Saga de uma carta de duas faces com os capítulos que não batem: só ela sai como está)
+        if p["oracle_id"] in SAGA_MISMATCH and p.get("sides"):
+            for i in SAGA_SIDES.get(p["id"], ()):
+                p["sides"][i]["supported"] = False
+            if p["layout"] == "transform":
+                p["supported"] = p["sides"][0]["supported"]
     log(f"planeswalkers com habilidades que não batem (saem como estão): {len(PW_MISMATCH)}")
     log(f"Sagas com capítulos que não batem (saem como estão): {len(SAGA_MISMATCH)}")
     log(f"artes com o flavor da impressão do texto em PT: {mark_text_flavor(rows, prints, FLAVORS)}")

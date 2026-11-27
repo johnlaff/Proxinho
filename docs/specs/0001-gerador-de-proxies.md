@@ -239,3 +239,14 @@ Como jogador, quero imprimir em português as criaturas com Protótipo, como Ste
 - [x] O lembrete do Protótipo sai na faixa colorida do alto da caixa, com o texto oficial das impressas em PT, e o resto do texto no papel, com a mesma letra, como na carta impressa.
 - [x] A aba do custo e a caixa de P/R do protótipo ficam inteiras, nas faixas de todas as cores.
 - [x] As de The Brothers' War, as promos, as de The List, as de arte estendida e a de Modern Horizons 3 saem em PT.
+
+### H26. Os Casos (entregue em 26/11/2026, ADR 0046)
+Como jogador, quero imprimir em português os Casos de Murders at Karlov Manor, como Case of the Locked Hothouse.
+- [x] A habilidade, o "Para Solucionar" com o lembrete e o "Solucionado" saem em PT, com a mesma letra, e os fios entre eles mudam de lugar para o português caber.
+- [x] As de MKM, a de MKC e as promos de pré-estreia e de Promo Pack saem em PT; a variante do Case of the Gorgon's Kiss também.
+
+### H27. As Sagas de duas faces (entregue em 26/11/2026, ADR 0047)
+Como jogador, quero imprimir em português as cartas de transformar com uma face Saga, como Fable of the Mirror-Breaker // Reflection of Kiki-Jiki e Elesh Norn // The Argent Etchings.
+- [x] A face Saga sai como as Sagas de uma face, com os capítulos ao lado dos marcadores e os fios onde o português pede; a outra face sai como as cartas de transformar.
+- [x] Na frente de Kamigawa: Neon Dynasty e de Avatar, o P/R do verso fica no pé da coluna, e o último capítulo acaba acima dele.
+- [x] O verso Saga dos pretores de March of the Machine, da Huatli e das Invocações de Final Fantasy sai com o ícone e o indicador de cor das de duas faces.

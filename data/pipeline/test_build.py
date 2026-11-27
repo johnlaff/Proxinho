@@ -6,7 +6,7 @@ from unittest import mock
 
 import build
 import faltam
-from build import add_meld_data, flip_supported, prototype_cost, prototype_reminders, prototype_supported, prototype_text, is_meld_result, meld_supported, own_faces, join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
+from build import face_supported, add_meld_data, case_supported, flip_supported, prototype_cost, prototype_reminders, prototype_supported, prototype_text, is_meld_result, meld_supported, own_faces, join_keyword_lines, leveler_level, leveler_supported, mutate_supported, restore_cost_keyword, FUSE_EN, add_fuse_reminders, fuse_supported, without_fuse, aftermath_supported, split_supported, swap_half_names, fix_ring_a, add_room_reminders, arena_entry, arena_name, arena_name_pt, half_names, en_face_of, room_reminder, room_supported, without_room_reminder, emblem_face, subtype_mismatches, line_key, mold, fill_mold, official_lines, official_types, translate_type, unofficial_faces, add_unofficial, says_all, ability_word_lines, arena_reminders, extract_hints, hint_reminder, refers_to_self, join_station, station_level, station_supported, adventure_supported, prepare_supported, class_supported, drop_level_marks, is_arena_marker, arena_symbols, balance_parens, borderless_supported, cites_alt_name, clean_rules, drop_invisible, drop_repeated_words, emblem_text, fix_glued_symbols, fix_arena_typos, fix_breaks, fix_spacing, flavor_key, frame_supported, is_intrinsic_mana, keep_earlier_flavor, mark_print_flavors, mark_text_flavor, print_flavor, pick_printed, print_row, real_image, printed_faces, printed_has_text, pw_costs, add_reminders, face_reminders, reminder_texts, saga_chapters, saga_supported, top_reminder, top_reminders, token_face_key, token_key, transcribe, type_group
 
 
 class CitesAltName(unittest.TestCase):
@@ -964,6 +964,19 @@ class Prototipo(unittest.TestCase):
         self.assertEqual(prototype_reminders({}), ({}, None))
 
 
+class Caso(unittest.TestCase):
+    base = {"layout": "case", "frame": "2015", "border_color": "black", "type_line": "Enchantment — Case", "frame_effects": []}
+
+    def test_moldura(self):
+        self.assertTrue(case_supported(self.base))
+        self.assertTrue(case_supported({**self.base, "promo_types": ["prerelease", "datestamped"]}))
+        # o céu estrelado na moldura (Case of the Lost Witness, MBC 62), sem borda e sem texto, não
+        self.assertFalse(case_supported({**self.base, "frame_effects": ["enchantment"]}))
+        self.assertFalse(case_supported({**self.base, "border_color": "borderless"}))
+        self.assertFalse(case_supported({**self.base, "textless": True}))
+        self.assertFalse(case_supported({**self.base, "layout": "normal"}))
+
+
 class CartasDeFundir(unittest.TestCase):
     parts = [
         {"component": "meld_part", "name": "Bruna, the Fading Light"},
@@ -1305,6 +1318,19 @@ class SagaChapters(unittest.TestCase):
         pt = "— Procure em seu grimório até dois cards de Planície básicos.\nColoque um card exilado.\nColoque um card exilado."
         self.assertEqual(saga_chapters(en, pt), "I — Procure em seu grimório até dois cards de Planície básicos.\nII, III — Coloque um card exilado.")
 
+    def test_opcoes_do_capitulo(self):
+        # Life of Toshiro Umezawa (NEO 108): "I, II — Choose one —" com as três opções; o Arena
+        # repete o capítulo inteiro, com elas, uma vez por número do grupo
+        en = self.LEMBRETE + "I, II — Choose one —\n• Target creature gets +2/+2.\n• You gain 2 life.\nIII — Exile this Saga."
+        bloco = "Escolha um — \n•A criatura alvo recebe +2/+2.\n•Você ganha 2 pontos de vida."
+        pt = f"{bloco}\n{bloco}\nExile esta Saga."
+        esperado = "I, II — Escolha um —\n•A criatura alvo recebe +2/+2.\n•Você ganha 2 pontos de vida.\nIII — Exile esta Saga."
+        self.assertEqual(saga_chapters(en, pt), esperado)
+        # sem a repetição também
+        self.assertEqual(saga_chapters(en, f"{bloco}\nExile esta Saga."), esperado)
+        # uma opção diferente entre as cópias não bate
+        self.assertIsNone(saga_chapters(en, f"{bloco}\n{bloco.replace('2 pontos', '3 pontos')}\nExile esta Saga."))
+
     def test_nome_do_capitulo_em_italico(self):
         # Invocações de Final Fantasy: o nome do capítulo é palavra de ambientação
         en = "I — Gungnir — Destroy target creature.\nII — Zantetsuken — Draw a card."
@@ -1328,6 +1354,32 @@ class SagaSupported(unittest.TestCase):
         self.assertFalse(saga_supported({**self.base, "full_art": True}))
         self.assertFalse(saga_supported({**self.base, "frame": "2003"}))
         self.assertFalse(saga_supported({**self.base, "layout": "transform"}))
+
+
+class DfcSagaSupported(unittest.TestCase):
+    saga = {"type_line": "Enchantment — Saga"}
+    creature = {"type_line": "Enchantment Creature — Plant"}
+    base = {"frame": "2015", "layout": "transform", "border_color": "black", "frame_effects": ["fandfc", "enchantment"]}
+
+    def test_saga_de_duas_faces(self):
+        # Kamigawa: Neon Dynasty: as duas faces, a Saga e a criatura com o leque das de duas faces
+        self.assertTrue(face_supported(self.base, self.saga))
+        self.assertTrue(face_supported(self.base, self.creature))
+        # o verso Saga dos pretores de March of the Machine e as Invocações de Final Fantasy
+        self.assertTrue(face_supported({**self.base, "frame_effects": ["legendary"]}, self.saga))
+        self.assertTrue(face_supported({**self.base, "frame_effects": ["enchantment"]}, {"type_line": "Enchantment Creature — Saga Construct"}))
+
+    def test_fora(self):
+        # a vitrine, a arte estendida, a sem borda e a de borda branca ficam como as Sagas de uma face
+        self.assertFalse(face_supported({**self.base, "frame_effects": ["showcase", "fandfc", "inverted"]}, self.saga))
+        self.assertFalse(face_supported({**self.base, "frame_effects": ["extendedart", "fandfc", "enchantment"]}, self.saga))
+        self.assertFalse(face_supported({**self.base, "border_color": "borderless"}, self.saga))
+        self.assertFalse(face_supported({**self.base, "border_color": "white"}, self.saga))
+        # planeswalker de duas faces continua de fora
+        self.assertFalse(face_supported(self.base, {"type_line": "Legendary Planeswalker — Ajani"}))
+        # a pré-estreia de NEO, de imagem lavada: as duas faces saem
+        self.assertFalse(face_supported({**self.base, "set": "pneo"}, self.saga))
+        self.assertFalse(face_supported({**self.base, "set": "pneo"}, self.creature))
 
 
 class PrepareSupported(unittest.TestCase):

@@ -26,7 +26,7 @@ import {
   typeBarEdges,
   typeBarTop,
 } from "../../src/engine/erase";
-import { ptProtect } from "../../src/engine/geometry";
+import { m15Layout, ptProtect } from "../../src/engine/geometry";
 import { findBoxHighlight, findStamp, findTokenBoxBottom, measureCentered, stampShape } from "../../src/engine/token";
 
 /** Imagem falsa 745×1040 de uma cor só, com um pintor de retângulos. */
@@ -457,7 +457,26 @@ describe("findSetSymbolLeft no verso sem símbolo das cartas de duas faces", () 
     fill(693, 594, 700, 632, [60, 50, 30]);
     const info: { colored: number; lim: number; tight?: boolean; none?: boolean } = { colored: -1, lim: 0 };
     expect(findSetSymbolLeft(img, 594, 632, undefined, 100, info, false, true)).toBe(660);
-    expect(info.none).toBeUndefined();
+    // (e o enfeite não é símbolo: a barra vai até ele)
+    expect(info.none).toBe(true);
+  });
+  it('o tipo que acaba rente ao contorno vai até ele: o "n" de "Dragon" sai (Bahamut, Warden of Light, PFIN 16s)', () => {
+    // o "Dragon" até 667 e o contorno do fim da barra em duas camadas: o brilho de 690 a 692, o fio
+    // escuro e o branco de fora até 705, e a sombra em 709. A camada de dentro, separada das letras
+    // por uma lacuna larga, voltava a ser símbolo; ele começa no máximo em 660, e o "n" ficava ao
+    // lado do português
+    const { img, fill } = canvas([127, 127, 127]);
+    for (let x = 400; x < 650; x += 9) fill(x, 602, x + 6, 627, [250, 250, 250]);
+    fill(656, 608, 668, 627, [250, 250, 250]);
+    fill(690, 594, 693, 632, [195, 195, 195]);
+    fill(693, 594, 699, 632, [20, 20, 20]);
+    fill(699, 594, 706, 632, [249, 249, 249]);
+    fill(709, 594, 711, 632, [40, 40, 40]);
+    const info: { colored: number; lim: number; tight?: boolean; none?: boolean } = { colored: -1, lim: 0 };
+    const left = findSetSymbolLeft(img, 594, 632, undefined, 100, info, false, true);
+    expect(left).toBeGreaterThan(668);
+    expect(info.none).toBe(true);
+    expect(m15Layout(null, false, left, { noSetSymbol: info.none }).erase[1].rect.x1).toBeGreaterThan(668);
   });
 });
 
